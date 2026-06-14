@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* KhataPlus — Shop POS & Inventory. All colors HSL. */
+
+@layer base {
+  :root {
+    --background: 270 20% 98%;
+    --foreground: 270 30% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 270 30% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 270 30% 12%;
+
+    /* Ncell-inspired Purple */
+    --primary: 272 70% 35%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 272 70% 65%;
+
+    /* Soft purple secondary */
+    --secondary: 270 40% 94%;
+    --secondary-foreground: 270 30% 18%;
+
+    --muted: 270 20% 92%;
+    --muted-foreground: 270 15% 45%;
+
+    /* Fuchsia/Magenta accent */
+    --accent: 290 80% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Red */
+    --destructive: 4 75% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 65% 38%;
+    --warning: 38 92% 50%;
+
+    --border: 270 20% 86%;
+    --input: 270 20% 88%;
+    --ring: 272 70% 35%;
+
+    --radius: 0.85rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(272 70% 40%), hsl(272 80% 25%));
+    --gradient-fresh: linear-gradient(135deg, hsl(270 60% 88%) 0%, hsl(272 40% 80%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(290 80% 60%), hsl(310 80% 55%));
+    --gradient-hero: radial-gradient(ellipse at top left, hsl(272 50% 90%) 0%, hsl(270 40% 95%) 50%, hsl(270 20% 98%) 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 2px 8px -2px hsl(272 30% 20% / 0.08);
+    --shadow-card: 0 4px 20px -6px hsl(272 40% 20% / 0.12);
+    --shadow-elegant: 0 10px 40px -12px hsl(272 55% 25% / 0.25);
+    --shadow-glow: 0 0 30px hsl(272 70% 55% / 0.35);
+
+    /* Sidebar */
+    --sidebar-background: 270 40% 14%;
+    --sidebar-foreground: 270 30% 92%;
+    --sidebar-primary: 272 70% 55%;
+    --sidebar-primary-foreground: 270 50% 12%;
+    --sidebar-accent: 270 35% 22%;
+    --sidebar-accent-foreground: 270 30% 96%;
+    --sidebar-border: 270 30% 20%;
+    --sidebar-ring: 272 70% 55%;
+
+    --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    /* Deep black/purple background */
+    --background: 270 40% 4%;
+    --foreground: 270 20% 92%;
+    
+    --card: 270 35% 8%;
+    --card-foreground: 270 20% 92%;
+    
+    --popover: 270 35% 8%;
+    --popover-foreground: 270 20% 92%;
+    
+    --primary: 272 70% 55%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 270 30% 14%;
+    --secondary-foreground: 270 20% 92%;
+    
+    --muted: 270 25% 12%;
+    --muted-foreground: 270 15% 65%;
+    
+    --accent: 290 85% 58%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 4 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 270 30% 16%;
+    --input: 270 30% 16%;
+    --ring: 272 70% 55%;
+    
+    /* Mix of purple and black for the dark hero */
+    --gradient-hero: radial-gradient(ellipse at top left, hsl(272 60% 16%) 0%, hsl(270 45% 8%) 50%, hsl(270 40% 3%) 100%);
+    --gradient-fresh: linear-gradient(135deg, hsl(272 40% 18%) 0%, hsl(272 45% 12%) 100%);
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  h1, h2, h3, h4 { font-family: 'Fraunces', 'Georgia', serif; letter-spacing: -0.02em; }
+}
+
+@layer utilities {
+  .bg-gradient-primary { background-image: var(--gradient-primary); }
+  .bg-gradient-fresh { background-image: var(--gradient-fresh); }
+  .bg-gradient-warm { background-image: var(--gradient-warm); }
+  .bg-gradient-hero { background-image: var(--gradient-hero); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-elegant { box-shadow: var(--shadow-elegant); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .transition-smooth { transition: var(--transition-smooth); }
+}
+
+/* Disable number input spin buttons */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Prevent scroll wheel from changing numbers */
+input[type=number]:focus {
+  pointer-events: auto;
+}
