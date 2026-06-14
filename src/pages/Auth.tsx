@@ -89,6 +89,7 @@ const Auth = () => {
       // Create profile in Firestore
       await setDoc(doc(db, "profiles", userCredential.user.uid), {
         id: userCredential.user.uid,
+        email: email,
         full_name: fullName,
         shop_name: shopName || "My Shop",
         pan_no: panNo,
