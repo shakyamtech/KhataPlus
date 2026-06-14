@@ -25,7 +25,7 @@ type AdminUser = {
 
 const Admin = () => {
   const { isAdmin, loading } = useIsAdmin();
-  const { onlineUsers } = useAuth();
+  const { user, onlineUsers } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<AdminUser | null>(null);
@@ -139,15 +139,15 @@ const Admin = () => {
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    {onlineUsers.has(u.id) && (
+                    {u.id === user?.uid && (
                       <span className="relative flex h-2.5 w-2.5 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500 shadow-[0_0_8px_#10b981]"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 shadow-[0_0_8px_#10b981]"></span>
                       </span>
                     )}
                     <span className="font-display font-semibold text-base truncate max-w-full">{u.email}</span>
                   </div>
-                  {u.roles.includes("admin") && (
+                  {(u.roles.includes("admin") || (u.id === user?.uid && isAdmin)) && (
                     <Badge variant="default" className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 transition-colors">
                       <Shield className="h-3 w-3 mr-1" /> admin
                     </Badge>
