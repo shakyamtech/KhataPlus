@@ -36,11 +36,34 @@ const Admin = () => {
 
   const load = async () => {
     setBusy(true);
-    // Since Firebase doesn't have built-in Edge Functions without a Blaze plan,
-    // and this app is designed to be offline-first and free, Admin User Management
-    // should be done via the Firebase Console (Authentication & Firestore).
-    setUsers([]);
-    setBusy(false);
+    try {
+      const { collection, getDocs } = await import("firebase/firestore");
+      const { db } = await import("@/lib/firebase");
+      
+      const querySnapshot = await getDocs(collection(db, "profiles"));
+      const loadedUsers: AdminUser[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        loadedUsers.push({
+          id: doc.id,
+          email: data.email || data.id + "@unknown",
+          created_at: data.created_at || new Date().toISOString(),
+          last_sign_in_at: data.updated_at || null,
+          full_name: data.full_name || "",
+          shop_name: data.shop_name || "",
+          roles: data.roles || [],
+          banned_until: data.banned_until || null
+        });
+      });
+      
+      setUsers(loadedUsers);
+    } catch (error) {
+      console.error("Error loading users:", error);
+      toast.error("Failed to load users from database");
+    } finally {
+      setBusy(false);
+    }
   };
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
