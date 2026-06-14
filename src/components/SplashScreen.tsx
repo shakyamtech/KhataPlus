@@ -61,7 +61,7 @@ export const SplashScreen = () => {
             {shopName}
           </h1>
           <p className="text-xs md:text-sm text-muted-foreground font-medium tracking-wide uppercase animate-text-reveal" style={{ animationDelay: '0.3s' }}>
-            Freshness Delivered
+            Smart Business Management
           </p>
         </div>
 
