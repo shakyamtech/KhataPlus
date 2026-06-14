@@ -13,7 +13,7 @@ const LanguageContext = createContext<LanguageContextProps | undefined>(undefine
 const translations = {
   ENG: {
     // Auth Page
-    subtitle: "Vegetable shop POS & inventory — done simply",
+    subtitle: "Shop POS & inventory — done simply",
     welcome: "Welcome to KhataPlus",
     access: "Access your store dashboard & inventory statistics.",
     signin: "Sign in",
@@ -34,7 +34,7 @@ const translations = {
     pwPlaceholder: "At least 6 characters",
     createBtn: "Create Account",
     creating: "Creating...",
-    brandTitle: "Empowering your Vegetable Shop with zero effort.",
+    brandTitle: "Empowering your Shop with zero effort.",
     brandDesc: "Ditch the paper registers. Manage dynamic inventory, billing transactions, party ledgers, and comprehensive financial balance sheets with a sleek Nepalese-focused custom platform.",
     posTitle: "Superfast POS",
     posDesc: "Speed-billing with simple return calculation.",

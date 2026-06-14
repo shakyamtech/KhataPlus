@@ -90,7 +90,7 @@ const Auth = () => {
       await setDoc(doc(db, "profiles", userCredential.user.uid), {
         id: userCredential.user.uid,
         full_name: fullName,
-        shop_name: shopName || "My Vegetable Shop",
+        shop_name: shopName || "My Shop",
         pan_no: panNo,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

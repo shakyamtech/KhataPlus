@@ -306,7 +306,7 @@ const POS = () => {
 
       <div className="grid lg:grid-cols-[1fr_400px] gap-4">
         <div>
-          <Input className="mb-3" placeholder="Search vegetable..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="mb-3" placeholder="Search item..." value={search} onChange={(e) => setSearch(e.target.value)} />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {filtered.map((p) => {
               // Calculate possible stock from ingredients if it has a recipe

@@ -497,12 +497,12 @@ const Purchases = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>New Product</DialogTitle>
-            <DialogDescription>Add a new vegetable or item to your inventory.</DialogDescription>
+            <DialogDescription>Add a new item to your inventory.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Name</Label>
-              <Input value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="Enter vegetable or item name..." />
+              <Input value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="Enter item name..." />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

@@ -166,7 +166,7 @@ const Products = () => {
     <div className="p-4 md:p-8 md:pt-16 max-w-7xl mx-auto">
       <PageHeader
         title="Products & Stock"
-        subtitle="Manage your vegetables and live stock"
+        subtitle="Manage your products and live stock"
         actions={
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEdit(blank); }}>
             <DialogTrigger asChild>
@@ -176,11 +176,11 @@ const Products = () => {
               <DialogHeader>
                 <DialogTitle>{edit.id ? "Edit Product" : "New Product"}</DialogTitle>
                 <DialogDescription>
-                  {edit.id ? "Update the details for this product." : "Add a new vegetable or item to your inventory."}
+                  {edit.id ? "Update the details for this product." : "Add a new item to your inventory."}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
-                <div><Label>Name</Label><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter vegetable or item name..." /></div>
+                <div><Label>Name</Label><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Unit</Label>
                     <Select value={edit.unit} onValueChange={(v) => setEdit({ ...edit, unit: v })}>
@@ -299,7 +299,7 @@ const Products = () => {
             </Card>
           );
         })}
-        {filtered.length === 0 && <div className="col-span-full text-center text-muted-foreground py-12">No products yet. Add your first vegetable!</div>}
+        {filtered.length === 0 && <div className="col-span-full text-center text-muted-foreground py-12">No products yet. Add your first item!</div>}
       </div>
 
       <Dialog open={recipeOpen} onOpenChange={setRecipeOpen}>
