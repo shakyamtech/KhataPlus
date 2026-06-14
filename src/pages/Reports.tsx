@@ -38,7 +38,9 @@ const Reports = () => {
     }
   };
 
-  useEffect(loadData, [user, range]);
+  useEffect(() => {
+    loadData();
+  }, [user, range]);
 
   const totals = useMemo(() => {
     const revenue = sales.reduce((s, r) => s + Number(r.total), 0);

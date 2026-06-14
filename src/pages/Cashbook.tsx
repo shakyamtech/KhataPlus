@@ -130,6 +130,7 @@ const Cashbook = () => {
       });
       setPurchaseDetails(purchasesMap);
     } catch (e: any) {
+      console.error(e);
       toast.error(e.message);
     }
   };

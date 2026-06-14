@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "next-themes";
 
 import { SplashScreen } from "@/components/SplashScreen";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useState, useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -45,7 +46,8 @@ const App = () => {
               <Toaster />
               <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <AuthProvider>
+                <ErrorBoundary>
+                  <AuthProvider>
                   <Routes>
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
@@ -64,6 +66,7 @@ const App = () => {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AuthProvider>
+                </ErrorBoundary>
               </BrowserRouter>
             </LanguageProvider>
           </ThemeProvider>
