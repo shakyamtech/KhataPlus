@@ -139,12 +139,17 @@ const Admin = () => {
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    {u.id === user?.uid && (
-                      <span className="relative flex h-2.5 w-2.5 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 shadow-[0_0_8px_#10b981]"></span>
-                      </span>
-                    )}
+                    {(() => {
+                      const isMe = u.id === user?.uid;
+                      const isOnline = u.last_sign_in_at && 
+                        (new Date().getTime() - new Date(u.last_sign_in_at).getTime() < 5 * 60 * 1000);
+                      return (isMe || isOnline) && (
+                        <span className="relative flex h-2.5 w-2.5 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 shadow-[0_0_8px_#10b981]"></span>
+                        </span>
+                      );
+                    })()}
                     <span className="font-display font-semibold text-base truncate max-w-full">{u.email}</span>
                   </div>
                   {(u.roles.includes("admin") || (u.id === user?.uid && isAdmin)) && (

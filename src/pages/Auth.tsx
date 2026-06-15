@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +68,14 @@ const Auth = () => {
       emailSchema.parse(email); pwSchema.parse(password);
     } catch (err: any) { toast.error(err.errors?.[0]?.message ?? "Invalid input"); return; }
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      try {
+        await updateDoc(doc(db, "profiles", userCredential.user.uid), {
+          updated_at: new Date().toISOString()
+        });
+      } catch (presErr) {
+        console.warn("Failed to update presence during sign in:", presErr);
+      }
       toast.success("Welcome back!");
       navigate("/");
     } catch (error: any) {

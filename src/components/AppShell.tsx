@@ -121,6 +121,24 @@ export const AppShell = () => {
         loadProfile();
     }, [user]);
 
+    useEffect(() => {
+        if (!user) return;
+        
+        const updatePresence = async () => {
+            try {
+                await updateDoc(doc(db, "profiles", user.uid), {
+                    updated_at: new Date().toISOString()
+                });
+            } catch (e) {
+                console.error("Error updating presence:", e);
+            }
+        };
+        
+        updatePresence();
+        const interval = setInterval(updatePresence, 3 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [user]);
+
     const handleSaveProfile = async () => {
         if (!password) return toast.error("Please enter your current password to confirm");
         
