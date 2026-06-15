@@ -140,20 +140,24 @@ export const AppShell = () => {
     }, [user]);
 
     const handleSaveProfile = async () => {
-        if (!password) return toast.error("Please enter your current password to confirm");
+        if (!fullName.trim()) return toast.error("Name cannot be empty");
         
         setBusy(true);
         try {
-            const credential = EmailAuthProvider.credential(user.email!, password);
-            await reauthenticateWithCredential(user, credential);
-
             await setDoc(doc(db, "profiles", user.uid), { 
                 full_name: fullName
             }, { merge: true });
 
             if (newPassword.trim()) {
+                if (!password) {
+                    setBusy(false);
+                    return toast.error("Please enter your current password to set a new password");
+                }
+                const credential = EmailAuthProvider.credential(user.email!, password);
+                await reauthenticateWithCredential(user, credential);
+                
                 if (newPassword.length < 6) {
-                    toast.error("New password must be at least 6 characters. Profile updated, but password was not.");
+                    toast.error("New password must be at least 6 characters.");
                 } else {
                     await updatePassword(user, newPassword);
                     toast.success("Password updated!");
@@ -164,7 +168,7 @@ export const AppShell = () => {
             toast.success("Profile details updated successfully!");
             setProfileOpen(false);
         } catch (err: any) {
-            toast.error(err.message || "Invalid current password. Please try again.");
+            toast.error(err.message || "An error occurred");
         } finally {
             setBusy(false);
             setPassword("");
@@ -172,14 +176,10 @@ export const AppShell = () => {
     };
 
     const handleSaveShop = async () => {
-        if (!password) return toast.error("Please enter your current password to confirm");
         if (!newName.trim()) return toast.error("Shop name cannot be empty");
         
         setBusy(true);
         try {
-            const credential = EmailAuthProvider.credential(user.email!, password);
-            await reauthenticateWithCredential(user, credential);
-
             await setDoc(doc(db, "profiles", user.uid), { 
                 shop_name: newName,
                 pan_no: panNo
@@ -531,7 +531,9 @@ export const AppShell = () => {
                 <DialogContent className="max-h-[90vh] flex flex-col p-6" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DialogHeader className="shrink-0">
                         <DialogTitle>{lang === "NEP" ? "प्रोफाइल सेटिङ" : "Profile Settings"}</DialogTitle>
-                        <DialogDescription>{t.confirmPasswordToSave}</DialogDescription>
+                        <DialogDescription>
+                            {lang === "NEP" ? "आफ्नो प्रोफाइल विवरणहरू सम्पादन गर्नुहोस्।" : "Edit your profile details."}
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2 overflow-y-auto flex-1 px-1">
                         <div className="space-y-2">
@@ -544,7 +546,7 @@ export const AppShell = () => {
                         </div>
 
                         <div className="pt-2 border-t space-y-2">
-                            <Label>{t.currentPassword}</Label>
+                            <Label>{t.currentPassword} <span className="text-muted-foreground/60 font-normal">{lang === "NEP" ? "(नयाँ पासवर्ड परिवर्तन गर्न मात्र आवश्यक)" : "(Only required to change password)"}</span></Label>
                             <div className="relative">
                                 <Input 
                                     type={showPassword ? "text" : "password"} 
@@ -598,7 +600,9 @@ export const AppShell = () => {
                 <DialogContent className="max-h-[90vh] flex flex-col p-6" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DialogHeader className="shrink-0">
                         <DialogTitle>{lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}</DialogTitle>
-                        <DialogDescription>{t.confirmPasswordToSave}</DialogDescription>
+                        <DialogDescription>
+                            {lang === "NEP" ? "पसलको विवरणहरू सम्पादन गर्नुहोस्।" : "Edit your shop details."}
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2 overflow-y-auto flex-1 px-1">
                         <div className="space-y-2">
@@ -611,7 +615,7 @@ export const AppShell = () => {
                         </div>
 
                         <div className="pt-2 border-t space-y-2">
-                            <Label>{t.currentPassword}</Label>
+                            <Label>{t.currentPassword} <span className="text-muted-foreground/60 font-normal">{lang === "NEP" ? "(डाटा रिसेट गर्न मात्र आवश्यक)" : "(Only required to reset data)"}</span></Label>
                             <div className="relative">
                                 <Input 
                                     type={showPassword ? "text" : "password"} 
