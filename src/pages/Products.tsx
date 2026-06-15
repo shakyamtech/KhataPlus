@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Pencil, Trash2, AlertTriangle, ChefHat } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Ingredient = {
@@ -41,6 +41,8 @@ const Products = () => {
   const [recipeIngredients, setRecipeIngredients] = useState<Ingredient[]>([]);
   const [newIngredientId, setNewIngredientId] = useState("");
   const [newIngredientQty, setNewIngredientQty] = useState("1");
+  const [busy, setBusy] = useState(false);
+  const [busyIngredient, setBusyIngredient] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -84,6 +86,7 @@ const Products = () => {
       unit: edit.unit,
       is_manufactured: edit.is_manufactured
     };
+    setBusy(true);
     try {
       if (edit.id) {
         await updateDoc(doc(db, "products", edit.id), payload);
@@ -95,6 +98,8 @@ const Products = () => {
       setOpen(false); setEdit(blank); load();
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -134,6 +139,7 @@ const Products = () => {
 
   const addIngredient = async () => {
     if (!activeProduct || !newIngredientId) return;
+    setBusyIngredient(true);
     try {
       const ref = doc(collection(db, "product_ingredients"));
       await setDoc(ref, {
@@ -148,6 +154,8 @@ const Products = () => {
       loadRecipe(activeProduct);
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setBusyIngredient(false);
     }
   };
 
@@ -216,7 +224,16 @@ const Products = () => {
                   />
                   <Label htmlFor="is_manufactured" className="cursor-pointer font-medium text-primary">Made in our Shop (Has Recipe) [optional]</Label>
                 </div>
-                <Button onClick={save} className="w-full bg-gradient-primary text-primary-foreground mt-2">Save</Button>
+                <Button onClick={save} disabled={busy} className="w-full bg-gradient-primary text-primary-foreground mt-2">
+                  {busy ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -328,7 +345,13 @@ const Products = () => {
                 <Label>Qty</Label>
                 <Input type="number" value={newIngredientQty} onChange={e => setNewIngredientQty(e.target.value)} />
               </div>
-              <Button onClick={addIngredient} size="icon"><Plus className="h-4 w-4" /></Button>
+              <Button onClick={addIngredient} disabled={busyIngredient} size="icon">
+                {busyIngredient ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+              </Button>
             </div>
 
             <div className="space-y-2">

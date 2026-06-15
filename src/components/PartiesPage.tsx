@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmt } from "@/lib/format";
-import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart } from "lucide-react";
+import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
@@ -42,6 +42,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState(""); const [payNote, setPayNote] = useState("");
+  const [busyAdd, setBusyAdd] = useState(false);
+  const [busyPayment, setBusyPayment] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -165,6 +167,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
   const add = async () => {
     if (!name.trim()) return toast.error("Name required");
+    setBusyAdd(true);
     try {
       const ref = doc(collection(db, type === "customer" ? "customers" : "suppliers"));
       await setDoc(ref, {
@@ -178,6 +181,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       setName(""); setPhone(""); setOpen(false); toast.success("Added"); load();
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setBusyAdd(false);
     }
   };
 
@@ -200,6 +205,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
   const recordPayment = async () => {
     if (!selected || !payAmount) return;
+    setBusyPayment(true);
     try {
       const entryRef = doc(collection(db, "ledger_entries"));
       await setDoc(entryRef, {
@@ -216,6 +222,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       openLedger(selected); load();
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setBusyPayment(false);
     }
   };
 
@@ -321,7 +329,16 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             <div className="space-y-3">
               <div><Label>Amount</Label><Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} autoFocus /></div>
               <div><Label>Note</Label><Input value={payNote} placeholder="Optional note" onChange={(e) => setPayNote(e.target.value)} /></div>
-              <Button onClick={recordPayment} className="w-full bg-gradient-primary text-primary-foreground">Save Payment</Button>
+              <Button onClick={recordPayment} disabled={busyPayment} className="w-full bg-gradient-primary text-primary-foreground">
+                {busyPayment ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Saving Payment...
+                  </>
+                ) : (
+                  "Save Payment"
+                )}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -344,7 +361,16 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             <div className="space-y-3">
               <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
               <div><Label>Phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
-              <Button onClick={add} className="w-full bg-gradient-primary text-primary-foreground">Save</Button>
+              <Button onClick={add} disabled={busyAdd} className="w-full bg-gradient-primary text-primary-foreground">
+                {busyAdd ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -394,7 +420,16 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             <div className="space-y-3">
               <div><Label>Amount</Label><Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} autoFocus /></div>
               <div><Label>Note</Label><Input value={payNote} placeholder="Optional note" onChange={(e) => setPayNote(e.target.value)} /></div>
-              <Button onClick={recordPayment} className="w-full bg-gradient-primary text-primary-foreground">Save Payment</Button>
+              <Button onClick={recordPayment} disabled={busyPayment} className="w-full bg-gradient-primary text-primary-foreground">
+                {busyPayment ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Saving Payment...
+                  </>
+                ) : (
+                  "Save Payment"
+                )}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

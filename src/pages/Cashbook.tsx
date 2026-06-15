@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmt } from "@/lib/format";
-import { Plus, ArrowDownCircle, ArrowUpCircle, Wallet, Trash2, Printer } from "lucide-react";
+import { Plus, ArrowDownCircle, ArrowUpCircle, Wallet, Trash2, Printer, Loader2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
@@ -58,6 +58,7 @@ const Cashbook = () => {
   const { lang, t } = useLanguage();
   const [salesDetails, setSalesDetails] = useState<Record<string, { customer: string; products: string; mode: string }>>({});
   const [purchaseDetails, setPurchaseDetails] = useState<Record<string, { supplier: string; mode: string }>>({});
+  const [busy, setBusy] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -184,6 +185,7 @@ const Cashbook = () => {
       if (p) pName = p.name;
     }
 
+    setBusy(true);
     try {
       const payload = {
         direction, amount: Number(amount), category, note: note || null,
@@ -230,6 +232,8 @@ const Cashbook = () => {
       setOpen(false); resetForm(); load();
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -383,7 +387,16 @@ const Cashbook = () => {
               </div>
 
               <div><Label>Note</Label><Input value={note} placeholder="Add a note (optional)" onChange={(e) => setNote(e.target.value)} /></div>
-              <Button onClick={save} className="w-full bg-gradient-primary text-primary-foreground">Save</Button>
+              <Button onClick={save} disabled={busy} className="w-full bg-gradient-primary text-primary-foreground">
+                {busy ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Minus, Trash2, ShoppingCart } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo } from "@/lib/shop";
@@ -37,6 +37,7 @@ const POS = () => {
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [busyCustomer, setBusyCustomer] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -117,6 +118,7 @@ const POS = () => {
 
   const saveNewCustomer = async () => {
     if (!newCustomerName.trim()) return toast.error("Name required");
+    setBusyCustomer(true);
     try {
       const ref = doc(collection(db, "customers"));
       await setDoc(ref, {
@@ -134,6 +136,8 @@ const POS = () => {
       setCustomerId(ref.id);
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setBusyCustomer(false);
     }
   };
 
@@ -505,7 +509,16 @@ const POS = () => {
           <div className="space-y-3">
             <div><Label>Name</Label><Input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} /></div>
             <div><Label>Phone</Label><Input value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} /></div>
-            <Button onClick={saveNewCustomer} className="w-full bg-gradient-primary text-primary-foreground">Save</Button>
+            <Button onClick={saveNewCustomer} disabled={busyCustomer} className="w-full bg-gradient-primary text-primary-foreground">
+              {busyCustomer ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

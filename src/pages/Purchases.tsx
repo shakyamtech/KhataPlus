@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Trash2, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -50,6 +50,9 @@ const Purchases = () => {
   const [newProductStockQty, setNewProductStockQty] = useState("0");
   const [newProductLowStockThreshold, setNewProductLowStockThreshold] = useState("5");
   const [newProductIsManufactured, setNewProductIsManufactured] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [busySupplier, setBusySupplier] = useState(false);
+  const [busyProduct, setBusyProduct] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -147,6 +150,7 @@ const Purchases = () => {
   };
   const saveNewSupplier = async () => {
     if (!newSupplierName.trim()) return toast.error("Name required");
+    setBusySupplier(true);
     try {
       const ref = doc(collection(db, "suppliers"));
       await setDoc(ref, {
@@ -164,11 +168,14 @@ const Purchases = () => {
       setSupplierId(ref.id);
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setBusySupplier(false);
     }
   };
 
   const saveNewProduct = async () => {
     if (!newProductName.trim()) return toast.error("Name required");
+    setBusyProduct(true);
     try {
       const ref = doc(collection(db, "products"));
       await setDoc(ref, {
@@ -189,6 +196,8 @@ const Purchases = () => {
       addProduct(ref.id);
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setBusyProduct(false);
     }
   };
 
@@ -218,6 +227,7 @@ const Purchases = () => {
       }
     }
 
+    setBusy(true);
     try {
       if (editingId) {
         await removePurchase(editingId, true);
@@ -305,6 +315,8 @@ const Purchases = () => {
       setItems([]); setSupplierId("none"); setPaymentMode("cash"); setShowForm(false); setEditingId(null); load();
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -438,7 +450,16 @@ const Purchases = () => {
               <span>Total</span><span className="font-display text-xl">{fmt(total)}</span>
             </div>
           </div>
-          <Button onClick={save} className="w-full mt-4 bg-accent text-accent-foreground h-11 font-semibold">Save Purchase</Button>
+          <Button onClick={save} disabled={busy} className="w-full mt-4 bg-accent text-accent-foreground h-11 font-semibold">
+            {busy ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Saving Purchase...
+              </>
+            ) : (
+              "Save Purchase"
+            )}
+          </Button>
         </Card>
       )}
 
@@ -488,7 +509,16 @@ const Purchases = () => {
           <div className="space-y-3">
             <div><Label>Name</Label><Input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} /></div>
             <div><Label>Phone</Label><Input value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} /></div>
-            <Button onClick={saveNewSupplier} className="w-full bg-gradient-primary text-primary-foreground">Save</Button>
+            <Button onClick={saveNewSupplier} disabled={busySupplier} className="w-full bg-gradient-primary text-primary-foreground">
+              {busySupplier ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -552,7 +582,16 @@ const Purchases = () => {
               />
               <Label htmlFor="is_manufactured_purchases" className="cursor-pointer font-medium text-primary">Made in our Shop (Has Recipe) [optional]</Label>
             </div>
-            <Button onClick={saveNewProduct} className="w-full bg-gradient-primary text-primary-foreground mt-2">Save</Button>
+            <Button onClick={saveNewProduct} disabled={busyProduct} className="w-full bg-gradient-primary text-primary-foreground mt-2">
+              {busyProduct ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
