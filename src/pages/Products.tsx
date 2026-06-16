@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 type Ingredient = {
   id: string;
@@ -43,6 +44,9 @@ const Products = () => {
   const [newIngredientQty, setNewIngredientQty] = useState("1");
   const [busy, setBusy] = useState(false);
   const [busyIngredient, setBusyIngredient] = useState(false);
+  const [sourcingOpen, setSourcingOpen] = useState(false);
+  const [sourcingHistory, setSourcingHistory] = useState<any[]>([]);
+  const [busySourcing, setBusySourcing] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -165,6 +169,69 @@ const Products = () => {
       if (activeProduct) loadRecipe(activeProduct);
     } catch (e: any) {
       toast.error(e.message);
+    }
+  };
+
+  const loadSourcingHistory = async (product: Product) => {
+    setActiveProduct(product);
+    setSourcingOpen(true);
+    setBusySourcing(true);
+    try {
+      const piQ = query(collection(db, "purchase_items"), where("product_id", "==", product.id));
+      const piSnap = await getDocs(piQ);
+      const items = piSnap.docs.map(d => d.data());
+      
+      if (items.length === 0) {
+        setSourcingHistory([]);
+        return;
+      }
+
+      const purIds = Array.from(new Set(items.map(i => i.purchase_id)));
+      const purchases = new Map();
+      
+      for (let i = 0; i < purIds.length; i += 10) {
+        const chunk = purIds.slice(i, i + 10);
+        if (chunk.length === 0) continue;
+        const pQ = query(collection(db, "purchases"), where("id", "in", chunk));
+        const pSnap = await getDocs(pQ);
+        pSnap.forEach(d => purchases.set(d.id, d.data()));
+      }
+
+      const sQ = query(collection(db, "suppliers"), where("user_id", "==", user!.uid));
+      const sSnap = await getDocs(sQ);
+      const suppliers = new Map();
+      sSnap.forEach(d => suppliers.set(d.id, d.data()));
+
+      const supplierStats = new Map();
+      items.forEach(item => {
+        const pur = purchases.get(item.purchase_id);
+        if (!pur || !pur.supplier_id) return;
+        
+        const sId = pur.supplier_id;
+        const price = Number(item.cost_price);
+        const date = new Date(pur.created_at);
+        
+        if (!supplierStats.has(sId)) {
+          supplierStats.set(sId, { supplierId: sId, minPrice: price, latestDate: date });
+        } else {
+          const stats = supplierStats.get(sId);
+          stats.minPrice = Math.min(stats.minPrice, price);
+          if (date > stats.latestDate) stats.latestDate = date;
+        }
+      });
+
+      const history = Array.from(supplierStats.values()).map(stats => ({
+        supplierName: suppliers.get(stats.supplierId)?.name || "Unknown Supplier",
+        price: stats.minPrice,
+        date: stats.latestDate
+      }));
+
+      history.sort((a, b) => a.price - b.price);
+      setSourcingHistory(history);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusySourcing(false);
     }
   };
 
@@ -292,6 +359,7 @@ const Products = () => {
                       <ChefHat className="h-4 w-4" />
                     </Button>
                   )}
+                  <Button size="icon" variant="ghost" onClick={() => loadSourcingHistory(p)} title="Sourcing History" className="hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"><History className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEdit(p); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </div>
@@ -375,6 +443,50 @@ const Products = () => {
             </div>
           </div>
           <Button onClick={() => setRecipeOpen(false)} variant="secondary" className="w-full">Done</Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sourcingOpen} onOpenChange={setSourcingOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sourcing History — {activeProduct?.name}</DialogTitle>
+            <DialogDescription>
+              Compare the lowest price you've paid for this item across different suppliers.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            {busySourcing ? (
+              <div className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" /></div>
+            ) : sourcingHistory.length > 0 ? (
+              <div className="space-y-2">
+                {sourcingHistory.map((sh, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-secondary rounded-lg border border-transparent hover:border-border transition-colors">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm truncate">{sh.supplierName}</div>
+                      <div className="text-xs text-muted-foreground">Last bought: {format(sh.date, "MMM dd, yyyy")}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className={`font-bold ${idx === 0 ? "text-green-600" : "text-foreground"}`}>{fmt(sh.price)}</div>
+                      {idx === 0 && <div className="text-[10px] text-green-600 uppercase font-bold tracking-wider">Cheapest</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-sm text-muted-foreground py-8 bg-secondary/50 rounded-lg border border-dashed">
+                No purchase history found for this item.
+              </div>
+            )}
+          </div>
+
+          <Button 
+            onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(activeProduct?.name || "")}&tbm=shop`, "_blank")} 
+            variant="outline" 
+            className="w-full border-primary/20 text-primary hover:bg-primary/5"
+          >
+            Check Retail Prices on Google
+          </Button>
         </DialogContent>
       </Dialog>
     </div>
