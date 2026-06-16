@@ -4,7 +4,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck,
   BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-  Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight
+  Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles
 } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -711,6 +711,17 @@ export const AppShell = () => {
                                 ? "सबै प्रकारका व्यवसायहरूका लागि आधुनिक, छिटो र सरल बिलिङ र लेजर व्यवस्थापन प्रणाली।"
                                 : "A premium, super-fast point-of-sale (POS) and ledger bookkeeping solution tailored perfectly for all types of businesses."}
                         </p>
+
+                        <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/10">
+                            <div className="text-xs font-bold text-primary uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <Sparkles className="h-3.5 w-3.5" /> {lang === "NEP" ? "नयाँ के छ?" : "What's New?"}
+                            </div>
+                            <ul className="text-[13px] text-muted-foreground space-y-1.5 list-disc list-inside">
+                                <li>{lang === "NEP" ? "सप्लायर मूल्य विश्लेषण र खरिद इतिहास" : "Supplier Price Analysis & Sourcing History"}</li>
+                                <li>{lang === "NEP" ? "क्षतिग्रस्त स्टक र नोक्सान व्यवस्थापन" : "Damaged Stock & Wastage Management"}</li>
+                                <li>{lang === "NEP" ? "सुधारिएको प्रिमियम डिजाइनहरू" : "Improved premium UI designs"}</li>
+                            </ul>
+                        </div>
                         
                         <div className="p-4 rounded-xl bg-secondary/60 border border-border/40 backdrop-blur-sm space-y-1">
                             <div className="text-xs text-muted-foreground font-medium">
