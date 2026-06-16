@@ -13,6 +13,7 @@ import { fmt, fmtQty } from "@/lib/format";
 import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History, PackageMinus, Barcode } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
 type Ingredient = {
   id: string;
@@ -89,6 +90,23 @@ const Products = () => {
     }
   };
   useEffect(() => { if (user) load(); }, [user]);
+
+  useBarcodeScanner({
+    onScan: (barcode) => {
+      if (open) {
+        setEdit((prev: any) => ({ ...prev, barcode }));
+        toast.success(`Barcode scanned!`);
+      } else {
+        setSearch(barcode);
+        const match = items.find(i => i.barcode === barcode);
+        if (match) {
+          toast.success(`Found: ${match.name}`);
+        } else {
+          toast.error(`No product found with barcode: ${barcode}`);
+        }
+      }
+    }
+  });
 
   const save = async () => {
     if (!edit.name.trim()) return toast.error("Name required");
