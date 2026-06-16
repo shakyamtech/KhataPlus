@@ -66,6 +66,7 @@ const Cashbook = () => {
   const [salesDetails, setSalesDetails] = useState<Record<string, { customer: string; products: string; mode: string }>>({});
   const [purchaseDetails, setPurchaseDetails] = useState<Record<string, { supplier: string; products: string; mode: string }>>({});
   const [paymentFilter, setPaymentFilter] = useState<"all" | "cash" | "esewa" | "khalti" | "bank" | "credit">("all");
+  const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -203,13 +204,13 @@ const Cashbook = () => {
     .filter((r) => paymentFilter === "all" || getRowPaymentMode(r) === paymentFilter);
 
   const resetForm = () => { 
-    setEditId(null); setAmount(""); setNote(""); setCategory(""); setDirection("in"); setPartyId(null);
+    setEditId(null); setAmount(""); setNote(""); setCategory(""); setDirection("in"); setPartyId(null); setPaymentMode("cash");
     setEntryDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   };
 
   const openEdit = (r: any) => {
     setEditId(r.id); setDirection(r.direction); setAmount(String(r.amount));
-    setCategory(r.category || ""); setNote(r.note ?? ""); setPartyId(r.party_id);
+    setCategory(r.category || ""); setNote(r.note ?? ""); setPartyId(r.party_id); setPaymentMode(r.payment_mode || "cash");
     setEntryDate(r.created_at ? format(new Date(r.created_at), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"));
     setOpen(true);
   };
@@ -233,7 +234,7 @@ const Cashbook = () => {
     try {
       const payload = {
         direction, amount: Number(amount), category, note: note || null,
-        party_id: partyId, party_name: pName,
+        party_id: partyId, party_name: pName, payment_mode: paymentMode,
         created_at: entryDate ? new Date(entryDate).toISOString() : new Date().toISOString()
       };
 
@@ -428,6 +429,20 @@ const Cashbook = () => {
                   onChange={(e) => setEntryDate(e.target.value)} 
                   className="bg-card"
                 />
+              </div>
+
+              <div>
+                <Label>Payment Mode</Label>
+                <Select value={paymentMode} onValueChange={setPaymentMode}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="esewa">eSewa</SelectItem>
+                    <SelectItem value="khalti">Khalti</SelectItem>
+                    <SelectItem value="bank">Bank</SelectItem>
+                    <SelectItem value="credit">Credit</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div><Label>Note</Label><Input value={note} placeholder="Add a note (optional)" onChange={(e) => setNote(e.target.value)} /></div>
