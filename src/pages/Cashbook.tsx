@@ -546,14 +546,6 @@ const Cashbook = () => {
                   {totals.in > 0 && totals.out > 0 && " / "}
                   {totals.out > 0 && <span className="text-destructive">-{fmt(totals.out)}</span>}
                 </span>
-                {(() => {
-                  const net = Math.round((totals.in - totals.out) * 100) / 100;
-                  return (
-                    <span className={`ml-2 font-bold text-[11px] ${net >= 0 ? "text-success" : "text-destructive"}`}>
-                      = {net >= 0 ? "" : "-"}{fmt(Math.abs(net))}
-                    </span>
-                  );
-                })()}
               </button>
             );
           })}
