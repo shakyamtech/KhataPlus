@@ -386,7 +386,34 @@ const POS = () => {
 
       <div className="grid lg:grid-cols-[1fr_400px] gap-4">
         <div>
-          <Input className="mb-3" placeholder="Search item..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input 
+            className="mb-3" 
+            placeholder="Search item or barcode... (Press Enter to add)" 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && search.trim() !== '') {
+                e.preventDefault();
+                const exactBarcodeMatch = products.find(p => p.barcode === search.trim());
+                if (exactBarcodeMatch) {
+                  addToCart(exactBarcodeMatch);
+                  setSearch("");
+                  toast.success(`Added: ${exactBarcodeMatch.name}`);
+                  return;
+                }
+                
+                if (filtered.length === 1) {
+                  addToCart(filtered[0]);
+                  setSearch("");
+                  toast.success(`Added: ${filtered[0].name}`);
+                } else if (filtered.length > 1) {
+                  toast.error("Multiple items match. Please click the one you want.");
+                } else {
+                  toast.error("No product found.");
+                }
+              }
+            }}
+          />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {filtered.map((p) => {
               const totalAvailable = getTotalAvailable(p.id);
