@@ -701,7 +701,7 @@ export const AppShell = () => {
                             KhataPlus POS
                         </DialogTitle>
                         <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                            {lang === "NEP" ? "संस्करण १.२.४" : "Version 1.2.4"}
+                            {lang === "NEP" ? "संस्करण १.५.०" : "Version 1.5.0"}
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -720,6 +720,7 @@ export const AppShell = () => {
                                 <li>{lang === "NEP" ? "सप्लायर मूल्य विश्लेषण र खरिद इतिहास" : "Supplier Price Analysis & Sourcing History"}</li>
                                 <li>{lang === "NEP" ? "क्षतिग्रस्त स्टक र नोक्सान व्यवस्थापन" : "Damaged Stock & Wastage Management"}</li>
                                 <li>{lang === "NEP" ? "सुधारिएको प्रिमियम डिजाइनहरू" : "Improved premium UI designs"}</li>
+                                <li>{lang === "NEP" ? "बारकोड स्क्यानर समर्थन" : "Barcode Scanner Support"}</li>
                             </ul>
                         </div>
                         
