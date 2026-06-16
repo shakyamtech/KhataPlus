@@ -39,6 +39,13 @@ const outCategories = [
   "other"
 ];
 
+const categoryLabel: Record<string, string> = {
+  opening: "Opening Balance",
+};
+
+const getCategoryLabel = (c: string) =>
+  categoryLabel[c] ?? c.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+
 const Cashbook = () => {
   const { user } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
@@ -351,7 +358,7 @@ const Cashbook = () => {
                   <SelectTrigger><SelectValue placeholder="Select Category..." /></SelectTrigger>
                   <SelectContent>
                     {(direction === "in" ? inCategories : outCategories).map((c) => (
-                      <SelectItem key={c} value={c}>{c.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
+                      <SelectItem key={c} value={c}>{getCategoryLabel(c)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
