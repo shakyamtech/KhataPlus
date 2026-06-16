@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, documentId } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -192,7 +192,7 @@ const Products = () => {
       for (let i = 0; i < purIds.length; i += 10) {
         const chunk = purIds.slice(i, i + 10);
         if (chunk.length === 0) continue;
-        const pQ = query(collection(db, "purchases"), where("id", "in", chunk));
+        const pQ = query(collection(db, "purchases"), where(documentId(), "in", chunk));
         const pSnap = await getDocs(pQ);
         pSnap.forEach(d => purchases.set(d.id, d.data()));
       }

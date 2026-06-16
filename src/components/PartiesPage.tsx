@@ -224,7 +224,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         if (stats.supplierPrices.has(selected.id)) {
           const supplierPrice = stats.supplierPrices.get(selected.id)!;
           let status = "average";
-          if (supplierPrice <= stats.minPrice) status = "cheapest";
+          if (stats.supplierPrices.size === 1) status = "only";
+          else if (supplierPrice <= stats.minPrice) status = "cheapest";
           else if (supplierPrice >= stats.maxPrice && stats.maxPrice > stats.minPrice) status = "expensive";
 
           sItems.push({
@@ -436,6 +437,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                           )}
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
+                          {item.status === "only" && <span className="px-2 py-1 bg-blue-100 text-blue-700 text-[11px] font-bold uppercase rounded tracking-wide border border-blue-200">Sole Supplier</span>}
                           {item.status === "cheapest" && <span className="px-2 py-1 bg-green-100 text-green-700 text-[11px] font-bold uppercase rounded tracking-wide border border-green-200">Cheapest</span>}
                           {item.status === "expensive" && <span className="px-2 py-1 bg-red-100 text-red-700 text-[11px] font-bold uppercase rounded tracking-wide border border-red-200">Expensive</span>}
                           {item.status === "average" && <span className="px-2 py-1 bg-gray-100 text-gray-700 text-[11px] font-bold uppercase rounded tracking-wide border border-gray-200">Average</span>}
