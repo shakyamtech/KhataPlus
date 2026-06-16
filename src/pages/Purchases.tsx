@@ -272,7 +272,7 @@ const Purchases = () => {
           user_id: user!.uid,
           direction: "out",
           amount: paid,
-          category: "purchases",
+          category: "purchase",
           note: `Purchase ${purchaseRef.id}`,
           reference_id: purchaseRef.id,
           created_at: new Date().toISOString()

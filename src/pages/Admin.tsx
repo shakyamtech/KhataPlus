@@ -14,8 +14,10 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search } from "lucide-react";
+import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, writeBatch, doc, updateDoc } from "firebase/firestore";
 
 type AdminUser = {
   id: string; email: string; created_at: string; last_sign_in_at: string | null;
@@ -28,6 +30,8 @@ const Admin = () => {
   const { user, onlineUsers } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [busy, setBusy] = useState(false);
+  const [resettingId, setResettingId] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [editName, setEditName] = useState("");
   const [editShop, setEditShop] = useState("");
@@ -72,14 +76,66 @@ const Admin = () => {
   if (!isAdmin) return <Navigate to="/" replace />;
 
   const notSupported = () => {
-    toast.error("Admin user management requires Firebase Cloud Functions (Billing Enabled). Please use Firebase Console.");
+    toast.error("This action requires Firebase Cloud Functions (Billing Enabled). Please use Firebase Console.");
   };
 
-  const saveProfile = notSupported;
   const toggleAdmin = notSupported;
   const del = notSupported;
   const toggleBan = notSupported;
-  const resetData = notSupported;
+
+  const saveProfile = async () => {
+    if (!editing) return;
+    setSavingId(editing.id);
+    try {
+      await updateDoc(doc(db, "profiles", editing.id), {
+        full_name: editName.trim(),
+        shop_name: editShop.trim(),
+      });
+      if (editPassword) {
+        toast.info("Password change requires Firebase Console (Cloud Functions disabled).");
+      }
+      toast.success("Profile updated!");
+      setEditing(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const resetData = async (u: AdminUser) => {
+    setResettingId(u.id);
+    try {
+      const collections = [
+        "sales", "sale_items", "purchases", "purchase_items",
+        "cash_transactions", "ledger_entries", "expenses"
+      ];
+
+      // Delete all records belonging to this user across all collections
+      for (const col of collections) {
+        const q = query(collection(db, col), where("user_id", "==", u.id));
+        const snap = await getDocs(q);
+        // Firestore batch supports max 500 ops
+        const chunks: typeof snap.docs[] = [];
+        for (let i = 0; i < snap.docs.length; i += 490) {
+          chunks.push(snap.docs.slice(i, i + 490));
+        }
+        for (const chunk of chunks) {
+          const batch = writeBatch(db);
+          chunk.forEach(d => batch.delete(d.ref));
+          await batch.commit();
+        }
+      }
+
+      toast.success(`Data reset for ${u.email}. Products & contacts preserved.`);
+      load();
+    } catch (e: any) {
+      toast.error("Reset failed: " + e.message);
+    } finally {
+      setResettingId(null);
+    }
+  };
 
 
 
@@ -220,7 +276,9 @@ const Admin = () => {
                         />
                         <p className="text-[10px] text-muted-foreground">Min 6 characters. This will override their current password immediately.</p>
                       </div>
-                      <Button onClick={saveProfile} className="w-full bg-primary text-primary-foreground h-11 font-semibold">Save Changes</Button>
+                      <Button onClick={saveProfile} disabled={savingId === editing?.id} className="w-full bg-primary text-primary-foreground h-11 font-semibold">
+                        {savingId === editing?.id ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : "Save Changes"}
+                      </Button>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -300,7 +358,9 @@ const Admin = () => {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => resetData(u)} className="bg-amber-600 hover:bg-amber-700 text-white">Reset Ledger & Sales</AlertDialogAction>
+                      <AlertDialogAction onClick={() => resetData(u)} disabled={resettingId === u.id} className="bg-amber-600 hover:bg-amber-700 text-white">
+                        {resettingId === u.id ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Resetting...</> : "Reset Ledger & Sales"}
+                      </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
