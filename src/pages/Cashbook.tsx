@@ -510,7 +510,7 @@ const Cashbook = () => {
             <div className={`font-medium ${r.direction === "in" ? "text-success" : "text-destructive"}`}>{r.direction === "in" ? "+" : "-"}{fmt(r.amount)}</div>
             <div className="flex items-center gap-2">
               {r.reference_id && <span className="text-[10px] text-muted-foreground italic px-1">auto</span>}
-              <div className="flex gap-1">
+              <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
