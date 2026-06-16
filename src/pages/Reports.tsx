@@ -15,6 +15,7 @@ const Reports = () => {
   const [range, setRange] = useState<"7" | "30" | "90">("30");
   const [sales, setSales] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [wastage, setWastage] = useState(0);
 
   const loadData = async () => {
     if (!user) return;
@@ -22,17 +23,20 @@ const Reports = () => {
     try {
       const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid));
       const expQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
+      const wQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
       
-      const [sSnap, eSnap] = await Promise.all([getDocs(sQ), getDocs(expQ)]);
+      const [sSnap, eSnap, wSnap] = await Promise.all([getDocs(sQ), getDocs(expQ), getDocs(wQ)]);
       
       const s = sSnap.docs.map(d => d.data()).filter(d => d.created_at >= since);
       const eAll = eSnap.docs.map(d => d.data()).filter(d => d.created_at >= since);
+      const wAll = wSnap.docs.map(d => d.data()).filter(d => d.created_at >= since && d.responsibility === "loss");
       
       const expenseCategories = ["expense", "salary", "rent", "electricity", "maintenance"];
       const e = eAll.filter(tx => tx.direction === "out" && expenseCategories.includes(tx.category));
       
       setSales(s);
       setExpenses(e);
+      setWastage(wAll.reduce((sum, r) => sum + Number(r.total_value || 0), 0));
     } catch (err: any) {
       console.error(err);
     }
@@ -46,8 +50,9 @@ const Reports = () => {
     const revenue = sales.reduce((s, r) => s + Number(r.total), 0);
     const cogs = sales.reduce((s, r) => s + Number(r.cost_total), 0);
     const exp = expenses.reduce((s, r) => s + Number(r.amount), 0);
-    return { revenue, cogs, gross: revenue - cogs, exp, net: revenue - cogs - exp };
-  }, [sales, expenses]);
+    const totalExp = exp + wastage;
+    return { revenue, cogs, gross: revenue - cogs, exp: totalExp, storeExp: exp, wastage, net: revenue - cogs - totalExp };
+  }, [sales, expenses, wastage]);
 
   const chartData = useMemo(() => {
     const days = Number(range);
@@ -143,8 +148,14 @@ const Reports = () => {
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b pb-1">Operating Expenses</h3>
                 <div className="flex justify-between items-center py-1">
                   <span className="text-sm">Store Expenses & Bills</span>
-                  <span className="font-medium text-destructive">({fmt(totals.exp)})</span>
+                  <span className="font-medium text-destructive">({fmt(totals.storeExp)})</span>
                 </div>
+                {totals.wastage > 0 && (
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-sm">Wastage & Damage Loss</span>
+                    <span className="font-medium text-destructive">({fmt(totals.wastage)})</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center py-2 border-t font-bold">
                   <span>Total Expenses</span>
                   <span className="text-destructive">({fmt(totals.exp)})</span>

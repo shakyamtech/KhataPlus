@@ -25,15 +25,17 @@ const BalanceSheet = () => {
         const pQ = query(collection(db, "products"), where("user_id", "==", user.uid));
         const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
         const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid));
+        const wQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
         
-        const [cSnap, pSnap, lSnap, sSnap] = await Promise.all([
-          getDocs(cQ), getDocs(pQ), getDocs(lQ), getDocs(sQ)
+        const [cSnap, pSnap, lSnap, sSnap, wSnap] = await Promise.all([
+          getDocs(cQ), getDocs(pQ), getDocs(lQ), getDocs(sQ), getDocs(wQ)
         ]);
 
         const cash = cSnap.docs.map(d => d.data());
         const products = pSnap.docs.map(d => d.data());
         const ledger = lSnap.docs.map(d => d.data());
         const sales = sSnap.docs.map(d => d.data());
+        const wastageAdjustments = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
 
         const cashBal = cash.reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
         const stock = products.reduce((s, r: any) => s + +r.stock_qty * +r.cost_price, 0);
@@ -57,7 +59,9 @@ const BalanceSheet = () => {
         const cogs = sales.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
         
         const expenseCats = ["expense", "salary", "rent", "electricity", "maintenance", "personal", "other"];
-        const expenses = cash.filter((c: any) => c.direction === "out" && expenseCats.includes(c.category)).reduce((s, r: any) => s + +r.amount, 0);
+        const cashExpenses = cash.filter((c: any) => c.direction === "out" && expenseCats.includes(c.category)).reduce((s, r: any) => s + +r.amount, 0);
+        const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
+        const expenses = cashExpenses + wastageExpenses;
 
         setD({ cash: cashBal, stock, receivable, payable, revenue, cogs, expenses });
       } catch (err: any) {

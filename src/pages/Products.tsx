@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, documentId } from "firebase/firestore";
+import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, documentId, writeBatch, increment } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History, PackageMinus } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -47,6 +47,14 @@ const Products = () => {
   const [sourcingOpen, setSourcingOpen] = useState(false);
   const [sourcingHistory, setSourcingHistory] = useState<any[]>([]);
   const [busySourcing, setBusySourcing] = useState(false);
+  const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustQty, setAdjustQty] = useState("");
+  const [adjustReason, setAdjustReason] = useState("damage");
+  const [adjustResp, setAdjustResp] = useState<"loss" | "supplier">("loss");
+  const [adjustSupplier, setAdjustSupplier] = useState("");
+  const [adjustNote, setAdjustNote] = useState("");
+  const [busyAdjust, setBusyAdjust] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -57,6 +65,10 @@ const Products = () => {
       
       const pMap = new Map(productsData.map(p => [p.id, p]));
       setItems(productsData.sort((a, b) => a.name.localeCompare(b.name)));
+
+      const supQ = query(collection(db, "suppliers"), where("user_id", "==", user.uid));
+      const supSnap = await getDocs(supQ);
+      setSuppliers(supSnap.docs.map(d => ({ id: d.id, name: d.data().name })));
 
       const iQ = query(collection(db, "product_ingredients"), where("user_id", "==", user.uid));
       const iSnap = await getDocs(iQ);
@@ -235,6 +247,73 @@ const Products = () => {
     }
   };
 
+  const openAdjust = (p: Product) => {
+    setActiveProduct(p);
+    setAdjustQty("");
+    setAdjustReason("damage");
+    setAdjustResp("loss");
+    setAdjustSupplier("");
+    setAdjustNote("");
+    setAdjustOpen(true);
+  };
+
+  const saveAdjust = async () => {
+    if (!activeProduct || !adjustQty || Number(adjustQty) <= 0) return toast.error("Valid quantity required");
+    if (adjustResp === "supplier" && !adjustSupplier) return toast.error("Supplier required");
+    
+    setBusyAdjust(true);
+    try {
+      const qty = Number(adjustQty);
+      if (qty > activeProduct.stock_qty) return toast.error("Cannot deduct more than current stock");
+      
+      const totalLoss = qty * activeProduct.cost_price;
+      const batch = writeBatch(db);
+      
+      const pRef = doc(db, "products", activeProduct.id);
+      batch.update(pRef, { stock_qty: increment(-qty) });
+
+      const adjRef = doc(collection(db, "stock_adjustments"));
+      batch.set(adjRef, {
+        id: adjRef.id,
+        user_id: user!.uid,
+        product_id: activeProduct.id,
+        product_name: activeProduct.name,
+        qty: qty,
+        cost_price: activeProduct.cost_price,
+        total_value: totalLoss,
+        reason: adjustReason,
+        responsibility: adjustResp,
+        supplier_id: adjustResp === "supplier" ? adjustSupplier : null,
+        note: adjustNote || null,
+        created_at: new Date().toISOString()
+      });
+
+      if (adjustResp === "supplier") {
+        const lRef = doc(collection(db, "ledger_entries"));
+        batch.set(lRef, {
+          id: lRef.id,
+          user_id: user!.uid,
+          party_type: "supplier",
+          party_id: adjustSupplier,
+          entry_type: "debit",
+          amount: totalLoss,
+          note: `Purchase Return / Damaged Goods (${qty}x ${activeProduct.name})`,
+          reference_id: adjRef.id,
+          created_at: new Date().toISOString()
+        });
+      }
+
+      await batch.commit();
+      toast.success("Stock adjusted successfully");
+      setAdjustOpen(false);
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusyAdjust(false);
+    }
+  };
+
   const filtered = items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -359,6 +438,7 @@ const Products = () => {
                       <ChefHat className="h-4 w-4" />
                     </Button>
                   )}
+                  <Button size="icon" variant="ghost" onClick={() => openAdjust(p)} title="Adjust Stock / Report Damage" className="hover:bg-red-50 hover:text-red-600 text-muted-foreground transition-colors"><PackageMinus className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => loadSourcingHistory(p)} title="Sourcing History" className="hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"><History className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => { setEdit(p); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -486,6 +566,93 @@ const Products = () => {
             className="w-full border-primary/20 text-primary hover:bg-primary/5"
           >
             Check Retail Prices on Google
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Stock Adjustment / Damage Report</DialogTitle>
+            <DialogDescription>
+              Record broken, expired, or lost stock for {activeProduct?.name}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Quantity Lost</Label>
+                <div className="relative">
+                  <Input type="number" step="0.001" value={adjustQty} onChange={e => setAdjustQty(e.target.value)} placeholder="0.00" />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{activeProduct?.unit}</div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Reason</Label>
+                <Select value={adjustReason} onValueChange={setAdjustReason}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="damage">Damaged / Broken</SelectItem>
+                    <SelectItem value="fire">Lost by Fire</SelectItem>
+                    <SelectItem value="expiry">Expired</SelectItem>
+                    <SelectItem value="theft">Lost / Theft</SelectItem>
+                    <SelectItem value="personal">Personal Use</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t">
+              <Label>Who bears the loss?</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setAdjustResp("loss")}
+                  className={`p-3 rounded-lg border text-left flex flex-col gap-1 transition-all ${adjustResp === "loss" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+                >
+                  <span className="text-sm font-bold text-foreground">My Shop</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight">Recorded as a business expense/loss.</span>
+                </button>
+                <button
+                  onClick={() => setAdjustResp("supplier")}
+                  className={`p-3 rounded-lg border text-left flex flex-col gap-1 transition-all ${adjustResp === "supplier" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+                >
+                  <span className="text-sm font-bold text-foreground">Supplier Fault</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight">Refunded. Deducts from payable balance.</span>
+                </button>
+              </div>
+            </div>
+
+            {adjustResp === "supplier" && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <Label>Select Supplier</Label>
+                <Select value={adjustSupplier} onValueChange={setAdjustSupplier}>
+                  <SelectTrigger><SelectValue placeholder="Which supplier provided this?" /></SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Note (Optional)</Label>
+              <Input value={adjustNote} onChange={e => setAdjustNote(e.target.value)} placeholder="Additional details..." />
+            </div>
+
+            {activeProduct && Number(adjustQty) > 0 && (
+              <div className={`p-3 rounded-lg border text-sm flex items-center justify-between font-medium ${adjustResp === "loss" ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/30 dark:text-red-400" : "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:border-green-900/30 dark:text-green-400"}`}>
+                <span>Total Value:</span>
+                <span>{fmt(Number(adjustQty) * activeProduct.cost_price)}</span>
+              </div>
+            )}
+          </div>
+
+          <Button onClick={saveAdjust} disabled={busyAdjust} className="w-full bg-gradient-primary text-primary-foreground">
+            {busyAdjust ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <AlertTriangle className="h-4 w-4 mr-2" />}
+            Confirm Adjustment
           </Button>
         </DialogContent>
       </Dialog>
