@@ -413,53 +413,65 @@ const Products = () => {
           const isLow = displayStock > 0 && displayStock <= Number(p.low_stock_threshold);
           const isEmpty = displayStock <= 0;
 
-          return (
-            <Card key={p.id} className={`p-4 shadow-card border-2 transition-smooth ${
+            <Card key={p.id} className={`group overflow-hidden shadow-card hover:shadow-elegant border-0 transition-all duration-300 relative ${
               isEmpty 
-                ? "bg-red-50/50 dark:bg-red-950/30 border-red-200 dark:border-red-900/30" 
+                ? "bg-red-50/10 dark:bg-red-950/10 border-red-200/50" 
                 : isLow 
-                  ? "bg-orange-50/50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-900/30" 
-                  : "bg-card border-transparent dark:border-white/5"
+                  ? "bg-orange-50/10 dark:bg-orange-950/10 border-orange-200/50" 
+                  : "bg-card hover:-translate-y-1"
               }`}>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className={`font-display text-lg ${isEmpty ? "text-red-900 dark:text-red-300" : isLow ? "text-orange-900 dark:text-orange-300" : ""}`}>{p.name}</div>
-                  <div className="text-xs text-muted-foreground">per {p.unit}</div>
+              {/* Top Accent Line */}
+              <div className={`absolute top-0 left-0 right-0 h-1 ${
+                isEmpty ? "bg-red-500" : isLow ? "bg-orange-500" : "bg-gradient-primary opacity-50 group-hover:opacity-100 transition-opacity"
+              }`} />
+
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className={`font-display text-lg truncate ${isEmpty ? "text-red-900 dark:text-red-300" : isLow ? "text-orange-900 dark:text-orange-300" : ""}`}>
+                      {p.name}
+                    </div>
+                    <div className="inline-flex mt-1 items-center px-2 py-0.5 rounded-md bg-secondary text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      per {p.unit}
+                    </div>
+                  </div>
+                  <div className="flex gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity bg-secondary/50 rounded-lg p-0.5 shrink-0">
+                    {p.is_manufactured && (
+                      <Button size="icon" variant="ghost" onClick={() => loadRecipe(p)} title="Manage Recipe" className="h-8 w-8 hover:bg-orange-500 hover:text-white text-orange-500 rounded-md">
+                        <ChefHat className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button size="icon" variant="ghost" onClick={() => openAdjust(p)} title="Adjust Stock" className="h-8 w-8 hover:bg-red-500 hover:text-white text-muted-foreground rounded-md"><PackageMinus className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => loadSourcingHistory(p)} title="Sourcing History" className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><History className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => { setEdit(p); setOpen(true); }} className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => remove(p.id)} className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground text-destructive/70 rounded-md"><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  {p.is_manufactured && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => loadRecipe(p)}
-                      title="Manage Recipe"
-                      className="hover:bg-orange-500 hover:text-white text-orange-500 transition-colors"
-                    >
-                      <ChefHat className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <Button size="icon" variant="ghost" onClick={() => openAdjust(p)} title="Adjust Stock / Report Damage" className="hover:bg-red-50 hover:text-red-600 text-muted-foreground transition-colors"><PackageMinus className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => loadSourcingHistory(p)} title="Sourcing History" className="hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"><History className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => { setEdit(p); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+
+                <div className="grid grid-cols-2 gap-3 mt-5">
+                  <div className="bg-secondary/40 rounded-lg p-2.5 border border-border/50">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Cost Price</div>
+                    <div className="font-medium text-foreground/80">{fmt(p.cost_price)}</div>
+                  </div>
+                  <div className="bg-primary/5 rounded-lg p-2.5 border border-primary/10">
+                    <div className="text-[10px] text-primary uppercase tracking-wider font-semibold mb-0.5">Selling Price</div>
+                    <div className={`font-bold ${isEmpty ? "text-red-700 dark:text-red-400" : isLow ? "text-orange-700 dark:text-orange-400" : "text-primary"}`}>{fmt(p.sell_price)}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
-                <div><div className="text-muted-foreground text-xs">Cost</div><div>{fmt(p.cost_price)}</div></div>
-                <div><div className="text-muted-foreground text-xs">Sell</div><div className={`font-medium ${isEmpty ? "text-red-700 dark:text-red-400" : isLow ? "text-orange-700 dark:text-orange-400" : "text-primary"}`}>{fmt(p.sell_price)}</div></div>
-              </div>
-              <div className={`mt-3 flex items-center justify-between rounded-lg px-3 py-2 border ${
-                isEmpty
-                  ? "bg-red-100 dark:bg-red-950/50 border-red-200 dark:border-red-900/30 text-red-900 dark:text-red-300 font-bold"
-                  : isLow
-                    ? "bg-orange-100 dark:bg-orange-950/50 border-orange-200 dark:border-orange-900/30 text-orange-900 dark:text-orange-300 font-bold"
-                    : "bg-secondary border-transparent"
-                }`}>
-                <span className="text-xs">{ingredients.length > 0 ? "Possible Stock" : "Stock"}</span>
-                <span className="font-medium flex items-center gap-1">
-                  {isEmpty ? <AlertTriangle className="h-3.5 w-3.5 text-red-600" /> : isLow ? <AlertTriangle className="h-3.5 w-3.5 text-orange-600" /> : null}
-                  {fmtQty(displayStock)} {p.unit}
-                </span>
+
+                <div className={`mt-4 flex items-center justify-between rounded-xl px-4 py-3 border transition-colors ${
+                  isEmpty
+                    ? "bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400"
+                    : isLow
+                      ? "bg-orange-500/10 border-orange-500/20 text-orange-700 dark:text-orange-400"
+                      : "bg-secondary border-border/50 text-foreground"
+                  }`}>
+                  <span className="text-[11px] font-bold uppercase tracking-wider opacity-80">{ingredients.length > 0 ? "Possible Stock" : "Live Stock"}</span>
+                  <span className="font-display text-lg flex items-center gap-1.5">
+                    {isEmpty ? <AlertTriangle className="h-4 w-4 text-red-600 animate-pulse" /> : isLow ? <AlertTriangle className="h-4 w-4 text-orange-600 animate-pulse" /> : null}
+                    {fmtQty(displayStock)} <span className="text-sm font-medium opacity-60 ml-0.5">{p.unit}</span>
+                  </span>
+                </div>
               </div>
             </Card>
           );
