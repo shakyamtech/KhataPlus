@@ -382,26 +382,50 @@ const Cashbook = () => {
           <DialogContent>
             <DialogHeader><DialogTitle>{editId ? "Edit Entry" : "Cash Entry"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div>
-                <Label>Type</Label>
-                <Select value={direction} onValueChange={(v: any) => { setDirection(v); setCategory(""); setPartyId(null); }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="in">Cash In</SelectItem><SelectItem value="out">Cash Out</SelectItem></SelectContent>
-                </Select>
-              </div>
-              <div><Label>Amount</Label><Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
-              <div>
-                <Label>Category</Label>
-                <Select value={category} onValueChange={(v) => { setCategory(v); setPartyId(null); }}>
-                  <SelectTrigger><SelectValue placeholder="Select Category..." /></SelectTrigger>
-                  <SelectContent>
-                    {(direction === "in" ? inCategories : outCategories).map((c) => (
-                      <SelectItem key={c} value={c}>{getCategoryLabel(c)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Row 1: Type + Amount */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Type</Label>
+                  <Select value={direction} onValueChange={(v: any) => { setDirection(v); setCategory(""); setPartyId(null); }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="in">Cash In</SelectItem><SelectItem value="out">Cash Out</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Amount</Label>
+                  <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                </div>
               </div>
 
+              {/* Row 2: Category + Payment Mode */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Category</Label>
+                  <Select value={category} onValueChange={(v) => { setCategory(v); setPartyId(null); }}>
+                    <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                    <SelectContent>
+                      {(direction === "in" ? inCategories : outCategories).map((c) => (
+                        <SelectItem key={c} value={c}>{getCategoryLabel(c)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Payment Mode</Label>
+                  <Select value={paymentMode} onValueChange={setPaymentMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="esewa">eSewa</SelectItem>
+                      <SelectItem value="khalti">Khalti</SelectItem>
+                      <SelectItem value="bank">Bank</SelectItem>
+                      <SelectItem value="credit">Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Customer / Supplier (conditional) */}
               {(category === "customer_payment" || category === "supplier_payment" || category === "payment" || category === "salary") && (
                 <div>
                   <Label>{direction === "in" ? "Customer" : "Payee / Supplier"}</Label>
@@ -421,6 +445,7 @@ const Cashbook = () => {
                 </div>
               )}
 
+              {/* Date & Time */}
               <div>
                 <Label>{lang === "NEP" ? "मिति र समय" : "Date & Time"}</Label>
                 <Input 
@@ -431,21 +456,9 @@ const Cashbook = () => {
                 />
               </div>
 
-              <div>
-                <Label>Payment Mode</Label>
-                <Select value={paymentMode} onValueChange={setPaymentMode}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="esewa">eSewa</SelectItem>
-                    <SelectItem value="khalti">Khalti</SelectItem>
-                    <SelectItem value="bank">Bank</SelectItem>
-                    <SelectItem value="credit">Credit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
+              {/* Note */}
               <div><Label>Note</Label><Input value={note} placeholder="Add a note (optional)" onChange={(e) => setNote(e.target.value)} /></div>
+
               <Button onClick={save} disabled={busy} className="w-full bg-gradient-primary text-primary-foreground">
                 {busy ? (
                   <>
