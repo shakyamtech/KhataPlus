@@ -63,21 +63,76 @@ const POS = () => {
 
   const filtered = useMemo(() => products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())), [products, search]);
 
+  const getTotalAvailable = (productId: string) => {
+    const p = products.find(prod => prod.id === productId);
+    if (!p) return 0;
+    
+    let possibleFromIng = Infinity;
+    const recipe = ingredients.filter(i => i.product_id === p.id);
+    
+    if (recipe.length > 0) {
+      recipe.forEach(ri => {
+        const ingProd = products.find(prod => prod.id === ri.ingredient_id);
+        if (ingProd) {
+          const canMake = Math.floor(ingProd.stock_qty / ri.quantity);
+          if (canMake < possibleFromIng) possibleFromIng = canMake;
+        }
+      });
+    } else {
+      possibleFromIng = 0;
+    }
+
+    return p.stock_qty + (possibleFromIng === Infinity ? 0 : possibleFromIng);
+  };
+
   const addToCart = (p: Product) => {
+    const totalAvailable = getTotalAvailable(p.id);
     setCart((c) => {
       const ex = c.find((i) => i.product_id === p.id);
-      if (ex) return c.map((i) => i.product_id === p.id ? { ...i, qty: +(i.qty + 1).toFixed(3) } : i);
+      if (ex) {
+        const newQty = +(Number(ex.qty) + 1).toFixed(3);
+        if (newQty > totalAvailable) {
+          toast.error(`Only ${totalAvailable} available in stock`);
+          return c;
+        }
+        return c.map((i) => i.product_id === p.id ? { ...i, qty: newQty } : i);
+      }
+      if (1 > totalAvailable) {
+        toast.error(`Out of stock`);
+        return c;
+      }
       return [...c, { product_id: p.id, product_name: p.name, unit: p.unit, sell_price: Number(p.sell_price), cost_price: Number(p.cost_price), qty: 1 }];
     });
   };
-  const setQty = (id: string, qty: number | string) => setCart((c) => c.map((i) => i.product_id === id ? { ...i, qty } : i));
+
+  const setQty = (id: string, qty: number | string) => {
+    const totalAvailable = getTotalAvailable(id);
+    let newQty = qty;
+    if (typeof qty === "number" || (typeof qty === "string" && qty !== "")) {
+      const numQty = Number(qty);
+      if (numQty > totalAvailable) {
+        toast.error(`Only ${totalAvailable} available in stock`);
+        newQty = totalAvailable;
+      } else if (numQty < 0) {
+        newQty = 0;
+      }
+    }
+    setCart((c) => c.map((i) => i.product_id === id ? { ...i, qty: newQty } : i));
+  };
+
   const setPrice = (id: string, sell_price: number | string) => setCart((c) => c.map((i) => i.product_id === id ? { ...i, sell_price } : i));
   const setItemAmount = (id: string, amount: string) => {
+    const totalAvailable = getTotalAvailable(id);
     setCart((c) => c.map((i) => {
       if (i.product_id !== id) return i;
       const price = Number(i.sell_price) || 0;
-      // Increased precision to 6 decimals to avoid 500.01 issues
-      const newQty = price > 0 ? +(Number(amount) / price).toFixed(6) : 0;
+      let newQty = price > 0 ? +(Number(amount) / price).toFixed(6) : 0;
+      if (newQty > totalAvailable) {
+        toast.error(`Only ${totalAvailable} available in stock`);
+        newQty = totalAvailable;
+      } else if (newQty < 0) {
+        newQty = 0;
+      }
       return { ...i, qty: newQty === 0 ? "" : newQty };
     }));
   };
@@ -313,23 +368,8 @@ const POS = () => {
           <Input className="mb-3" placeholder="Search item..." value={search} onChange={(e) => setSearch(e.target.value)} />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {filtered.map((p) => {
-              // Calculate possible stock from ingredients if it has a recipe
-              let possibleFromIng = Infinity;
+              const totalAvailable = getTotalAvailable(p.id);
               const recipe = ingredients.filter(i => i.product_id === p.id);
-              
-              if (recipe.length > 0) {
-                recipe.forEach(ri => {
-                  const ingProd = products.find(prod => prod.id === ri.ingredient_id);
-                  if (ingProd) {
-                    const canMake = Math.floor(ingProd.stock_qty / ri.quantity);
-                    if (canMake < possibleFromIng) possibleFromIng = canMake;
-                  }
-                });
-              } else {
-                possibleFromIng = 0;
-              }
-
-              const totalAvailable = p.stock_qty + (possibleFromIng === Infinity ? 0 : possibleFromIng);
               const isLow = totalAvailable > 0 && totalAvailable <= (p.low_stock_threshold || 5);
               const isOut = totalAvailable <= 0;
 
