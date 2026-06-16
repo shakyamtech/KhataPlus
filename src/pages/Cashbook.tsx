@@ -513,7 +513,36 @@ const Cashbook = () => {
         )}
       </Card>
 
-
+      {/* Payment Mode Breakdown (Simplified) */}
+      <Card className="p-3 mb-4 shadow-card border-0 bg-card">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Payment Mode</div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setPaymentFilter("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+              paymentFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
+            }`}
+          >
+            All
+          </button>
+          {(["cash", "esewa", "khalti", "bank", "credit"] as const).map(mode => {
+            const totals = paymentModeTotals[mode];
+            if (totals.count === 0) return null;
+            const isActive = paymentFilter === mode;
+            return (
+              <button
+                key={mode}
+                onClick={() => setPaymentFilter(mode)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                  isActive ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
+                }`}
+              >
+                <span className="capitalize">{mode}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
         <Tabs value={filter} onValueChange={(v: any) => setFilter(v)} className="w-fit">
           <TabsList>
