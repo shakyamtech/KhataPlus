@@ -65,6 +65,7 @@ const Cashbook = () => {
   const { lang, t } = useLanguage();
   const [salesDetails, setSalesDetails] = useState<Record<string, { customer: string; products: string; mode: string }>>({});
   const [purchaseDetails, setPurchaseDetails] = useState<Record<string, { supplier: string; products: string; mode: string }>>({});
+  const [paymentFilter, setPaymentFilter] = useState<"all" | "cash" | "esewa" | "khalti" | "bank" | "credit">("all");
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -179,7 +180,27 @@ const Cashbook = () => {
   const balance = Math.round(dateFilteredRows.reduce((s, r) => s + (r.direction === "in" ? Number(r.amount) : -Number(r.amount)), 0) * 100) / 100;
   const totalIn = Math.round(dateFilteredRows.filter((r) => r.direction === "in").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
   const totalOut = Math.round(dateFilteredRows.filter((r) => r.direction === "out").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
-  const filtered = dateFilteredRows.filter((r) => filter === "all" || r.direction === filter);
+
+  const getRowPaymentMode = (r: any): string => {
+    if (r.category === "sale" && r.reference_id && salesDetails[r.reference_id]) return salesDetails[r.reference_id].mode || "cash";
+    if ((r.category === "purchase" || r.category === "purchases") && r.reference_id && purchaseDetails[r.reference_id]) return purchaseDetails[r.reference_id].mode || "cash";
+    return r.payment_mode || "cash";
+  };
+
+  const paymentModes = ["cash", "esewa", "khalti", "bank", "credit"] as const;
+  const paymentModeTotals = paymentModes.reduce((acc, mode) => {
+    const modeRows = dateFilteredRows.filter(r => getRowPaymentMode(r) === mode);
+    acc[mode] = {
+      in: Math.round(modeRows.filter(r => r.direction === "in").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100,
+      out: Math.round(modeRows.filter(r => r.direction === "out").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100,
+      count: modeRows.length,
+    };
+    return acc;
+  }, {} as Record<string, { in: number; out: number; count: number }>);
+
+  const filtered = dateFilteredRows
+    .filter((r) => filter === "all" || r.direction === filter)
+    .filter((r) => paymentFilter === "all" || getRowPaymentMode(r) === paymentFilter);
 
   const resetForm = () => { 
     setEditId(null); setAmount(""); setNote(""); setCategory(""); setDirection("in"); setPartyId(null);
@@ -462,6 +483,45 @@ const Cashbook = () => {
             {lang === "NEP" ? "रिसेट गर्नुहोस्" : "Clear Filters"}
           </Button>
         )}
+      </Card>
+
+      {/* Payment Mode Breakdown */}
+      <Card className="p-3 mb-4 shadow-card border-0 bg-card">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Payment Mode</div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setPaymentFilter("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+              paymentFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
+            }`}
+          >
+            All
+          </button>
+          {(["cash", "esewa", "khalti", "bank", "credit"] as const).map(mode => {
+            const totals = paymentModeTotals[mode];
+            if (totals.count === 0) return null;
+            const isActive = paymentFilter === mode;
+            const modeColors: Record<string, string> = {
+              cash: "emerald", esewa: "purple", khalti: "violet", bank: "blue", credit: "orange"
+            };
+            return (
+              <button
+                key={mode}
+                onClick={() => setPaymentFilter(mode)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                  isActive ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
+                }`}
+              >
+                <span className="capitalize">{mode}</span>
+                <span className={`ml-1.5 opacity-70`}>
+                  {totals.in > 0 && <span className="text-success">+{fmt(totals.in)}</span>}
+                  {totals.in > 0 && totals.out > 0 && " / "}
+                  {totals.out > 0 && <span className="text-destructive">-{fmt(totals.out)}</span>}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </Card>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
