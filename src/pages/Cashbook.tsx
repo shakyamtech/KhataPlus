@@ -351,7 +351,7 @@ const Cashbook = () => {
                   <SelectTrigger><SelectValue placeholder="Select Category..." /></SelectTrigger>
                   <SelectContent>
                     {(direction === "in" ? inCategories : outCategories).map((c) => (
-                      <SelectItem key={c} value={c}>{c.replace("_", " ")}</SelectItem>
+                      <SelectItem key={c} value={c}>{c.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
