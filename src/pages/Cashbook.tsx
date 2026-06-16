@@ -64,7 +64,7 @@ const Cashbook = () => {
   const [endDate, setEndDate] = useState("");
   const { lang, t } = useLanguage();
   const [salesDetails, setSalesDetails] = useState<Record<string, { customer: string; products: string; mode: string }>>({});
-  const [purchaseDetails, setPurchaseDetails] = useState<Record<string, { supplier: string; mode: string }>>({});
+  const [purchaseDetails, setPurchaseDetails] = useState<Record<string, { supplier: string; products: string; mode: string }>>({});
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -131,11 +131,27 @@ const Cashbook = () => {
       }
       setSalesDetails(salesMap);
 
-      const purchasesMap: Record<string, { supplier: string; mode: string }> = {};
+      const purchasesMap: Record<string, { supplier: string; products: string; mode: string }> = {};
       purchasesData.forEach((p: any) => {
         const suppName = p.supplier_id ? suppMap.get(p.supplier_id) : "Unknown Supplier";
-        purchasesMap[p.id] = { supplier: suppName || "Unknown Supplier", mode: p.payment_mode || "cash" };
+        purchasesMap[p.id] = { supplier: suppName || "Unknown Supplier", products: "", mode: p.payment_mode || "cash" };
       });
+
+      const txPurIds = tx.filter((t: any) => (t.category === "purchase" || t.category === "purchases") && t.reference_id).map((t: any) => t.reference_id);
+      const purChunks = [];
+      for (let i = 0; i < txPurIds.length; i += 10) purChunks.push(txPurIds.slice(i, i + 10));
+      for (const chunk of purChunks) {
+        if (chunk.length > 0) {
+          const chunkQ = query(collection(db, "purchase_items"), where("purchase_id", "in", chunk));
+          const chunkSnap = await getDocs(chunkQ);
+          chunkSnap.docs.forEach(d => {
+            const data = d.data();
+            if (purchasesMap[data.purchase_id]) {
+              purchasesMap[data.purchase_id].products += (purchasesMap[data.purchase_id].products ? ", " : "") + `${data.product_name} ×${data.qty}`;
+            }
+          });
+        }
+      }
       setPurchaseDetails(purchasesMap);
     } catch (e: any) {
       console.error(e);
@@ -480,7 +496,7 @@ const Cashbook = () => {
           });
           return sortedAndFiltered.map((r) => {
             const sDetail = r.category === "sale" && r.reference_id ? salesDetails[r.reference_id] : null;
-            const pDetail = r.category === "purchase" && r.reference_id ? purchaseDetails[r.reference_id] : null;
+            const pDetail = (r.category === "purchase" || r.category === "purchases") && r.reference_id ? purchaseDetails[r.reference_id] : null;
             return (
             <div key={r.id} className="p-3 flex items-center gap-3 hover:bg-secondary/35 transition-colors cursor-pointer" onClick={() => openEdit(r)}>
             {r.direction === "in" ? <ArrowDownCircle className="h-5 w-5 text-success shrink-0" /> : <ArrowUpCircle className="h-5 w-5 text-destructive shrink-0" />}
@@ -494,6 +510,7 @@ const Cashbook = () => {
               <div className="text-xs text-muted-foreground mt-0.5">
                 {r.created_at ? format(new Date(r.created_at), "dd MMM yyyy, hh:mm a") : "-"}
                 {sDetail?.products ? <span className="font-medium text-foreground/80 block mt-0.5 truncate">📦 {sDetail.products}</span> : null}
+                {pDetail?.products ? <span className="font-medium text-foreground/80 block mt-0.5 truncate">📦 {pDetail.products}</span> : null}
                 {sDetail ? (
                   <span className="italic block text-[11px] mt-0.5 truncate capitalize">
                     💬 Payment through {sDetail.mode}
