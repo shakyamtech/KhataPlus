@@ -708,8 +708,8 @@ export const AppShell = () => {
                     <div className="py-4 space-y-4 w-full">
                         <p className="text-sm text-muted-foreground leading-relaxed">
                             {lang === "NEP" 
-                                ? "सबै सब्जी तथा फलफूल पसलहरूका लागि आधुनिक, छिटो र सरल बिलिङ र लेजर व्यवस्थापन प्रणाली।"
-                                : "A premium, super-fast point-of-sale (POS) and ledger bookkeeping solution tailored perfectly for agricultural merchants."}
+                                ? "सबै प्रकारका व्यवसायहरूका लागि आधुनिक, छिटो र सरल बिलिङ र लेजर व्यवस्थापन प्रणाली।"
+                                : "A premium, super-fast point-of-sale (POS) and ledger bookkeeping solution tailored perfectly for all types of businesses."}
                         </p>
                         
                         <div className="p-4 rounded-xl bg-secondary/60 border border-border/40 backdrop-blur-sm space-y-1">
