@@ -62,7 +62,10 @@ const POS = () => {
   };
   useEffect(() => { if (user) load(); }, [user]);
 
-  const filtered = useMemo(() => products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())), [products, search]);
+  const filtered = useMemo(() => products.filter((p) => 
+    p.name.toLowerCase().includes(search.toLowerCase()) || 
+    (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()))
+  ), [products, search]);
 
   useBarcodeScanner({
     onScan: (barcode) => {

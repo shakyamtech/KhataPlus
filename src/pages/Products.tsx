@@ -315,7 +315,10 @@ const Products = () => {
     }
   };
 
-  const filtered = items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = items.filter((i) => 
+    i.name.toLowerCase().includes(search.toLowerCase()) ||
+    (i.barcode && i.barcode.toLowerCase().includes(search.toLowerCase()))
+  );
 
   return (
     <div className="p-4 md:p-8 md:pt-16 max-w-7xl mx-auto">
