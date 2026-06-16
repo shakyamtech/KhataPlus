@@ -15,8 +15,9 @@ import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo } from "@/lib/shop";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
-type Product = { id: string; name: string; unit: string; cost_price: number; sell_price: number; stock_qty: number; low_stock_threshold: number; is_manufactured: boolean };
+type Product = { id: string; name: string; unit: string; cost_price: number; sell_price: number; stock_qty: number; low_stock_threshold: number; is_manufactured: boolean; barcode: string | null };
 type Customer = { id: string; name: string };
 type CartItem = { product_id: string; product_name: string; unit: string; sell_price: number | string; cost_price: number; qty: number | string };
 
@@ -62,6 +63,18 @@ const POS = () => {
   useEffect(() => { if (user) load(); }, [user]);
 
   const filtered = useMemo(() => products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())), [products, search]);
+
+  useBarcodeScanner({
+    onScan: (barcode) => {
+      const p = products.find((prod) => prod.barcode === barcode);
+      if (p) {
+        addToCart(p);
+        toast.success(`Scanned: ${p.name}`);
+      } else {
+        toast.error(`Barcode not found: ${barcode}`);
+      }
+    }
+  });
 
   const getTotalAvailable = (productId: string) => {
     const p = products.find(prod => prod.id === productId);

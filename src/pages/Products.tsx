@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History, PackageMinus } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History, PackageMinus, Barcode } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -26,10 +26,10 @@ type Ingredient = {
 type Product = {
   id: string; name: string; unit: string;
   cost_price: number; sell_price: number; stock_qty: number; low_stock_threshold: number;
-  is_manufactured: boolean;
+  is_manufactured: boolean; barcode: string | null;
 };
 
-const blank = { name: "", unit: "kg", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, is_manufactured: false };
+const blank = { name: "", unit: "kg", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, is_manufactured: false, barcode: "" };
 
 const Products = () => {
   const { user } = useAuth();
@@ -100,7 +100,8 @@ const Products = () => {
       sell_price: edit.sell_price === "" ? 0 : Number(edit.sell_price),
       low_stock_threshold: edit.low_stock_threshold === "" ? 0 : Number(edit.low_stock_threshold),
       unit: edit.unit,
-      is_manufactured: edit.is_manufactured
+      is_manufactured: edit.is_manufactured,
+      barcode: edit.barcode?.trim() || null
     };
     setBusy(true);
     try {
@@ -334,7 +335,10 @@ const Products = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
-                <div><Label>Name</Label><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." /></div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div><Label>Name</Label><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." /></div>
+                  <div><Label>Barcode (Optional)</Label><Input value={edit.barcode || ""} onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} placeholder="Scan barcode..." /></div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Unit</Label>
                     <Select value={edit.unit} onValueChange={(v) => setEdit({ ...edit, unit: v })}>
@@ -432,8 +436,15 @@ const Products = () => {
                     <div className={`font-display text-lg truncate ${isEmpty ? "text-red-900 dark:text-red-300" : isLow ? "text-orange-900 dark:text-orange-300" : ""}`}>
                       {p.name}
                     </div>
-                    <div className="inline-flex mt-1 items-center px-2 py-0.5 rounded-md bg-secondary text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      per {p.unit}
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        per {p.unit}
+                      </div>
+                      {p.barcode && (
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-[10px] font-semibold text-primary uppercase tracking-wider" title={`Barcode: ${p.barcode}`}>
+                          <Barcode className="h-3 w-3" /> {p.barcode}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity bg-secondary/50 rounded-lg p-0.5 shrink-0">

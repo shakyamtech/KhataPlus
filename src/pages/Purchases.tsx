@@ -14,8 +14,9 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
-type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number };
+type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null };
 type Supplier = { id: string; name: string };
 type Item = { product_id: string; product_name: string; unit: string; cost_price: number | string; qty: number | string };
 
@@ -84,6 +85,19 @@ const Purchases = () => {
     }
   };
   useEffect(() => { if (user) load(); }, [user]);
+
+  useBarcodeScanner({
+    onScan: (barcode) => {
+      if (!showForm) return; // Only process scan if the form is open
+      const p = products.find((prod) => prod.barcode === barcode);
+      if (p) {
+        addProduct(p.id);
+        toast.success(`Scanned: ${p.name}`);
+      } else {
+        toast.error(`Barcode not found: ${barcode}`);
+      }
+    }
+  });
 
   const total = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.cost_price) || 0), 0);
 
