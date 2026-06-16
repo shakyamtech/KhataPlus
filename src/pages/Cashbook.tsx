@@ -270,7 +270,7 @@ const Cashbook = () => {
           batch.delete(doc(db, "sales", row.reference_id));
 
           await batch.commit();
-        } else if (row.category === "purchase") {
+        } else if (row.category === "purchase" || row.category === "purchases") {
           const batch = writeBatch(db);
           
           const piQ = query(collection(db, "purchase_items"), where("purchase_id", "==", row.reference_id));
