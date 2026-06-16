@@ -71,8 +71,8 @@ const POS = () => {
     onScan: (barcode) => {
       const p = products.find((prod) => prod.barcode === barcode);
       if (p) {
-        addToCart(p);
-        toast.success(`Scanned: ${p.name}`);
+        const added = addToCart(p);
+        if (added) toast.success(`Scanned: ${p.name}`);
       } else {
         toast.error(`Barcode not found: ${barcode}`);
       }
@@ -101,24 +101,33 @@ const POS = () => {
     return p.stock_qty + (possibleFromIng === Infinity ? 0 : possibleFromIng);
   };
 
-  const addToCart = (p: Product) => {
+  const addToCart = (p: Product): boolean => {
     const totalAvailable = getTotalAvailable(p.id);
-    setCart((c) => {
-      const ex = c.find((i) => i.product_id === p.id);
-      if (ex) {
-        const newQty = +(Number(ex.qty) + 1).toFixed(3);
-        if (newQty > totalAvailable) {
-          toast.error(`Only ${totalAvailable} available in stock`);
-          return c;
-        }
-        return c.map((i) => i.product_id === p.id ? { ...i, qty: newQty } : i);
+    const ex = cart.find((i) => i.product_id === p.id);
+    
+    if (ex) {
+      const newQty = +(Number(ex.qty) + 1).toFixed(3);
+      if (newQty > totalAvailable) {
+        toast.error(`Only ${totalAvailable} available in stock`);
+        return false;
       }
+    } else {
       if (1 > totalAvailable) {
         toast.error(`Out of stock`);
-        return c;
+        return false;
+      }
+    }
+
+    setCart((c) => {
+      const exInC = c.find((i) => i.product_id === p.id);
+      if (exInC) {
+        const newQty = +(Number(exInC.qty) + 1).toFixed(3);
+        return c.map((i) => i.product_id === p.id ? { ...i, qty: newQty } : i);
       }
       return [...c, { product_id: p.id, product_name: p.name, unit: p.unit, sell_price: Number(p.sell_price), cost_price: Number(p.cost_price), qty: 1 }];
     });
+    
+    return true;
   };
 
   const setQty = (id: string, qty: number | string) => {
@@ -396,16 +405,16 @@ const POS = () => {
                 e.preventDefault();
                 const exactBarcodeMatch = products.find(p => p.barcode === search.trim());
                 if (exactBarcodeMatch) {
-                  addToCart(exactBarcodeMatch);
+                  const added = addToCart(exactBarcodeMatch);
                   setSearch("");
-                  toast.success(`Added: ${exactBarcodeMatch.name}`);
+                  if (added) toast.success(`Added: ${exactBarcodeMatch.name}`);
                   return;
                 }
                 
                 if (filtered.length === 1) {
-                  addToCart(filtered[0]);
+                  const added = addToCart(filtered[0]);
                   setSearch("");
-                  toast.success(`Added: ${filtered[0].name}`);
+                  if (added) toast.success(`Added: ${filtered[0].name}`);
                 } else if (filtered.length > 1) {
                   toast.error("Multiple items match. Please click the one you want.");
                 } else {
