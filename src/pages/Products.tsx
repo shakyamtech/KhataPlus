@@ -413,6 +413,7 @@ const Products = () => {
           const isLow = displayStock > 0 && displayStock <= Number(p.low_stock_threshold);
           const isEmpty = displayStock <= 0;
 
+          return (
             <Card key={p.id} className={`group overflow-hidden shadow-card hover:shadow-elegant border-0 transition-all duration-300 relative ${
               isEmpty 
                 ? "bg-red-50/10 dark:bg-red-950/10 border-red-200/50" 
