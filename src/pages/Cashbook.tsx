@@ -513,47 +513,6 @@ const Cashbook = () => {
         )}
       </Card>
 
-      {/* Payment Mode Breakdown */}
-      <Card className="p-3 mb-4 shadow-card border-0 bg-card">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Payment Mode</div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setPaymentFilter("all")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-              paymentFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
-            }`}
-          >
-            All
-          </button>
-          {(["cash", "esewa", "khalti", "bank", "credit"] as const).map(mode => {
-            const totals = paymentModeTotals[mode];
-            if (totals.count === 0) return null;
-            const isActive = paymentFilter === mode;
-            const modeColors: Record<string, string> = {
-              cash: "emerald", esewa: "purple", khalti: "violet", bank: "blue", credit: "orange"
-            };
-            return (
-              <button
-                key={mode}
-                onClick={() => setPaymentFilter(mode)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-                  isActive ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
-                }`}
-              >
-                <span className="capitalize">{mode}</span>
-                {(() => {
-                  const net = Math.round((totals.in - totals.out) * 100) / 100;
-                  return (
-                    <span className={`ml-1.5 font-semibold ${net >= 0 ? "text-success" : "text-destructive"}`}>
-                      {net >= 0 ? "+" : "-"}{fmt(Math.abs(net))}
-                    </span>
-                  );
-                })()}
-              </button>
-            );
-          })}
-        </div>
-      </Card>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
         <Tabs value={filter} onValueChange={(v: any) => setFilter(v)} className="w-fit">
