@@ -212,6 +212,11 @@ const POS = () => {
         const price = Number(i.sell_price) || 0;
         if (qty <= 0) throw new Error(`Invalid quantity for ${i.product_name}`);
         
+        const totalAvailable = getTotalAvailable(i.product_id);
+        if (qty > totalAvailable) {
+          throw new Error(`Cannot sell ${qty} of ${i.product_name}. Only ${totalAvailable} in stock.`);
+        }
+        
         return { 
           ...i, 
           qty,
