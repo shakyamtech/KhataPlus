@@ -45,6 +45,7 @@ const Purchases = () => {
   const [newSupplierName, setNewSupplierName] = useState("");
   const [newSupplierPhone, setNewSupplierPhone] = useState("");
   const [newProductName, setNewProductName] = useState("");
+  const [newProductBarcode, setNewProductBarcode] = useState("");
   const [newProductUnit, setNewProductUnit] = useState("kg");
   const [newProductCostPrice, setNewProductCostPrice] = useState("0");
   const [newProductSellPrice, setNewProductSellPrice] = useState("0");
@@ -88,6 +89,11 @@ const Purchases = () => {
 
   useBarcodeScanner({
     onScan: (barcode) => {
+      if (productDialogOpen) {
+        setNewProductBarcode(barcode);
+        toast.success(`Barcode scanned!`);
+        return;
+      }
       if (!showForm) return; // Only process scan if the form is open
       const p = products.find((prod) => prod.barcode === barcode);
       if (p) {
@@ -201,10 +207,11 @@ const Purchases = () => {
         sell_price: Number(newProductSellPrice) || 0,
         stock_qty: Number(newProductStockQty) || 0,
         low_stock_threshold: Number(newProductLowStockThreshold) || 5,
-        is_manufactured: newProductIsManufactured
+        is_manufactured: newProductIsManufactured,
+        barcode: newProductBarcode.trim() || null
       });
       toast.success("Product added");
-      setNewProductName(""); setNewProductUnit("kg"); setNewProductCostPrice("0"); setNewProductSellPrice("0"); setNewProductStockQty("0"); setNewProductLowStockThreshold("5"); setNewProductIsManufactured(false);
+      setNewProductName(""); setNewProductBarcode(""); setNewProductUnit("kg"); setNewProductCostPrice("0"); setNewProductSellPrice("0"); setNewProductStockQty("0"); setNewProductLowStockThreshold("5"); setNewProductIsManufactured(false);
       setProductDialogOpen(false);
       await load();
       addProduct(ref.id);
@@ -544,9 +551,9 @@ const Purchases = () => {
             <DialogDescription>Add a new item to your inventory.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div>
-              <Label>Name</Label>
-              <Input value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="Enter item name..." />
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div><Label>Name</Label><Input value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="Enter item name..." /></div>
+              <div><Label>Barcode (Optional)</Label><Input value={newProductBarcode} onChange={(e) => setNewProductBarcode(e.target.value)} placeholder="Scan barcode..." /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
