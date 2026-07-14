@@ -561,7 +561,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               <span className="text-xs text-muted-foreground">
                 {Number(p.balance) >= 0 ? dueLabel : "Advance"}
               </span>
-              <span className={`font-medium ${Number(p.balance) > 0 ? "text-orange-600 font-bold" : "text-purple-600"}`}>
+              <span className={`font-medium ${Number(p.balance) > 0 ? "text-primary font-bold" : Number(p.balance) < 0 ? "text-emerald-500 font-bold" : "text-primary/70"}`}>
                 {fmt(Math.abs(Number(p.balance)))}
               </span>
             </div>
