@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History, PackageMinus, Barcode } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History, PackageMinus, Barcode, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
@@ -43,6 +43,9 @@ const Products = () => {
   const [busySourcing, setBusySourcing] = useState(false);
   const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [batchesOpen, setBatchesOpen] = useState(false);
+  const [batchesList, setBatchesList] = useState<any[]>([]);
+  const [busyBatches, setBusyBatches] = useState(false);
   const [adjustQty, setAdjustQty] = useState("");
   const [adjustReason, setAdjustReason] = useState("damage");
   const [adjustResp, setAdjustResp] = useState<"loss" | "supplier">("loss");
@@ -155,6 +158,24 @@ const Products = () => {
       toast.error(e.message);
     } finally {
       setBusySourcing(false);
+    }
+  };
+
+  const loadBatches = async (p: Product) => {
+    setActiveProduct(p);
+    setBatchesOpen(true);
+    setBusyBatches(true);
+    try {
+      const q = query(collection(db, "product_batches"), where("product_id", "==", p.id));
+      const snap = await getDocs(q);
+      let items = snap.docs.map(d => d.data() as any);
+      items = items.filter(i => i.remaining_qty > 0);
+      items.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      setBatchesList(items);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusyBatches(false);
     }
   };
 
@@ -295,7 +316,7 @@ const Products = () => {
                     </div>
                   </div>
                   <div className="flex gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity bg-secondary/50 rounded-lg p-0.5 shrink-0">
-
+                    <Button size="icon" variant="ghost" onClick={() => loadBatches(p)} title="Active Batches" className="h-8 w-8 hover:bg-orange-500 hover:text-white text-muted-foreground rounded-md"><Layers className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => openAdjust(p)} title="Adjust Stock" className="h-8 w-8 hover:bg-red-500 hover:text-white text-muted-foreground rounded-md"><PackageMinus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => loadSourcingHistory(p)} title="Sourcing History" className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><History className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => { setSelectedProduct(p); setOpen(true); }} className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><Pencil className="h-3.5 w-3.5" /></Button>
@@ -377,6 +398,49 @@ const Products = () => {
           >
             Check Retail Prices on Google
           </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={batchesOpen} onOpenChange={setBatchesOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Active Batches — {activeProduct?.name}</DialogTitle>
+            <DialogDescription>
+              View currently available batches in FIFO order.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            {busyBatches ? (
+              <div className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" /></div>
+            ) : batchesList.length > 0 ? (
+              <div className="space-y-2">
+                {batchesList.map((b, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-secondary rounded-lg border border-transparent hover:border-border transition-colors">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm truncate">{b.batch_name || "N/A"}</div>
+                      <div className="text-xs text-muted-foreground flex gap-3">
+                        <span>Cost: {fmt(b.cost_price)}</span>
+                        {b.expiry_date && (
+                          <span className={`font-medium ${new Date(b.expiry_date) < new Date() ? 'text-red-500' : 'text-orange-500'}`}>
+                            Exp: {format(new Date(b.expiry_date), "dd MMM yyyy")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-bold text-foreground">{fmtQty(b.remaining_qty)} {activeProduct?.unit}</div>
+                      {idx === 0 && <div className="text-[10px] text-green-600 uppercase font-bold tracking-wider">Next to sell</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-sm text-muted-foreground py-8 bg-secondary/50 rounded-lg border border-dashed">
+                No active batches found.
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

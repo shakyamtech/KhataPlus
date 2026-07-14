@@ -11,7 +11,9 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
-export const blankProduct = { name: "", unit: "kg", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "", batch_name: "" };
+import { Checkbox } from "@/components/ui/checkbox";
+
+export const blankProduct = { name: "", unit: "kg", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "", batch_name: "", has_expiry: false, expiry_date: "" };
 
 interface ProductFormModalProps {
   open: boolean;
@@ -56,7 +58,8 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
       sell_price: edit.sell_price === "" ? 0 : Number(edit.sell_price),
       low_stock_threshold: edit.low_stock_threshold === "" ? 0 : Number(edit.low_stock_threshold),
       unit: edit.unit,
-      barcode: edit.barcode?.trim() || null
+      barcode: edit.barcode?.trim() || null,
+      has_expiry: !!edit.has_expiry
     };
 
     setBusy(true);
@@ -81,6 +84,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
             original_qty: payload.stock_qty,
             remaining_qty: payload.stock_qty,
             cost_price: payload.cost_price,
+            expiry_date: edit.has_expiry ? (edit.expiry_date || null) : null,
             created_at: new Date().toISOString()
           });
         }
@@ -113,8 +117,17 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
             <div><Label>Name</Label><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." /></div>
             <div><Label>Barcode (Optional)</Label><Input value={edit.barcode || ""} onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} placeholder="Scan barcode..." /></div>
           </div>
+          <div className="flex items-center space-x-2 my-1">
+            <Checkbox id="has_expiry" checked={edit.has_expiry} onCheckedChange={(c) => setEdit({ ...edit, has_expiry: !!c })} />
+            <Label htmlFor="has_expiry" className="cursor-pointer">Tracks Expiry Date?</Label>
+          </div>
           {!edit.id && (
-            <div><Label>Opening Batch No. (Optional)</Label><Input value={edit.batch_name || ""} onChange={(e) => setEdit({ ...edit, batch_name: e.target.value })} placeholder="e.g. BATCH-001" /></div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div><Label>Opening Batch No. (Optional)</Label><Input value={edit.batch_name || ""} onChange={(e) => setEdit({ ...edit, batch_name: e.target.value })} placeholder="e.g. BATCH-001" /></div>
+              {edit.has_expiry && (
+                <div><Label>Expiry Date (Optional)</Label><Input type="date" value={edit.expiry_date || ""} onChange={(e) => setEdit({ ...edit, expiry_date: e.target.value })} className="block w-full" /></div>
+              )}
+            </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Unit</Label>

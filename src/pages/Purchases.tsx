@@ -17,9 +17,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { ProductFormModal } from "@/components/ProductFormModal";
 
-type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null };
+type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null; has_expiry?: boolean };
 type Supplier = { id: string; name: string };
-type Item = { product_id: string; product_name: string; unit: string; cost_price: number | string; qty: number | string; batch_name?: string };
+type Item = { product_id: string; product_name: string; unit: string; cost_price: number | string; qty: number | string; batch_name?: string; has_expiry?: boolean; expiry_date?: string };
 
 const paymentModeLabels: Record<string, string> = {
   cash: "Cash",
@@ -115,10 +115,10 @@ const Purchases = () => {
   const addProduct = (id: string) => {
     const p = products.find((x) => x.id === id); if (!p) return;
     if (items.find((i) => i.product_id === id)) return;
-    setItems((arr) => [...arr, { product_id: p.id, product_name: p.name, unit: p.unit, cost_price: Number(p.cost_price), qty: 1, batch_name: "" }]);
+    setItems((arr) => [...arr, { product_id: p.id, product_name: p.name, unit: p.unit, cost_price: Number(p.cost_price), qty: 1, batch_name: "", has_expiry: !!p.has_expiry, expiry_date: "" }]);
     setProductPick("");
   };
-  const updateItem = (id: string, k: "qty" | "cost_price" | "batch_name", v: number | string) =>
+  const updateItem = (id: string, k: "qty" | "cost_price" | "batch_name" | "expiry_date", v: number | string) =>
     setItems((arr) => arr.map((i) => i.product_id === id ? { ...i, [k]: v } : i));
   const removeItem = (id: string) => setItems((arr) => arr.filter((i) => i.product_id !== id));
 
@@ -135,14 +135,19 @@ const Purchases = () => {
         return;
       }
 
-      const mappedItems = pi.map((item: any) => ({
-        product_id: item.product_id,
-        product_name: item.product_name || "Unknown Product",
-        unit: item.unit || "kg",
-        cost_price: Number(item.cost_price || item.price || 0),
-        qty: Number(item.qty || item.quantity || 0),
-        batch_name: item.batch_name || ""
-      }));
+      const mappedItems = pi.map((item: any) => {
+        const prod = products.find(p => p.id === item.product_id);
+        return {
+          product_id: item.product_id,
+          product_name: item.product_name || "Unknown Product",
+          unit: item.unit || "kg",
+          cost_price: Number(item.cost_price || item.price || 0),
+          qty: Number(item.qty || item.quantity || 0),
+          batch_name: item.batch_name || "",
+          has_expiry: prod ? !!prod.has_expiry : false,
+          expiry_date: item.expiry_date || ""
+        };
+      });
 
       setEditingId(p.id);
       setSupplierId(p.supplier_id || "none");
@@ -253,6 +258,7 @@ const Purchases = () => {
           product_id: item.product_id,
           purchase_id: purchaseRef.id,
           batch_name: item.batch_name?.trim() || "N/A",
+          expiry_date: item.has_expiry ? (item.expiry_date || null) : null,
           original_qty: Number(item.qty),
           remaining_qty: Number(item.qty),
           cost_price: Number(item.cost_price),
@@ -401,18 +407,26 @@ const Purchases = () => {
 
           <div className="space-y-2.5">
             {items.map((i) => (
-              <div key={i.product_id} className="bg-secondary p-3 rounded-xl space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_80px_100px_100px_80px_auto] sm:gap-3 sm:items-center shadow-soft transition-all">
+              <div key={i.product_id} className="bg-secondary p-3 rounded-xl space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_80px_100px_80px_80px_80px_auto] sm:gap-3 sm:items-center shadow-soft transition-all">
                 <div className="flex items-center justify-between sm:justify-start gap-2 border-b sm:border-0 pb-2 sm:pb-0 border-border/40">
                   <div className="font-semibold text-foreground truncate">{i.product_name} <span className="text-xs font-normal text-muted-foreground">/{i.unit}</span></div>
                   <Button size="icon" variant="ghost" className="h-8 w-8 sm:hidden text-destructive hover:bg-destructive/10" onClick={() => removeItem(i.product_id)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="grid grid-cols-4 gap-2 items-end sm:contents">
+                <div className="grid grid-cols-2 sm:grid-cols-1 gap-2 items-end sm:contents">
                   <div className="space-y-1 sm:space-y-0">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Batch (Opt)</Label>
                     <Input className="h-9 font-medium text-xs sm:text-sm bg-background" value={i.batch_name || ""} onChange={(e) => updateItem(i.product_id, "batch_name", e.target.value)} placeholder="Batch" />
                   </div>
+                  {i.has_expiry ? (
+                    <div className="space-y-1 sm:space-y-0">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Expiry</Label>
+                      <Input className="h-9 font-medium text-[10px] sm:text-xs bg-background px-1" type="date" value={i.expiry_date || ""} onChange={(e) => updateItem(i.product_id, "expiry_date", e.target.value)} />
+                    </div>
+                  ) : (
+                    <div className="hidden sm:block"></div>
+                  )}
                   <div className="space-y-1 sm:space-y-0">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Qty</Label>
                     <Input className="h-9 font-medium text-xs sm:text-sm bg-background" type="number" step="0.001" value={i.qty} onChange={(e) => updateItem(i.product_id, "qty", e.target.value)} placeholder="Qty" onWheel={(e) => e.currentTarget.blur()} />
