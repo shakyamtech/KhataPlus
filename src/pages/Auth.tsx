@@ -126,7 +126,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-hero p-4 relative overflow-hidden font-sans">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-cyan-100 dark:from-slate-950 dark:via-secondary dark:to-slate-900 animate-bg-shift p-4 relative overflow-hidden font-sans">
       
       {/* Floating English / Nepali Language Switcher */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-1 bg-white/80 backdrop-blur-md border border-white/40 p-1 rounded-xl shadow-soft dark:bg-secondary/40 dark:border-white/10">
@@ -162,10 +162,19 @@ const Auth = () => {
           0%, 100% { opacity: 0.4; transform: scale(1); }
           50% { opacity: 0.6; transform: scale(1.1); }
         }
+        @keyframes gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
         .animate-float-1 { animation: float-slow 7s ease-in-out infinite; }
         .animate-float-2 { animation: float-medium 9s ease-in-out infinite; }
         .animate-float-3 { animation: float-slow 6s ease-in-out infinite 1s; }
         .animate-pulse-glow { animation: pulse-glow 10s ease-in-out infinite; }
+        .animate-bg-shift {
+          background-size: 300% 300%;
+          animation: gradient-shift 15s ease infinite;
+        }
         .glass-panel {
           background: rgba(255, 255, 255, 0.7);
           backdrop-filter: blur(20px);
