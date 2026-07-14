@@ -204,9 +204,9 @@ const Products = () => {
       const pRef = doc(db, "products", activeProduct.id);
       batch.update(pRef, { stock_qty: increment(-qty) });
 
-      const bQ = query(collection(db, "product_batches"), where("product_id", "==", activeProduct.id), where("remaining_qty", ">", 0));
+      const bQ = query(collection(db, "product_batches"), where("product_id", "==", activeProduct.id));
       const bSnap = await getDocs(bQ);
-      const allBatches = bSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      const allBatches = bSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).filter(b => b.remaining_qty > 0);
       allBatches.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
       let qtyToDeduct = qty;

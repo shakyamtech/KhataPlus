@@ -240,9 +240,10 @@ const POS = () => {
         chunks.push(productIds.slice(i, i + 10));
       }
       for (const chunk of chunks) {
-        const bQ = query(collection(db, "product_batches"), where("product_id", "in", chunk), where("remaining_qty", ">", 0));
+        const bQ = query(collection(db, "product_batches"), where("product_id", "in", chunk));
         const bSnap = await getDocs(bQ);
-        allBatches.push(...bSnap.docs.map(d => ({ id: d.id, ...d.data() as any })));
+        const chunkBatches = bSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).filter(b => b.remaining_qty > 0);
+        allBatches.push(...chunkBatches);
       }
       // Sort batches by created_at ascending (FIFO)
       allBatches.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
