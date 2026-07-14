@@ -15,11 +15,6 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* Premium Ocean Teal / Cyan */
-    --primary: 188 86% 53%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 188 86% 65%;
-
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
@@ -37,31 +32,15 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 188 86% 53%;
 
     --radius: 0.75rem;
 
-    /* Subtle Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 40%));
-    --gradient-fresh: linear-gradient(135deg, hsl(210 40% 96%) 0%, hsl(210 40% 90%) 100%);
-    --gradient-warm: linear-gradient(135deg, hsl(188 86% 53%), hsl(199 89% 48%));
-    --gradient-hero: radial-gradient(ellipse at top left, hsl(210 40% 96%) 0%, hsl(0 0% 100%) 100%);
-
-    /* Sleek Shadows */
-    --shadow-soft: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
-    --shadow-card: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
-    --shadow-elegant: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
-    --shadow-glow: 0 0 20px hsl(188 86% 53% / 0.15);
-
-    /* Sidebar - Light */
+    /* Base Sidebar - Light */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-primary: 188 86% 53%;
-    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 40% 92%;
     --sidebar-accent-foreground: 222.2 47.4% 11.2%;
     --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 188 86% 53%;
 
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -78,9 +57,6 @@
     --popover: 222.2 47.4% 7%;
     --popover-foreground: 210 40% 98%;
     
-    --primary: 188 86% 53%;
-    --primary-foreground: 0 0% 100%;
-    
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     
@@ -95,23 +71,151 @@
     
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 188 86% 53%;
     
-    /* Dark subtle gradients */
-    --gradient-hero: radial-gradient(ellipse at top left, hsl(222 47% 12%) 0%, hsl(222 84% 5%) 100%);
-    --gradient-fresh: linear-gradient(135deg, hsl(217 32% 17%) 0%, hsl(217 32% 12%) 100%);
-    --shadow-glow: 0 0 20px hsl(188 86% 53% / 0.15);
-
-    /* Sidebar - Very dark to anchor the app */
+    /* Base Sidebar - Dark */
     --sidebar-background: 222.2 84% 4.9%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 188 86% 53%;
-    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 217.2 32.6% 17.5%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 188 86% 53%;
   }
+
+  /* ==================== THEME: TEAL ==================== */
+  [data-color="teal"] {
+    --primary: 188 86% 53%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 188 86% 65%;
+    --ring: 188 86% 53%;
+    --sidebar-primary: 188 86% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 188 86% 53%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 40%));
+    --gradient-fresh: linear-gradient(135deg, hsl(210 40% 96%) 0%, hsl(210 40% 90%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(188 86% 53%), hsl(199 89% 48%));
+    --gradient-hero: radial-gradient(ellipse at top left, hsl(210 40% 96%) 0%, hsl(0 0% 100%) 100%);
+    --shadow-soft: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
+    --shadow-card: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
+    --shadow-elegant: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 20px hsl(188 86% 53% / 0.15);
+  }
+  .dark[data-color="teal"] {
+    --primary: 188 86% 53%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 188 86% 53%;
+    --sidebar-primary: 188 86% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 188 86% 53%;
+    
+    --gradient-hero: radial-gradient(ellipse at top left, hsl(222 47% 12%) 0%, hsl(222 84% 5%) 100%);
+    --gradient-fresh: linear-gradient(135deg, hsl(217 32% 17%) 0%, hsl(217 32% 12%) 100%);
+    --shadow-glow: 0 0 20px hsl(188 86% 53% / 0.15);
+  }
+
+  /* ==================== THEME: INDIGO ==================== */
+  [data-color="indigo"] {
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --primary-glow: 221.2 83.2% 65%;
+    --ring: 221.2 83.2% 53.3%;
+    --sidebar-primary: 221.2 83.2% 53.3%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-ring: 221.2 83.2% 53.3%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(221 83% 45%));
+    --gradient-fresh: linear-gradient(135deg, hsl(210 40% 96%) 0%, hsl(210 40% 90%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(221 83% 60%), hsl(210 80% 55%));
+    --gradient-hero: radial-gradient(ellipse at top left, hsl(210 40% 96%) 0%, hsl(0 0% 100%) 100%);
+    --shadow-soft: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
+    --shadow-card: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
+    --shadow-elegant: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 20px hsl(221 83% 53% / 0.15);
+  }
+  .dark[data-color="indigo"] {
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 1.2%;
+    --ring: 224.3 76.3% 48%;
+    --sidebar-primary: 217.2 91.2% 59.8%;
+    --sidebar-primary-foreground: 222.2 47.4% 1.2%;
+    --sidebar-ring: 224.3 76.3% 48%;
+    
+    --gradient-hero: radial-gradient(ellipse at top left, hsl(222 47% 12%) 0%, hsl(222 84% 5%) 100%);
+    --gradient-fresh: linear-gradient(135deg, hsl(217 32% 17%) 0%, hsl(217 32% 12%) 100%);
+    --shadow-glow: 0 0 20px hsl(217 91% 60% / 0.15);
+  }
+
+  /* ==================== THEME: GOLD ==================== */
+  [data-color="gold"] {
+    --primary: 45 93% 47%;
+    --primary-foreground: 0 0% 10%;
+    --primary-glow: 45 93% 60%;
+    --ring: 45 93% 47%;
+    --sidebar-primary: 45 93% 47%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-ring: 45 93% 47%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(45 93% 47%), hsl(40 85% 40%));
+    --gradient-fresh: linear-gradient(135deg, hsl(45 30% 96%) 0%, hsl(45 30% 90%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(45 93% 55%), hsl(25 90% 55%));
+    --gradient-hero: radial-gradient(ellipse at top left, hsl(45 30% 96%) 0%, hsl(0 0% 100%) 100%);
+    --shadow-soft: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
+    --shadow-card: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
+    --shadow-elegant: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 20px hsl(45 93% 47% / 0.15);
+  }
+  .dark[data-color="gold"] {
+    --background: 0 0% 9%; /* Charcoal */
+    --card: 0 0% 13%;
+    --sidebar-background: 0 0% 5%;
+
+    --primary: 45 93% 47%;
+    --primary-foreground: 0 0% 10%;
+    --ring: 45 93% 47%;
+    --sidebar-primary: 45 93% 47%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-ring: 45 93% 47%;
+    
+    --gradient-hero: radial-gradient(ellipse at top left, hsl(0 0% 15%) 0%, hsl(0 0% 6%) 100%);
+    --gradient-fresh: linear-gradient(135deg, hsl(0 0% 17%) 0%, hsl(0 0% 12%) 100%);
+    --shadow-glow: 0 0 20px hsl(45 93% 47% / 0.15);
+  }
+
+  /* ==================== THEME: PURPLE ==================== */
+  [data-color="purple"] {
+    --primary: 272 70% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 272 70% 60%;
+    --ring: 272 70% 45%;
+    --sidebar-primary: 272 70% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 272 70% 45%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(272 70% 45%), hsl(272 80% 35%));
+    --gradient-fresh: linear-gradient(135deg, hsl(272 40% 96%) 0%, hsl(272 40% 90%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(290 80% 60%), hsl(310 80% 55%));
+    --gradient-hero: radial-gradient(ellipse at top left, hsl(272 50% 96%) 0%, hsl(0 0% 100%) 100%);
+    --shadow-soft: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
+    --shadow-card: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
+    --shadow-elegant: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 20px hsl(272 70% 45% / 0.15);
+  }
+  .dark[data-color="purple"] {
+    --background: 270 24% 12%; /* Deep Purple Tinted Slate */
+    --card: 270 24% 16%;
+    --sidebar-background: 270 40% 6%;
+
+    --primary: 272 70% 55%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 272 70% 55%;
+    --sidebar-primary: 272 70% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 272 70% 55%;
+    
+    --gradient-hero: radial-gradient(ellipse at top left, hsl(272 47% 15%) 0%, hsl(272 50% 7%) 100%);
+    --gradient-fresh: linear-gradient(135deg, hsl(272 32% 19%) 0%, hsl(272 32% 14%) 100%);
+    --shadow-glow: 0 0 20px hsl(272 70% 55% / 0.15);
+  }
+
 }
 
 @layer base {

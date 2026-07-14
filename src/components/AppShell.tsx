@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
+import { useColorTheme } from "@/contexts/ColorThemeContext";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +62,7 @@ export const AppShell = () => {
   const navigate = useNavigate();
   const { isAdmin } = useIsAdmin();
   const { setTheme } = useTheme();
+  const { colorTheme, setColorTheme } = useColorTheme();
   const [shopName, setShopName] = useState("My Shop");
   const [newName, setNewName] = useState("");
   const [panNo, setPanNo] = useState("");
@@ -431,6 +433,16 @@ export const AppShell = () => {
                                     <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer gap-2">
                                         <Laptop className="h-4 w-4 text-muted-foreground" /> {lang === "NEP" ? "सिस्टम (System)" : "System Default"}
                                     </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <div className="px-2 py-1.5">
+                                        <p className="text-xs text-muted-foreground mb-2 font-medium">{lang === "NEP" ? "रंग छान्नुहोस्" : "Color Theme"}</p>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => setColorTheme("teal")} className={`w-6 h-6 rounded-full bg-[#06b6d4] ring-offset-background transition-all ${colorTheme === "teal" ? "ring-2 ring-[#06b6d4] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Ocean Teal" />
+                                            <button onClick={() => setColorTheme("indigo")} className={`w-6 h-6 rounded-full bg-[#3b82f6] ring-offset-background transition-all ${colorTheme === "indigo" ? "ring-2 ring-[#3b82f6] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Premium Indigo" />
+                                            <button onClick={() => setColorTheme("gold")} className={`w-6 h-6 rounded-full bg-[#fbbf24] ring-offset-background transition-all ${colorTheme === "gold" ? "ring-2 ring-[#fbbf24] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Luxury Gold" />
+                                            <button onClick={() => setColorTheme("purple")} className={`w-6 h-6 rounded-full bg-[#9333ea] ring-offset-background transition-all ${colorTheme === "purple" ? "ring-2 ring-[#9333ea] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Royal Purple" />
+                                        </div>
+                                    </div>
                                 </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                         </DropdownMenuSub>
@@ -573,6 +585,16 @@ export const AppShell = () => {
                                         <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer gap-2">
                                             <Laptop className="h-4 w-4 text-muted-foreground" /> {lang === "NEP" ? "सिस्टम (System)" : "System Default"}
                                         </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <div className="px-2 py-1.5">
+                                            <p className="text-xs text-muted-foreground mb-2 font-medium">{lang === "NEP" ? "रंग छान्नुहोस्" : "Color Theme"}</p>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => setColorTheme("teal")} className={`w-6 h-6 rounded-full bg-[#06b6d4] ring-offset-background transition-all ${colorTheme === "teal" ? "ring-2 ring-[#06b6d4] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Ocean Teal" />
+                                                <button onClick={() => setColorTheme("indigo")} className={`w-6 h-6 rounded-full bg-[#3b82f6] ring-offset-background transition-all ${colorTheme === "indigo" ? "ring-2 ring-[#3b82f6] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Premium Indigo" />
+                                                <button onClick={() => setColorTheme("gold")} className={`w-6 h-6 rounded-full bg-[#fbbf24] ring-offset-background transition-all ${colorTheme === "gold" ? "ring-2 ring-[#fbbf24] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Luxury Gold" />
+                                                <button onClick={() => setColorTheme("purple")} className={`w-6 h-6 rounded-full bg-[#9333ea] ring-offset-background transition-all ${colorTheme === "purple" ? "ring-2 ring-[#9333ea] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Royal Purple" />
+                                            </div>
+                                        </div>
                                     </DropdownMenuSubContent>
                                 </DropdownMenuPortal>
                             </DropdownMenuSub>

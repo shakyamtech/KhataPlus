@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { ColorThemeProvider } from "@/contexts/ColorThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppShell } from "@/components/AppShell";
 import Auth from "./pages/Auth";
@@ -42,9 +43,10 @@ const App = () => {
       <TooltipProvider>
         {!loading && (
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <LanguageProvider>
-              <Toaster />
-              <Sonner />
+            <ColorThemeProvider>
+              <LanguageProvider>
+                <Toaster />
+                <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <ErrorBoundary>
                   <AuthProvider>
@@ -68,7 +70,8 @@ const App = () => {
                 </AuthProvider>
                 </ErrorBoundary>
               </BrowserRouter>
-            </LanguageProvider>
+              </LanguageProvider>
+            </ColorThemeProvider>
           </ThemeProvider>
         )}
       </TooltipProvider>
