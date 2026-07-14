@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 export const blankProduct = { name: "", unit: "kg", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "", batch_name: "", has_expiry: false, expiry_date: "" };
 
@@ -117,9 +117,12 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
             <div><Label>Name</Label><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." /></div>
             <div><Label>Barcode (Optional)</Label><Input value={edit.barcode || ""} onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} placeholder="Scan barcode..." /></div>
           </div>
-          <div className="flex items-center space-x-2 my-1">
-            <Checkbox id="has_expiry" checked={edit.has_expiry} onCheckedChange={(c) => setEdit({ ...edit, has_expiry: !!c })} />
-            <Label htmlFor="has_expiry" className="cursor-pointer">Tracks Expiry Date?</Label>
+          <div className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer" onClick={() => setEdit({ ...edit, has_expiry: !edit.has_expiry })}>
+            <div className="space-y-0.5 pointer-events-none">
+              <Label htmlFor="has_expiry" className="text-sm font-semibold text-primary">Tracks Expiry Date?</Label>
+              <div className="text-[11px] text-muted-foreground leading-tight">Enable if this item is perishable and expires.</div>
+            </div>
+            <Switch id="has_expiry" checked={edit.has_expiry} onCheckedChange={(c) => setEdit({ ...edit, has_expiry: !!c })} />
           </div>
           {!edit.id && (
             <div className="grid sm:grid-cols-2 gap-3">
