@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
+import { ProductFormModal } from "@/components/ProductFormModal";
 
 type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null };
 type Supplier = { id: string; name: string };
@@ -44,17 +45,8 @@ const Purchases = () => {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState("");
   const [newSupplierPhone, setNewSupplierPhone] = useState("");
-  const [newProductName, setNewProductName] = useState("");
-  const [newProductBarcode, setNewProductBarcode] = useState("");
-  const [newProductUnit, setNewProductUnit] = useState("kg");
-  const [newProductCostPrice, setNewProductCostPrice] = useState("0");
-  const [newProductSellPrice, setNewProductSellPrice] = useState("0");
-  const [newProductStockQty, setNewProductStockQty] = useState("0");
-  const [newProductLowStockThreshold, setNewProductLowStockThreshold] = useState("5");
-  const [newProductBatchName, setNewProductBatchName] = useState("");
   const [busy, setBusy] = useState(false);
   const [busySupplier, setBusySupplier] = useState(false);
-  const [busyProduct, setBusyProduct] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -89,12 +81,7 @@ const Purchases = () => {
 
   useBarcodeScanner({
     onScan: (barcode) => {
-      if (productDialogOpen) {
-        setNewProductBarcode(barcode);
-        toast.success(`Barcode scanned!`);
-        return;
-      }
-      if (!showForm) return; // Only process scan if the form is open
+      if (!showForm || productDialogOpen) return; // Only process scan if the form is open and product modal is closed
       const p = products.find((prod) => prod.barcode === barcode);
       if (p) {
         addProduct(p.id);
@@ -194,54 +181,7 @@ const Purchases = () => {
     }
   };
 
-  const saveNewProduct = async () => {
-    if (!newProductName.trim()) return toast.error("Name required");
-    setBusyProduct(true);
-    try {
-      const batch = writeBatch(db);
-      const ref = doc(collection(db, "products"));
-      const qty = Number(newProductStockQty) || 0;
-      const cost = Number(newProductCostPrice) || 0;
-      
-      batch.set(ref, {
-        id: ref.id,
-        user_id: user!.uid,
-        name: newProductName.trim(),
-        unit: newProductUnit,
-        cost_price: cost,
-        sell_price: Number(newProductSellPrice) || 0,
-        stock_qty: qty,
-        low_stock_threshold: Number(newProductLowStockThreshold) || 5,
-        barcode: newProductBarcode.trim() || null
-      });
 
-      if (qty > 0) {
-        const batchRef = doc(collection(db, "product_batches"));
-        batch.set(batchRef, {
-          id: batchRef.id,
-          user_id: user!.uid,
-          product_id: ref.id,
-          batch_name: newProductBatchName.trim() || "Initial Batch",
-          original_qty: qty,
-          remaining_qty: qty,
-          cost_price: cost,
-          created_at: new Date().toISOString()
-        });
-      }
-
-      await batch.commit();
-
-      toast.success("Product added");
-      setNewProductName(""); setNewProductBarcode(""); setNewProductUnit("kg"); setNewProductCostPrice("0"); setNewProductSellPrice("0"); setNewProductStockQty("0"); setNewProductLowStockThreshold("5"); setNewProductBatchName("");
-      setProductDialogOpen(false);
-      await load();
-      addProduct(ref.id);
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setBusyProduct(false);
-    }
-  };
 
   const save = async () => {
     if (items.length === 0) return toast.error("Add items");
@@ -586,69 +526,11 @@ const Purchases = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New Product</DialogTitle>
-            <DialogDescription>Add a new item to your inventory.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div><Label>Name</Label><Input value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="Enter item name..." /></div>
-              <div><Label>Barcode (Optional)</Label><Input value={newProductBarcode} onChange={(e) => setNewProductBarcode(e.target.value)} placeholder="Scan barcode..." /></div>
-            </div>
-            <div><Label>Opening Batch No. (Optional)</Label><Input value={newProductBatchName} onChange={(e) => setNewProductBatchName(e.target.value)} placeholder="e.g. BATCH-001" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Unit</Label>
-                <Select value={newProductUnit} onValueChange={setNewProductUnit}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="kg">kg</SelectItem>
-                    <SelectItem value="box">box</SelectItem>
-                    <SelectItem value="g">gram</SelectItem>
-                    <SelectItem value="Ltr">ltr</SelectItem>
-                    <SelectItem value="ml">ml</SelectItem>
-                    <SelectItem value="pcs">pcs</SelectItem>
-                    <SelectItem value="pkt">packet</SelectItem>
-                    <SelectItem value="cup">cup</SelectItem>
-                    <SelectItem value="jar">jar</SelectItem>
-                    <SelectItem value="dozen">dozen</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Stock Qty</Label>
-                <Input type="number" step="0.001" value={newProductStockQty} onChange={(e) => setNewProductStockQty(e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Cost Price (Rs.)</Label>
-                <Input type="number" step="0.01" value={newProductCostPrice} onChange={(e) => setNewProductCostPrice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
-              </div>
-              <div>
-                <Label>Sell Price (Rs.)</Label>
-                <Input type="number" step="0.01" value={newProductSellPrice} onChange={(e) => setNewProductSellPrice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
-              </div>
-            </div>
-            <div>
-              <Label>Low-stock alert at</Label>
-              <Input type="number" step="0.001" value={newProductLowStockThreshold} onChange={(e) => setNewProductLowStockThreshold(e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
-            </div>
-            <Button onClick={saveNewProduct} disabled={busyProduct} className="w-full bg-gradient-primary text-primary-foreground mt-2">
-              {busyProduct ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Saving...
-                </>
-              ) : (
-                "Save"
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ProductFormModal 
+        open={productDialogOpen} 
+        onOpenChange={setProductDialogOpen} 
+        onSuccess={async (id) => { await load(); addProduct(id); }} 
+      />
     </div>
   );
 };
