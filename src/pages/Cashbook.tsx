@@ -294,6 +294,12 @@ const Cashbook = () => {
             const item = d.data();
             const pRef = doc(db, "products", item.product_id);
             batch.update(pRef, { stock_qty: increment(item.qty) });
+            
+            if (item.batch_id && item.batch_id !== "no-batch") {
+              const bRef = doc(db, "product_batches", item.batch_id);
+              batch.update(bRef, { remaining_qty: increment(item.qty) });
+            }
+            
             batch.delete(d.ref);
           });
 
