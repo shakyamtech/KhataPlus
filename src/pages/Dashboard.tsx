@@ -310,13 +310,23 @@ const Dashboard = () => {
             {/* Glowing background bubble */}
             <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl group-hover:scale-150 transition-transform duration-700 ease-out" />
             
+            {/* Light Slash Effect */}
+            <div className="absolute inset-0 -translate-x-[150%] group-hover:translate-x-[150%] w-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[25deg] transition-transform duration-1000 ease-in-out z-0 pointer-events-none" />
+            
             <div className="relative z-10 flex flex-col justify-between h-full">
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md shadow-soft group-hover:scale-110 group-hover:-translate-y-1 group-hover:bg-white/20 transition-all duration-300">
                 <ShoppingCart className="h-6 w-6 text-white group-hover:translate-x-1 group-hover:-rotate-12 transition-all duration-300 ease-out" />
               </div>
               <div className="mt-8">
                 <h3 className="font-display text-2xl font-bold">Start Billing</h3>
-                <p className="text-primary-foreground/80 text-sm mt-1.5">Open the POS to make a quick sale and update inventory in real-time.</p>
+                <div className="relative h-10 mt-1.5 overflow-hidden">
+                  <p className="absolute inset-0 text-primary-foreground/80 text-sm transition-transform duration-500 group-hover:-translate-y-full">
+                    Open the POS to make a quick sale and update inventory in real-time.
+                  </p>
+                  <p className="absolute inset-0 translate-y-full text-white font-bold text-sm transition-transform duration-500 group-hover:translate-y-0 flex items-center">
+                    Let's make some money! 💸
+                  </p>
+                </div>
               </div>
             </div>
           </Card>
