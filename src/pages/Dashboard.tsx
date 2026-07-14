@@ -158,15 +158,15 @@ const Dashboard = () => {
 
   const isProfit = stats.todayProfit >= 0;
   const cards = [
-    { label: "Today's Sales", value: fmt(stats.todaySales), icon: ShoppingCart, accent: "bg-gradient-primary text-primary-foreground" },
+    { label: "Today's Sales", value: fmt(stats.todaySales), icon: ShoppingCart, accent: "bg-primary text-primary-foreground shadow-[0_4px_14px_0_hsl(var(--primary)/0.39)]" },
     { 
       label: isProfit ? "Today's Profit" : "Today's Loss", 
       value: fmt(Math.abs(stats.todayProfit)), 
       icon: isProfit ? TrendingUp : TrendingDown, 
       accent: isProfit ? "bg-emerald-500 text-white shadow-[0_4px_14px_0_rgba(16,185,129,0.39)]" : "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]" 
     },
-    { label: "Cash in Hand", value: fmt(stats.cashBalance), icon: Wallet, accent: "bg-secondary text-secondary-foreground" },
-    { label: "Stock Value", value: fmt(stats.stockValue), icon: Package, accent: "bg-secondary text-secondary-foreground" },
+    { label: "Cash in Hand", value: fmt(stats.cashBalance), icon: Wallet, accent: "bg-sky-500 text-white shadow-[0_4px_14px_0_rgba(14,165,233,0.39)]" },
+    { label: "Stock Value", value: fmt(stats.stockValue), icon: Package, accent: "bg-violet-500 text-white shadow-[0_4px_14px_0_rgba(139,92,246,0.39)]" },
   ];
 
   return (
