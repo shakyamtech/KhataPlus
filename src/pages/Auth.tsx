@@ -128,6 +128,9 @@ const Auth = () => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-hero animate-bg-shift p-4 relative overflow-hidden font-sans">
       
+      {/* Noise filter to prevent banding on Auth page only */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.02] dark:opacity-[0.035] z-0" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E\")" }} />
+      
       {/* Floating English / Nepali Language Switcher */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-1 bg-white/80 backdrop-blur-md border border-white/40 p-1 rounded-xl shadow-soft dark:bg-secondary/40 dark:border-white/10">
         <button 
