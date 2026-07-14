@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { fmt } from "@/lib/format";
-import { TrendingUp, Wallet, Package, AlertTriangle, ShoppingCart, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Package, AlertTriangle, ShoppingCart, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
@@ -156,9 +156,15 @@ const Dashboard = () => {
       .slice(0, 5);
   }, [salesForTopItems, topItemsRange]);
 
+  const isProfit = stats.todayProfit >= 0;
   const cards = [
     { label: "Today's Sales", value: fmt(stats.todaySales), icon: ShoppingCart, accent: "bg-gradient-primary text-primary-foreground" },
-    { label: "Today's Profit", value: fmt(stats.todayProfit), icon: TrendingUp, accent: "bg-gradient-warm text-accent-foreground" },
+    { 
+      label: isProfit ? "Today's Profit" : "Today's Loss", 
+      value: fmt(Math.abs(stats.todayProfit)), 
+      icon: isProfit ? TrendingUp : TrendingDown, 
+      accent: isProfit ? "bg-emerald-500 text-white shadow-[0_4px_14px_0_rgba(16,185,129,0.39)]" : "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]" 
+    },
     { label: "Cash in Hand", value: fmt(stats.cashBalance), icon: Wallet, accent: "bg-secondary text-secondary-foreground" },
     { label: "Stock Value", value: fmt(stats.stockValue), icon: Package, accent: "bg-secondary text-secondary-foreground" },
   ];
