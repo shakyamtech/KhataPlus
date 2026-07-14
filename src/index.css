@@ -67,11 +67,12 @@
   }
 
   .dark {
-    /* Main Background - Slightly lighter to contrast with sidebar */
-    --background: 222.2 47.4% 9%;
+    /* Main Background - Lighter slate for better contrast with sidebar */
+    --background: 217 24% 14%;
     --foreground: 210 40% 98%;
     
-    --card: 222.2 47.4% 12%;
+    /* Cards - Slightly lighter than background */
+    --card: 217 24% 18%;
     --card-foreground: 210 40% 98%;
     
     --popover: 222.2 47.4% 7%;
