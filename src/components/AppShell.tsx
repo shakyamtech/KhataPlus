@@ -268,25 +268,43 @@ export const AppShell = () => {
             await reauthenticateWithCredential(user, credential);
 
             // Delete all transaction tables for this user
-            const tablesToWipe = ["sales", "purchases", "cash_transactions", "ledger_entries", "expenses"];
+            const tablesToWipe = [
+                "sales", "sale_items", 
+                "purchases", "purchase_items", 
+                "cash_transactions", "ledger_entries", 
+                "expenses", "stock_adjustments"
+            ];
             for (const t of tablesToWipe) {
                 const q = query(collection(db, t), where("user_id", "==", user.uid));
                 const snapshot = await getDocs(q);
-                const batch = writeBatch(db);
-                snapshot.docs.forEach((d) => {
-                    batch.delete(d.ref);
-                });
-                await batch.commit();
+                
+                // Firestore batches can only have 500 writes, so chunk them
+                const chunks = [];
+                for (let i = 0; i < snapshot.docs.length; i += 500) {
+                    chunks.push(snapshot.docs.slice(i, i + 500));
+                }
+                
+                for (const chunk of chunks) {
+                    const batch = writeBatch(db);
+                    chunk.forEach((d) => batch.delete(d.ref));
+                    await batch.commit();
+                }
             }
             
             // Reset customer and supplier balances to 0
             const partyQ = query(collection(db, "parties"), where("user_id", "==", user.uid));
             const pSnapshot = await getDocs(partyQ);
-            const pBatch = writeBatch(db);
-            pSnapshot.docs.forEach((d) => {
-                pBatch.update(d.ref, { balance: 0 });
-            });
-            await pBatch.commit();
+            
+            const pChunks = [];
+            for (let i = 0; i < pSnapshot.docs.length; i += 500) {
+                pChunks.push(pSnapshot.docs.slice(i, i + 500));
+            }
+            
+            for (const chunk of pChunks) {
+                const pBatch = writeBatch(db);
+                chunk.forEach((d) => pBatch.update(d.ref, { balance: 0 }));
+                await pBatch.commit();
+            }
 
             toast.success(lang === "NEP" ? "सबै कारोबार र लेजर सफलतापूर्वक रिसेट गरियो!" : "All transactions and ledgers reset successfully!");
             setShopOpen(false);
