@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, documentId, writeBatch, increment } from "firebase/firestore";
+import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, documentId, writeBatch, increment, limit } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -89,6 +89,18 @@ const Products = () => {
 
   const remove = async (id: string) => {
     try {
+      const siQ = query(collection(db, "sale_items"), where("product_id", "==", id), limit(1));
+      const siSnap = await getDocs(siQ);
+      if (!siSnap.empty) {
+        return toast.error("Cannot delete! First delete this product's Sales from Cashbook.");
+      }
+
+      const piQ = query(collection(db, "purchase_items"), where("product_id", "==", id), limit(1));
+      const piSnap = await getDocs(piQ);
+      if (!piSnap.empty) {
+        return toast.error("Cannot delete! First delete this product's Purchases from Cashbook.");
+      }
+
       await deleteDoc(doc(db, "products", id));
       load();
     } catch (e: any) {
