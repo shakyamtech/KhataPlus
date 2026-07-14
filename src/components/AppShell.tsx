@@ -787,6 +787,11 @@ export const AppShell = () => {
                                 <li>{lang === "NEP" ? "सटिक नाफा-नोक्सान रिपोर्टिङ" : "Accurate Profit & Loss Calculation"}</li>
                                 <li>{lang === "NEP" ? "रेसिपी (Manufactured Products) हटाइयो" : "Removed Manufactured Products"}</li>
                                 <li>{lang === "NEP" ? "बारकोड स्क्यानर समर्थन (अझै सुधारिएको)" : "Improved Barcode Scanner Support"}</li>
+                                {!hasMigrated && (
+                                    <li className="text-destructive font-bold">
+                                        {lang === "NEP" ? "कृपया Profile बाट 'Migrate to Batches' मा क्लिक गर्नुहोस्!" : "Please click 'Migrate to Batches' from Profile Menu!"}
+                                    </li>
+                                )}
                             </ul>
                         </div>
                         
