@@ -44,7 +44,7 @@ const Auth = () => {
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={6}
-          className="pr-10 bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-purple-950/30 dark:border-border/30 dark:focus:bg-purple-950/50 dark:text-foreground"
+          className="pr-10 bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
           autoComplete="current-password"
           placeholder={t.pwPlaceholder}
         />
@@ -129,16 +129,16 @@ const Auth = () => {
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-hero p-4 relative overflow-hidden font-sans">
       
       {/* Floating English / Nepali Language Switcher */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-1 bg-white/80 backdrop-blur-md border border-white/40 p-1 rounded-xl shadow-soft dark:bg-purple-950/60 dark:border-white/10">
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-1 bg-white/80 backdrop-blur-md border border-white/40 p-1 rounded-xl shadow-soft dark:bg-secondary/40 dark:border-white/10">
         <button 
           onClick={() => changeLang("ENG")} 
-          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-300 ${lang === "ENG" ? "bg-primary text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground dark:text-purple-300/80 dark:hover:text-white"}`}
+          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-300 ${lang === "ENG" ? "bg-primary text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-white"}`}
         >
           ENG
         </button>
         <button 
           onClick={() => changeLang("NEP")} 
-          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-300 ${lang === "NEP" ? "bg-primary text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground dark:text-purple-300/80 dark:hover:text-white"}`}
+          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-300 ${lang === "NEP" ? "bg-primary text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-white"}`}
         >
           नेपाली
         </button>
@@ -179,14 +179,14 @@ const Auth = () => {
       `}</style>
 
       {/* Decorative Glow Orbs in the background */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-300/30 blur-[120px] pointer-events-none animate-pulse-glow" />
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[120px] pointer-events-none animate-pulse-glow" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-lime-200/40 blur-[120px] pointer-events-none animate-pulse-glow" />
       <div className="absolute top-[40%] right-[10%] w-[30%] h-[30%] rounded-full bg-orange-200/25 blur-[100px] pointer-events-none animate-pulse-glow" />
 
       {/* Floating Organic Leaf SVGs */}
       <div className="absolute top-[12%] left-[8%] animate-float-1 pointer-events-none opacity-40 md:opacity-100">
-        <div className="p-3 bg-purple-500/10 rounded-full border border-purple-500/20 shadow-soft">
-          <Leaf className="h-7 w-7 text-purple-600 fill-purple-500/20" />
+        <div className="p-3 bg-primary/10 rounded-full border border-primary/20 shadow-soft">
+          <Leaf className="h-7 w-7 text-primary fill-primary/20" />
         </div>
       </div>
       <div className="absolute bottom-[15%] left-[6%] animate-float-2 pointer-events-none opacity-40 md:opacity-100">
@@ -200,8 +200,8 @@ const Auth = () => {
         </div>
       </div>
       <div className="absolute bottom-[20%] right-[6%] animate-float-1 pointer-events-none opacity-40 md:opacity-100">
-        <div className="p-3 bg-purple-500/10 rounded-full border border-purple-500/20 shadow-soft">
-          <Leaf className="h-6 w-6 text-purple-500 rotate-45" />
+        <div className="p-3 bg-primary/10 rounded-full border border-primary/20 shadow-soft">
+          <Leaf className="h-6 w-6 text-primary rotate-45" />
         </div>
       </div>
 
@@ -246,16 +246,16 @@ const Auth = () => {
             </div>
 
             <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid grid-cols-2 w-full h-auto mb-6 bg-purple-100/50 p-1 rounded-xl dark:bg-purple-950/50">
+              <TabsList className="grid grid-cols-2 w-full h-auto mb-6 bg-secondary/50 p-1 rounded-xl dark:bg-secondary/30">
                 <TabsTrigger 
                   value="signin" 
-                  className="rounded-lg py-2 font-medium text-sm text-muted-foreground hover:text-foreground dark:text-purple-100/70 dark:hover:text-purple-100 transition-all duration-300 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-soft dark:data-[state=active]:bg-purple-800 dark:data-[state=active]:text-white"
+                  className="rounded-lg py-2 font-medium text-sm text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground transition-all duration-300 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-soft dark:data-[state=active]:bg-secondary dark:data-[state=active]:text-foreground"
                 >
                   {t.signin}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="signup" 
-                  className="rounded-lg py-2 font-medium text-sm text-muted-foreground hover:text-foreground dark:text-purple-100/70 dark:hover:text-purple-100 transition-all duration-300 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-soft dark:data-[state=active]:bg-purple-800 dark:data-[state=active]:text-white"
+                  className="rounded-lg py-2 font-medium text-sm text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground transition-all duration-300 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-soft dark:data-[state=active]:bg-secondary dark:data-[state=active]:text-foreground"
                 >
                   {t.createAccount}
                 </TabsTrigger>
@@ -270,14 +270,14 @@ const Auth = () => {
                       value={email} 
                       onChange={(e) => setEmail(e.target.value)} 
                       required 
-                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-purple-950/30 dark:border-border/30 dark:focus:bg-purple-950/50 dark:text-foreground"
+                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
                       placeholder={t.emailPlaceholder}
                     />
                   </div>
                   <div>
                     {PasswordField}
                     <div className="flex justify-end mt-1.5">
-                      <button type="button" onClick={handleForgotPassword} className="text-xs text-primary hover:text-purple-700 hover:underline font-semibold transition-colors">
+                      <button type="button" onClick={handleForgotPassword} className="text-xs text-primary hover:text-primary/80 hover:underline font-semibold transition-colors">
                         {t.forgotPw}
                       </button>
                     </div>
@@ -298,7 +298,7 @@ const Auth = () => {
                       onChange={(e) => setFullName(e.target.value)} 
                       placeholder={t.namePlaceholder} 
                       autoComplete="off"
-                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-purple-950/30 dark:border-border/30 dark:focus:bg-purple-950/50 dark:text-foreground"
+                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
                     />
                   </div>
                   <div>
@@ -308,7 +308,7 @@ const Auth = () => {
                       onChange={(e) => setShopName(e.target.value)} 
                       placeholder={t.shopPlaceholder} 
                       autoComplete="off"
-                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-purple-950/30 dark:border-border/30 dark:focus:bg-purple-950/50 dark:text-foreground"
+                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
                     />
                   </div>
                   <div>
@@ -318,7 +318,7 @@ const Auth = () => {
                       onChange={(e) => setPanNo(e.target.value)} 
                       placeholder={t.panPlaceholder} 
                       autoComplete="off"
-                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-purple-950/30 dark:border-border/30 dark:focus:bg-purple-950/50 dark:text-foreground"
+                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
                     />
                   </div>
                   <div>
@@ -330,7 +330,7 @@ const Auth = () => {
                       required 
                       autoComplete="off"
                       placeholder={t.emailPlaceholder}
-                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-purple-950/30 dark:border-border/30 dark:focus:bg-purple-950/50 dark:text-foreground"
+                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
                     />
                   </div>
                   <div>
@@ -342,7 +342,7 @@ const Auth = () => {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         minLength={6}
-                        className="pr-10 bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-purple-950/30 dark:border-border/30 dark:focus:bg-purple-950/50 dark:text-foreground"
+                        className="pr-10 bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
                         autoComplete="new-password"
                         placeholder={t.pwPlaceholder}
                       />
@@ -371,8 +371,8 @@ const Auth = () => {
         <div className="hidden lg:block w-full max-w-4xl pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
             <div className="p-4 rounded-2xl glass-panel shadow-soft hover:shadow-card transition-all duration-300 group hover:-translate-y-1">
-              <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3 group-hover:bg-primary transition-all duration-300">
-                <ShoppingBag className="h-5 w-5 text-purple-600 group-hover:text-primary-foreground" />
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary transition-all duration-300">
+                <ShoppingBag className="h-5 w-5 text-primary group-hover:text-primary-foreground" />
               </div>
               <h3 className="font-bold text-sm text-foreground mb-1">{t.posTitle}</h3>
               <p className="text-xs text-muted-foreground">{t.posDesc}</p>
@@ -392,8 +392,8 @@ const Auth = () => {
               <p className="text-xs text-muted-foreground">{t.ledgerDesc}</p>
             </div>
             <div className="p-4 rounded-2xl glass-panel shadow-soft hover:shadow-card transition-all duration-300 group hover:-translate-y-1">
-              <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3 group-hover:bg-primary transition-all duration-300">
-                <CheckCircle2 className="h-5 w-5 text-purple-600 group-hover:text-primary-foreground" />
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary transition-all duration-300">
+                <CheckCircle2 className="h-5 w-5 text-primary group-hover:text-primary-foreground" />
               </div>
               <h3 className="font-bold text-sm text-foreground mb-1">{t.recipeTitle}</h3>
               <p className="text-xs text-muted-foreground">{t.recipeDesc}</p>
