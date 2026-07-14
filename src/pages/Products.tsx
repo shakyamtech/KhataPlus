@@ -30,7 +30,7 @@ type Product = {
   barcode: string | null;
 };
 
-const blank = { name: "", unit: "kg", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "" };
+const blank = { name: "", unit: "kg", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "", batch_name: "" };
 
 const Products = () => {
   const { user } = useAuth();
@@ -117,7 +117,7 @@ const Products = () => {
             id: batchRef.id,
             user_id: user!.uid,
             product_id: ref.id,
-            batch_name: "Initial Batch",
+            batch_name: edit.batch_name?.trim() || "Initial Batch",
             original_qty: payload.stock_qty,
             remaining_qty: payload.stock_qty,
             cost_price: payload.cost_price,
@@ -319,6 +319,9 @@ const Products = () => {
                   <div><Label>Name</Label><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." /></div>
                   <div><Label>Barcode (Optional)</Label><Input value={edit.barcode || ""} onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} placeholder="Scan barcode..." /></div>
                 </div>
+                {!edit.id && (
+                  <div><Label>Opening Batch No. (Optional)</Label><Input value={edit.batch_name || ""} onChange={(e) => setEdit({ ...edit, batch_name: e.target.value })} placeholder="e.g. BATCH-001" /></div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Unit</Label>
                     <Select value={edit.unit} onValueChange={(v) => setEdit({ ...edit, unit: v })}>
