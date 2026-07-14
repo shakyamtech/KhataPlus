@@ -67,11 +67,11 @@
   }
 
   .dark {
-    /* Jet Black / Slate Background */
-    --background: 222.2 84% 4.9%;
+    /* Main Background - Slightly lighter to contrast with sidebar */
+    --background: 222.2 47.4% 9%;
     --foreground: 210 40% 98%;
     
-    --card: 222.2 47.4% 7%;
+    --card: 222.2 47.4% 12%;
     --card-foreground: 210 40% 98%;
     
     --popover: 222.2 47.4% 7%;
@@ -101,8 +101,8 @@
     --gradient-fresh: linear-gradient(135deg, hsl(217 32% 17%) 0%, hsl(217 32% 12%) 100%);
     --shadow-glow: 0 0 20px hsl(217 91% 60% / 0.15);
 
-    /* Sidebar - Dark */
-    --sidebar-background: 222.2 47.4% 7%;
+    /* Sidebar - Very dark to anchor the app */
+    --sidebar-background: 222.2 84% 4.9%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 217.2 91.2% 59.8%;
     --sidebar-primary-foreground: 222.2 47.4% 1.2%;
