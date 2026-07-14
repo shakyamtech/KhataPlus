@@ -327,8 +327,8 @@ export const AppShell = () => {
             <aside className="hidden md:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
                 <div className="px-6 py-6 border-b border-sidebar-border">
                     <div className="flex items-center gap-2">
-                        <div className="h-9 w-9 rounded-xl bg-sidebar-primary flex items-center justify-center hover:scale-110 hover:shadow-glow hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer group">
-                            <BookText className="h-5 w-5 text-sidebar-primary-foreground group-hover:-rotate-12 transition-transform duration-300" />
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] shadow-[0_2px_10px_rgba(6,182,212,0.4)] flex items-center justify-center hover:scale-110 hover:shadow-[0_4px_15px_rgba(6,182,212,0.6)] hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer group shrink-0">
+                            <BookText className="h-5 w-5 text-white group-hover:-rotate-12 transition-transform duration-300" />
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="font-display text-lg leading-tight">KhataPlus</div>
@@ -479,8 +479,8 @@ export const AppShell = () => {
                             <SheetDescription className="sr-only">Quick access links and account management</SheetDescription>
                             <div className="px-6 py-8 border-b border-sidebar-border bg-sidebar-accent/30">
                                 <div className="flex items-center gap-4">
-                                    <div className="h-12 w-12 rounded-2xl bg-sidebar-primary flex items-center justify-center shadow-lg shrink-0 hover:scale-110 hover:shadow-glow hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer group">
-                                        <BookText className="h-7 w-7 text-sidebar-primary-foreground group-hover:-rotate-12 transition-transform duration-300" />
+                                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] flex items-center justify-center shadow-[0_4px_15px_rgba(6,182,212,0.5)] shrink-0 hover:scale-110 hover:shadow-[0_6px_20px_rgba(6,182,212,0.7)] hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer group">
+                                        <BookText className="h-7 w-7 text-white group-hover:-rotate-12 transition-transform duration-300" />
                                     </div>
                                     <div>
                                         <div className="font-display text-xl leading-tight text-sidebar-foreground">KhataPlus</div>
