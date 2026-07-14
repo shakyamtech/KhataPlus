@@ -615,7 +615,7 @@ const POS = () => {
               <span className="font-medium text-sm">
                 {Number(tendered) >= total ? "Change to Return" : "Short by"}
               </span>
-              <span className="font-display text-xl text-black">
+              <span className="font-display text-xl text-foreground">
                 {fmt(Math.abs(Number(tendered) - total))}
               </span>
             </div>
