@@ -614,7 +614,15 @@ const Cashbook = () => {
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete entry?</AlertDialogTitle>
-                      <AlertDialogDescription>This cash entry will be permanently removed.</AlertDialogDescription>
+                      <AlertDialogDescription>
+                        {r.category === "sale"
+                          ? "Are you sure? This will delete the Sale, return the sold items to Stock, remove the customer's ledger entry, and deduct the cash balance."
+                          : (r.category === "purchase" || r.category === "purchases")
+                            ? "Are you sure? This will delete the Purchase, remove the purchased items from Stock, remove the supplier's ledger entry, and restore the cash balance."
+                            : "This cash entry will be permanently removed. The cash balance will be updated accordingly."
+                        }
+                        <div className="mt-2 font-semibold text-destructive">Warning: This action cannot be undone!</div>
+                      </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
