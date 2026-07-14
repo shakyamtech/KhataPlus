@@ -103,10 +103,28 @@ const Products = () => {
     setBusy(true);
     try {
       if (edit.id) {
-        await updateDoc(doc(db, "products", edit.id), payload);
+        // Exclude stock_qty and cost_price to prevent accidental overwrite since they are read-only
+        const { stock_qty, cost_price, ...updatePayload } = payload;
+        await updateDoc(doc(db, "products", edit.id), updatePayload);
       } else {
+        const batch = writeBatch(db);
         const ref = doc(collection(db, "products"));
-        await setDoc(ref, { ...payload, id: ref.id });
+        batch.set(ref, { ...payload, id: ref.id });
+        
+        if (payload.stock_qty > 0) {
+          const batchRef = doc(collection(db, "product_batches"));
+          batch.set(batchRef, {
+            id: batchRef.id,
+            user_id: user!.uid,
+            product_id: ref.id,
+            batch_name: "Initial Batch",
+            original_qty: payload.stock_qty,
+            remaining_qty: payload.stock_qty,
+            cost_price: payload.cost_price,
+            created_at: new Date().toISOString()
+          });
+        }
+        await batch.commit();
       }
       toast.success("Saved");
       setOpen(false); setEdit(blank); load();
@@ -217,6 +235,21 @@ const Products = () => {
       const pRef = doc(db, "products", activeProduct.id);
       batch.update(pRef, { stock_qty: increment(-qty) });
 
+      const bQ = query(collection(db, "product_batches"), where("product_id", "==", activeProduct.id), where("remaining_qty", ">", 0));
+      const bSnap = await getDocs(bQ);
+      const allBatches = bSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      allBatches.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      let qtyToDeduct = qty;
+      for (const batchDoc of allBatches) {
+        if (qtyToDeduct <= 0) break;
+        const deducted = Math.min(qtyToDeduct, batchDoc.remaining_qty);
+        qtyToDeduct -= deducted;
+        
+        const bRef = doc(db, "product_batches", batchDoc.id);
+        batch.update(bRef, { remaining_qty: increment(-deducted) });
+      }
+
       const adjRef = doc(collection(db, "stock_adjustments"));
       batch.set(adjRef, {
         id: adjRef.id,
@@ -278,7 +311,7 @@ const Products = () => {
               <DialogHeader>
                 <DialogTitle>{edit.id ? "Edit Product" : "New Product"}</DialogTitle>
                 <DialogDescription>
-                  {edit.id ? "Update the details for this product." : "Add a new item to your inventory."}
+                  {edit.id ? "Update the details for this product. Note: Stock Qty and Cost Price can only be modified via Purchases or Adjustments." : "Add a new item to your inventory."}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
@@ -304,10 +337,10 @@ const Products = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div><Label>Stock Qty</Label><Input type="number" step="0.001" value={edit.stock_qty} onChange={(e) => setEdit({ ...edit, stock_qty: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
+                  <div><Label>Stock Qty</Label><Input type="number" step="0.001" disabled={!!edit.id} value={edit.stock_qty} onChange={(e) => setEdit({ ...edit, stock_qty: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Cost Price (Rs.)</Label><Input type="number" step="0.01" value={edit.cost_price} onChange={(e) => setEdit({ ...edit, cost_price: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
+                  <div><Label>Cost Price (Rs.)</Label><Input type="number" step="0.01" disabled={!!edit.id} value={edit.cost_price} onChange={(e) => setEdit({ ...edit, cost_price: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
                   <div><Label>Sell Price (Rs.)</Label><Input type="number" step="0.01" value={edit.sell_price} onChange={(e) => setEdit({ ...edit, sell_price: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
                 </div>
                 <div><Label>Low-stock alert at</Label><Input type="number" step="0.001" value={edit.low_stock_threshold} onChange={(e) => setEdit({ ...edit, low_stock_threshold: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
