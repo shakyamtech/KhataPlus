@@ -314,8 +314,8 @@ const Dashboard = () => {
             <div className="absolute inset-0 -translate-x-[150%] group-hover:translate-x-[150%] w-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[25deg] transition-transform duration-1000 ease-in-out z-0 pointer-events-none" />
             
             <div className="relative z-10 flex flex-col justify-between h-full">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md shadow-soft group-hover:scale-110 group-hover:-translate-y-1 group-hover:bg-white/20 transition-all duration-300">
-                <ShoppingCart className="h-6 w-6 text-white group-hover:translate-x-1 group-hover:-rotate-12 transition-all duration-300 ease-out" />
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md shadow-soft group-hover:scale-110 group-hover:-translate-y-1 group-hover:bg-white group-hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all duration-300 relative z-20">
+                <ShoppingCart className="h-6 w-6 text-white group-hover:text-primary group-hover:translate-x-1 group-hover:-rotate-12 transition-all duration-300 ease-out" />
               </div>
               <div className="mt-8">
                 <h3 className="font-display text-2xl font-bold">Start Billing</h3>
