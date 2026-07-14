@@ -310,7 +310,7 @@ const POS = () => {
         amount_paid: paid,
         total: total,
         cost_total: costTotal,
-        note: noteWithDiscount,
+        note: Number(discount) > 0 ? `Discount given: Rs. ${discount}` : null,
         created_at: new Date().toISOString()
       });
 
