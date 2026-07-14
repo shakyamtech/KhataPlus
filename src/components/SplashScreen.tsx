@@ -36,24 +36,24 @@ export const SplashScreen = () => {
   return (
     <div className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background overflow-hidden transition-all duration-700 ease-in-out ${stage === "fading" ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
       {/* Background Decorative Circles */}
-      <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-purple-500/5 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-orange-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
 
       <div className="relative flex flex-col items-center">
         {/* Logo Container with Enhanced Animation */}
         <div className="relative mb-10 group">
           {/* Dynamic Layered Glows */}
-          <div className="absolute inset-0 bg-purple-400/30 dark:bg-purple-500/10 rounded-[2rem] blur-2xl scale-150 animate-logo-glow" />
-          <div className="absolute inset-0 bg-purple-500/20 dark:bg-purple-500/10 rounded-[2rem] blur-xl scale-110 animate-logo-glow-alt" />
+          <div className="absolute inset-0 bg-cyan-400/30 dark:bg-cyan-500/10 rounded-[2rem] blur-2xl scale-150 animate-logo-glow" />
+          <div className="absolute inset-0 bg-blue-500/20 dark:bg-blue-500/10 rounded-[2rem] blur-xl scale-110 animate-logo-glow-alt" />
           
           {/* Main Logo Card */}
-          <div className="relative h-28 w-28 bg-gradient-to-br from-purple-500 to-purple-600 rounded-[2.2rem] flex items-center justify-center shadow-[0_20px_50px_rgba(147,51,234,0.3)] border border-white/20 animate-logo-entrance">
+          <div className="relative h-28 w-28 bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] rounded-[2.2rem] flex items-center justify-center shadow-[0_20px_50px_rgba(6,182,212,0.3)] border border-white/20 animate-logo-entrance">
             <BookText className="h-14 w-14 text-white animate-logo-float drop-shadow-[0_4px_8px_rgba(0,0,0,0.1)]" />
           </div>
           
           {/* Decorative Particles */}
-          <div className="absolute -top-2 -right-2 h-4 w-4 bg-orange-400 rounded-full blur-[2px] animate-bounce" style={{ animationDelay: '0.5s' }} />
-          <div className="absolute -bottom-1 -left-1 h-3 w-3 bg-purple-300 rounded-full blur-[1px] animate-bounce" style={{ animationDelay: '0.8s' }} />
+          <div className="absolute -top-2 -right-2 h-4 w-4 bg-blue-400 rounded-full blur-[2px] animate-bounce" style={{ animationDelay: '0.5s' }} />
+          <div className="absolute -bottom-1 -left-1 h-3 w-3 bg-cyan-300 rounded-full blur-[1px] animate-bounce" style={{ animationDelay: '0.8s' }} />
         </div>
 
         <div className="text-center space-y-2 px-4">
@@ -67,7 +67,7 @@ export const SplashScreen = () => {
 
         {/* Loading Indicator */}
         <div className="mt-16 w-56 h-1.5 bg-secondary rounded-full overflow-hidden border border-border shadow-inner">
-          <div className="h-full bg-gradient-to-r from-purple-500 via-purple-400 to-purple-600 w-full animate-loading-progress" />
+          <div className="h-full bg-gradient-to-r from-cyan-500 via-blue-400 to-blue-600 w-full animate-loading-progress" />
         </div>
       </div>
 
