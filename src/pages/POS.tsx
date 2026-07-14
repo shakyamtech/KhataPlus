@@ -10,15 +10,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Minus, Trash2, ShoppingCart, Loader2 } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo } from "@/lib/shop";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
 type Product = { id: string; name: string; unit: string; cost_price: number; sell_price: number; stock_qty: number; low_stock_threshold: number; is_manufactured: boolean; barcode: string | null };
-type Customer = { id: string; name: string };
+type Customer = { id: string; name: string; phone?: string };
 type CartItem = { product_id: string; product_name: string; unit: string; sell_price: number | string; cost_price: number; qty: number | string };
 
 const POS = () => {
@@ -34,6 +37,7 @@ const POS = () => {
   const [discount, setDiscount] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [tempAmount, setTempAmount] = useState<{id: string, val: string} | null>(null);
+  const [customerComboOpen, setCustomerComboOpen] = useState(false);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
@@ -541,13 +545,52 @@ const POS = () => {
             <div>
               <Label className="text-xs">Customer</Label>
               <div className="flex gap-2">
-                <Select value={customerId} onValueChange={setCustomerId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="walk-in">Walk-in</SelectItem>
-                    {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Popover open={customerComboOpen} onOpenChange={setCustomerComboOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={customerComboOpen}
+                      className="w-full justify-between font-normal text-left truncate"
+                    >
+                      {customerId === "walk-in" ? "Walk-in" : customers.find((c: any) => c.id === customerId)?.name || "Select Customer..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] lg:w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search name or phone..." />
+                      <CommandList>
+                        <CommandEmpty>No customer found.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="walk-in"
+                            onSelect={() => {
+                              setCustomerId("walk-in");
+                              setCustomerComboOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", customerId === "walk-in" ? "opacity-100" : "opacity-0")} />
+                            Walk-in
+                          </CommandItem>
+                          {customers.map((c: any) => (
+                            <CommandItem
+                              key={c.id}
+                              value={c.name + " " + (c.phone || "")}
+                              onSelect={() => {
+                                setCustomerId(c.id);
+                                setCustomerComboOpen(false);
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", customerId === c.id ? "opacity-100" : "opacity-0")} />
+                              {c.name} {c.phone && <span className="ml-1 text-muted-foreground text-xs">({c.phone})</span>}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <Button size="icon" variant="outline" onClick={() => setCustomerDialogOpen(true)} title="Add New Customer" className="shrink-0">
                   <Plus className="h-4 w-4" />
                 </Button>
