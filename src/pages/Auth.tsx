@@ -126,7 +126,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-cyan-100 dark:from-slate-950 dark:via-secondary dark:to-slate-900 animate-bg-shift p-4 relative overflow-hidden font-sans">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-hero animate-bg-shift p-4 relative overflow-hidden font-sans">
       
       {/* Floating English / Nepali Language Switcher */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-1 bg-white/80 backdrop-blur-md border border-white/40 p-1 rounded-xl shadow-soft dark:bg-secondary/40 dark:border-white/10">
