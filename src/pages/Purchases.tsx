@@ -18,7 +18,7 @@ import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
 type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null };
 type Supplier = { id: string; name: string };
-type Item = { product_id: string; product_name: string; unit: string; cost_price: number | string; qty: number | string };
+type Item = { product_id: string; product_name: string; unit: string; cost_price: number | string; qty: number | string; batch_name?: string };
 
 const paymentModeLabels: Record<string, string> = {
   cash: "Cash",
@@ -128,10 +128,10 @@ const Purchases = () => {
   const addProduct = (id: string) => {
     const p = products.find((x) => x.id === id); if (!p) return;
     if (items.find((i) => i.product_id === id)) return;
-    setItems((arr) => [...arr, { product_id: p.id, product_name: p.name, unit: p.unit, cost_price: Number(p.cost_price), qty: 1 }]);
+    setItems((arr) => [...arr, { product_id: p.id, product_name: p.name, unit: p.unit, cost_price: Number(p.cost_price), qty: 1, batch_name: "" }]);
     setProductPick("");
   };
-  const updateItem = (id: string, k: "qty" | "cost_price", v: number | string) =>
+  const updateItem = (id: string, k: "qty" | "cost_price" | "batch_name", v: number | string) =>
     setItems((arr) => arr.map((i) => i.product_id === id ? { ...i, [k]: v } : i));
   const removeItem = (id: string) => setItems((arr) => arr.filter((i) => i.product_id !== id));
 
@@ -153,7 +153,8 @@ const Purchases = () => {
         product_name: item.product_name || "Unknown Product",
         unit: item.unit || "kg",
         cost_price: Number(item.cost_price || item.price || 0),
-        qty: Number(item.qty || item.quantity || 0)
+        qty: Number(item.qty || item.quantity || 0),
+        batch_name: item.batch_name || ""
       }));
 
       setEditingId(p.id);
@@ -284,6 +285,19 @@ const Purchases = () => {
         batch.update(pRef, {
           stock_qty: increment(Number(item.qty))
         });
+        
+        const batchRef = doc(collection(db, "product_batches"));
+        batch.set(batchRef, {
+          id: batchRef.id,
+          user_id: user!.uid,
+          product_id: item.product_id,
+          purchase_id: purchaseRef.id,
+          batch_name: item.batch_name?.trim() || "N/A",
+          original_qty: Number(item.qty),
+          remaining_qty: Number(item.qty),
+          cost_price: Number(item.cost_price),
+          created_at: new Date().toISOString()
+        });
       }
 
       if (paid > 0) {
@@ -354,6 +368,10 @@ const Purchases = () => {
         batch.delete(d.ref);
       });
 
+      const pbQ = query(collection(db, "product_batches"), where("purchase_id", "==", id));
+      const pbSnap = await getDocs(pbQ);
+      pbSnap.docs.forEach((d) => batch.delete(d.ref));
+
       const cashQ = query(collection(db, "cash_transactions"), where("reference_id", "==", id));
       const cashSnap = await getDocs(cashQ);
       cashSnap.docs.forEach((d) => batch.delete(d.ref));
@@ -423,14 +441,18 @@ const Purchases = () => {
 
           <div className="space-y-2.5">
             {items.map((i) => (
-              <div key={i.product_id} className="bg-secondary p-3 rounded-xl space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_100px_120px_100px_auto] sm:gap-3 sm:items-center shadow-soft transition-all">
+              <div key={i.product_id} className="bg-secondary p-3 rounded-xl space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_80px_100px_100px_80px_auto] sm:gap-3 sm:items-center shadow-soft transition-all">
                 <div className="flex items-center justify-between sm:justify-start gap-2 border-b sm:border-0 pb-2 sm:pb-0 border-border/40">
                   <div className="font-semibold text-foreground truncate">{i.product_name} <span className="text-xs font-normal text-muted-foreground">/{i.unit}</span></div>
                   <Button size="icon" variant="ghost" className="h-8 w-8 sm:hidden text-destructive hover:bg-destructive/10" onClick={() => removeItem(i.product_id)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="grid grid-cols-3 gap-2 items-end sm:contents">
+                <div className="grid grid-cols-4 gap-2 items-end sm:contents">
+                  <div className="space-y-1 sm:space-y-0">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Batch (Opt)</Label>
+                    <Input className="h-9 font-medium text-xs sm:text-sm bg-background" value={i.batch_name || ""} onChange={(e) => updateItem(i.product_id, "batch_name", e.target.value)} placeholder="Batch" />
+                  </div>
                   <div className="space-y-1 sm:space-y-0">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Qty</Label>
                     <Input className="h-9 font-medium text-xs sm:text-sm bg-background" type="number" step="0.001" value={i.qty} onChange={(e) => updateItem(i.product_id, "qty", e.target.value)} placeholder="Qty" onWheel={(e) => e.currentTarget.blur()} />

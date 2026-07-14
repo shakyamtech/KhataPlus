@@ -74,6 +74,64 @@ export const AppShell = () => {
   const [shopOpen, setShopOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [hasMigrated, setHasMigrated] = useState(true);
+
+  const migrateToBatches = async () => {
+    if (!user) return;
+    try {
+      setBusy(true);
+      toast.loading("Migrating old stock to batches...", { id: "mig" });
+      const q = query(collection(db, "products"), where("user_id", "==", user.uid));
+      const snap = await getDocs(q);
+      
+      const chunks: any[][] = [];
+      let currentChunk: any[] = [];
+      snap.docs.forEach((d) => {
+        currentChunk.push(d);
+        if (currentChunk.length === 450) {
+          chunks.push(currentChunk);
+          currentChunk = [];
+        }
+      });
+      if (currentChunk.length > 0) chunks.push(currentChunk);
+
+      let count = 0;
+      for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        for (const d of chunk) {
+          const product = d.data();
+          if (product.stock_qty > 0) {
+            const bq = query(collection(db, "product_batches"), where("product_id", "==", d.id));
+            const bSnap = await getDocs(bq);
+            if (bSnap.empty) {
+              const batchRef = doc(collection(db, "product_batches"));
+              batch.set(batchRef, {
+                id: batchRef.id,
+                user_id: user.uid,
+                product_id: d.id,
+                batch_name: "Initial Batch",
+                original_qty: product.stock_qty,
+                remaining_qty: product.stock_qty,
+                cost_price: product.cost_price || 0,
+                created_at: new Date().toISOString()
+              });
+              count++;
+            }
+          }
+        }
+        await batch.commit();
+      }
+      
+      await setDoc(doc(db, "profiles", user.uid), { migrated_to_batches: true }, { merge: true });
+      setHasMigrated(true);
+
+      toast.success(`Migrated ${count} products to batches!`, { id: "mig" });
+    } catch (e: any) {
+      toast.error(e.message, { id: "mig" });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const navTranslationKeys: Record<string, string> = {
     "Dashboard": t.dashboard,
@@ -109,8 +167,10 @@ export const AppShell = () => {
                     localStorage.setItem("khataplus_shop_name", sName);
                     setPanNo(data.pan_no || "");
                     setFullName(data.full_name || "");
+                    setHasMigrated(data.migrated_to_batches === true);
                 } else {
                     setShopName("KhataPlus Shop");
+                    setHasMigrated(false);
                 }
             } catch (e) {
                 console.error(e);
@@ -300,7 +360,7 @@ export const AppShell = () => {
                 </div>
 
                 <div className="p-3 border-t border-sidebar-border mt-auto">
-                    <div className="px-3 py-1 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} 1.5.0</div>
+                    <div className="px-3 py-1 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} 1.6.0</div>
                 </div>
             </aside>
 
@@ -360,6 +420,12 @@ export const AppShell = () => {
                         <DropdownMenuItem onClick={() => setAboutOpen(true)} className="cursor-pointer font-medium gap-2">
                             <Info className="h-4 w-4 text-primary" /> {lang === "NEP" ? "हाम्रो बारेमा" : "About App"}
                         </DropdownMenuItem>
+                        
+                        {!hasMigrated && (
+                            <DropdownMenuItem onClick={migrateToBatches} className="cursor-pointer font-medium gap-2 text-amber-600">
+                                <Package className="h-4 w-4 text-amber-600" /> Migrate to Batches
+                            </DropdownMenuItem>
+                        )}
                         
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={async () => { await signOut(); navigate("/auth"); }} className="cursor-pointer font-bold text-destructive hover:bg-destructive/10 hover:text-destructive gap-2">
@@ -431,7 +497,7 @@ export const AppShell = () => {
                             </div>
 
                             <div className="p-6 border-t border-sidebar-border mt-auto">
-                                <div className="px-1 mb-4 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} 1.5.0</div>
+                                <div className="px-1 mb-4 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} 1.6.0</div>
                                 <Button className="w-full justify-start gap-3 h-12 rounded-xl shadow-lg bg-[#FACC15] hover:bg-[#EAB308] text-black border-none font-bold"
                                     onClick={async () => { await signOut(); navigate("/auth"); }}>
                                     <LogOut className="h-5 w-5" /> {t.signOut}
@@ -701,7 +767,7 @@ export const AppShell = () => {
                             KhataPlus POS
                         </DialogTitle>
                         <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                            {lang === "NEP" ? "संस्करण १.५.०" : "Version 1.5.0"}
+                            {lang === "NEP" ? "संस्करण १.६.०" : "Version 1.6.0"}
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -717,10 +783,10 @@ export const AppShell = () => {
                                 <Sparkles className="h-3.5 w-3.5" /> {lang === "NEP" ? "नयाँ के छ?" : "What's New?"}
                             </div>
                             <ul className="text-[13px] text-muted-foreground space-y-1.5 list-disc list-inside">
-                                <li>{lang === "NEP" ? "सप्लायर मूल्य विश्लेषण र खरिद इतिहास" : "Supplier Price Analysis & Sourcing History"}</li>
-                                <li>{lang === "NEP" ? "क्षतिग्रस्त स्टक र नोक्सान व्यवस्थापन" : "Damaged Stock & Wastage Management"}</li>
-                                <li>{lang === "NEP" ? "सुधारिएको प्रिमियम डिजाइनहरू" : "Improved premium UI designs"}</li>
-                                <li>{lang === "NEP" ? "बारकोड स्क्यानर समर्थन" : "Barcode Scanner Support"}</li>
+                                <li>{lang === "NEP" ? "नयाँ FIFO (First-In, First-Out) प्रणाली लागू" : "New FIFO Batch Tracking System"}</li>
+                                <li>{lang === "NEP" ? "सटिक नाफा-नोक्सान रिपोर्टिङ" : "Accurate Profit & Loss Calculation"}</li>
+                                <li>{lang === "NEP" ? "रेसिपी (Manufactured Products) हटाइयो" : "Removed Manufactured Products"}</li>
+                                <li>{lang === "NEP" ? "बारकोड स्क्यानर समर्थन (अझै सुधारिएको)" : "Improved Barcode Scanner Support"}</li>
                             </ul>
                         </div>
                         

@@ -25,7 +25,6 @@ const POS = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [ingredients, setIngredients] = useState<any[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [customerId, setCustomerId] = useState<string>("walk-in");
@@ -45,17 +44,14 @@ const POS = () => {
     try {
       const pQ = query(collection(db, "products"), where("user_id", "==", user.uid));
       const cQ = query(collection(db, "customers"), where("user_id", "==", user.uid));
-      const iQ = query(collection(db, "product_ingredients"), where("user_id", "==", user.uid));
       
-      const [pSnap, cSnap, iSnap] = await Promise.all([getDocs(pQ), getDocs(cQ), getDocs(iQ)]);
+      const [pSnap, cSnap] = await Promise.all([getDocs(pQ), getDocs(cQ)]);
       
       const p = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const c = cSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const ing = iSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       setProducts(p.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any); 
       setCustomers(c.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any);
-      setIngredients(ing);
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -81,24 +77,7 @@ const POS = () => {
 
   const getTotalAvailable = (productId: string) => {
     const p = products.find(prod => prod.id === productId);
-    if (!p) return 0;
-    
-    let possibleFromIng = Infinity;
-    const recipe = ingredients.filter(i => i.product_id === p.id);
-    
-    if (recipe.length > 0) {
-      recipe.forEach(ri => {
-        const ingProd = products.find(prod => prod.id === ri.ingredient_id);
-        if (ingProd) {
-          const canMake = Math.floor(ingProd.stock_qty / ri.quantity);
-          if (canMake < possibleFromIng) possibleFromIng = canMake;
-        }
-      });
-    } else {
-      possibleFromIng = 0;
-    }
-
-    return p.stock_qty + (possibleFromIng === Infinity ? 0 : possibleFromIng);
+    return p ? p.stock_qty : 0;
   };
 
   const addToCart = (p: Product): boolean => {
@@ -249,9 +228,72 @@ const POS = () => {
         };
       });
 
-      const noteWithDiscount = discountNum > 0 ? `Discount: ${fmt(discountNum)}` : null;
-      const costTotal = itemsToSend.reduce((sum, item) => sum + ((Number(item.cost_price) || 0) * (Number(item.qty) || 0)), 0);
-      
+      // FETCH BATCHES FOR FIFO
+      let allBatches: any[] = [];
+      const productIds = Array.from(new Set(itemsToSend.map(i => i.product_id)));
+      const chunks = [];
+      for (let i = 0; i < productIds.length; i += 10) {
+        chunks.push(productIds.slice(i, i + 10));
+      }
+      for (const chunk of chunks) {
+        const bQ = query(collection(db, "product_batches"), where("product_id", "in", chunk), where("remaining_qty", ">", 0));
+        const bSnap = await getDocs(bQ);
+        allBatches.push(...bSnap.docs.map(d => ({ id: d.id, ...d.data() as any })));
+      }
+      // Sort batches by created_at ascending (FIFO)
+      allBatches.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      let costTotal = 0;
+      const finalSaleItems: any[] = [];
+      const batchUpdates = new Map<string, number>();
+
+      for (const item of itemsToSend) {
+        let qtyToDeduct = item.qty;
+        let itemCostTotal = 0;
+
+        const pBatches = allBatches.filter(b => b.product_id === item.product_id && b.remaining_qty > 0);
+        
+        for (const batchDoc of pBatches) {
+          if (qtyToDeduct <= 0) break;
+          
+          let availableInBatch = batchDoc.remaining_qty;
+          const deducted = Math.min(qtyToDeduct, availableInBatch);
+          
+          batchDoc.remaining_qty -= deducted;
+          qtyToDeduct -= deducted;
+          itemCostTotal += deducted * batchDoc.cost_price;
+          
+          batchUpdates.set(batchDoc.id, batchDoc.remaining_qty);
+          
+          finalSaleItems.push({
+            product_id: item.product_id,
+            product_name: item.product_name,
+            unit: item.unit,
+            qty: deducted,
+            sell_price: item.sell_price,
+            cost_price: batchDoc.cost_price,
+            batch_id: batchDoc.id,
+            batch_name: batchDoc.batch_name || "N/A"
+          });
+        }
+
+        if (qtyToDeduct > 0) {
+          const defaultCost = item.cost_price || 0;
+          itemCostTotal += qtyToDeduct * defaultCost;
+          finalSaleItems.push({
+            product_id: item.product_id,
+            product_name: item.product_name,
+            unit: item.unit,
+            qty: qtyToDeduct,
+            sell_price: item.sell_price,
+            cost_price: defaultCost,
+            batch_id: "no-batch",
+            batch_name: "No Batch Available"
+          });
+        }
+        costTotal += itemCostTotal;
+      }
+
       const batch = writeBatch(db);
       const saleRef = doc(collection(db, "sales"));
       
@@ -267,34 +309,25 @@ const POS = () => {
         created_at: new Date().toISOString()
       });
 
-      for (const item of itemsToSend) {
+      for (const si of finalSaleItems) {
         const itemRef = doc(collection(db, "sale_items"));
         batch.set(itemRef, {
           id: itemRef.id,
           sale_id: saleRef.id,
-          product_id: item.product_id,
-          product_name: item.product_name,
-          unit: item.unit,
-          qty: item.qty,
-          sell_price: item.sell_price,
-          cost_price: item.cost_price
+          ...si
         });
+      }
 
-        const product = products.find(p => p.id === item.product_id);
-        if (product?.is_manufactured) {
-          const recipe = ingredients.filter(ing => ing.product_id === product.id);
-          for (const ing of recipe) {
-            const ingRef = doc(db, "products", ing.ingredient_id);
-            batch.update(ingRef, {
-              stock_qty: increment(-(ing.quantity * item.qty))
-            });
-          }
-        } else {
-          const pRef = doc(db, "products", item.product_id);
-          batch.update(pRef, {
-            stock_qty: increment(-item.qty)
-          });
-        }
+      for (const item of itemsToSend) {
+        const pRef = doc(db, "products", item.product_id);
+        batch.update(pRef, {
+          stock_qty: increment(-item.qty)
+        });
+      }
+
+      for (const [batchId, remQty] of batchUpdates.entries()) {
+        const bRef = doc(db, "product_batches", batchId);
+        batch.update(bRef, { remaining_qty: remQty });
       }
 
       if (paid > 0) {
@@ -426,7 +459,6 @@ const POS = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {filtered.map((p) => {
               const totalAvailable = getTotalAvailable(p.id);
-              const recipe = ingredients.filter(i => i.product_id === p.id);
               const isLow = totalAvailable > 0 && totalAvailable <= (p.low_stock_threshold || 5);
               const isOut = totalAvailable <= 0;
 
@@ -445,8 +477,7 @@ const POS = () => {
                     }`}>{p.name}</div>
                   <div className={`text-xs ${isOut ? "text-red-600 dark:text-red-400 font-bold" : isLow ? "text-orange-600 dark:text-orange-400 font-medium" : "text-muted-foreground"
                     }`}>
-                    {isOut ? "OUT OF STOCK" : `${fmtQty(totalAvailable)} ${p.unit} total`}
-                    {recipe.length > 0 && p.stock_qty > 0 && <span className="block opacity-60 text-[10px]">({fmtQty(p.stock_qty)} ready)</span>}
+                    {isOut ? "OUT OF STOCK" : `${fmtQty(totalAvailable)} ${p.unit} in stock`}
                   </div>
                   <div className={`mt-2 font-semibold ${isOut ? "text-red-700 dark:text-red-400" : isLow ? "text-orange-700 dark:text-orange-400" : "text-primary dark:text-primary-glow"
                     }`}>{fmt(p.sell_price)}</div>

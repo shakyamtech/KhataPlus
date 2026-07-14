@@ -27,10 +27,10 @@ type Ingredient = {
 type Product = {
   id: string; name: string; unit: string;
   cost_price: number; sell_price: number; stock_qty: number; low_stock_threshold: number;
-  is_manufactured: boolean; barcode: string | null;
+  barcode: string | null;
 };
 
-const blank = { name: "", unit: "kg", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, is_manufactured: false, barcode: "" };
+const blank = { name: "", unit: "kg", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "" };
 
 const Products = () => {
   const { user } = useAuth();
@@ -38,13 +38,8 @@ const Products = () => {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<any>(blank);
   const [search, setSearch] = useState("");
-  const [recipeOpen, setRecipeOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
-  const [recipeIngredients, setRecipeIngredients] = useState<Ingredient[]>([]);
-  const [newIngredientId, setNewIngredientId] = useState("");
-  const [newIngredientQty, setNewIngredientQty] = useState("1");
   const [busy, setBusy] = useState(false);
-  const [busyIngredient, setBusyIngredient] = useState(false);
   const [sourcingOpen, setSourcingOpen] = useState(false);
   const [sourcingHistory, setSourcingHistory] = useState<any[]>([]);
   const [busySourcing, setBusySourcing] = useState(false);
@@ -70,21 +65,6 @@ const Products = () => {
       const supQ = query(collection(db, "suppliers"), where("user_id", "==", user.uid));
       const supSnap = await getDocs(supQ);
       setSuppliers(supSnap.docs.map(d => ({ id: d.id, name: d.data().name })));
-
-      const iQ = query(collection(db, "product_ingredients"), where("user_id", "==", user.uid));
-      const iSnap = await getDocs(iQ);
-      
-      const formatted = iSnap.docs.map(d => {
-        const data = d.data();
-        const ingProduct = pMap.get(data.ingredient_id);
-        return {
-          id: d.id,
-          ...data,
-          ingredient_name: ingProduct?.name,
-          unit: ingProduct?.unit
-        } as Ingredient;
-      });
-      setRecipeIngredients(formatted);
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -118,7 +98,6 @@ const Products = () => {
       sell_price: edit.sell_price === "" ? 0 : Number(edit.sell_price),
       low_stock_threshold: edit.low_stock_threshold === "" ? 0 : Number(edit.low_stock_threshold),
       unit: edit.unit,
-      is_manufactured: edit.is_manufactured,
       barcode: edit.barcode?.trim() || null
     };
     setBusy(true);
@@ -148,60 +127,7 @@ const Products = () => {
     }
   };
 
-  const loadRecipe = async (product: Product) => {
-    setActiveProduct(product);
-    try {
-      const q = query(collection(db, "product_ingredients"), where("product_id", "==", product.id));
-      const snap = await getDocs(q);
-      
-      const pMap = new Map(items.map(p => [p.id, p]));
-      const formatted = snap.docs.map(d => {
-        const data = d.data();
-        const ingProduct = pMap.get(data.ingredient_id);
-        return {
-          id: d.id,
-          ...data,
-          ingredient_name: ingProduct?.name,
-          unit: ingProduct?.unit
-        } as Ingredient;
-      });
-      setRecipeIngredients(formatted);
-      setRecipeOpen(true);
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
 
-  const addIngredient = async () => {
-    if (!activeProduct || !newIngredientId) return;
-    setBusyIngredient(true);
-    try {
-      const ref = doc(collection(db, "product_ingredients"));
-      await setDoc(ref, {
-        id: ref.id,
-        product_id: activeProduct.id,
-        ingredient_id: newIngredientId,
-        quantity: Number(newIngredientQty),
-        user_id: user?.uid
-      });
-      setNewIngredientId("");
-      setNewIngredientQty("1");
-      loadRecipe(activeProduct);
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setBusyIngredient(false);
-    }
-  };
-
-  const removeIngredient = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "product_ingredients", id));
-      if (activeProduct) loadRecipe(activeProduct);
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
 
   const loadSourcingHistory = async (product: Product) => {
     setActiveProduct(product);
@@ -385,16 +311,7 @@ const Products = () => {
                   <div><Label>Sell Price (Rs.)</Label><Input type="number" step="0.01" value={edit.sell_price} onChange={(e) => setEdit({ ...edit, sell_price: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
                 </div>
                 <div><Label>Low-stock alert at</Label><Input type="number" step="0.001" value={edit.low_stock_threshold} onChange={(e) => setEdit({ ...edit, low_stock_threshold: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
-                <div className="flex items-center gap-2 pt-1">
-                  <input
-                    type="checkbox"
-                    id="is_manufactured"
-                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    checked={edit.is_manufactured}
-                    onChange={(e) => setEdit({ ...edit, is_manufactured: e.target.checked })}
-                  />
-                  <Label htmlFor="is_manufactured" className="cursor-pointer font-medium text-primary">Made in our Shop (Has Recipe) [optional]</Label>
-                </div>
+
                 <Button onClick={save} disabled={busy} className="w-full bg-gradient-primary text-primary-foreground mt-2">
                   {busy ? (
                     <>
@@ -415,26 +332,7 @@ const Products = () => {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map((p) => {
-          // Dynamic calculation of 'Produced Stock' based on ingredients
-          let possibleStock = Infinity;
-          const recipe = items.filter(other => items.find(pi => pi.id === p.id)) // This is a bit complex in-situ, let's simplify
-
-          // Find ingredients for this product
-          const ingredients = recipeIngredients.filter(ri => ri.product_id === p.id);
-
-          if (ingredients.length > 0) {
-            ingredients.forEach(ing => {
-              const actualProduct = items.find(prod => prod.id === ing.ingredient_id);
-              if (actualProduct) {
-                const canMake = Math.floor(actualProduct.stock_qty / ing.quantity);
-                if (canMake < possibleStock) possibleStock = canMake;
-              }
-            });
-          } else {
-            possibleStock = p.stock_qty;
-          }
-
-          const displayStock = Math.max(0, (possibleStock === Infinity ? 0 : possibleStock));
+          const displayStock = Math.max(0, p.stock_qty);
           const isLow = displayStock > 0 && displayStock <= Number(p.low_stock_threshold);
           const isEmpty = displayStock <= 0;
 
@@ -469,11 +367,7 @@ const Products = () => {
                     </div>
                   </div>
                   <div className="flex gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity bg-secondary/50 rounded-lg p-0.5 shrink-0">
-                    {p.is_manufactured && (
-                      <Button size="icon" variant="ghost" onClick={() => loadRecipe(p)} title="Manage Recipe" className="h-8 w-8 hover:bg-orange-500 hover:text-white text-orange-500 rounded-md">
-                        <ChefHat className="h-4 w-4" />
-                      </Button>
-                    )}
+
                     <Button size="icon" variant="ghost" onClick={() => openAdjust(p)} title="Adjust Stock" className="h-8 w-8 hover:bg-red-500 hover:text-white text-muted-foreground rounded-md"><PackageMinus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => loadSourcingHistory(p)} title="Sourcing History" className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><History className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => { setEdit(p); setOpen(true); }} className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><Pencil className="h-3.5 w-3.5" /></Button>
@@ -499,7 +393,7 @@ const Products = () => {
                       ? "bg-orange-500/10 border-orange-500/20 text-orange-700 dark:text-orange-400"
                       : "bg-secondary border-border/50 text-foreground"
                   }`}>
-                  <span className="text-[11px] font-bold uppercase tracking-wider opacity-80">{ingredients.length > 0 ? "Possible Stock" : "Live Stock"}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider opacity-80">Live Stock</span>
                   <span className="font-display text-lg flex items-center gap-1.5">
                     {isEmpty ? <AlertTriangle className="h-4 w-4 text-red-600 animate-pulse" /> : isLow ? <AlertTriangle className="h-4 w-4 text-orange-600 animate-pulse" /> : null}
                     {fmtQty(displayStock)} <span className="text-sm font-medium opacity-60 ml-0.5">{p.unit}</span>
@@ -512,64 +406,7 @@ const Products = () => {
         {filtered.length === 0 && <div className="col-span-full text-center text-muted-foreground py-12">No products yet. Add your first item!</div>}
       </div>
 
-      <Dialog open={recipeOpen} onOpenChange={setRecipeOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Recipe for {activeProduct?.name || "Product"}</DialogTitle>
-            <DialogDescription>
-              Manage the ingredients required to manufacture this item.
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="flex gap-2 items-end">
-              <div className="flex-1 space-y-2">
-                <Label>Add Ingredient</Label>
-                <Select value={newIngredientId} onValueChange={setNewIngredientId}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    {items.filter(p => p.id !== activeProduct?.id).map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-24 space-y-2">
-                <Label>Qty</Label>
-                <Input type="number" value={newIngredientQty} onChange={e => setNewIngredientQty(e.target.value)} />
-              </div>
-              <Button onClick={addIngredient} disabled={busyIngredient} size="icon">
-                {busyIngredient ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Required Ingredients</Label>
-              {recipeIngredients.length === 0 && (
-                <div className="text-center text-sm text-muted-foreground py-4 border rounded-lg border-dashed">
-                  No ingredients added yet
-                </div>
-              )}
-              {recipeIngredients.map(ing => (
-                <div key={ing.id} className="flex items-center justify-between bg-secondary p-2 rounded-lg">
-                  <div className="text-sm">
-                    <span className="font-medium">{ing.ingredient_name}</span>
-                    <span className="text-muted-foreground ml-2">{ing.quantity} {ing.unit}</span>
-                  </div>
-                  <Button size="icon" variant="ghost" onClick={() => removeIngredient(ing.id)} className="h-8 w-8">
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-          <Button onClick={() => setRecipeOpen(false)} variant="secondary" className="w-full">Done</Button>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={sourcingOpen} onOpenChange={setSourcingOpen}>
         <DialogContent className="max-w-md">
