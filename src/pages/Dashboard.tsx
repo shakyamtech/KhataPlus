@@ -169,42 +169,48 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {cards.map((c) => (
-          <Card key={c.label} className="p-4 md:p-5 shadow-card border-0 overflow-hidden relative">
-            <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${c.accent} shadow-soft`}>
+          <Card key={c.label} className="p-4 md:p-5 shadow-card border-0 overflow-hidden relative hover:-translate-y-1.5 hover:shadow-elegant transition-all duration-300 ease-out group">
+            <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${c.accent} shadow-soft group-hover:scale-110 transition-transform duration-300`}>
               <c.icon className="h-5 w-5" />
             </div>
-            <div className="mt-3 text-xs uppercase tracking-wide text-muted-foreground font-medium">{c.label}</div>
+            <div className="mt-3 text-xs uppercase tracking-wide text-muted-foreground font-medium group-hover:text-foreground transition-colors duration-300">{c.label}</div>
             <div className="mt-1 text-xl md:text-2xl font-display text-foreground">{c.value}</div>
           </Card>
         ))}
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mt-6">
-        <Link to="/products" className="block">
-          <Card className="p-5 shadow-card border-0 hover:shadow-elegant transition-smooth h-full">
+        <Link to="/products" className="block outline-none">
+          <Card className="p-5 shadow-card border-0 hover:-translate-y-1.5 hover:shadow-elegant transition-all duration-300 ease-out h-full group">
             <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-warning" />
-              <div className="text-sm font-medium">Low Stock Items</div>
+              <div className="p-1.5 bg-warning/10 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                <AlertTriangle className="h-5 w-5 text-warning" />
+              </div>
+              <div className="text-sm font-medium group-hover:text-warning transition-colors duration-300">Low Stock Items</div>
             </div>
             <div className="font-display text-3xl mt-2">{stats.lowStock}</div>
             <div className="text-xs text-muted-foreground mt-1">of {stats.productCount} products</div>
           </Card>
         </Link>
-        <Link to="/customers" className="block">
-          <Card className="p-5 shadow-card border-0 hover:shadow-elegant transition-smooth h-full">
+        <Link to="/customers" className="block outline-none">
+          <Card className="p-5 shadow-card border-0 hover:-translate-y-1.5 hover:shadow-elegant transition-all duration-300 ease-out h-full group">
             <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-primary" />
-              <div className="text-sm font-medium">Customer Udhaar</div>
+              <div className="p-1.5 bg-primary/10 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+              <div className="text-sm font-medium group-hover:text-primary transition-colors duration-300">Customer Udhaar</div>
             </div>
             <div className="font-display text-3xl mt-2">{fmt(stats.customerDues)}</div>
             <div className="text-xs text-muted-foreground mt-1">Receivable</div>
           </Card>
         </Link>
-        <Link to="/suppliers" className="block">
-          <Card className="p-5 shadow-card border-0 hover:shadow-elegant transition-smooth h-full">
+        <Link to="/suppliers" className="block outline-none">
+          <Card className="p-5 shadow-card border-0 hover:-translate-y-1.5 hover:shadow-elegant transition-all duration-300 ease-out h-full group">
             <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-accent" />
-              <div className="text-sm font-medium">Supplier Dues</div>
+              <div className="p-1.5 bg-destructive/10 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                <Users className="h-5 w-5 text-destructive" />
+              </div>
+              <div className="text-sm font-medium group-hover:text-destructive transition-colors duration-300">Supplier Dues</div>
             </div>
             <div className="font-display text-3xl mt-2">{fmt(stats.supplierDues)}</div>
             <div className="text-xs text-muted-foreground mt-1">Payable</div>
@@ -293,13 +299,13 @@ const Dashboard = () => {
         </Card>
 
         {/* Start Billing Card */}
-        <Link to="/pos" className="block">
-          <Card className="p-6 shadow-elegant border-0 bg-gradient-primary text-primary-foreground hover:shadow-glow transition-smooth h-full flex flex-col justify-between group overflow-hidden relative min-h-[220px]">
+        <Link to="/pos" className="block outline-none">
+          <Card className="p-6 shadow-elegant border-0 bg-gradient-primary text-primary-foreground hover:shadow-glow hover:-translate-y-1.5 transition-all duration-300 ease-out h-full flex flex-col justify-between group overflow-hidden relative min-h-[220px]">
             {/* Glowing background bubble */}
-            <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl group-hover:scale-125 transition-transform duration-500" />
+            <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl group-hover:scale-150 transition-transform duration-700 ease-out" />
             
             <div className="relative z-10 flex flex-col justify-between h-full">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md shadow-soft">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md shadow-soft group-hover:scale-110 group-hover:bg-white/20 transition-all duration-300">
                 <ShoppingCart className="h-6 w-6 text-white" />
               </div>
               <div className="mt-8">
