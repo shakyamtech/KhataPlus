@@ -107,6 +107,13 @@
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-ring: 188 86% 53%;
     
+    --secondary: 188 32% 17%;
+    --muted: 188 32% 17%;
+    --accent: 188 32% 17%;
+    --border: 188 32% 17%;
+    --input: 188 32% 17%;
+    --sidebar-accent: 188 32% 17%;
+    
     --gradient-hero: radial-gradient(ellipse at top left, hsl(222 47% 12%) 0%, hsl(222 84% 5%) 100%);
     --gradient-fresh: linear-gradient(135deg, hsl(217 32% 17%) 0%, hsl(217 32% 12%) 100%);
     --shadow-glow: 0 0 20px hsl(188 86% 53% / 0.15);
@@ -138,6 +145,13 @@
     --sidebar-primary: 217.2 91.2% 59.8%;
     --sidebar-primary-foreground: 222.2 47.4% 1.2%;
     --sidebar-ring: 224.3 76.3% 48%;
+    
+    --secondary: 221 32% 17%;
+    --muted: 221 32% 17%;
+    --accent: 221 32% 17%;
+    --border: 221 32% 17%;
+    --input: 221 32% 17%;
+    --sidebar-accent: 221 32% 17%;
     
     --gradient-hero: radial-gradient(ellipse at top left, hsl(222 47% 12%) 0%, hsl(222 84% 5%) 100%);
     --gradient-fresh: linear-gradient(135deg, hsl(217 32% 17%) 0%, hsl(217 32% 12%) 100%);
@@ -175,6 +189,13 @@
     --sidebar-primary-foreground: 0 0% 10%;
     --sidebar-ring: 45 93% 47%;
     
+    --secondary: 45 20% 15%;
+    --muted: 45 20% 15%;
+    --accent: 45 20% 15%;
+    --border: 45 20% 15%;
+    --input: 45 20% 15%;
+    --sidebar-accent: 45 20% 15%;
+    
     --gradient-hero: radial-gradient(ellipse at top left, hsl(0 0% 15%) 0%, hsl(0 0% 6%) 100%);
     --gradient-fresh: linear-gradient(135deg, hsl(0 0% 17%) 0%, hsl(0 0% 12%) 100%);
     --shadow-glow: 0 0 20px hsl(45 93% 47% / 0.15);
@@ -210,6 +231,13 @@
     --sidebar-primary: 272 70% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-ring: 272 70% 55%;
+    
+    --secondary: 272 32% 17%;
+    --muted: 272 32% 17%;
+    --accent: 272 32% 17%;
+    --border: 272 32% 17%;
+    --input: 272 32% 17%;
+    --sidebar-accent: 272 32% 17%;
     
     --gradient-hero: radial-gradient(ellipse at top left, hsl(272 47% 15%) 0%, hsl(272 50% 7%) 100%);
     --gradient-fresh: linear-gradient(135deg, hsl(272 32% 19%) 0%, hsl(272 32% 14%) 100%);
