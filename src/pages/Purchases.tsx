@@ -51,7 +51,7 @@ const Purchases = () => {
   const [newProductSellPrice, setNewProductSellPrice] = useState("0");
   const [newProductStockQty, setNewProductStockQty] = useState("0");
   const [newProductLowStockThreshold, setNewProductLowStockThreshold] = useState("5");
-  const [newProductIsManufactured, setNewProductIsManufactured] = useState(false);
+  const [newProductBatchName, setNewProductBatchName] = useState("");
   const [busy, setBusy] = useState(false);
   const [busySupplier, setBusySupplier] = useState(false);
   const [busyProduct, setBusyProduct] = useState(false);
@@ -198,21 +198,41 @@ const Purchases = () => {
     if (!newProductName.trim()) return toast.error("Name required");
     setBusyProduct(true);
     try {
+      const batch = writeBatch(db);
       const ref = doc(collection(db, "products"));
-      await setDoc(ref, {
+      const qty = Number(newProductStockQty) || 0;
+      const cost = Number(newProductCostPrice) || 0;
+      
+      batch.set(ref, {
         id: ref.id,
         user_id: user!.uid,
         name: newProductName.trim(),
         unit: newProductUnit,
-        cost_price: Number(newProductCostPrice) || 0,
+        cost_price: cost,
         sell_price: Number(newProductSellPrice) || 0,
-        stock_qty: Number(newProductStockQty) || 0,
+        stock_qty: qty,
         low_stock_threshold: Number(newProductLowStockThreshold) || 5,
-        is_manufactured: newProductIsManufactured,
         barcode: newProductBarcode.trim() || null
       });
+
+      if (qty > 0) {
+        const batchRef = doc(collection(db, "product_batches"));
+        batch.set(batchRef, {
+          id: batchRef.id,
+          user_id: user!.uid,
+          product_id: ref.id,
+          batch_name: newProductBatchName.trim() || "Initial Batch",
+          original_qty: qty,
+          remaining_qty: qty,
+          cost_price: cost,
+          created_at: new Date().toISOString()
+        });
+      }
+
+      await batch.commit();
+
       toast.success("Product added");
-      setNewProductName(""); setNewProductBarcode(""); setNewProductUnit("kg"); setNewProductCostPrice("0"); setNewProductSellPrice("0"); setNewProductStockQty("0"); setNewProductLowStockThreshold("5"); setNewProductIsManufactured(false);
+      setNewProductName(""); setNewProductBarcode(""); setNewProductUnit("kg"); setNewProductCostPrice("0"); setNewProductSellPrice("0"); setNewProductStockQty("0"); setNewProductLowStockThreshold("5"); setNewProductBatchName("");
       setProductDialogOpen(false);
       await load();
       addProduct(ref.id);
@@ -577,6 +597,7 @@ const Purchases = () => {
               <div><Label>Name</Label><Input value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="Enter item name..." /></div>
               <div><Label>Barcode (Optional)</Label><Input value={newProductBarcode} onChange={(e) => setNewProductBarcode(e.target.value)} placeholder="Scan barcode..." /></div>
             </div>
+            <div><Label>Opening Batch No. (Optional)</Label><Input value={newProductBatchName} onChange={(e) => setNewProductBatchName(e.target.value)} placeholder="e.g. BATCH-001" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Unit</Label>
@@ -614,16 +635,6 @@ const Purchases = () => {
             <div>
               <Label>Low-stock alert at</Label>
               <Input type="number" step="0.001" value={newProductLowStockThreshold} onChange={(e) => setNewProductLowStockThreshold(e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                type="checkbox"
-                id="is_manufactured_purchases"
-                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                checked={newProductIsManufactured}
-                onChange={(e) => setNewProductIsManufactured(e.target.checked)}
-              />
-              <Label htmlFor="is_manufactured_purchases" className="cursor-pointer font-medium text-primary">Made in our Shop (Has Recipe) [optional]</Label>
             </div>
             <Button onClick={saveNewProduct} disabled={busyProduct} className="w-full bg-gradient-primary text-primary-foreground mt-2">
               {busyProduct ? (
