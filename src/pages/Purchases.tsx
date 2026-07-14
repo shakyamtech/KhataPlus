@@ -47,6 +47,7 @@ const Purchases = () => {
   const [newSupplierPhone, setNewSupplierPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [busySupplier, setBusySupplier] = useState(false);
+  const [cashBalance, setCashBalance] = useState(0);
 
   const load = async () => {
     if (!user) return;
@@ -54,8 +55,12 @@ const Purchases = () => {
       const pQ = query(collection(db, "products"), where("user_id", "==", user.uid));
       const sQ = query(collection(db, "suppliers"), where("user_id", "==", user.uid));
       const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(20));
+      const txQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
 
-      const [pSnap, sSnap, purSnap] = await Promise.all([getDocs(pQ), getDocs(sQ), getDocs(purQ)]);
+      const [pSnap, sSnap, purSnap, txSnap] = await Promise.all([getDocs(pQ), getDocs(sQ), getDocs(purQ), getDocs(txQ)]);
+      
+      const cBal = txSnap.docs.reduce((s, r) => s + (r.data().direction === "in" ? Number(r.data().amount) : -Number(r.data().amount)), 0);
+      setCashBalance(cBal);
       
       const p = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const s = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -366,6 +371,9 @@ const Purchases = () => {
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <PageHeader title="Purchases" subtitle="Stock-in from suppliers" actions={
         <Button onClick={() => {
+          if (!showForm && cashBalance <= 0) {
+            toast.warning("Warning: You have 0 cash balance! You will only be able to make Credit purchases.", { duration: 6000 });
+          }
           setShowForm(!showForm);
           if (showForm) { setEditingId(null); setItems([]); setSupplierId("none"); }
         }} className="bg-gradient-primary text-primary-foreground">
