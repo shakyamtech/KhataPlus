@@ -324,7 +324,7 @@ const Dashboard = () => {
                     Open the POS to make a quick sale and update inventory in real-time.
                   </p>
                   <p className="absolute inset-0 translate-y-full text-white font-bold text-sm transition-transform duration-500 group-hover:translate-y-0 flex items-center">
-                    Let's make some money! 💸
+                    Let's make some real money! 💸
                   </p>
                 </div>
               </div>
