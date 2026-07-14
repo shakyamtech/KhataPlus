@@ -117,7 +117,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
             <div><Label>Name</Label><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." /></div>
             <div><Label>Barcode (Optional)</Label><Input value={edit.barcode || ""} onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} placeholder="Scan barcode..." /></div>
           </div>
-          <div className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer" onClick={() => setEdit({ ...edit, has_expiry: !edit.has_expiry })}>
+          <div className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer my-2" onClick={() => setEdit({ ...edit, has_expiry: !edit.has_expiry })}>
             <div className="space-y-0.5 pointer-events-none">
               <Label htmlFor="has_expiry" className="text-sm font-semibold text-primary">Tracks Expiry Date?</Label>
               <div className="text-[11px] text-muted-foreground leading-tight">Enable if this item is perishable and expires.</div>
