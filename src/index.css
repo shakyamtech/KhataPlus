@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 220 14% 96%; /* Soft slate-100 to reduce glare */
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -36,11 +36,11 @@
     --radius: 0.75rem;
 
     /* Base Sidebar - Light */
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-accent: 210 40% 92%;
+    --sidebar-accent: 210 40% 94%;
     --sidebar-accent-foreground: 222.2 47.4% 11.2%;
-    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-border: 214.3 31.8% 90%;
 
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
