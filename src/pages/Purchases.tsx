@@ -327,12 +327,15 @@ const Purchases = () => {
       
       const piQ = query(collection(db, "purchase_items"), where("purchase_id", "==", id));
       const piSnap = await getDocs(piQ);
-      piSnap.docs.forEach((d) => {
+      for (const d of piSnap.docs) {
         const item = d.data();
         const pRef = doc(db, "products", item.product_id);
-        batch.update(pRef, { stock_qty: increment(-Number(item.qty)) });
+        const pSnap = await getDoc(pRef);
+        if (pSnap.exists()) {
+          batch.update(pRef, { stock_qty: increment(-Number(item.qty)) });
+        }
         batch.delete(d.ref);
-      });
+      }
 
       const pbQ = query(collection(db, "product_batches"), where("purchase_id", "==", id));
       const pbSnap = await getDocs(pbQ);

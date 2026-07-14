@@ -290,18 +290,24 @@ const Cashbook = () => {
           
           const siQ = query(collection(db, "sale_items"), where("sale_id", "==", row.reference_id));
           const siSnap = await getDocs(siQ);
-          siSnap.docs.forEach(d => {
+          for (const d of siSnap.docs) {
             const item = d.data();
             const pRef = doc(db, "products", item.product_id);
-            batch.update(pRef, { stock_qty: increment(item.qty) });
+            const pSnap = await getDoc(pRef);
+            if (pSnap.exists()) {
+              batch.update(pRef, { stock_qty: increment(item.qty) });
+            }
             
             if (item.batch_id && item.batch_id !== "no-batch") {
               const bRef = doc(db, "product_batches", item.batch_id);
-              batch.update(bRef, { remaining_qty: increment(item.qty) });
+              const bSnap = await getDoc(bRef);
+              if (bSnap.exists()) {
+                batch.update(bRef, { remaining_qty: increment(item.qty) });
+              }
             }
             
             batch.delete(d.ref);
-          });
+          }
 
           const cashQ = query(collection(db, "cash_transactions"), where("reference_id", "==", row.reference_id));
           const cashSnap = await getDocs(cashQ);
@@ -319,12 +325,15 @@ const Cashbook = () => {
           
           const piQ = query(collection(db, "purchase_items"), where("purchase_id", "==", row.reference_id));
           const piSnap = await getDocs(piQ);
-          piSnap.docs.forEach((d) => {
+          for (const d of piSnap.docs) {
             const item = d.data();
             const pRef = doc(db, "products", item.product_id);
-            batch.update(pRef, { stock_qty: increment(-Number(item.qty)) });
+            const pSnap = await getDoc(pRef);
+            if (pSnap.exists()) {
+              batch.update(pRef, { stock_qty: increment(-Number(item.qty)) });
+            }
             batch.delete(d.ref);
-          });
+          }
 
           const cashQ = query(collection(db, "cash_transactions"), where("reference_id", "==", row.reference_id));
           const cashSnap = await getDocs(cashQ);
