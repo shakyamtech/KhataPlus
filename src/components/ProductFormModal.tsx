@@ -106,9 +106,9 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setEdit(blankProduct); }}>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader className="-mx-6 -mt-6 p-6 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border-b border-primary/10 mb-4 rounded-t-lg">
           <DialogTitle className="text-primary text-2xl font-display">{edit.id ? "Edit Product" : "New Product"}</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-foreground/70">
             {edit.id ? "Update the details for this product. Note: Stock Qty and Cost Price can only be modified via Purchases or Adjustments." : "Add a new item to your inventory."}
           </DialogDescription>
         </DialogHeader>
