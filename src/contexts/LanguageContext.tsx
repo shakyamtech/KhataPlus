@@ -47,7 +47,7 @@ const translations = {
 
     // Sidebar & Navigation
     dashboard: "Dashboard",
-    posBilling: "POS Billing",
+    posBilling: "POS Billing (Sales)",
     products: "Products",
     customers: "Customers",
     suppliers: "Suppliers",
@@ -108,7 +108,7 @@ const translations = {
 
     // Sidebar & Navigation
     dashboard: "ड्यासबोर्ड",
-    posBilling: "POS बिलिङ",
+    posBilling: "POS बिलिङ (Sales)",
     products: "सामानहरू (उत्पादन)",
     customers: "ग्राहकहरू",
     suppliers: "सप्लायरहरू (विक्रेता)",
