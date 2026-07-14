@@ -205,84 +205,125 @@ const Auth = () => {
         </div>
       </div>
 
-      {/* Unified Vertical Layout (Branding on Top, Card in Center, Features at Bottom) */}
-      <div className="w-full max-w-4xl flex flex-col items-center gap-8 relative z-10 text-center animate-fade-in px-4">
+      {/* Modern Split-Screen Layout */}
+      <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-12 relative z-10 animate-fade-in px-4 lg:px-8 py-8 lg:py-20 min-h-screen">
         
-        {/* Brand Header - only visible on large screens */}
-        <div className="hidden lg:flex flex-col items-center space-y-4 max-w-2xl">
-          <div className="flex items-center gap-3">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-primary shadow-glow transition-all duration-500 hover:scale-105">
-              <BookText className="h-8 w-8 text-primary-foreground animate-pulse" />
+        {/* Left Side: Brand Marketing & Features */}
+        <div className="w-full lg:w-[55%] flex flex-col items-center lg:items-start text-center lg:text-left space-y-10 lg:pr-8">
+          
+          {/* Brand Header */}
+          <div className="flex flex-col items-center lg:items-start space-y-6 w-full mt-12 lg:mt-0">
+            <div className="flex items-center gap-4">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-primary shadow-glow transition-all duration-500 hover:scale-105">
+                <BookText className="h-8 w-8 text-primary-foreground animate-pulse" />
+              </div>
+              <span className="font-display text-5xl md:text-6xl font-extrabold tracking-tight text-foreground dark:text-white">
+                Khata<span className="text-primary">Plus</span>
+              </span>
             </div>
-            <span className="font-display text-4xl md:text-5xl font-bold tracking-tight text-primary">KhataPlus</span>
+
+            <div className="space-y-4 max-w-xl">
+              <h2 className="font-display text-4xl md:text-5xl font-bold leading-tight text-foreground dark:text-gray-100">
+                {t.brandTitle}
+              </h2>
+              <p className="text-muted-foreground text-lg leading-relaxed">
+                {t.brandDesc}
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <h2 className="font-display text-2xl md:text-4xl font-bold leading-tight text-foreground">
-              {t.brandTitle}
-            </h2>
-            <p className="text-muted-foreground text-sm md:text-base max-w-xl leading-relaxed mx-auto">
-              {t.brandDesc}
-            </p>
+          {/* Premium Feature Bento Box */}
+          <div className="hidden sm:grid grid-cols-2 gap-4 w-full max-w-lg pt-4">
+            <div className="p-6 rounded-3xl glass-panel shadow-soft hover:shadow-elegant transition-all duration-300 group hover:-translate-y-1.5 bg-gradient-to-br from-white/60 to-white/30 dark:from-secondary/60 dark:to-secondary/30 border border-white/50 dark:border-white/10">
+              <div className="h-12 w-12 rounded-xl bg-primary/15 flex items-center justify-center mb-4 group-hover:bg-primary transition-all duration-300 group-hover:scale-110">
+                <ShoppingBag className="h-6 w-6 text-primary group-hover:text-primary-foreground transition-colors" />
+              </div>
+              <h3 className="font-bold text-base text-foreground mb-1.5">{t.posTitle}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{t.posDesc}</p>
+            </div>
+            
+            <div className="p-6 rounded-3xl glass-panel shadow-soft hover:shadow-elegant transition-all duration-300 group hover:-translate-y-1.5 bg-gradient-to-br from-white/60 to-white/30 dark:from-secondary/60 dark:to-secondary/30 border border-white/50 dark:border-white/10 mt-6">
+              <div className="h-12 w-12 rounded-xl bg-orange-500/15 flex items-center justify-center mb-4 group-hover:bg-orange-500 transition-all duration-300 group-hover:scale-110">
+                <BarChart3 className="h-6 w-6 text-orange-600 group-hover:text-white transition-colors" />
+              </div>
+              <h3 className="font-bold text-base text-foreground mb-1.5">{t.profitTitle}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{t.profitDesc}</p>
+            </div>
+            
+            <div className="p-6 rounded-3xl glass-panel shadow-soft hover:shadow-elegant transition-all duration-300 group hover:-translate-y-1.5 bg-gradient-to-br from-white/60 to-white/30 dark:from-secondary/60 dark:to-secondary/30 border border-white/50 dark:border-white/10 -mt-6">
+              <div className="h-12 w-12 rounded-xl bg-lime-500/15 flex items-center justify-center mb-4 group-hover:bg-lime-500 transition-all duration-300 group-hover:scale-110">
+                <Users className="h-6 w-6 text-lime-700 dark:text-lime-500 group-hover:text-white transition-colors" />
+              </div>
+              <h3 className="font-bold text-base text-foreground mb-1.5">{t.ledgerTitle}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{t.ledgerDesc}</p>
+            </div>
+            
+            <div className="p-6 rounded-3xl glass-panel shadow-soft hover:shadow-elegant transition-all duration-300 group hover:-translate-y-1.5 bg-gradient-to-br from-white/60 to-white/30 dark:from-secondary/60 dark:to-secondary/30 border border-white/50 dark:border-white/10">
+              <div className="h-12 w-12 rounded-xl bg-violet-500/15 flex items-center justify-center mb-4 group-hover:bg-violet-500 transition-all duration-300 group-hover:scale-110">
+                <CheckCircle2 className="h-6 w-6 text-violet-600 dark:text-violet-400 group-hover:text-white transition-colors" />
+              </div>
+              <h3 className="font-bold text-base text-foreground mb-1.5">{t.recipeTitle}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{t.recipeDesc}</p>
+            </div>
           </div>
         </div>
 
-        {/* Centered Sign In / Sign Up Card */}
-        <div className="w-full max-w-md animate-fade-in-up">
-          <Card className="p-6 md:p-8 shadow-elegant border-white/40 glass-panel rounded-3xl transition-all duration-500 hover:shadow-glow/20">
+        {/* Right Side: Auth Card */}
+        <div className="w-full max-w-md lg:w-[40%] flex justify-center lg:justify-end animate-fade-in-up">
+          <Card className="w-full p-6 md:p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border-white/40 glass-panel rounded-3xl transition-all duration-500 hover:shadow-glow/30 relative overflow-hidden">
+            
+            {/* Inner subtle glow for the card */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
             
             {/* Header for Mobile only */}
-            <div className="text-center mb-6 lg:hidden">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-primary shadow-glow mb-2">
-                <BookText className="h-6 w-6 text-primary-foreground" />
-              </div>
+            <div className="text-center mb-8 lg:hidden relative z-10">
               <h1 className="font-display text-3xl font-bold text-foreground">KhataPlus</h1>
-              <p className="text-muted-foreground text-xs mt-1">{t.subtitle}</p>
+              <p className="text-muted-foreground text-sm mt-1.5">{t.subtitle}</p>
             </div>
 
-            <div className="mb-6 text-left hidden lg:block">
-              <h3 className="font-display text-xl font-bold text-foreground mb-1">{t.welcome}</h3>
-              <p className="text-muted-foreground text-xs">{t.access}</p>
+            <div className="mb-8 text-left hidden lg:block relative z-10">
+              <h3 className="font-display text-3xl font-extrabold text-foreground mb-2">{t.welcome}</h3>
+              <p className="text-muted-foreground text-sm">{t.access}</p>
             </div>
 
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid grid-cols-2 w-full h-auto mb-6 bg-secondary/50 p-1 rounded-xl dark:bg-secondary/30">
+            <Tabs defaultValue="signin" className="w-full relative z-10">
+              <TabsList className="grid grid-cols-2 w-full h-auto mb-8 bg-secondary/50 p-1.5 rounded-xl dark:bg-secondary/30 backdrop-blur-md border border-white/20 dark:border-white/5">
                 <TabsTrigger 
                   value="signin" 
-                  className="rounded-lg py-2 font-medium text-sm text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground transition-all duration-300 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-soft dark:data-[state=active]:bg-secondary dark:data-[state=active]:text-foreground"
+                  className="rounded-lg py-2.5 font-bold text-sm text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground transition-all duration-300 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-soft dark:data-[state=active]:bg-secondary dark:data-[state=active]:text-foreground"
                 >
                   {t.signin}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="signup" 
-                  className="rounded-lg py-2 font-medium text-sm text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground transition-all duration-300 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-soft dark:data-[state=active]:bg-secondary dark:data-[state=active]:text-foreground"
+                  className="rounded-lg py-2.5 font-bold text-sm text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground transition-all duration-300 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-soft dark:data-[state=active]:bg-secondary dark:data-[state=active]:text-foreground"
                 >
                   {t.createAccount}
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="signin" className="focus-visible:outline-none focus-visible:ring-0">
-                <form onSubmit={handleSignIn} className="space-y-4 text-left">
-                  <div>
-                    <Label className="text-foreground/90 font-medium mb-1.5 block">{t.email}</Label>
+                <form onSubmit={handleSignIn} className="space-y-5 text-left">
+                  <div className="space-y-1.5">
+                    <Label className="text-foreground/90 font-semibold">{t.email}</Label>
                     <Input 
                       type="email" 
                       value={email} 
                       onChange={(e) => setEmail(e.target.value)} 
                       required 
-                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
+                      className="bg-white/70 border-border/60 focus:bg-white h-12 rounded-xl transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground shadow-sm"
                       placeholder={t.emailPlaceholder}
                     />
                   </div>
-                  <div>
+                  <div className="space-y-1.5">
                     {PasswordField}
-                    <div className="flex justify-end mt-1.5">
-                      <button type="button" onClick={handleForgotPassword} className="text-xs text-primary hover:text-primary/80 hover:underline font-semibold transition-colors">
+                    <div className="flex justify-end mt-2">
+                      <button type="button" onClick={handleForgotPassword} className="text-xs text-primary hover:text-primary/80 hover:underline font-bold transition-colors">
                         {t.forgotPw}
                       </button>
                     </div>
                   </div>
-                  <Button type="submit" disabled={loading} className="w-full bg-gradient-primary text-primary-foreground hover:opacity-90 shadow-soft h-11 font-medium rounded-xl text-sm transition-transform active:scale-95 duration-200 mt-2">
+                  <Button type="submit" disabled={loading} className="w-full bg-gradient-primary text-primary-foreground hover:opacity-90 shadow-[0_8px_16px_-4px_rgba(6,182,212,0.4)] h-12 font-bold rounded-xl text-base transition-all active:scale-[0.98] duration-200 mt-4">
                     {loading ? t.processing : t.signInBtn}
                   </Button>
                 </form>
@@ -290,74 +331,74 @@ const Auth = () => {
 
               <TabsContent value="signup" className="focus-visible:outline-none focus-visible:ring-0">
                 <form onSubmit={handleSignUp} className="flex flex-col text-left">
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto px-1.5 py-1 mb-3">
-                    <div>
-                    <Label className="text-foreground/90 font-medium mb-1.5 block">{t.yourName}</Label>
-                    <Input 
-                      value={fullName} 
-                      onChange={(e) => setFullName(e.target.value)} 
-                      placeholder={t.namePlaceholder} 
-                      autoComplete="off"
-                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-foreground/90 font-medium mb-1.5 block">{t.shopName}</Label>
-                    <Input 
-                      value={shopName} 
-                      onChange={(e) => setShopName(e.target.value)} 
-                      placeholder={t.shopPlaceholder} 
-                      autoComplete="off"
-                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-foreground/90 font-medium mb-1.5 block">{t.panNo} <span className="text-[10px] text-muted-foreground font-normal">{t.panOptional}</span></Label>
-                    <Input 
-                      value={panNo} 
-                      onChange={(e) => setPanNo(e.target.value)} 
-                      placeholder={t.panPlaceholder} 
-                      autoComplete="off"
-                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-foreground/90 font-medium mb-1.5 block">{t.email}</Label>
-                    <Input 
-                      type="email" 
-                      value={email} 
-                      onChange={(e) => setEmail(e.target.value)} 
-                      required 
-                      autoComplete="off"
-                      placeholder={t.emailPlaceholder}
-                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-foreground/90 font-medium mb-1.5 block">{t.password}</Label>
-                    <div className="relative">
-                      <Input
-                        type={showPw ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                        className="pr-10 bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
-                        autoComplete="new-password"
-                        placeholder={t.pwPlaceholder}
+                  <div className="space-y-5 max-h-[350px] overflow-y-auto px-1.5 py-1 mb-4 custom-scrollbar">
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground/90 font-semibold">{t.yourName}</Label>
+                      <Input 
+                        value={fullName} 
+                        onChange={(e) => setFullName(e.target.value)} 
+                        placeholder={t.namePlaceholder} 
+                        autoComplete="off"
+                        className="bg-white/70 border-border/60 focus:bg-white h-11 rounded-xl transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground shadow-sm"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPw((v) => !v)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors"
-                      >
-                        {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground/90 font-semibold">{t.shopName}</Label>
+                      <Input 
+                        value={shopName} 
+                        onChange={(e) => setShopName(e.target.value)} 
+                        placeholder={t.shopPlaceholder} 
+                        autoComplete="off"
+                        className="bg-white/70 border-border/60 focus:bg-white h-11 rounded-xl transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground shadow-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground/90 font-semibold">{t.panNo} <span className="text-[10px] text-muted-foreground font-normal">{t.panOptional}</span></Label>
+                      <Input 
+                        value={panNo} 
+                        onChange={(e) => setPanNo(e.target.value)} 
+                        placeholder={t.panPlaceholder} 
+                        autoComplete="off"
+                        className="bg-white/70 border-border/60 focus:bg-white h-11 rounded-xl transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground shadow-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground/90 font-semibold">{t.email}</Label>
+                      <Input 
+                        type="email" 
+                        value={email} 
+                        onChange={(e) => setEmail(e.target.value)} 
+                        required 
+                        autoComplete="off"
+                        placeholder={t.emailPlaceholder}
+                        className="bg-white/70 border-border/60 focus:bg-white h-11 rounded-xl transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground shadow-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground/90 font-semibold">{t.password}</Label>
+                      <div className="relative">
+                        <Input
+                          type={showPw ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          minLength={6}
+                          className="pr-10 bg-white/70 border-border/60 focus:bg-white h-11 rounded-xl transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground shadow-sm"
+                          autoComplete="new-password"
+                          placeholder={t.pwPlaceholder}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPw((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors"
+                        >
+                          {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  </div>
-                  <div className="px-1.5 shrink-0 pt-2 border-t border-border/30">
-                    <Button type="submit" disabled={loading} className="w-full bg-gradient-primary text-primary-foreground hover:opacity-90 shadow-soft h-11 font-medium rounded-xl text-sm transition-transform active:scale-95 duration-200">
+                  <div className="px-1.5 shrink-0 pt-3 border-t border-border/30">
+                    <Button type="submit" disabled={loading} className="w-full bg-gradient-primary text-primary-foreground hover:opacity-90 shadow-[0_8px_16px_-4px_rgba(6,182,212,0.4)] h-12 font-bold rounded-xl text-base transition-all active:scale-[0.98] duration-200">
                       {loading ? t.creating : t.createBtn}
                     </Button>
                   </div>
@@ -366,41 +407,6 @@ const Auth = () => {
             </Tabs>
           </Card>
         </div>
-
-        {/* Feature Cards Showcase */}
-        <div className="hidden lg:block w-full max-w-4xl pt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
-            <div className="p-4 rounded-2xl glass-panel shadow-soft hover:shadow-card transition-all duration-300 group hover:-translate-y-1">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary transition-all duration-300">
-                <ShoppingBag className="h-5 w-5 text-primary group-hover:text-primary-foreground" />
-              </div>
-              <h3 className="font-bold text-sm text-foreground mb-1">{t.posTitle}</h3>
-              <p className="text-xs text-muted-foreground">{t.posDesc}</p>
-            </div>
-            <div className="p-4 rounded-2xl glass-panel shadow-soft hover:shadow-card transition-all duration-300 group hover:-translate-y-1">
-              <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-3 group-hover:bg-accent transition-all duration-300">
-                <BarChart3 className="h-5 w-5 text-orange-600 group-hover:text-accent-foreground" />
-              </div>
-              <h3 className="font-bold text-sm text-foreground mb-1">{t.profitTitle}</h3>
-              <p className="text-xs text-muted-foreground">{t.profitDesc}</p>
-            </div>
-            <div className="p-4 rounded-2xl glass-panel shadow-soft hover:shadow-card transition-all duration-300 group hover:-translate-y-1">
-              <div className="h-10 w-10 rounded-lg bg-lime-500/10 flex items-center justify-center mb-3 group-hover:bg-lime-600 transition-all duration-300">
-                <Users className="h-5 w-5 text-lime-700 group-hover:text-white" />
-              </div>
-              <h3 className="font-bold text-sm text-foreground mb-1">{t.ledgerTitle}</h3>
-              <p className="text-xs text-muted-foreground">{t.ledgerDesc}</p>
-            </div>
-            <div className="p-4 rounded-2xl glass-panel shadow-soft hover:shadow-card transition-all duration-300 group hover:-translate-y-1">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary transition-all duration-300">
-                <CheckCircle2 className="h-5 w-5 text-primary group-hover:text-primary-foreground" />
-              </div>
-              <h3 className="font-bold text-sm text-foreground mb-1">{t.recipeTitle}</h3>
-              <p className="text-xs text-muted-foreground">{t.recipeDesc}</p>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   );
