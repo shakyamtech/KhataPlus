@@ -538,7 +538,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
       <div className="grid sm:grid-cols-2 gap-3">
         {items.map((p) => (
-          <Card key={p.id} className="p-4 shadow-card border-0 cursor-pointer hover:shadow-elegant transition-smooth" onClick={() => openLedger(p)}>
+          <Card key={p.id} className="p-4 shadow-card border border-transparent cursor-pointer hover:shadow-elegant hover:-translate-y-1 hover:border-primary/40 transition-all duration-300 outline-none group" onClick={() => openLedger(p)}>
             <div className="flex items-start justify-between">
               <div>
                 <div className="font-display text-lg">{p.name}</div>
