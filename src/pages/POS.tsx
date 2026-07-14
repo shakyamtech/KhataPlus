@@ -472,11 +472,11 @@ const POS = () => {
                   key={p.id}
                   onClick={() => addToCart(p)}
                   disabled={isOut}
-                  className={`text-left p-3 rounded-xl shadow-card hover:shadow-elegant transition-smooth border ${isOut
+                  className={`text-left p-3 rounded-xl shadow-card hover:shadow-elegant hover:-translate-y-1 transition-all duration-300 border outline-none ${isOut
                       ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/30 opacity-80 cursor-not-allowed"
                       : isLow
-                        ? "bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/30 active:scale-95"
-                        : "bg-card border-transparent dark:border-white/5 active:scale-95"
+                        ? "bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/30 active:scale-95 hover:border-orange-300 dark:hover:border-orange-500/50"
+                        : "bg-card border-transparent dark:border-white/5 active:scale-95 hover:border-primary/40 dark:hover:border-primary/40"
                     }`}>
                   <div className={`font-display text-base truncate ${isOut ? "text-red-900 dark:text-red-300" : isLow ? "text-orange-900 dark:text-orange-300" : ""
                     }`}>{p.name}</div>
