@@ -347,11 +347,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         created_at: new Date().toISOString()
       });
 
-      const cashRef = doc(collection(db, "cashbook"));
+      const cashRef = doc(collection(db, "cash_transactions"));
       batch.set(cashRef, {
         id: cashRef.id,
         user_id: user!.uid,
-        type: type === "customer" ? "in" : "out",
+        direction: type === "customer" ? "in" : "out",
         category: type === "customer" ? "customer_payment" : "supplier_payment",
         party_id: selected.id,
         party_name: selected.name,

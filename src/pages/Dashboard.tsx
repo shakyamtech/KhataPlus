@@ -77,18 +77,13 @@ const Dashboard = () => {
       const partyBalances: Record<string, number> = {};
       (ledger || []).forEach((e: any) => {
         const key = `${e.party_type}_${e.party_id}`;
-        let val = Number(e.amount);
+        let val = 0;
         
-        // Accounting logic:
-        // Customer: Sales/Debit increase balance. Payments/Credit decrease it.
-        // Supplier: Purchases/Credit increase balance. Payments/Debit decrease it.
-        if (e.party_type === "customer") {
-          const isIncrease = e.entry_type === "sale" || e.entry_type === "debit";
-          val = isIncrease ? val : -val;
-        } else {
-          const isIncrease = e.entry_type === "purchase" || e.entry_type === "credit";
-          val = isIncrease ? val : -val;
-        }
+        const isDebt = ["sale", "purchase", "debit", "credit"].includes(e.entry_type);
+        const isPayment = ["payment_in", "payment_out", "payment"].includes(e.entry_type);
+        
+        if (isDebt) val = Number(e.amount);
+        else if (isPayment) val = -Number(e.amount);
         
         partyBalances[key] = (partyBalances[key] || 0) + val;
       });
