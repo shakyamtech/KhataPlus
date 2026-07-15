@@ -16,6 +16,7 @@ import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo } from "@/lib/shop";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 type Party = { id: string; name: string; phone: string | null; balance: number };
@@ -39,6 +40,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [items, setItems] = useState<Party[]>([]);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(""); const [phone, setPhone] = useState("");
+  const [openingBalance, setOpeningBalance] = useState("");
+  const [balanceType, setBalanceType] = useState<"payable" | "receivable">(type === "customer" ? "receivable" : "payable");
   const [selected, setSelected] = useState<Party | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [payOpen, setPayOpen] = useState(false);
@@ -78,6 +81,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     }
   };
   useEffect(() => { if (user) load(); }, [user, type]);
+  useEffect(() => { if (open) { setBalanceType(type === "customer" ? "receivable" : "payable"); } }, [open, type]);
 
   const openLedger = async (p: Party) => {
     setSelected(p);
@@ -267,7 +271,35 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         balance: 0,
         created_at: new Date().toISOString()
       });
-      setName(""); setPhone(""); setOpen(false); toast.success("Added"); load();
+
+      const ob = Number(openingBalance);
+      if (ob > 0) {
+        const entryRef = doc(collection(db, "ledger_entries"));
+        let entryType = "";
+        let title = "";
+
+        if (type === "customer") {
+          if (balanceType === "receivable") { entryType = "sale"; title = "Opening Balance (Overdue)"; }
+          else { entryType = "payment_in"; title = "Opening Advance"; }
+        } else {
+          if (balanceType === "payable") { entryType = "purchase"; title = "Opening Balance (Overdue)"; }
+          else { entryType = "payment_out"; title = "Opening Advance"; }
+        }
+
+        await setDoc(entryRef, {
+          id: entryRef.id,
+          user_id: user!.uid,
+          party_id: ref.id,
+          party_type: type,
+          entry_type: entryType,
+          title: title,
+          amount: ob,
+          note: "Initial balance setup",
+          created_at: new Date().toISOString()
+        });
+      }
+
+      setName(""); setPhone(""); setOpeningBalance(""); setOpen(false); toast.success("Added"); load();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -296,8 +328,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     if (!selected || !payAmount) return;
     setBusyPayment(true);
     try {
+      const batch = writeBatch(db);
+      
       const entryRef = doc(collection(db, "ledger_entries"));
-      await setDoc(entryRef, {
+      batch.set(entryRef, {
         id: entryRef.id,
         user_id: user!.uid,
         party_id: selected.id,
@@ -307,6 +341,22 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         note: payNote || null,
         created_at: new Date().toISOString()
       });
+
+      const cashRef = doc(collection(db, "cashbook"));
+      batch.set(cashRef, {
+        id: cashRef.id,
+        user_id: user!.uid,
+        type: type === "customer" ? "in" : "out",
+        category: type === "customer" ? "customer_payment" : "supplier_payment",
+        party_id: selected.id,
+        party_name: selected.name,
+        amount: Number(payAmount),
+        note: (payNote ? payNote + " " : "") + `(Ledger Payment)`,
+        created_at: new Date().toISOString()
+      });
+
+      await batch.commit();
+
       toast.success("Payment recorded"); setPayOpen(false); setPayAmount(""); setPayNote("");
       openLedger(selected); load();
     } catch (e: any) {
@@ -521,6 +571,31 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             <div className="space-y-3">
               <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
               <div><Label>Phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Opening Balance</Label>
+                  <Input type="number" step="0.01" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} placeholder="0" />
+                </div>
+                <div>
+                  <Label>Balance Type</Label>
+                  <Select value={balanceType} onValueChange={(val: any) => setBalanceType(val)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {type === "customer" ? (
+                        <>
+                          <SelectItem value="receivable">To Receive (Overdue)</SelectItem>
+                          <SelectItem value="payable">To Give (Advance)</SelectItem>
+                        </>
+                      ) : (
+                        <>
+                          <SelectItem value="payable">To Give (Overdue)</SelectItem>
+                          <SelectItem value="receivable">To Receive (Advance)</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <Button onClick={add} disabled={busyAdd} className="w-full bg-gradient-primary text-primary-foreground">
                 {busyAdd ? (
                   <>
