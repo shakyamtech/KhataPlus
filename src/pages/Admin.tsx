@@ -296,7 +296,7 @@ const Admin = () => {
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  className={`flex-1 md:flex-none h-9 transition-all ${u.roles.includes("admin") ? "border-orange-200 text-orange-600 hover:bg-orange-50" : "border-primary/20 text-primary hover:bg-primary/5"}`}
+                  className={`flex-1 md:flex-none h-9 transition-all ${u.roles.includes("admin") ? "border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-500/30 dark:text-orange-400 dark:hover:bg-orange-500/20 dark:hover:text-orange-300" : "border-primary/20 text-primary hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20"}`}
                   onClick={() => toggleAdmin(u)}
                 >
                   {u.roles.includes("admin") ? <><ShieldOff className="h-3.5 w-3.5 mr-1.5" /> Revoke</> : <><Shield className="h-3.5 w-3.5 mr-1.5" /> Make Admin</>}
@@ -309,8 +309,8 @@ const Admin = () => {
                       variant="outline" 
                       className={`flex-1 md:flex-none h-9 transition-all ${
                         u.banned_until && new Date(u.banned_until) > new Date() 
-                          ? "border-purple-200 text-purple-600 hover:bg-purple-50" 
-                          : "border-destructive/20 text-destructive hover:bg-destructive/5"
+                          ? "border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:border-purple-500/30 dark:text-purple-400 dark:hover:bg-purple-500/20 dark:hover:text-purple-300" 
+                          : "border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20"
                       }`}
                     >
                       {u.banned_until && new Date(u.banned_until) > new Date() ? (
@@ -352,7 +352,7 @@ const Admin = () => {
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      className="flex-1 md:flex-none h-9 border-amber-200 text-amber-600 hover:bg-amber-50"
+                      className="flex-1 md:flex-none h-9 border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-500/30 dark:text-amber-400 dark:hover:bg-amber-500/20 dark:hover:text-amber-300"
                     >
                       <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset Data
                     </Button>
@@ -377,7 +377,7 @@ const Admin = () => {
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="ghost" className="flex-1 md:flex-none h-9 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                    <Button size="sm" variant="ghost" className="flex-1 md:flex-none h-9 text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </AlertDialogTrigger>
