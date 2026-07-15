@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { doc, collection, writeBatch, updateDoc } from "firebase/firestore";
+import { doc, collection, writeBatch, updateDoc, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,20 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
     if (open) {
       if (product && product.id) {
         setEdit({ ...blankProduct, ...product });
+        if (product.has_expiry) {
+          const fetchExpiry = async () => {
+            try {
+              const q = query(collection(db, "product_batches"), where("product_id", "==", product.id));
+              const snap = await getDocs(q);
+              if (!snap.empty) {
+                const docs = snap.docs;
+                docs.sort((a, b) => new Date(b.data().created_at).getTime() - new Date(a.data().created_at).getTime());
+                setEdit(prev => ({ ...prev, expiry_date: docs[0].data().expiry_date || "" }));
+              }
+            } catch(e) {}
+          };
+          fetchExpiry();
+        }
       } else {
         setEdit(product ? { ...blankProduct, ...product } : blankProduct);
       }
@@ -62,12 +76,42 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
       has_expiry: !!edit.has_expiry
     };
 
+    if (payload.barcode) {
+      setBusy(true);
+      try {
+        const q = query(
+          collection(db, "products"),
+          where("user_id", "==", user.uid),
+          where("barcode", "==", payload.barcode)
+        );
+        const snap = await getDocs(q);
+        const exists = snap.docs.find(d => d.id !== edit.id);
+        if (exists) {
+          setBusy(false);
+          return toast.error("This barcode is already used by another product.");
+        }
+      } catch (e: any) {
+        setBusy(false);
+        return toast.error("Error checking barcode: " + e.message);
+      }
+      setBusy(false);
+    }
+
     setBusy(true);
     try {
       let savedId = edit.id;
       if (edit.id) {
         const { stock_qty, cost_price, ...updatePayload } = payload;
         await updateDoc(doc(db, "products", edit.id), updatePayload);
+        if (edit.has_expiry && edit.expiry_date) {
+            const bQ = query(collection(db, "product_batches"), where("product_id", "==", edit.id));
+            const bSnap = await getDocs(bQ);
+            if (!bSnap.empty) {
+                const docs = bSnap.docs;
+                docs.sort((a, b) => new Date(b.data().created_at).getTime() - new Date(a.data().created_at).getTime());
+                await updateDoc(doc(db, "product_batches", docs[0].id), { expiry_date: edit.expiry_date });
+            }
+        }
       } else {
         const batch = writeBatch(db);
         const ref = doc(collection(db, "products"));
@@ -130,6 +174,11 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
               {edit.has_expiry && (
                 <div className="space-y-1.5"><Label>Expiry Date (Optional)</Label><Input type="date" value={edit.expiry_date || ""} onChange={(e) => setEdit({ ...edit, expiry_date: e.target.value })} className="block w-full" /></div>
               )}
+            </div>
+          )}
+          {edit.id && edit.has_expiry && (
+            <div className="grid sm:grid-cols-1 gap-3">
+              <div className="space-y-1.5"><Label>Latest Batch Expiry Date (Optional)</Label><Input type="date" value={edit.expiry_date || ""} onChange={(e) => setEdit({ ...edit, expiry_date: e.target.value })} className="block w-full" /></div>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
