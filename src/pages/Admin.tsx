@@ -80,7 +80,17 @@ const Admin = () => {
   };
 
   const toggleAdmin = notSupported;
-  const del = notSupported;
+  const del = async (u: AdminUser) => {
+    if (!confirm(`Are you sure you want to remove ${u.email} from the app's list?`)) return;
+    try {
+      const { deleteDoc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, "profiles", u.id));
+      toast.success("User profile removed from the list.");
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
   const toggleBan = notSupported;
 
   const saveProfile = async () => {
