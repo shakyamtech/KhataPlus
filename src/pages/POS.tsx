@@ -20,7 +20,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
-type Product = { id: string; name: string; unit: string; cost_price: number; sell_price: number; stock_qty: number; low_stock_threshold: number; is_manufactured: boolean; barcode: string | null };
+type Product = { id: string; name: string; unit: string; cost_price: number; sell_price: number; stock_qty: number; low_stock_threshold: number; is_manufactured: boolean; barcode: string | null; valid_stock?: number; has_expired_stock?: boolean };
 type Customer = { id: string; name: string; phone?: string };
 type CartItem = { product_id: string; product_name: string; unit: string; sell_price: number | string; cost_price: number; qty: number | string };
 
@@ -48,10 +48,36 @@ const POS = () => {
     try {
       const pQ = query(collection(db, "products"), where("user_id", "==", user.uid));
       const cQ = query(collection(db, "customers"), where("user_id", "==", user.uid));
-      
-      const [pSnap, cSnap] = await Promise.all([getDocs(pQ), getDocs(cQ)]);
-      
-      const p = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const bQ = query(collection(db, "product_batches"), where("user_id", "==", user.uid));
+
+      const [pSnap, cSnap, bSnap] = await Promise.all([getDocs(pQ), getDocs(cQ), getDocs(bQ)]);
+
+      const batches = bSnap.docs.map(d => d.data());
+      const now = new Date();
+      now.setHours(0,0,0,0);
+
+      const stockMap: Record<string, number> = {};
+      const expiredMap: Record<string, boolean> = {};
+
+      batches.forEach((b: any) => {
+         if (b.remaining_qty > 0) {
+            if (b.expiry_date && new Date(b.expiry_date) < now) {
+                expiredMap[b.product_id] = true;
+            } else {
+                stockMap[b.product_id] = (stockMap[b.product_id] || 0) + b.remaining_qty;
+            }
+         }
+      });
+
+      const p = pSnap.docs.map(d => {
+        const data = d.data();
+        let valid_stock = data.stock_qty;
+        if (stockMap[d.id] !== undefined || expiredMap[d.id]) {
+            valid_stock = stockMap[d.id] || 0;
+        }
+        return { id: d.id, ...data, valid_stock, has_expired_stock: !!expiredMap[d.id] };
+      });
+
       const c = cSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       setProducts(p.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any); 
@@ -81,7 +107,7 @@ const POS = () => {
 
   const getTotalAvailable = (productId: string) => {
     const p = products.find(prod => prod.id === productId);
-    return p ? p.stock_qty : 0;
+    return p ? (p.valid_stock !== undefined ? p.valid_stock : p.stock_qty) : 0;
   };
 
   const addToCart = (p: Product): boolean => {
@@ -91,12 +117,12 @@ const POS = () => {
     if (ex) {
       const newQty = +(Number(ex.qty) + 1).toFixed(3);
       if (newQty > totalAvailable) {
-        toast.error(`Only ${totalAvailable} available in stock`);
+        toast.error(`Only ${totalAvailable} ${p.has_expired_stock ? 'non-expired ' : ''}available in stock`);
         return false;
       }
     } else {
       if (1 > totalAvailable) {
-        toast.error(`Out of stock`);
+        toast.error(`${p.has_expired_stock ? 'All stock is expired' : 'Out of stock'}`);
         return false;
       }
     }
@@ -119,7 +145,8 @@ const POS = () => {
     if (typeof qty === "number" || (typeof qty === "string" && qty !== "")) {
       const numQty = Number(qty);
       if (numQty > totalAvailable) {
-        toast.error(`Only ${totalAvailable} available in stock`);
+        const pObj = products.find(prod => prod.id === id);
+        toast.error(`Only ${totalAvailable} ${pObj?.has_expired_stock ? 'non-expired ' : ''}available in stock`);
         newQty = totalAvailable;
       } else if (numQty < 0) {
         newQty = 0;
@@ -136,7 +163,8 @@ const POS = () => {
       const price = Number(i.sell_price) || 0;
       let newQty = price > 0 ? +(Number(amount) / price).toFixed(6) : 0;
       if (newQty > totalAvailable) {
-        toast.error(`Only ${totalAvailable} available in stock`);
+        const pObj = products.find(prod => prod.id === id);
+        toast.error(`Only ${totalAvailable} ${pObj?.has_expired_stock ? 'non-expired ' : ''}available in stock`);
         newQty = totalAvailable;
       } else if (newQty < 0) {
         newQty = 0;
