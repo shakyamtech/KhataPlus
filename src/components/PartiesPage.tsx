@@ -76,6 +76,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       });
 
       setItems(parties.sort((a, b) => a.name.localeCompare(b.name)));
+      setSelected(prev => {
+        if (!prev) return prev;
+        const updated = parties.find((p: any) => p.id === prev.id);
+        return updated || prev;
+      });
     } catch (e: any) {
       console.error(e);
     }
