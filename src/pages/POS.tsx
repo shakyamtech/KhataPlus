@@ -248,6 +248,29 @@ const POS = () => {
       // Sort batches by created_at ascending (FIFO)
       allBatches.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
+      const now = new Date();
+      now.setHours(0,0,0,0);
+
+      // Validate non-expired stock
+      for (const item of itemsToSend) {
+        const pBatches = allBatches.filter(b => b.product_id === item.product_id);
+        let validStock = 0;
+        let hasExpired = false;
+        for (const b of pBatches) {
+          if (b.expiry_date && new Date(b.expiry_date) < now) {
+            hasExpired = true;
+          } else {
+            validStock += b.remaining_qty;
+          }
+        }
+        if (item.qty > validStock) {
+          throw new Error(`Cannot sell ${item.qty} of ${item.product_name}. ${hasExpired ? 'Some stock is expired. ' : ''}Only ${validStock} valid items available.`);
+        }
+      }
+
+      // Filter out expired batches so they are not used for sale
+      allBatches = allBatches.filter(b => !b.expiry_date || new Date(b.expiry_date) >= now);
+
       let costTotal = 0;
       const finalSaleItems: any[] = [];
       const batchUpdates = new Map<string, number>();
