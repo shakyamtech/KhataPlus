@@ -152,6 +152,7 @@ const Dashboard = () => {
   }, [salesForTopItems, topItemsRange]);
 
   const isProfit = stats.todayProfit >= 0;
+  const isCashPositive = stats.cashBalance >= 0;
   const cards = [
     { label: "Today's Sales", value: fmt(stats.todaySales), icon: ShoppingCart, accent: "bg-primary text-primary-foreground shadow-[0_4px_14px_0_hsl(var(--primary)/0.39)]" },
     { 
@@ -160,7 +161,13 @@ const Dashboard = () => {
       icon: isProfit ? TrendingUp : TrendingDown, 
       accent: isProfit ? "bg-emerald-500 text-white shadow-[0_4px_14px_0_rgba(16,185,129,0.39)]" : "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]" 
     },
-    { label: "Cash in Hand", value: fmt(stats.cashBalance), icon: Wallet, accent: "bg-sky-500 text-white shadow-[0_4px_14px_0_rgba(14,165,233,0.39)]" },
+    { 
+      label: "Cash in Hand", 
+      value: fmt(stats.cashBalance), 
+      icon: Wallet, 
+      accent: isCashPositive ? "bg-sky-500 text-white shadow-[0_4px_14px_0_rgba(14,165,233,0.39)]" : "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]",
+      valueColor: isCashPositive ? "" : "text-destructive"
+    },
     { label: "Stock Value", value: fmt(stats.stockValue), icon: Package, accent: "bg-violet-500 text-white shadow-[0_4px_14px_0_rgba(139,92,246,0.39)]" },
   ];
 
@@ -175,7 +182,7 @@ const Dashboard = () => {
               <c.icon className="h-5 w-5" />
             </div>
             <div className="mt-3 text-xs uppercase tracking-wide text-muted-foreground font-medium group-hover:text-foreground transition-colors duration-300">{c.label}</div>
-            <div className="mt-1 text-xl md:text-2xl font-display text-foreground">{c.value}</div>
+            <div className={`mt-1 text-xl md:text-2xl font-display ${c.valueColor || "text-foreground"}`}>{c.value}</div>
           </Card>
         ))}
       </div>

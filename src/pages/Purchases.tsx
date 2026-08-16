@@ -218,25 +218,6 @@ const Purchases = () => {
     const paid = Number(amountPaid || 0);
     const purchaseTotal = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.cost_price) || 0), 0);
 
-    if (paid > 0) {
-      const txQ = query(collection(db, "cash_transactions"), where("user_id", "==", user!.uid));
-      const txSnap = await getDocs(txQ);
-      const currentBalance = txSnap.docs.reduce((s, r) => s + (r.data().direction === "in" ? Number(r.data().amount) : -Number(r.data().amount)), 0);
-
-      let adjustedBalance = currentBalance;
-      if (editingId) {
-        const curPur = doc(db, "purchases", editingId);
-        const curPurSnap = await getDoc(curPur);
-        if (curPurSnap.exists()) {
-          adjustedBalance += curPurSnap.data().amount_paid;
-        }
-      }
-
-      if (adjustedBalance < paid) {
-        return toast.error(`You don't have enough cash. Current balance: ${fmt(currentBalance)}. Please add opening balance or cash in Cashbook first.`, { duration: 6000 });
-      }
-    }
-
     setBusy(true);
     try {
       if (editingId) {

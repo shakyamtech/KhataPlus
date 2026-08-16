@@ -493,7 +493,10 @@ const Cashbook = () => {
       <div className="grid grid-cols-3 gap-3 mb-4">
         <Card className="p-4 shadow-card border-0"><div className="text-xs text-muted-foreground uppercase">Cash In</div><div className="font-display text-xl text-success mt-1">{fmt(totalIn)}</div></Card>
         <Card className="p-4 shadow-card border-0"><div className="text-xs text-muted-foreground uppercase">Cash Out</div><div className="font-display text-xl text-destructive mt-1">{fmt(totalOut)}</div></Card>
-        <Card className="p-4 shadow-elegant border-0 bg-gradient-primary text-primary-foreground"><div className="text-xs uppercase opacity-80 flex items-center gap-1"><Wallet className="h-3 w-3" /> Balance</div><div className="font-display text-xl mt-1">{fmt(balance)}</div></Card>
+        <Card className={`p-4 shadow-elegant border-0 ${balance < 0 ? "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]" : "bg-gradient-primary text-primary-foreground"}`}>
+          <div className="text-xs uppercase opacity-90 flex items-center gap-1 font-semibold"><Wallet className="h-3 w-3" /> {lang === "NEP" ? "कुल ब्यालेन्स" : "Balance"}</div>
+          <div className="font-display text-xl mt-1">{fmt(balance)}</div>
+        </Card>
       </div>
       
       {/* Date Range Filter Panel */}
