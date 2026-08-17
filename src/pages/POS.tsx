@@ -853,11 +853,11 @@ const POS = () => {
             </div>
             {paymentMode === "cash" && (
               <div>
-                <Label className="text-xs">Cash Received from Customer</Label>
+                <Label className="text-xs">Tendered Cash (Optional — For Change)</Label>
                 <Input
                   type="number"
                   step="0.01"
-                  placeholder="e.g. 500"
+                  placeholder="e.g. 2000 (if larger note given)"
                   value={tendered}
                   onChange={(e) => setTendered(e.target.value)}
                   onWheel={(e) => e.currentTarget.blur()}
@@ -901,16 +901,22 @@ const POS = () => {
             </div>
           )}
 
-          {paymentMode === "cash" && Number(tendered || 0) > 0 && (
-            <div className="flex items-center justify-between bg-accent/20 border border-accent rounded-xl p-3 mb-3">
-              <span className="font-medium text-sm">
-                {Number(tendered) >= total ? "Change to Return" : "Short by"}
-              </span>
-              <span className="font-display text-xl text-foreground">
-                {fmt(Math.abs(Number(tendered) - total))}
-              </span>
-            </div>
-          )}
+          {paymentMode === "cash" && Number(tendered || 0) > 0 && (() => {
+            const effectiveCashPaid = amountPaid !== "" ? Number(amountPaid) : total;
+            const tenderedNum = Number(tendered);
+            const isChange = tenderedNum >= effectiveCashPaid;
+            const diff = Math.abs(tenderedNum - effectiveCashPaid);
+            return (
+              <div className="flex items-center justify-between bg-accent/20 border border-accent rounded-xl p-3 mb-3">
+                <span className="font-medium text-sm">
+                  {isChange ? "Change to Return" : "Short by"}
+                </span>
+                <span className="font-display text-xl text-foreground">
+                  {fmt(diff)}
+                </span>
+              </div>
+            );
+          })()}
 
           <Button disabled={busy || cart.length === 0} onClick={checkout}
             className="w-full bg-accent text-accent-foreground hover:opacity-90 shadow-soft h-12 text-base font-semibold">
