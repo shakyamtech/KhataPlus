@@ -25,6 +25,9 @@ type Entry = {
   entry_type?: string; 
   title: string;
   amount: number; 
+  paid_amount?: number;
+  due_amount?: number;
+  payment_mode?: string;
   note?: string | null; 
   created_at: string;
   products?: string;
@@ -78,14 +81,14 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       setItems(parties.sort((a, b) => a.name.localeCompare(b.name)));
       setSelected(prev => {
         if (!prev) return prev;
-        const updated = parties.find((p: any) => p.id === prev.id);
+        const updated = parties.find(x => x.id === prev.id);
         return updated || prev;
       });
     } catch (e: any) {
       console.error(e);
     }
   };
-  useEffect(() => { if (user) load(); }, [user, type]);
+  useEffect(() => { if (user) load(); }, [user]);
   useEffect(() => { if (open) { setBalanceType(type === "customer" ? "receivable" : "payable"); } }, [open, type]);
 
   const openLedger = async (p: Party) => {
@@ -100,30 +103,56 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const salesData = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const ledgerData = lSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+        // Load items for these sales
+        const prodsMap: Record<string, string> = {};
+        const saleIds = salesData.map(s => s.id);
+        const chunks = [];
+        for (let i = 0; i < saleIds.length; i += 10) chunks.push(saleIds.slice(i, i + 10));
+        for (const chunk of chunks) {
+          if (chunk.length > 0) {
+            const chunkQ = query(collection(db, "sale_items"), where("sale_id", "in", chunk));
+            const chunkSnap = await getDocs(chunkQ);
+            chunkSnap.docs.forEach(d => {
+              const data = d.data();
+              if (!prodsMap[data.sale_id]) prodsMap[data.sale_id] = "";
+              prodsMap[data.sale_id] += (prodsMap[data.sale_id] ? ", " : "") + `${data.product_name} ×${data.qty}`;
+            });
+          }
+        }
+
         const items: Entry[] = [];
-        const saleIds = new Set<string>();
+        const saleIdsSet = new Set<string>();
 
         salesData.forEach((s: any) => {
-          saleIds.add(s.id);
-          const prods = (s.sale_items || []).map((si: any) => `${si.qty} ${si.products?.unit || ""} ${si.products?.name || ""}`.trim()).join(", ");
+          saleIdsSet.add(s.id);
+          const totalAmt = Number(s.total || 0);
+          
+          // Payments made specifically on this sale
+          const salePayments = ledgerData.filter((l: any) => l.reference_id === s.id && (l.entry_type === "payment_in" || l.entry_type === "payment"));
+          const paidAmt = salePayments.reduce((sum: number, l: any) => sum + Number(l.amount || 0), 0);
+          const dueAmt = Math.max(0, totalAmt - paidAmt);
+
           items.push({
             id: s.id,
             is_order: true,
-            title: `Sale (${s.payment_mode})`,
-            amount: Number(s.total),
+            title: `Sale`,
+            payment_mode: s.payment_mode || "cash",
+            amount: totalAmt,
+            paid_amount: paidAmt,
+            due_amount: dueAmt,
             created_at: s.created_at,
             note: s.note,
-            products: prods
+            products: prodsMap[s.id] || ""
           });
         });
 
         ledgerData.forEach((l: any) => {
-          if (l.reference_id && saleIds.has(l.reference_id)) return;
+          if (l.reference_id && saleIdsSet.has(l.reference_id)) return;
           items.push({
             id: l.id,
             entry_type: l.entry_type,
             is_order: false,
-            title: l.entry_type.replace("_", " "),
+            title: l.entry_type === "payment_in" ? "Payment Received" : l.entry_type.replace("_", " "),
             amount: Number(l.amount),
             created_at: l.created_at,
             note: l.note
@@ -141,30 +170,56 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const purData = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const ledgerData = lSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+        // Load items for these purchases
+        const prodsMap: Record<string, string> = {};
+        const purIds = purData.map(p => p.id);
+        const purChunks = [];
+        for (let i = 0; i < purIds.length; i += 10) purChunks.push(purIds.slice(i, i + 10));
+        for (const chunk of purChunks) {
+          if (chunk.length > 0) {
+            const chunkQ = query(collection(db, "purchase_items"), where("purchase_id", "in", chunk));
+            const chunkSnap = await getDocs(chunkQ);
+            chunkSnap.docs.forEach(d => {
+              const data = d.data();
+              if (!prodsMap[data.purchase_id]) prodsMap[data.purchase_id] = "";
+              prodsMap[data.purchase_id] += (prodsMap[data.purchase_id] ? ", " : "") + `${data.product_name} ×${data.qty}`;
+            });
+          }
+        }
+
         const items: Entry[] = [];
-        const purIds = new Set<string>();
+        const purIdsSet = new Set<string>();
 
         purData.forEach((pu: any) => {
-          purIds.add(pu.id);
-          const prods = (pu.purchase_items || []).map((pi: any) => `${pi.qty} ${pi.products?.unit || ""} ${pi.products?.name || ""}`.trim()).join(", ");
+          purIdsSet.add(pu.id);
+          const totalAmt = Number(pu.total || 0);
+          
+          // Payments made specifically on this purchase
+          const purPayments = ledgerData.filter((l: any) => l.reference_id === pu.id && (l.entry_type === "payment_out" || l.entry_type === "payment"));
+          const paidAmt = purPayments.reduce((sum: number, l: any) => sum + Number(l.amount || 0), 0);
+          const dueAmt = Math.max(0, totalAmt - paidAmt);
+
           items.push({
             id: pu.id,
             is_order: true,
-            title: `Purchase (${pu.payment_mode})`,
-            amount: Number(pu.total),
+            title: `Purchase`,
+            payment_mode: pu.payment_mode || "cash",
+            amount: totalAmt,
+            paid_amount: paidAmt,
+            due_amount: dueAmt,
             created_at: pu.created_at,
             note: pu.note,
-            products: prods
+            products: prodsMap[pu.id] || ""
           });
         });
 
         ledgerData.forEach((l: any) => {
-          if (l.reference_id && purIds.has(l.reference_id)) return;
+          if (l.reference_id && purIdsSet.has(l.reference_id)) return;
           items.push({
             id: l.id,
             entry_type: l.entry_type,
             is_order: false,
-            title: l.entry_type.replace("_", " "),
+            title: l.entry_type === "payment_out" ? "Payment Made" : l.entry_type.replace("_", " "),
             amount: Number(l.amount),
             created_at: l.created_at,
             note: l.note
@@ -454,16 +509,60 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 <div className="p-4 border-b font-display text-lg flex items-center gap-2"><BookOpen className="h-4 w-4" /> Ledger</div>
                 <div className="divide-y">
                   {entries.map((e) => (
-                    <div key={e.id} className="p-3 flex items-center justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium capitalize truncate">{e.title}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}
-                          {e.products ? <span className="font-medium text-foreground/80 flex items-center gap-1 mt-0.5 truncate">{type === "customer" ? <ShoppingCart className="h-3 w-3 shrink-0 text-primary" /> : <span>📦</span>} <span>{e.products}</span></span> : null}
-                          {e.note ? <span className="italic block text-[11px] mt-0.5 truncate">💬 {e.note}</span> : null}
+                    <div key={e.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-secondary/20 transition-colors">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold capitalize text-foreground">{e.title}</span>
+                          {e.is_order && (
+                            <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground uppercase font-medium">
+                              {e.payment_mode || "Bill"}
+                            </span>
+                          )}
                         </div>
+                        
+                        <div className="text-xs text-muted-foreground">
+                          {format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}
+                        </div>
+
+                        {e.products ? (
+                          <div className="text-xs font-medium text-foreground/90 flex items-center gap-1.5 mt-1">
+                            {type === "customer" ? <ShoppingCart className="h-3.5 w-3.5 shrink-0 text-primary" /> : <span>📦</span>}
+                            <span className="truncate">{e.products}</span>
+                          </div>
+                        ) : null}
+
+                        {e.is_order && (
+                          <div className="text-xs flex items-center gap-3 pt-0.5">
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                              Paid: {fmt(e.paid_amount ?? e.amount)}
+                            </span>
+                            {Number(e.due_amount || 0) > 0 ? (
+                              <span className="text-orange-600 dark:text-orange-400 font-semibold">
+                                Due: {fmt(e.due_amount!)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-[11px] font-normal">
+                                (Fully Paid)
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
                       </div>
-                      <div className={`font-bold text-sm sm:text-base shrink-0 ${e.title.toLowerCase().includes("payment") || e.title.toLowerCase().includes("cash") ? "text-emerald-500 dark:text-emerald-400" : "text-orange-600 dark:text-orange-500"}`}>{fmt(e.amount)}</div>
+                      
+                      <div className="text-right shrink-0">
+                        <div className={`font-bold text-base ${
+                          !e.is_order || e.title.toLowerCase().includes("payment")
+                            ? "text-emerald-500 dark:text-emerald-400" 
+                            : "text-orange-600 dark:text-orange-500"
+                        }`}>
+                          {!e.is_order ? `+${fmt(e.amount)}` : fmt(e.amount)}
+                        </div>
+                        {e.is_order && (
+                          <span className="text-[10px] text-muted-foreground font-medium uppercase block">Total Bill</span>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {entries.length === 0 && <div className="p-6 text-center text-muted-foreground text-sm">No entries yet</div>}
@@ -515,16 +614,60 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             <div className="p-4 border-b font-display text-lg flex items-center gap-2"><BookOpen className="h-4 w-4" /> Ledger</div>
             <div className="divide-y">
               {entries.map((e) => (
-                <div key={e.id} className="p-3 flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium capitalize truncate">{e.title}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}
-                      {e.products ? <span className="font-medium text-foreground/80 flex items-center gap-1 mt-0.5 truncate">{type === "customer" ? <ShoppingCart className="h-3 w-3 shrink-0 text-primary" /> : <span>📦</span>} <span>{e.products}</span></span> : null}
-                      {e.note ? <span className="italic block text-[11px] mt-0.5 truncate">💬 {e.note}</span> : null}
+                <div key={e.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-secondary/20 transition-colors">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold capitalize text-foreground">{e.title}</span>
+                      {e.is_order && (
+                        <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground uppercase font-medium">
+                          {e.payment_mode || "Bill"}
+                        </span>
+                      )}
                     </div>
+                    
+                    <div className="text-xs text-muted-foreground">
+                      {format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}
+                    </div>
+
+                    {e.products ? (
+                      <div className="text-xs font-medium text-foreground/90 flex items-center gap-1.5 mt-1">
+                        {type === "customer" ? <ShoppingCart className="h-3.5 w-3.5 shrink-0 text-primary" /> : <span>📦</span>}
+                        <span className="truncate">{e.products}</span>
+                      </div>
+                    ) : null}
+
+                    {e.is_order && (
+                      <div className="text-xs flex items-center gap-3 pt-0.5">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                          Paid: {fmt(e.paid_amount ?? e.amount)}
+                        </span>
+                        {Number(e.due_amount || 0) > 0 ? (
+                          <span className="text-orange-600 dark:text-orange-400 font-semibold">
+                            Due: {fmt(e.due_amount!)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-[11px] font-normal">
+                            (Fully Paid)
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
                   </div>
-                  <div className={`font-bold text-sm sm:text-base shrink-0 ${e.title.toLowerCase().includes("payment") || e.title.toLowerCase().includes("cash") ? "text-emerald-500 dark:text-emerald-400" : "text-orange-600 dark:text-orange-500"}`}>{fmt(e.amount)}</div>
+                  
+                  <div className="text-right shrink-0">
+                    <div className={`font-bold text-base ${
+                      !e.is_order || e.title.toLowerCase().includes("payment")
+                        ? "text-emerald-500 dark:text-emerald-400" 
+                        : "text-orange-600 dark:text-orange-500"
+                    }`}>
+                      {!e.is_order ? `+${fmt(e.amount)}` : fmt(e.amount)}
+                    </div>
+                    {e.is_order && (
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase block">Total Bill</span>
+                    )}
+                  </div>
                 </div>
               ))}
               {entries.length === 0 && <div className="p-6 text-center text-muted-foreground text-sm">No entries yet</div>}
