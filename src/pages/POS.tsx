@@ -20,9 +20,34 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
-type Product = { id: string; name: string; unit: string; cost_price: number; sell_price: number; stock_qty: number; low_stock_threshold: number; is_manufactured: boolean; barcode: string | null; valid_stock?: number; has_expired_stock?: boolean };
+type Product = { 
+  id: string; 
+  name: string; 
+  unit: string; 
+  cost_price: number; 
+  sell_price: number; 
+  stock_qty: number; 
+  low_stock_threshold: number; 
+  is_manufactured: boolean; 
+  barcode: string | null; 
+  valid_stock?: number; 
+  has_expired_stock?: boolean;
+  earliest_expiry?: string;
+  earliest_batch_name?: string;
+  is_expiring_soon?: boolean;
+};
 type Customer = { id: string; name: string; phone?: string };
-type CartItem = { product_id: string; product_name: string; unit: string; sell_price: number | string; cost_price: number; qty: number | string };
+type CartItem = { 
+  product_id: string; 
+  product_name: string; 
+  unit: string; 
+  sell_price: number | string; 
+  cost_price: number; 
+  qty: number | string;
+  earliest_expiry?: string;
+  earliest_batch_name?: string;
+  is_expiring_soon?: boolean;
+};
 
 const POS = () => {
   const { user } = useAuth();
@@ -55,18 +80,55 @@ const POS = () => {
       const batches = bSnap.docs.map(d => d.data());
       const now = new Date();
       now.setHours(0,0,0,0);
+      const thirtyDaysLater = new Date(now);
+      thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
 
       const stockMap: Record<string, number> = {};
       const expiredMap: Record<string, boolean> = {};
+      const earliestBatchMap: Record<string, { batch_name: string; expiry_date: string; is_expiring_soon: boolean }> = {};
 
+      const productBatchesMap: Record<string, any[]> = {};
       batches.forEach((b: any) => {
-         if (b.remaining_qty > 0) {
+        if (b.product_id) {
+          if (!productBatchesMap[b.product_id]) productBatchesMap[b.product_id] = [];
+          productBatchesMap[b.product_id].push(b);
+        }
+      });
+
+      Object.entries(productBatchesMap).forEach(([productId, pBatches]) => {
+        let validStock = 0;
+        let hasExpired = false;
+
+        const validBatches = pBatches.filter((b: any) => {
+          if (b.remaining_qty > 0) {
             if (b.expiry_date && new Date(b.expiry_date) < now) {
-                expiredMap[b.product_id] = true;
-            } else {
-                stockMap[b.product_id] = (stockMap[b.product_id] || 0) + b.remaining_qty;
+              hasExpired = true;
+              return false;
             }
-         }
+            return true;
+          }
+          return false;
+        });
+
+        validBatches.forEach((b: any) => {
+          validStock += Number(b.remaining_qty) || 0;
+        });
+
+        const batchesWithExpiry = validBatches.filter((b: any) => !!b.expiry_date);
+        batchesWithExpiry.sort((a: any, b: any) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime());
+
+        if (batchesWithExpiry.length > 0) {
+          const earliest = batchesWithExpiry[0];
+          const expDate = new Date(earliest.expiry_date);
+          earliestBatchMap[productId] = {
+            batch_name: earliest.batch_name || "",
+            expiry_date: earliest.expiry_date,
+            is_expiring_soon: expDate <= thirtyDaysLater
+          };
+        }
+
+        stockMap[productId] = validStock;
+        expiredMap[productId] = hasExpired;
       });
 
       const p = pSnap.docs.map(d => {
@@ -75,7 +137,16 @@ const POS = () => {
         if (stockMap[d.id] !== undefined || expiredMap[d.id]) {
             valid_stock = stockMap[d.id] || 0;
         }
-        return { id: d.id, ...data, valid_stock, has_expired_stock: !!expiredMap[d.id] };
+        const earliest = earliestBatchMap[d.id];
+        return { 
+          id: d.id, 
+          ...data, 
+          valid_stock, 
+          has_expired_stock: !!expiredMap[d.id],
+          earliest_expiry: earliest?.expiry_date,
+          earliest_batch_name: earliest?.batch_name,
+          is_expiring_soon: earliest?.is_expiring_soon
+        };
       });
 
       const c = cSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -133,7 +204,17 @@ const POS = () => {
         const newQty = +(Number(exInC.qty) + 1).toFixed(3);
         return c.map((i) => i.product_id === p.id ? { ...i, qty: newQty } : i);
       }
-      return [...c, { product_id: p.id, product_name: p.name, unit: p.unit, sell_price: Number(p.sell_price), cost_price: Number(p.cost_price), qty: 1 }];
+      return [...c, { 
+        product_id: p.id, 
+        product_name: p.name, 
+        unit: p.unit, 
+        sell_price: Number(p.sell_price), 
+        cost_price: Number(p.cost_price), 
+        qty: 1,
+        earliest_expiry: p.earliest_expiry,
+        earliest_batch_name: p.earliest_batch_name,
+        is_expiring_soon: p.is_expiring_soon
+      }];
     });
     
     return true;
@@ -273,8 +354,15 @@ const POS = () => {
         const chunkBatches = bSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).filter(b => b.remaining_qty > 0);
         allBatches.push(...chunkBatches);
       }
-      // Sort batches by created_at ascending (FIFO)
-      allBatches.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      // Sort batches with FEFO (First Expired First Out): Earliest expiry first, then batches without expiry by created_at
+      allBatches.sort((a, b) => {
+        if (a.expiry_date && b.expiry_date) {
+          return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+        }
+        if (a.expiry_date) return -1;
+        if (b.expiry_date) return 1;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
 
       const now = new Date();
       now.setHours(0,0,0,0);
@@ -523,17 +611,26 @@ const POS = () => {
                   key={p.id}
                   onClick={() => addToCart(p)}
                   disabled={isOut}
-                  className={`text-left p-3 rounded-xl shadow-card hover:shadow-elegant hover:-translate-y-1 transition-all duration-300 border outline-none ${isOut
+                  className={`text-left p-3 rounded-xl shadow-card hover:shadow-elegant hover:-translate-y-1 transition-all duration-300 border outline-none flex flex-col justify-between ${isOut
                       ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/30 opacity-80 cursor-not-allowed"
                       : isLow
                         ? "bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/30 active:scale-95 hover:border-orange-300 dark:hover:border-orange-500/50"
                         : "bg-card border-transparent dark:border-white/5 active:scale-95 hover:border-primary/40 dark:hover:border-primary/40"
                     }`}>
-                  <div className={`font-display text-base truncate ${isOut ? "text-red-900 dark:text-red-300" : isLow ? "text-orange-900 dark:text-orange-300" : ""
-                    }`}>{p.name}</div>
-                  <div className={`text-xs ${isOut ? "text-red-600 dark:text-red-400 font-bold" : isLow ? "text-orange-600 dark:text-orange-400 font-medium" : "text-muted-foreground"
-                    }`}>
-                    {isOut ? "OUT OF STOCK" : `${fmtQty(totalAvailable)} ${p.unit} in stock`}
+                  <div>
+                    <div className={`font-display text-base truncate ${isOut ? "text-red-900 dark:text-red-300" : isLow ? "text-orange-900 dark:text-orange-300" : ""
+                      }`}>{p.name}</div>
+                    <div className={`text-xs ${isOut ? "text-red-600 dark:text-red-400 font-bold" : isLow ? "text-orange-600 dark:text-orange-400 font-medium" : "text-muted-foreground"
+                      }`}>
+                      {isOut ? (p.has_expired_stock ? "ALL STOCK EXPIRED" : "OUT OF STOCK") : `${fmtQty(totalAvailable)} ${p.unit} in stock`}
+                    </div>
+                    {p.earliest_expiry && !isOut && (
+                      <div className={`text-[11px] truncate mt-0.5 font-medium ${p.is_expiring_soon ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground"}`}>
+                        {p.is_expiring_soon ? "⚠️ Exp: " : "Exp: "}
+                        {format(new Date(p.earliest_expiry), "dd MMM yyyy")}
+                        {p.earliest_batch_name ? ` (${p.earliest_batch_name})` : ""}
+                      </div>
+                    )}
                   </div>
                   <div className={`mt-2 font-semibold ${isOut ? "text-red-700 dark:text-red-400" : isLow ? "text-orange-700 dark:text-orange-400" : "text-primary dark:text-primary-glow"
                     }`}>{fmt(p.sell_price)}</div>
@@ -555,8 +652,15 @@ const POS = () => {
             {cart.map((i) => (
               <div key={i.product_id} className="bg-secondary rounded-lg p-2">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="font-medium truncate">{i.product_name}</div>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeItem(i.product_id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{i.product_name}</div>
+                    {i.earliest_expiry && (
+                      <div className={`text-[10px] truncate ${i.is_expiring_soon ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"}`}>
+                        {i.earliest_batch_name ? `Batch: ${i.earliest_batch_name} · ` : ""}Exp: {format(new Date(i.earliest_expiry), "dd MMM yyyy")}
+                      </div>
+                    )}
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeItem(i.product_id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
                 <div className="grid grid-cols-[auto_1fr_1fr] gap-x-2 gap-y-1 mt-1 items-end">
                   <div className="space-y-0.5">

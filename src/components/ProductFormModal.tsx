@@ -20,7 +20,7 @@ interface ProductFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product?: any;
-  onSuccess?: (productId: string) => void;
+  onSuccess?: (productId: string, productData?: any) => void;
 }
 
 export function ProductFormModal({ open, onOpenChange, product, onSuccess }: ProductFormModalProps) {
@@ -182,7 +182,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
       onOpenChange(false);
       setEdit(blankProduct);
       if (onSuccess && savedId) {
-        onSuccess(savedId);
+        onSuccess(savedId, { id: savedId, ...payload });
       }
     } catch (e: any) {
       toast.error(e.message);
@@ -254,7 +254,21 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                   </Button>
                 </div>
               </div>
-              <div className="space-y-1.5"><Label>Stock Qty</Label><Input type="number" step="0.001" disabled={!!edit.id} value={edit.stock_qty} onChange={(e) => setEdit({ ...edit, stock_qty: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
+              <div className="space-y-1.5">
+                <Label>{edit.id ? "Current Stock Qty" : "Opening Stock Qty (सुरुको स्टक)"}</Label>
+                <Input 
+                  type="number" 
+                  step="0.001" 
+                  disabled={!!edit.id} 
+                  value={edit.stock_qty} 
+                  onChange={(e) => setEdit({ ...edit, stock_qty: e.target.value })} 
+                  placeholder={edit.id ? "Current stock" : "0"}
+                  onWheel={(e) => e.currentTarget.blur()} 
+                />
+                {!edit.id && (
+                  <div className="text-[10px] text-muted-foreground leading-tight">पहिले नै पसलमा भएको मौज्दात (नयाँ खरिद हो भने 0 राख्नुहोस्)</div>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Cost Price (Rs.)</Label><Input type="number" step="0.01" disabled={!!edit.id} value={edit.cost_price} onChange={(e) => setEdit({ ...edit, cost_price: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>

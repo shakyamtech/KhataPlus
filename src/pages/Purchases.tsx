@@ -117,15 +117,26 @@ const Purchases = () => {
     if (paymentMode !== "credit") setAmountPaid(total.toFixed(2));
   }, [total, editingId]);
 
-  const addProduct = async (id: string) => {
-    const p = products.find((x) => x.id === id); if (!p) return;
-    if (items.find((i) => i.product_id === id)) return;
+  const addProduct = async (id: string, directProduct?: any) => {
+    let p = directProduct || products.find((x) => x.id === id);
+    if (!p) {
+      try {
+        const pSnap = await getDoc(doc(db, "products", id));
+        if (pSnap.exists()) {
+          p = { id: pSnap.id, ...pSnap.data() };
+        }
+      } catch (e) {
+        console.error("Error fetching product directly", e);
+      }
+    }
+    if (!p) return;
+    if (items.find((i) => i.product_id === p.id)) return;
 
     let batch_name = "";
     let expiry_date = "";
 
     try {
-      const batchQ = query(collection(db, "product_batches"), where("product_id", "==", id), orderBy("created_at", "desc"), limit(1));
+      const batchQ = query(collection(db, "product_batches"), where("product_id", "==", p.id), orderBy("created_at", "desc"), limit(1));
       const batchSnap = await getDocs(batchQ);
       if (!batchSnap.empty) {
         const latestBatch = batchSnap.docs[0].data();
@@ -138,7 +149,16 @@ const Purchases = () => {
       console.error("Error fetching latest batch", e);
     }
 
-    setItems((arr) => [...arr, { product_id: p.id, product_name: p.name, unit: p.unit, cost_price: Number(p.cost_price), qty: 1, batch_name, has_expiry: !!p.has_expiry, expiry_date }]);
+    setItems((arr) => [...arr, { 
+      product_id: p.id, 
+      product_name: p.name, 
+      unit: p.unit, 
+      cost_price: Number(p.cost_price || 0), 
+      qty: 1, 
+      batch_name, 
+      has_expiry: !!p.has_expiry, 
+      expiry_date 
+    }]);
     setProductPick("");
   };
   const updateItem = (id: string, k: "qty" | "cost_price" | "batch_name" | "expiry_date", v: number | string) =>
@@ -564,7 +584,10 @@ const Purchases = () => {
       <ProductFormModal 
         open={productDialogOpen} 
         onOpenChange={setProductDialogOpen} 
-        onSuccess={async (id) => { await load(); addProduct(id); }} 
+        onSuccess={async (id, newProd) => { 
+          await load(); 
+          await addProduct(id, newProd); 
+        }} 
       />
     </div>
   );
