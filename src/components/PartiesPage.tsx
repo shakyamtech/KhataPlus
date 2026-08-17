@@ -463,7 +463,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                           {e.note ? <span className="italic block text-[11px] mt-0.5 truncate">💬 {e.note}</span> : null}
                         </div>
                       </div>
-                      <div className={`font-medium shrink-0 ${e.title.toLowerCase().includes("payment") || e.title.toLowerCase().includes("cash") ? "text-success" : "text-accent"}`}>{fmt(e.amount)}</div>
+                      <div className={`font-bold text-sm sm:text-base shrink-0 ${e.title.toLowerCase().includes("payment") || e.title.toLowerCase().includes("cash") ? "text-emerald-500 dark:text-emerald-400" : "text-orange-600 dark:text-orange-500"}`}>{fmt(e.amount)}</div>
                     </div>
                   ))}
                   {entries.length === 0 && <div className="p-6 text-center text-muted-foreground text-sm">No entries yet</div>}
@@ -524,7 +524,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                       {e.note ? <span className="italic block text-[11px] mt-0.5 truncate">💬 {e.note}</span> : null}
                     </div>
                   </div>
-                  <div className={`font-medium shrink-0 ${e.title.toLowerCase().includes("payment") || e.title.toLowerCase().includes("cash") ? "text-success" : "text-accent"}`}>{fmt(e.amount)}</div>
+                  <div className={`font-bold text-sm sm:text-base shrink-0 ${e.title.toLowerCase().includes("payment") || e.title.toLowerCase().includes("cash") ? "text-emerald-500 dark:text-emerald-400" : "text-orange-600 dark:text-orange-500"}`}>{fmt(e.amount)}</div>
                 </div>
               ))}
               {entries.length === 0 && <div className="p-6 text-center text-muted-foreground text-sm">No entries yet</div>}
