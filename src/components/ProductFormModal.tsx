@@ -196,6 +196,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                   <SelectItem value="cup">cup</SelectItem>
                   <SelectItem value="jar">jar</SelectItem>
                   <SelectItem value="dozen">dozen</SelectItem>
+                  <SelectItem value="Plate">Plate</SelectItem>
                 </SelectContent>
               </Select>
             </div>
