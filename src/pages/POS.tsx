@@ -616,7 +616,10 @@ const POS = () => {
           </div>
           <div class="footer">Thank you for your business!</div>
         `;
-        printHTML("Sales Receipt", body);
+        const safeCustName = customerName.replace(/[^a-zA-Z0-9_\s-]/g, "").trim().replace(/\s+/g, "_") || "Customer";
+        const billNo = saleRef.id.slice(-6).toUpperCase();
+        const fileName = `${safeCustName}_Bill_${billNo}`;
+        printHTML(fileName, body);
       } catch (err: any) {
         console.error("Print receipt error:", err);
       }
