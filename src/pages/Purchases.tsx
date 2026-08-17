@@ -416,6 +416,17 @@ const Purchases = () => {
           </div>
 
           <div className="space-y-2.5">
+            {items.length > 0 && (
+              <div className="hidden sm:grid sm:grid-cols-[1fr_80px_100px_80px_80px_80px_auto] sm:gap-3 px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30 rounded-lg border border-border/40">
+                <div>Item</div>
+                <div>Batch</div>
+                <div>Expiry</div>
+                <div>Qty</div>
+                <div>Rate</div>
+                <div className="text-right">Total</div>
+                <div className="w-9 text-center">Action</div>
+              </div>
+            )}
             {items.map((i) => (
               <div key={i.product_id} className="bg-secondary p-3 rounded-xl space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_80px_100px_80px_80px_80px_auto] sm:gap-3 sm:items-center shadow-soft transition-all">
                 <div className="flex items-center justify-between sm:justify-start gap-2 border-b sm:border-0 pb-2 sm:pb-0 border-border/40">
@@ -442,8 +453,8 @@ const Purchases = () => {
                     <Input className="h-9 font-medium text-xs sm:text-sm bg-background" type="number" step="0.001" value={i.qty} onChange={(e) => updateItem(i.product_id, "qty", e.target.value)} placeholder="Qty" onWheel={(e) => e.currentTarget.blur()} />
                   </div>
                   <div className="space-y-1 sm:space-y-0">
-                    <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Cost Price</Label>
-                    <Input className="h-9 font-medium text-xs sm:text-sm bg-background" type="number" step="0.01" value={i.cost_price} onChange={(e) => updateItem(i.product_id, "cost_price", e.target.value)} placeholder="Price" onWheel={(e) => e.currentTarget.blur()} />
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Rate</Label>
+                    <Input className="h-9 font-medium text-xs sm:text-sm bg-background" type="number" step="0.01" value={i.cost_price} onChange={(e) => updateItem(i.product_id, "cost_price", e.target.value)} placeholder="Rate" onWheel={(e) => e.currentTarget.blur()} />
                   </div>
                   <div className="text-right sm:text-right space-y-1 sm:space-y-0">
                     <Label className="text-[10px] font-bold text-primary uppercase sm:hidden block text-right">Total Rs.</Label>
