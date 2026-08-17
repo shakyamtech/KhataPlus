@@ -116,7 +116,7 @@ const Cashbook = () => {
         salesMap[s.id] = { customer: custName || "Unknown", products: "", mode: s.payment_mode || "cash" };
       });
       
-      const txSaleIds = tx.filter((t: any) => t.category === "sale" && t.reference_id).map((t: any) => t.reference_id);
+      const txSaleIds = tx.filter((t: any) => (t.category === "sale" || t.category === "sales") && t.reference_id).map((t: any) => t.reference_id);
       const chunks = [];
       for (let i = 0; i < txSaleIds.length; i += 10) chunks.push(txSaleIds.slice(i, i + 10));
       for (const chunk of chunks) {
@@ -126,7 +126,7 @@ const Cashbook = () => {
           chunkSnap.docs.forEach(d => {
             const data = d.data();
             if (salesMap[data.sale_id]) {
-              salesMap[data.sale_id].products += (salesMap[data.sale_id].products ? ", " : "") + data.product_name;
+              salesMap[data.sale_id].products += (salesMap[data.sale_id].products ? ", " : "") + `${data.product_name} ×${data.qty}`;
             }
           });
         }
@@ -285,7 +285,7 @@ const Cashbook = () => {
   const remove = async (row: any) => {
     try {
       if (row.reference_id) {
-        if (row.category === "sale") {
+        if (row.category === "sale" || row.category === "sales") {
           const batch = writeBatch(db);
           
           const siQ = query(collection(db, "sale_items"), where("sale_id", "==", row.reference_id));
@@ -592,7 +592,7 @@ const Cashbook = () => {
             return sortBy === "newest" ? dateB - dateA : dateA - dateB;
           });
           return sortedAndFiltered.map((r) => {
-            const sDetail = r.category === "sale" && r.reference_id ? salesDetails[r.reference_id] : null;
+            const sDetail = (r.category === "sale" || r.category === "sales") && r.reference_id ? salesDetails[r.reference_id] : null;
             const pDetail = (r.category === "purchase" || r.category === "purchases") && r.reference_id ? purchaseDetails[r.reference_id] : null;
             return (
             <div key={r.id} className="p-3 flex items-center gap-3 hover:bg-secondary/35 transition-colors cursor-pointer" onClick={() => openEdit(r)}>
@@ -633,7 +633,7 @@ const Cashbook = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete entry?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        {r.category === "sale"
+                        {(r.category === "sale" || r.category === "sales")
                           ? "Are you sure? This will delete the Sale, return the sold items to Stock, remove the customer's ledger entry, and deduct the cash balance."
                           : (r.category === "purchase" || r.category === "purchases")
                             ? "Are you sure? This will delete the Purchase, remove the purchased items from Stock, remove the supplier's ledger entry, and restore the cash balance."
