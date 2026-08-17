@@ -7,14 +7,57 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { Switch } from "@/components/ui/switch";
 
 const DEFAULT_UNITS = ["pcs", "set", "doz"];
 
 export const blankProduct = { name: "", unit: "pcs", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "", batch_name: "", has_expiry: false, expiry_date: "" };
+
+function ModalDatePicker({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn(
+            "h-9 w-full justify-between px-3 text-left font-normal bg-background border-input text-xs sm:text-sm",
+            !value && "text-muted-foreground"
+          )}
+        >
+          <span className="truncate">{value ? format(new Date(value), "PPP") : "Select date"}</span>
+          <CalendarIcon className="h-4 w-4 opacity-70 ml-2 text-primary shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 z-50 shadow-elegant" align="start">
+        <Calendar
+          mode="single"
+          selected={value ? new Date(value) : undefined}
+          onSelect={(date) => {
+            if (date) {
+              const y = date.getFullYear();
+              const m = String(date.getMonth() + 1).padStart(2, '0');
+              const d = String(date.getDate()).padStart(2, '0');
+              onChange(`${y}-${m}-${d}`);
+            } else {
+              onChange("");
+            }
+            setOpen(false);
+          }}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 interface ProductFormModalProps {
   open: boolean;
@@ -217,13 +260,25 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5"><Label>Opening Batch No. (Optional)</Label><Input value={edit.batch_name || ""} onChange={(e) => setEdit({ ...edit, batch_name: e.target.value })} placeholder="e.g. BATCH-001" /></div>
                 {edit.has_expiry && (
-                  <div className="space-y-1.5"><Label>Expiry Date (Optional)</Label><Input type="date" value={edit.expiry_date || ""} onChange={(e) => setEdit({ ...edit, expiry_date: e.target.value })} className="block w-full" /></div>
+                  <div className="space-y-1.5">
+                    <Label>Expiry Date (Optional)</Label>
+                    <ModalDatePicker
+                      value={edit.expiry_date || ""}
+                      onChange={(val) => setEdit({ ...edit, expiry_date: val })}
+                    />
+                  </div>
                 )}
               </div>
             )}
             {edit.id && edit.has_expiry && (
               <div className="grid sm:grid-cols-1 gap-3">
-                <div className="space-y-1.5"><Label>Latest Batch Expiry Date (Optional)</Label><Input type="date" value={edit.expiry_date || ""} onChange={(e) => setEdit({ ...edit, expiry_date: e.target.value })} className="block w-full" /></div>
+                <div className="space-y-1.5">
+                  <Label>Latest Batch Expiry Date (Optional)</Label>
+                  <ModalDatePicker
+                    value={edit.expiry_date || ""}
+                    onChange={(val) => setEdit({ ...edit, expiry_date: val })}
+                  />
+                </div>
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">

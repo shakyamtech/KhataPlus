@@ -9,11 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Pencil, Plus, Trash2, X, Loader2 } from "lucide-react";
+import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { ProductFormModal } from "@/components/ProductFormModal";
 
@@ -27,6 +30,47 @@ const paymentModeLabels: Record<string, string> = {
   esewa: "eSewa",
   khalti: "Khalti",
   bank: "Bank"
+};
+
+const ExpiryDatePicker = ({ value, onChange }: { value: string; onChange: (val: string) => void }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            "h-9 w-full justify-between px-2 text-xs font-normal bg-background hover:bg-accent/40 border-input",
+            !value && "text-muted-foreground"
+          )}
+        >
+          <span className="truncate">
+            {value ? format(new Date(value), "dd/MM/yyyy") : "Select date"}
+          </span>
+          <CalendarIcon className="h-3.5 w-3.5 opacity-70 shrink-0 ml-1 text-primary" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 z-50 shadow-elegant" align="start">
+        <Calendar
+          mode="single"
+          selected={value ? new Date(value) : undefined}
+          onSelect={(date) => {
+            if (date) {
+              const y = date.getFullYear();
+              const m = String(date.getMonth() + 1).padStart(2, '0');
+              const d = String(date.getDate()).padStart(2, '0');
+              onChange(`${y}-${m}-${d}`);
+            } else {
+              onChange("");
+            }
+            setOpen(false);
+          }}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
 };
 
 const Purchases = () => {
@@ -437,7 +481,7 @@ const Purchases = () => {
 
           <div className="space-y-2.5">
             {items.length > 0 && (
-              <div className="hidden sm:grid sm:grid-cols-[1fr_80px_100px_80px_80px_80px_auto] sm:gap-3 px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30 rounded-lg border border-border/40">
+              <div className="hidden sm:grid sm:grid-cols-[1fr_80px_130px_80px_80px_80px_auto] sm:gap-3 px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30 rounded-lg border border-border/40">
                 <div>Item</div>
                 <div>Batch</div>
                 <div>Expiry</div>
@@ -448,7 +492,7 @@ const Purchases = () => {
               </div>
             )}
             {items.map((i) => (
-              <div key={i.product_id} className="bg-secondary p-3 rounded-xl space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_80px_100px_80px_80px_80px_auto] sm:gap-3 sm:items-center shadow-soft transition-all">
+              <div key={i.product_id} className="bg-secondary p-3 rounded-xl space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_80px_130px_80px_80px_80px_auto] sm:gap-3 sm:items-center shadow-soft transition-all">
                 <div className="flex items-center justify-between sm:justify-start gap-2 border-b sm:border-0 pb-2 sm:pb-0 border-border/40">
                   <div className="font-semibold text-foreground truncate">{i.product_name} <span className="text-xs font-normal text-muted-foreground">/{i.unit}</span></div>
                   <Button size="icon" variant="ghost" className="h-8 w-8 sm:hidden text-destructive hover:bg-destructive/10" onClick={() => removeItem(i.product_id)}>
@@ -463,7 +507,10 @@ const Purchases = () => {
                   {i.has_expiry ? (
                     <div className="space-y-1 sm:space-y-0">
                       <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Expiry</Label>
-                      <Input className="h-9 font-medium text-[10px] sm:text-xs bg-background px-1" type="date" value={i.expiry_date || ""} onChange={(e) => updateItem(i.product_id, "expiry_date", e.target.value)} />
+                      <ExpiryDatePicker 
+                        value={i.expiry_date || ""} 
+                        onChange={(val) => updateItem(i.product_id, "expiry_date", val)} 
+                      />
                     </div>
                   ) : (
                     <div className="hidden sm:block"></div>
