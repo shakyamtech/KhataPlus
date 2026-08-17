@@ -374,6 +374,7 @@ const POS = () => {
     try {
       const paid = Number(amountPaid || 0);
       if (paymentMode === "credit" && customerId === "walk-in") return toast.error("Pick a customer for credit sale");
+      if (amountPaid !== "" && paid < total && customerId === "walk-in") return toast.error("Pick a customer to record remaining due / credit");
       
       setBusy(true);
       const ratio = subtotal > 0 ? total / subtotal : 1;
@@ -887,6 +888,18 @@ const POS = () => {
             <span className="font-medium">Total</span>
             <span className="font-display text-2xl">{fmt(total)}</span>
           </div>
+
+          {customerId !== "walk-in" && (amountPaid !== "" ? Number(amountPaid) : total) < total && (
+            <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-3 text-amber-600 dark:text-amber-400">
+              <div className="space-y-0.5">
+                <div className="text-xs font-bold uppercase tracking-wider">Remaining Due</div>
+                <div className="text-[11px] opacity-80">Added to {customers.find((c: any) => c.id === customerId)?.name || "customer"}'s ledger</div>
+              </div>
+              <span className="font-display text-xl font-bold">
+                {fmt(total - Number(amountPaid || 0))}
+              </span>
+            </div>
+          )}
 
           {paymentMode === "cash" && Number(tendered || 0) > 0 && (
             <div className="flex items-center justify-between bg-accent/20 border border-accent rounded-xl p-3 mb-3">
