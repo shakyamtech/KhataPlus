@@ -20,6 +20,14 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
+type ActiveBatch = {
+  id: string;
+  batch_name: string;
+  expiry_date: string | null;
+  remaining_qty: number;
+  cost_price: number;
+};
+
 type Product = { 
   id: string; 
   name: string; 
@@ -35,6 +43,7 @@ type Product = {
   earliest_expiry?: string;
   earliest_batch_name?: string;
   is_expiring_soon?: boolean;
+  active_batches?: ActiveBatch[];
 };
 type Customer = { id: string; name: string; phone?: string };
 type CartItem = { 
@@ -44,6 +53,8 @@ type CartItem = {
   sell_price: number | string; 
   cost_price: number; 
   qty: number | string;
+  selected_batch_id?: string;
+  available_batches?: ActiveBatch[];
   earliest_expiry?: string;
   earliest_batch_name?: string;
   is_expiring_soon?: boolean;
@@ -77,7 +88,7 @@ const POS = () => {
 
       const [pSnap, cSnap, bSnap] = await Promise.all([getDocs(pQ), getDocs(cQ), getDocs(bQ)]);
 
-      const batches = bSnap.docs.map(d => d.data());
+      const batches = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const now = new Date();
       now.setHours(0,0,0,0);
       const thirtyDaysLater = new Date(now);
@@ -86,6 +97,7 @@ const POS = () => {
       const stockMap: Record<string, number> = {};
       const expiredMap: Record<string, boolean> = {};
       const earliestBatchMap: Record<string, { batch_name: string; expiry_date: string; is_expiring_soon: boolean }> = {};
+      const activeBatchesMap: Record<string, ActiveBatch[]> = {};
 
       const productBatchesMap: Record<string, any[]> = {};
       batches.forEach((b: any) => {
@@ -114,9 +126,24 @@ const POS = () => {
           validStock += Number(b.remaining_qty) || 0;
         });
 
-        const batchesWithExpiry = validBatches.filter((b: any) => !!b.expiry_date);
-        batchesWithExpiry.sort((a: any, b: any) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime());
+        validBatches.sort((a: any, b: any) => {
+          if (a.expiry_date && b.expiry_date) {
+            return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+          }
+          if (a.expiry_date) return -1;
+          if (b.expiry_date) return 1;
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        });
 
+        activeBatchesMap[productId] = validBatches.map((b: any) => ({
+          id: b.id,
+          batch_name: b.batch_name || "N/A",
+          expiry_date: b.expiry_date || null,
+          remaining_qty: Number(b.remaining_qty) || 0,
+          cost_price: Number(b.cost_price) || 0
+        }));
+
+        const batchesWithExpiry = validBatches.filter((b: any) => !!b.expiry_date);
         if (batchesWithExpiry.length > 0) {
           const earliest = batchesWithExpiry[0];
           const expDate = new Date(earliest.expiry_date);
@@ -145,7 +172,8 @@ const POS = () => {
           has_expired_stock: !!expiredMap[d.id],
           earliest_expiry: earliest?.expiry_date,
           earliest_batch_name: earliest?.batch_name,
-          is_expiring_soon: earliest?.is_expiring_soon
+          is_expiring_soon: earliest?.is_expiring_soon,
+          active_batches: activeBatchesMap[d.id] || []
         };
       });
 
@@ -176,9 +204,14 @@ const POS = () => {
     }
   });
 
-  const getTotalAvailable = (productId: string) => {
+  const getTotalAvailable = (productId: string, selectedBatchId?: string) => {
     const p = products.find(prod => prod.id === productId);
-    return p ? (p.valid_stock !== undefined ? p.valid_stock : p.stock_qty) : 0;
+    if (!p) return 0;
+    if (selectedBatchId && selectedBatchId !== "auto" && p.active_batches) {
+      const b = p.active_batches.find(x => x.id === selectedBatchId);
+      return b ? b.remaining_qty : 0;
+    }
+    return p.valid_stock !== undefined ? p.valid_stock : p.stock_qty;
   };
 
   const addToCart = (p: Product): boolean => {
@@ -186,14 +219,15 @@ const POS = () => {
     const ex = cart.find((i) => i.product_id === p.id);
     
     if (ex) {
+      const maxAvailable = getTotalAvailable(p.id, ex.selected_batch_id);
       const newQty = +(Number(ex.qty) + 1).toFixed(3);
-      if (newQty > totalAvailable) {
-        toast.error(`Only ${totalAvailable} ${p.has_expired_stock ? 'non-expired ' : ''}available in stock`);
+      if (newQty > maxAvailable) {
+        toast.error(`Only ${maxAvailable} available in ${ex.selected_batch_id && ex.selected_batch_id !== 'auto' ? 'selected batch' : 'stock'}`);
         return false;
       }
     } else {
       if (1 > totalAvailable) {
-        toast.error(`${p.has_expired_stock ? 'All stock is expired' : 'Out of stock'}`);
+        toast.error(p.has_expired_stock ? 'Cannot sell: All stock is expired' : 'Out of stock');
         return false;
       }
     }
@@ -211,6 +245,8 @@ const POS = () => {
         sell_price: Number(p.sell_price), 
         cost_price: Number(p.cost_price), 
         qty: 1,
+        selected_batch_id: "auto",
+        available_batches: p.active_batches || [],
         earliest_expiry: p.earliest_expiry,
         earliest_batch_name: p.earliest_batch_name,
         is_expiring_soon: p.is_expiring_soon
@@ -220,14 +256,33 @@ const POS = () => {
     return true;
   };
 
+  const changeCartBatch = (productId: string, batchId: string) => {
+    setCart((c) => c.map((i) => {
+      if (i.product_id !== productId) return i;
+      
+      const selectedBatch = i.available_batches?.find(b => b.id === batchId);
+      const maxAvailable = selectedBatch ? selectedBatch.remaining_qty : getTotalAvailable(productId);
+      const currentQty = Number(i.qty) || 1;
+      const newQty = Math.min(currentQty, maxAvailable);
+      
+      return {
+        ...i,
+        selected_batch_id: batchId,
+        earliest_batch_name: selectedBatch?.batch_name || i.earliest_batch_name,
+        earliest_expiry: selectedBatch?.expiry_date || i.earliest_expiry,
+        qty: newQty <= 0 ? 1 : newQty
+      };
+    }));
+  };
+
   const setQty = (id: string, qty: number | string) => {
-    const totalAvailable = getTotalAvailable(id);
+    const item = cart.find(c => c.product_id === id);
+    const totalAvailable = getTotalAvailable(id, item?.selected_batch_id);
     let newQty = qty;
     if (typeof qty === "number" || (typeof qty === "string" && qty !== "")) {
       const numQty = Number(qty);
       if (numQty > totalAvailable) {
-        const pObj = products.find(prod => prod.id === id);
-        toast.error(`Only ${totalAvailable} ${pObj?.has_expired_stock ? 'non-expired ' : ''}available in stock`);
+        toast.error(`Only ${totalAvailable} available in ${item?.selected_batch_id && item.selected_batch_id !== "auto" ? "selected batch" : "stock"}`);
         newQty = totalAvailable;
       } else if (numQty < 0) {
         newQty = 0;
@@ -395,7 +450,13 @@ const POS = () => {
         let qtyToDeduct = item.qty;
         let itemCostTotal = 0;
 
-        const pBatches = allBatches.filter(b => b.product_id === item.product_id && b.remaining_qty > 0);
+        let pBatches = allBatches.filter(b => b.product_id === item.product_id && b.remaining_qty > 0);
+        if (item.selected_batch_id && item.selected_batch_id !== "auto") {
+          const specific = pBatches.find(b => b.id === item.selected_batch_id);
+          if (specific) {
+            pBatches = [specific, ...pBatches.filter(b => b.id !== item.selected_batch_id)];
+          }
+        }
         
         for (const batchDoc of pBatches) {
           if (qtyToDeduct <= 0) break;
@@ -431,8 +492,8 @@ const POS = () => {
             qty: qtyToDeduct,
             sell_price: item.sell_price,
             cost_price: defaultCost,
-            batch_id: "no-batch",
-            batch_name: "No Batch Available"
+            batch_id: null,
+            batch_name: null
           });
         }
         costTotal += itemCostTotal;
@@ -536,44 +597,45 @@ const POS = () => {
           <div class="center">
             <h2>${escapeHtml(shop.name)}</h2>
             ${shop.pan ? `<div class="muted">PAN: ${escapeHtml(shop.pan)}</div>` : ""}
-            <div class="muted" style="margin-top: 4px">${format(new Date(), "dd MMM yyyy, hh:mm a")}</div>
+            <div class="muted">${format(new Date(), "dd MMM yyyy, hh:mm a")}</div>
+            <div class="muted">Bill #: ${saleRef.id.slice(-6).toUpperCase()}</div>
+            <div class="muted">Customer: ${escapeHtml(customerName)}</div>
           </div>
-          <hr/>
-          <div class="row"><span>Customer</span><span>${escapeHtml(customerName)}</span></div>
-          <div class="row"><span>Payment</span><span>${paymentMode}</span></div>
-          <table><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
-          ${discountNum > 0 ? `<div class="row sub" style="margin-top:8px"><span>Subtotal</span><span>${fmt(subtotal)}</span></div><div class="row sub"><span>Discount</span><span>− ${fmt(discountNum)}</span></div>` : ""}
-          <div class="row total"><span>TOTAL</span><span>${fmt(total)}</span></div>
-          <div class="row sub"><span>Paid</span><span>${fmt(paid)}</span></div>
-          ${changeLine}
-          <hr/><div class="center muted">Thank you for shopping with us!</div>
+          <table>
+            <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="total-section">
+            <div class="row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+            ${discountNum > 0 ? `<div class="row"><span>Discount</span><span>-${fmt(discountNum)}</span></div>` : ""}
+            <div class="row total-row"><span>Total</span><span>${fmt(total)}</span></div>
+            <div class="row"><span>Paid (${paymentMode.toUpperCase()})</span><span>${fmt(paid)}</span></div>
+            ${total - paid > 0 ? `<div class="row" style="color:red"><span>Due</span><span>${fmt(total - paid)}</span></div>` : ""}
+            ${changeLine}
+          </div>
+          <div class="footer">Thank you for your business!</div>
         `;
-        const prefix = (shop.name || "SAB").trim().substring(0, 3).toUpperCase();
-        const fileName = `${prefix}_${customerName.replace(/[^a-zA-Z0-9]/g, "_")}`;
-        printHTML(fileName, body);
-      } catch (printErr) {
-        console.error("Print error:", printErr);
-        toast.error("Sale saved, but receipt printing failed.");
+        printHTML("Sales Receipt", body);
+      } catch (err: any) {
+        console.error("Print receipt error:", err);
       }
 
-      setCart([]); setAmountPaid(""); setTendered(""); setDiscount(""); setCustomerId("walk-in"); setPaymentMode("cash");
+      setCart([]); setDiscount(""); setTendered(""); setAmountPaid(""); setCustomerId("walk-in");
       load();
-    } catch (err: any) {
-      console.error("Checkout error:", err);
-      toast.error(err.message || "An unexpected error occurred during checkout");
+    } catch (e: any) {
+      toast.error(e.message);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
-      <PageHeader title="POS Billing" subtitle="Tap items, take payment, done." />
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <PageHeader title="Point of Sale (POS)" subtitle="Fast billing with auto-discount & stock sync" />
 
-      <div className="grid lg:grid-cols-[1fr_400px] gap-4">
-        <div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-4">
           <Input 
-            className="mb-3" 
             placeholder="Search item or barcode... (Press Enter to add)" 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
@@ -624,13 +686,6 @@ const POS = () => {
                       }`}>
                       {isOut ? (p.has_expired_stock ? "ALL STOCK EXPIRED" : "OUT OF STOCK") : `${fmtQty(totalAvailable)} ${p.unit} in stock`}
                     </div>
-                    {p.earliest_expiry && !isOut && (
-                      <div className={`text-[11px] truncate mt-0.5 font-medium ${p.is_expiring_soon ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground"}`}>
-                        {p.is_expiring_soon ? "⚠️ Exp: " : "Exp: "}
-                        {format(new Date(p.earliest_expiry), "dd MMM yyyy")}
-                        {p.earliest_batch_name ? ` (${p.earliest_batch_name})` : ""}
-                      </div>
-                    )}
                   </div>
                   <div className={`mt-2 font-semibold ${isOut ? "text-red-700 dark:text-red-400" : isLow ? "text-orange-700 dark:text-orange-400" : "text-primary dark:text-primary-glow"
                     }`}>{fmt(p.sell_price)}</div>
@@ -650,17 +705,41 @@ const POS = () => {
 
           <div className="space-y-2 max-h-[40vh] overflow-y-auto">
             {cart.map((i) => (
-              <div key={i.product_id} className="bg-secondary rounded-lg p-2">
+              <div key={i.product_id} className="bg-secondary rounded-lg p-2.5 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{i.product_name}</div>
-                    {i.earliest_expiry && (
-                      <div className={`text-[10px] truncate ${i.is_expiring_soon ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"}`}>
-                        {i.earliest_batch_name ? `Batch: ${i.earliest_batch_name} · ` : ""}Exp: {format(new Date(i.earliest_expiry), "dd MMM yyyy")}
+                    {i.available_batches && i.available_batches.length > 1 ? (
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground font-semibold uppercase shrink-0">Batch:</span>
+                        <Select 
+                          value={i.selected_batch_id || "auto"} 
+                          onValueChange={(val) => changeCartBatch(i.product_id, val)}
+                        >
+                          <SelectTrigger className="h-6 text-[10px] px-2 py-0 bg-background/90 border-border/80 text-foreground w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="auto" className="text-xs font-medium">
+                              ⚡ Auto (FEFO: Earliest Expiry)
+                            </SelectItem>
+                            {i.available_batches.map((b) => (
+                              <SelectItem key={b.id} value={b.id} className="text-xs">
+                                {b.batch_name} {b.expiry_date ? `(Exp: ${format(new Date(b.expiry_date), "dd MMM yyyy")})` : ''} · {b.remaining_qty} in stock
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
+                    ) : (
+                      i.earliest_expiry && (
+                        <div className={`text-[10px] truncate mt-0.5 ${i.is_expiring_soon ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"}`}>
+                          {i.earliest_batch_name ? `Batch: ${i.earliest_batch_name} · ` : ""}Exp: {format(new Date(i.earliest_expiry), "dd MMM yyyy")}
+                        </div>
+                      )
                     )}
                   </div>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeItem(i.product_id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive self-start" onClick={() => removeItem(i.product_id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
                 <div className="grid grid-cols-[auto_1fr_1fr] gap-x-2 gap-y-1 mt-1 items-end">
                   <div className="space-y-0.5">
