@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, increment, orderBy, limit } from "firebase/firestore";
+import { collection, doc, query, where, getDoc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, increment, orderBy, limit } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -334,6 +334,10 @@ const Cashbook = () => {
             }
             batch.delete(d.ref);
           }
+
+          const pbQ = query(collection(db, "product_batches"), where("purchase_id", "==", row.reference_id));
+          const pbSnap = await getDocs(pbQ);
+          pbSnap.docs.forEach((d) => batch.delete(d.ref));
 
           const cashQ = query(collection(db, "cash_transactions"), where("reference_id", "==", row.reference_id));
           const cashSnap = await getDocs(cashQ);
