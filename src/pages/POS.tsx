@@ -590,34 +590,83 @@ const POS = () => {
       try {
         const shop = await getShopInfo();
         const customerName = customerId === "walk-in" ? "Walk-in" : (customers.find((c) => c.id === customerId)?.name ?? "Walk-in");
-        const rows = cart.map((i) => `<tr><td>${escapeHtml(i.product_name)}</td><td>${fmtQty(i.qty)} ${escapeHtml(i.unit)}</td><td>${fmt(i.sell_price)}</td><td>${fmt(Number(i.qty) * Number(i.sell_price))}</td></tr>`).join("");
-        const changeLine = paymentMode === "cash" && Number(tendered || 0) >= total
-          ? `<div class="row"><span>Tendered</span><span>${fmt(Number(tendered))}</span></div><div class="row"><span>Change</span><span>${fmt(Number(tendered) - total)}</span></div>` : "";
+        const customerPhone = customerId !== "walk-in" ? customers.find((c) => c.id === customerId)?.phone : "";
+        const billNo = saleRef.id.slice(-6).toUpperCase();
+        
+        const rows = cart.map((i, idx) => `
+          <tr>
+            <td style="width:20px; color:#9ca3af;">${idx + 1}</td>
+            <td class="item-name">${escapeHtml(i.product_name)}</td>
+            <td class="num">${fmtQty(i.qty)} <span style="font-size:10px; color:#6b7280;">${escapeHtml(i.unit)}</span></td>
+            <td class="num">${fmt(i.sell_price)}</td>
+            <td class="num" style="font-weight:600;">${fmt(Number(i.qty) * Number(i.sell_price))}</td>
+          </tr>
+        `).join("");
+
+        const dueAmount = total - paid;
+        const changeAmount = Number(tendered || 0) - paid;
 
         const body = `
-          <div class="center">
-            <h2>${escapeHtml(shop.name)}</h2>
-            ${shop.pan ? `<div class="muted">PAN: ${escapeHtml(shop.pan)}</div>` : ""}
-            <div class="muted">${format(new Date(), "dd MMM yyyy, hh:mm a")}</div>
-            <div class="muted">Bill #: ${saleRef.id.slice(-6).toUpperCase()}</div>
-            <div class="muted">Customer: ${escapeHtml(customerName)}</div>
+          <div class="receipt-card">
+            <div class="shop-header">
+              <div class="shop-title">${escapeHtml(shop.name)}</div>
+              <div class="shop-meta">
+                ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
+                <div>Tax Invoice / Sales Receipt</div>
+              </div>
+            </div>
+
+            <div class="bill-info">
+              <div class="bill-info-item">
+                <span class="bill-info-label">Bill No</span>
+                <span class="bill-info-value">#${escapeHtml(billNo)}</span>
+              </div>
+              <div class="bill-info-item" style="text-align:right;">
+                <span class="bill-info-label">Date & Time</span>
+                <span class="bill-info-value">${format(new Date(), "dd MMM yyyy, hh:mm a")}</span>
+              </div>
+              <div class="bill-info-item">
+                <span class="bill-info-label">Customer</span>
+                <span class="bill-info-value">${escapeHtml(customerName)}${customerPhone ? ` (${escapeHtml(customerPhone)})` : ""}</span>
+              </div>
+              <div class="bill-info-item" style="text-align:right;">
+                <span class="bill-info-label">Payment</span>
+                <span class="bill-info-value" style="text-transform:uppercase;">${escapeHtml(paymentMode)}</span>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:20px;">#</th>
+                  <th>Item</th>
+                  <th class="num">Qty</th>
+                  <th class="num">Rate</th>
+                  <th class="num">Total</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+
+            <div class="summary-section">
+              <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+              ${discountNum > 0 ? `<div class="summary-row discount"><span>Discount</span><span>-${fmt(discountNum)}</span></div>` : ""}
+              <div class="summary-row grand-total"><span>Grand Total</span><span>${fmt(total)}</span></div>
+              <div class="summary-row paid"><span>Paid (${paymentMode.toUpperCase()})</span><span>${fmt(paid)}</span></div>
+              ${dueAmount > 0 ? `<div class="summary-row due"><span>Outstanding Due</span><span>${fmt(dueAmount)}</span></div>` : ""}
+              ${paymentMode === "cash" && Number(tendered || 0) > 0 && changeAmount > 0 ? `
+                <div class="summary-row change"><span>Tendered: ${fmt(Number(tendered))}</span><span>Change: ${fmt(changeAmount)}</span></div>
+              ` : ""}
+            </div>
+
+            <div class="receipt-footer">
+              <div class="footer-highlight">Thank you for shopping with us!</div>
+              <div>Please visit again</div>
+              <div class="brand-tag">KhataPlus Point of Sale</div>
+            </div>
           </div>
-          <table>
-            <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-          <div class="total-section">
-            <div class="row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
-            ${discountNum > 0 ? `<div class="row"><span>Discount</span><span>-${fmt(discountNum)}</span></div>` : ""}
-            <div class="row total-row"><span>Total</span><span>${fmt(total)}</span></div>
-            <div class="row"><span>Paid (${paymentMode.toUpperCase()})</span><span>${fmt(paid)}</span></div>
-            ${total - paid > 0 ? `<div class="row" style="color:red"><span>Due</span><span>${fmt(total - paid)}</span></div>` : ""}
-            ${changeLine}
-          </div>
-          <div class="footer">Thank you for your business!</div>
         `;
         const safeCustName = customerName.replace(/[^a-zA-Z0-9_\s-]/g, "").trim().replace(/\s+/g, "_") || "Customer";
-        const billNo = saleRef.id.slice(-6).toUpperCase();
         const fileName = `${safeCustName}_Bill_${billNo}`;
         printHTML(fileName, body);
       } catch (err: any) {
