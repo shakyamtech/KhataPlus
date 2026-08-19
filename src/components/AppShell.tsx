@@ -65,6 +65,7 @@ export const AppShell = () => {
   const { colorTheme, setColorTheme } = useColorTheme();
   const [shopName, setShopName] = useState("My Shop");
   const [newName, setNewName] = useState("");
+  const [shopPhone, setShopPhone] = useState("");
   const [panNo, setPanNo] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
@@ -167,6 +168,7 @@ export const AppShell = () => {
                     setShopName(sName);
                     setNewName(sName);
                     localStorage.setItem("khataplus_shop_name", sName);
+                    setShopPhone(data.shop_phone || data.phone || "");
                     setPanNo(data.pan_no || "");
                     setFullName(data.full_name || "");
                     setHasMigrated(data.migrated_to_batches === true);
@@ -244,6 +246,7 @@ export const AppShell = () => {
         try {
             await setDoc(doc(db, "profiles", user.uid), { 
                 shop_name: newName,
+                shop_phone: shopPhone.trim() || null,
                 pan_no: panNo
             }, { merge: true });
             
@@ -714,6 +717,10 @@ export const AppShell = () => {
                         <div className="space-y-2">
                             <Label>{t.shopName}</Label>
                             <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Enter shop name..." />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>{t.shopPhone}</Label>
+                            <Input value={shopPhone} onChange={(e) => setShopPhone(e.target.value)} placeholder={t.shopPhonePlaceholder} />
                         </div>
                         <div className="space-y-2">
                             <Label>{t.panNo}</Label>

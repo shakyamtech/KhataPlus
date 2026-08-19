@@ -1,9 +1,9 @@
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-export const getShopInfo = async (): Promise<{ name: string; pan: string }> => {
+export const getShopInfo = async (): Promise<{ name: string; pan: string; phone: string }> => {
   const user = auth.currentUser;
-  if (!user) return { name: "My Shop", pan: "" };
+  if (!user) return { name: "My Shop", pan: "", phone: "" };
   
   try {
     const docRef = doc(db, "profiles", user.uid);
@@ -12,12 +12,13 @@ export const getShopInfo = async (): Promise<{ name: string; pan: string }> => {
       const data = docSnap.data();
       return {
         name: data.shop_name || "My Shop",
-        pan: data.pan_no || ""
+        pan: data.pan_no || "",
+        phone: data.shop_phone || data.phone || ""
       };
     }
   } catch (e) {
     console.error("Error fetching shop info", e);
   }
   
-  return { name: "My Shop", pan: "" };
+  return { name: "My Shop", pan: "", phone: "" };
 };

@@ -635,6 +635,7 @@ const POS = () => {
             <div class="shop-header">
               <div class="shop-title">${escapeHtml(shop.name)}</div>
               <div class="shop-meta">
+                ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
                 ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
                 <div>Tax Invoice / Sales Receipt</div>
               </div>

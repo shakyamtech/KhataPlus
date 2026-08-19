@@ -470,6 +470,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             const body = `
               <div class="center">
                 <h1 style="font-size:22px; margin-bottom: 4px">${escapeHtml(shop.name)}</h1>
+                ${shop.phone ? `<div class="muted">Phone: ${escapeHtml(shop.phone)}</div>` : ""}
                 ${shop.pan ? `<div class="muted">PAN: ${escapeHtml(shop.pan)}</div>` : ""}
                 <h2 style="font-size:18px; margin-top: 8px">${escapeHtml(selected.name)}</h2>
                 <div class="muted">${type === "customer" ? "Customer" : "Supplier"} Ledger · ${format(new Date(), "dd MMM yyyy")}</div>

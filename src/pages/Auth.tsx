@@ -25,6 +25,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [shopName, setShopName] = useState("");
+  const [shopPhone, setShopPhone] = useState("");
   const [fullName, setFullName] = useState("");
   const [panNo, setPanNo] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -99,6 +100,7 @@ const Auth = () => {
         email: email,
         full_name: fullName,
         shop_name: shopName || "My Shop",
+        shop_phone: shopPhone.trim() || null,
         pan_no: panNo,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -149,31 +151,26 @@ const Auth = () => {
 
       {/* Custom Styles for beautiful organic animations */}
       <style>{`
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(6deg); }
+        @keyframes floatSlow {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(25px, -25px) scale(1.08); }
         }
-        @keyframes float-medium {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(15px) rotate(-8deg); }
+        @keyframes floatReverse {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(-25px, 20px) scale(0.95); }
         }
-        @keyframes orbit {
-          0% { transform: rotate(0deg) translateX(80px) rotate(0deg); }
-          100% { transform: rotate(360deg) translateX(80px) rotate(-360deg); }
-        }
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.1); }
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 0.35; transform: scale(1); }
+          50% { opacity: 0.65; transform: scale(1.15); }
         }
         @keyframes gradient-shift {
           0% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
           100% { background-position: 0% 50%; }
         }
-        .animate-float-1 { animation: float-slow 7s ease-in-out infinite; }
-        .animate-float-2 { animation: float-medium 9s ease-in-out infinite; }
-        .animate-float-3 { animation: float-slow 6s ease-in-out infinite 1s; }
-        .animate-pulse-glow { animation: pulse-glow 10s ease-in-out infinite; }
+        .animate-blob-1 { animation: floatSlow 14s ease-in-out infinite; }
+        .animate-blob-2 { animation: floatReverse 18s ease-in-out infinite; }
+        .animate-blob-3 { animation: pulseGlow 10s ease-in-out infinite; }
         .animate-bg-shift {
           background-size: 300% 300%;
           animation: gradient-shift 15s ease infinite;
@@ -190,52 +187,86 @@ const Auth = () => {
         }
       `}</style>
 
-      {/* Decorative Glow Orbs in the background */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[120px] pointer-events-none animate-pulse-glow" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-lime-200/40 blur-[120px] pointer-events-none animate-pulse-glow" />
-      <div className="absolute top-[40%] right-[10%] w-[30%] h-[30%] rounded-full bg-orange-200/25 blur-[100px] pointer-events-none animate-pulse-glow" />
+      {/* Modern Ambient Floating Gradient Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-primary/20 blur-[130px] pointer-events-none animate-blob-1" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[550px] h-[550px] rounded-full bg-accent/20 blur-[140px] pointer-events-none animate-blob-2" />
+      <div className="absolute top-[30%] right-[20%] w-[350px] h-[350px] rounded-full bg-primary/15 blur-[100px] pointer-events-none animate-blob-3" />
 
-      {/* Floating Organic Leaf SVGs */}
-      <div className="absolute top-[12%] left-[8%] animate-float-1 pointer-events-none opacity-40 md:opacity-100">
-        <div className="p-3 bg-primary/10 rounded-full border border-primary/20 shadow-soft">
-          <Leaf className="h-7 w-7 text-primary fill-primary/20" />
-        </div>
-      </div>
-      <div className="absolute bottom-[15%] left-[6%] animate-float-2 pointer-events-none opacity-40 md:opacity-100">
-        <div className="p-4 bg-lime-500/10 rounded-full border border-lime-500/20 shadow-soft">
-          <BookText className="h-8 w-8 text-lime-600" />
-        </div>
-      </div>
-      <div className="absolute top-[18%] right-[8%] animate-float-3 pointer-events-none opacity-40 md:opacity-100">
-        <div className="p-3.5 bg-orange-500/10 rounded-full border border-orange-500/20 shadow-soft">
-          <Sparkles className="h-6 w-6 text-orange-500" />
-        </div>
-      </div>
-      <div className="absolute bottom-[20%] right-[6%] animate-float-1 pointer-events-none opacity-40 md:opacity-100">
-        <div className="p-3 bg-primary/10 rounded-full border border-primary/20 shadow-soft">
-          <Leaf className="h-6 w-6 text-primary rotate-45" />
-        </div>
-      </div>
-
-      {/* Unified Vertical Layout (Branding on Top, Card in Center, Features at Bottom) */}
-      <div className="w-full max-w-4xl flex flex-col items-center gap-8 relative z-10 text-center animate-fade-in px-4">
+      <div className="w-full max-w-5xl mx-auto flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 relative z-10 py-6">
         
-        {/* Brand Header - only visible on large screens */}
-        <div className="hidden lg:flex flex-col items-center space-y-4 max-w-2xl">
-          <div className="flex items-center gap-3">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-primary shadow-glow transition-all duration-500 hover:scale-105">
-              <BookText className="h-8 w-8 text-primary-foreground animate-pulse" />
-            </div>
-            <span className="font-display text-4xl md:text-5xl font-bold tracking-tight text-primary">KhataPlus</span>
+        {/* Left Side Presentation Content */}
+        <div className="hidden lg:flex flex-col text-left max-w-lg space-y-6 animate-fade-in">
+          
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold w-fit shadow-soft">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>KhataPlus Pro v1.2</span>
           </div>
 
           <div className="space-y-2">
-            <h2 className="font-display text-2xl md:text-4xl font-bold leading-tight text-foreground">
+            <h1 className="font-display text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground leading-[1.15]">
               {t.brandTitle}
-            </h2>
-            <p className="text-muted-foreground text-sm md:text-base max-w-xl leading-relaxed mx-auto">
+            </h1>
+            <p className="text-muted-foreground text-sm lg:text-base leading-relaxed">
               {t.brandDesc}
             </p>
+          </div>
+
+          {/* Feature Highlights Grid */}
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white/60 dark:bg-secondary/30 border border-white/40 dark:border-white/5 shadow-soft backdrop-blur-sm">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
+                <ShoppingBag className="h-4 w-4" />
+              </div>
+              <div className="text-xs">
+                <div className="font-bold text-foreground">{t.posTitle}</div>
+                <div className="text-muted-foreground mt-0.5">{t.posDesc}</div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white/60 dark:bg-secondary/30 border border-white/40 dark:border-white/5 shadow-soft backdrop-blur-sm">
+              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <BarChart3 className="h-4 w-4" />
+              </div>
+              <div className="text-xs">
+                <div className="font-bold text-foreground">{t.profitTitle}</div>
+                <div className="text-muted-foreground mt-0.5">{t.profitDesc}</div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white/60 dark:bg-secondary/30 border border-white/40 dark:border-white/5 shadow-soft backdrop-blur-sm">
+              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+                <Users className="h-4 w-4" />
+              </div>
+              <div className="text-xs">
+                <div className="font-bold text-foreground">{t.ledgerTitle}</div>
+                <div className="text-muted-foreground mt-0.5">{t.ledgerDesc}</div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white/60 dark:bg-secondary/30 border border-white/40 dark:border-white/5 shadow-soft backdrop-blur-sm">
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                <Leaf className="h-4 w-4" />
+              </div>
+              <div className="text-xs">
+                <div className="font-bold text-foreground">{t.recipeTitle}</div>
+                <div className="text-muted-foreground mt-0.5">{t.recipeDesc}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 text-xs text-muted-foreground/80 pt-2 border-t border-border/40">
+            <div className="flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+              <span>Offline Ready</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+              <span>Thermal Receipt Print</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+              <span>Cloud Auto-Sync</span>
+            </div>
           </div>
         </div>
 
@@ -319,6 +350,16 @@ const Auth = () => {
                       value={shopName} 
                       onChange={(e) => setShopName(e.target.value)} 
                       placeholder={t.shopPlaceholder} 
+                      autoComplete="off"
+                      className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-foreground/90 font-medium mb-1.5 block">{t.shopPhone} <span className="text-[10px] text-muted-foreground font-normal">{t.shopPhoneOptional}</span></Label>
+                    <Input 
+                      value={shopPhone} 
+                      onChange={(e) => setShopPhone(e.target.value)} 
+                      placeholder={t.shopPhonePlaceholder} 
                       autoComplete="off"
                       className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
                     />
