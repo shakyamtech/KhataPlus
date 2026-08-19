@@ -486,6 +486,170 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       setBusyPayment(false);
     }
   };
+  const printSingleEntry = async (e: Entry) => {
+    if (!selected) return;
+    const shop = await getShopInfo();
+    
+    if (e.is_order) {
+      const isSale = type === "customer";
+      const billTitle = isSale ? "Sales Invoice" : "Purchase Bill";
+      const docTypeLabel = isSale ? "Tax Invoice / Sales Receipt" : "Purchase Invoice / Receipt";
+
+      const rows = (e.order_items && e.order_items.length > 0)
+        ? e.order_items.map((it, idx) => `
+            <tr>
+              <td style="width:20px; color:#9ca3af; font-size:11px;">${idx + 1}</td>
+              <td class="item-name">${escapeHtml(it.product_name)}</td>
+              <td class="num">${fmtQty(it.qty)} <span style="font-size:10px; color:#6b7280;">${escapeHtml(it.unit)}</span></td>
+              <td class="num">${it.price ? fmt(it.price) : "-"}</td>
+              <td class="num" style="font-weight:700;">${it.total ? fmt(it.total) : (it.price ? fmt(it.price * it.qty) : "-")}</td>
+            </tr>
+          `).join("")
+        : `<tr><td colspan="5" style="text-align:center; padding:12px; color:#6b7280;">${escapeHtml(e.products || e.title)}</td></tr>`;
+
+      const body = `
+        <div class="receipt-card">
+          <div class="shop-header">
+            <div class="shop-title">${escapeHtml(shop.name)}</div>
+            <div class="shop-meta">
+              ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
+              ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
+              <div>${docTypeLabel}</div>
+            </div>
+          </div>
+
+          <div class="bill-info">
+            <div class="bill-info-item">
+              <span class="bill-info-label">${isSale ? "Customer" : "Supplier"}</span>
+              <span class="bill-info-value">${escapeHtml(selected.name)}</span>
+            </div>
+            <div class="bill-info-item" style="text-align:right;">
+              <span class="bill-info-label">Date & Time</span>
+              <span class="bill-info-value">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}</span>
+            </div>
+            ${selected.phone ? `
+            <div class="bill-info-item" style="margin-top:4px;">
+              <span class="bill-info-label">Contact</span>
+              <span class="bill-info-value">${escapeHtml(selected.phone)}</span>
+            </div>
+            ` : `<div></div>`}
+            <div class="bill-info-item" style="text-align:right; margin-top:4px;">
+              <span class="bill-info-label">Payment Mode</span>
+              <span class="bill-info-value" style="text-transform:uppercase;">${escapeHtml(e.payment_mode || "Cash")}</span>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width:20px;">#</th>
+                <th>Item</th>
+                <th class="num">Qty</th>
+                <th class="num">Rate</th>
+                <th class="num">Total</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+
+          <div class="summary-section">
+            <div class="summary-row grand-total"><span>Total Bill Amount</span><span>${fmt(e.amount)}</span></div>
+            ${(Number(e.paid_amount || 0) > 0 || Number(e.due_amount || 0) > 0) ? `
+              <div class="summary-row paid"><span>Paid Amount</span><span>${fmt(e.paid_amount ?? e.amount)}</span></div>
+              ${Number(e.due_amount || 0) > 0 ? `
+                <div class="summary-row due"><span>Due Amount</span><span>${fmt(e.due_amount!)}</span></div>
+              ` : ""}
+            ` : ""}
+          </div>
+
+          ${e.note ? `<div style="font-size:11.5px; color:#4b5563; margin-bottom:12px; font-style:italic;">Note: ${escapeHtml(e.note)}</div>` : ""}
+
+          <div class="receipt-footer">
+            <div class="footer-highlight">Thank you for your business!</div>
+            <div class="brand-tag">KhataPlus Store Management System</div>
+          </div>
+        </div>
+      `;
+      printHTML(`${selected.name} — ${billTitle}`, body);
+
+    } else {
+      const isReceived = type === "customer";
+      const voucherTitle = isReceived ? "Payment Receipt" : "Payment Voucher";
+      const docTypeLabel = isReceived ? "Official Payment Receipt (रसिद)" : "Payment Out Voucher (भुक्तानी भौचर)";
+
+      const body = `
+        <div class="receipt-card">
+          <div class="shop-header">
+            <div class="shop-title">${escapeHtml(shop.name)}</div>
+            <div class="shop-meta">
+              ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
+              ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
+              <div style="margin-top:2px; font-weight:700; color:#111827; letter-spacing:0.04em;">${docTypeLabel}</div>
+            </div>
+          </div>
+
+          <div class="bill-info">
+            <div class="bill-info-item">
+              <span class="bill-info-label">${isReceived ? "Received From" : "Paid To"}</span>
+              <span class="bill-info-value" style="font-size:13px; font-weight:700;">${escapeHtml(selected.name)}</span>
+            </div>
+            <div class="bill-info-item" style="text-align:right;">
+              <span class="bill-info-label">Voucher Date</span>
+              <span class="bill-info-value">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}</span>
+            </div>
+            ${selected.phone ? `
+            <div class="bill-info-item" style="margin-top:4px;">
+              <span class="bill-info-label">Contact Number</span>
+              <span class="bill-info-value">${escapeHtml(selected.phone)}</span>
+            </div>
+            ` : `<div></div>`}
+            <div class="bill-info-item" style="text-align:right; margin-top:4px;">
+              <span class="bill-info-label">Entry Type</span>
+              <span class="bill-info-value" style="text-transform:capitalize; color:#059669; font-weight:700;">${escapeHtml(e.title)}</span>
+            </div>
+          </div>
+
+          <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:16px; text-align:center; margin:16px 0;">
+            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:#166534; letter-spacing:0.06em; margin-bottom:4px;">
+              ${isReceived ? "Amount Received (प्राप्त रकम)" : "Amount Paid (भुक्तानी रकम)"}
+            </div>
+            <div style="font-size:26px; font-weight:800; color:#15803d; letter-spacing:-0.02em;">
+              ${fmt(e.amount)}
+            </div>
+          </div>
+
+          ${e.note ? `
+            <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; margin-bottom:16px; font-size:12px; color:#374151;">
+              <span style="font-weight:600; color:#6b7280; font-size:10.5px; text-transform:uppercase; display:block; margin-bottom:2px;">Remarks / Note</span>
+              ${escapeHtml(e.note)}
+            </div>
+          ` : ""}
+
+          <div class="summary-section" style="margin-top:14px; margin-bottom:24px;">
+            <div class="summary-row grand-total" style="font-size:13.5px;">
+              <span>Current Outstanding ${dueLabel}</span>
+              <span>${fmt(Math.abs(Number(selected.balance)))}</span>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-top:35px; padding-top:10px;">
+            <div style="border-top:1px dashed #9ca3af; text-align:center; padding-top:4px; font-size:11px; color:#6b7280;">
+              ${isReceived ? "Payer's Signature" : "Receiver's Signature"}
+            </div>
+            <div style="border-top:1px dashed #9ca3af; text-align:center; padding-top:4px; font-size:11px; color:#6b7280;">
+              Authorized Signature
+            </div>
+          </div>
+
+          <div class="receipt-footer" style="margin-top:20px;">
+            <div class="footer-highlight">Thank you for your transaction!</div>
+            <div class="brand-tag">KhataPlus Store Management System</div>
+          </div>
+        </div>
+      `;
+      printHTML(`${selected.name} — ${voucherTitle}`, body);
+    }
+  };
 
   if (selected) {
     return (
@@ -604,7 +768,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 </div>
               </div>`;
             printHTML(`${selected.name} — Ledger`, body);
-          }}><Printer className="h-4 w-4 mr-1" />Print</Button>
+          }}><Printer className="h-4 w-4 mr-1" />Print Ledger</Button>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -629,6 +793,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           </Button>
           </div>
         } />
+
         <Card className="p-6 mb-6 shadow-card border-0">
           <div className="text-xs uppercase font-medium text-muted-foreground">
             Outstanding {dueLabel}
@@ -708,7 +873,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                         {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
                       </div>
                       
-                      <div className="text-right shrink-0">
+                      <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                         <div className={`font-bold text-base ${
                           !e.is_order || e.title.toLowerCase().includes("payment")
                             ? "text-emerald-500 dark:text-emerald-400" 
@@ -716,9 +881,24 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                         }`}>
                           {!e.is_order ? `+${fmt(e.amount)}` : fmt(e.amount)}
                         </div>
-                        {e.is_order && (
-                          <span className="text-[10px] text-muted-foreground font-medium uppercase block">Total Bill</span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {e.is_order && (
+                            <span className="text-[10px] text-muted-foreground font-medium uppercase">Total Bill</span>
+                          )}
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-7 px-2 text-xs flex items-center gap-1 hover:bg-primary/10 hover:text-primary transition-colors"
+                            onClick={(evt) => {
+                              evt.stopPropagation();
+                              printSingleEntry(e);
+                            }}
+                            title={e.is_order ? "Print Bill" : "Print Payment Receipt"}
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                            <span>{e.is_order ? "Bill" : "Receipt"}</span>
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -829,7 +1009,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                     {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
                   </div>
                   
-                  <div className="text-right shrink-0">
+                  <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                     <div className={`font-bold text-base ${
                       !e.is_order || e.title.toLowerCase().includes("payment")
                         ? "text-emerald-500 dark:text-emerald-400" 
@@ -837,9 +1017,24 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                     }`}>
                       {!e.is_order ? `+${fmt(e.amount)}` : fmt(e.amount)}
                     </div>
-                    {e.is_order && (
-                      <span className="text-[10px] text-muted-foreground font-medium uppercase block">Total Bill</span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {e.is_order && (
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase">Total Bill</span>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-7 px-2 text-xs flex items-center gap-1 hover:bg-primary/10 hover:text-primary transition-colors"
+                        onClick={(evt) => {
+                          evt.stopPropagation();
+                          printSingleEntry(e);
+                        }}
+                        title={e.is_order ? "Print Bill" : "Print Payment Receipt"}
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                        <span>{e.is_order ? "Bill" : "Receipt"}</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
