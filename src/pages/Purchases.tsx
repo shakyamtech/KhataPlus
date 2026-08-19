@@ -249,15 +249,35 @@ const Purchases = () => {
     }
   };
   const saveNewSupplier = async () => {
-    if (!newSupplierName.trim()) return toast.error("Name required");
+    const nameTrim = newSupplierName.trim();
+    const phoneTrim = newSupplierPhone.trim();
+
+    if (!nameTrim) return toast.error("Name required");
+
+    // Check duplicate
+    const existing = suppliers.find((s) => {
+      const sName = (s.name || "").trim().toLowerCase();
+      const sPhone = (s.phone || "").trim();
+      if (phoneTrim && sPhone && sPhone === phoneTrim) return true;
+      if (sName === nameTrim.toLowerCase()) return true;
+      return false;
+    });
+
+    if (existing) {
+      if (phoneTrim && (existing.phone || "").trim() === phoneTrim) {
+        return toast.error(`Supplier with phone '${phoneTrim}' already exists (${existing.name})`);
+      }
+      return toast.error(`Supplier '${existing.name}' already exists`);
+    }
+
     setBusySupplier(true);
     try {
       const ref = doc(collection(db, "suppliers"));
       await setDoc(ref, {
         id: ref.id,
         user_id: user!.uid,
-        name: newSupplierName.trim(),
-        phone: newSupplierPhone.trim() || null,
+        name: nameTrim,
+        phone: phoneTrim || null,
         balance: 0,
         created_at: new Date().toISOString()
       });

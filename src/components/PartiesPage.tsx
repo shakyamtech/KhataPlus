@@ -319,15 +319,39 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   }, [activeTab, selected]);
 
   const add = async () => {
-    if (!name.trim()) return toast.error("Name required");
+    const nameTrim = name.trim();
+    const phoneTrim = phone.trim();
+
+    if (!nameTrim) return toast.error("Name required");
+
+    if (type === "customer" && (nameTrim.toLowerCase() === "walk-in" || nameTrim.toLowerCase() === "walkin")) {
+      return toast.error("'Walk-in' is a reserved system name");
+    }
+
+    // Check duplicate
+    const existing = items.find((p) => {
+      const pName = (p.name || "").trim().toLowerCase();
+      const pPhone = (p.phone || "").trim();
+      if (phoneTrim && pPhone && pPhone === phoneTrim) return true;
+      if (pName === nameTrim.toLowerCase()) return true;
+      return false;
+    });
+
+    if (existing) {
+      if (phoneTrim && (existing.phone || "").trim() === phoneTrim) {
+        return toast.error(`${type === "customer" ? "Customer" : "Supplier"} with phone '${phoneTrim}' already exists (${existing.name})`);
+      }
+      return toast.error(`${type === "customer" ? "Customer" : "Supplier"} '${existing.name}' already exists`);
+    }
+
     setBusyAdd(true);
     try {
       const ref = doc(collection(db, type === "customer" ? "customers" : "suppliers"));
       await setDoc(ref, {
         id: ref.id,
         user_id: user!.uid,
-        name: name.trim(),
-        phone: phone.trim() || null,
+        name: nameTrim,
+        phone: phoneTrim || null,
         balance: 0,
         created_at: new Date().toISOString()
       });

@@ -344,15 +344,39 @@ const POS = () => {
   }, [paymentMode, subtotal]);
 
   const saveNewCustomer = async () => {
-    if (!newCustomerName.trim()) return toast.error("Name required");
+    const nameTrim = newCustomerName.trim();
+    const phoneTrim = newCustomerPhone.trim();
+
+    if (!nameTrim) return toast.error("Name required");
+
+    if (nameTrim.toLowerCase() === "walk-in" || nameTrim.toLowerCase() === "walkin") {
+      return toast.error("'Walk-in' is a reserved system name");
+    }
+
+    // Check duplicate
+    const existing = customers.find((c) => {
+      const cName = (c.name || "").trim().toLowerCase();
+      const cPhone = (c.phone || "").trim();
+      if (phoneTrim && cPhone && cPhone === phoneTrim) return true;
+      if (cName === nameTrim.toLowerCase()) return true;
+      return false;
+    });
+
+    if (existing) {
+      if (phoneTrim && (existing.phone || "").trim() === phoneTrim) {
+        return toast.error(`Customer with phone '${phoneTrim}' already exists (${existing.name})`);
+      }
+      return toast.error(`Customer '${existing.name}' already exists`);
+    }
+
     setBusyCustomer(true);
     try {
       const ref = doc(collection(db, "customers"));
       await setDoc(ref, {
         id: ref.id,
         user_id: user!.uid,
-        name: newCustomerName.trim(),
-        phone: newCustomerPhone.trim() || null,
+        name: nameTrim,
+        phone: phoneTrim || null,
         balance: 0,
         created_at: new Date().toISOString()
       });
