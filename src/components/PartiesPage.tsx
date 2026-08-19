@@ -795,12 +795,55 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         } />
 
         <Card className="p-6 mb-6 shadow-card border-0">
-          <div className="text-xs uppercase font-medium text-muted-foreground">
-            Outstanding {dueLabel}
+          <div className="flex items-center justify-between">
+            <div className="text-xs uppercase font-bold tracking-wider text-muted-foreground">
+              {Number(selected.balance) > 0 
+                ? `Outstanding ${dueLabel}` 
+                : Number(selected.balance) < 0 
+                  ? (type === "customer" ? "Customer Advance (अग्रिम/जम्मा रकम)" : "Supplier Advance (अग्रिम भुक्तानी)") 
+                  : "Account Status"}
+            </div>
+            {Number(selected.balance) < 0 && (
+              <span className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold px-2.5 py-0.5 rounded-full">
+                Advance (अग्रिम जम्मा)
+              </span>
+            )}
+            {Number(selected.balance) > 0 && (
+              <span className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-bold px-2.5 py-0.5 rounded-full">
+                Due (तिर्न बाँकी उधारो)
+              </span>
+            )}
+            {Number(selected.balance) === 0 && (
+              <span className="text-xs bg-secondary text-foreground font-semibold px-2.5 py-0.5 rounded-full">
+                All Settled (हिसाब चुक्ता)
+              </span>
+            )}
           </div>
-          <div className={`font-display text-3xl mt-1 ${Number(selected.balance) > 0 ? "text-orange-600" : "text-purple-600"}`}>
-            {fmt(Math.abs(Number(selected.balance)))}
+
+          <div className={`font-display text-3xl mt-1.5 font-extrabold ${
+            Number(selected.balance) > 0 
+              ? "text-orange-600 dark:text-orange-400" 
+              : Number(selected.balance) < 0 
+                ? "text-emerald-600 dark:text-emerald-400" 
+                : "text-muted-foreground"
+          }`}>
+            {Number(selected.balance) === 0 ? "Rs. 0" : fmt(Math.abs(Number(selected.balance)))}
           </div>
+
+          {Number(selected.balance) < 0 && (
+            <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1.5 font-medium">
+              💡 {type === "customer" 
+                ? "यो ग्राहकको कुनै बिल बाँकी छैन, उहाँको खातामा " + fmt(Math.abs(Number(selected.balance))) + " अग्रिम (Advance) जम्मा छ।" 
+                : "हामीले यो सप्लायरलाई " + fmt(Math.abs(Number(selected.balance))) + " अग्रिम (Advance) भुक्तानी दिएका छौँ।"}
+            </p>
+          )}
+          {Number(selected.balance) > 0 && (
+            <p className="text-xs text-orange-700 dark:text-orange-400 mt-1.5 font-medium">
+              💡 {type === "customer" 
+                ? "यो ग्राहकबाट हामीले " + fmt(Number(selected.balance)) + " उधारो रकम उठाउन बाँकी छ।" 
+                : "हामीले यो सप्लायरलाई " + fmt(Number(selected.balance)) + " भुक्तानी गर्न बाँकी छ।"}
+            </p>
+          )}
         </Card>
 
         {type === "supplier" ? (
@@ -1147,12 +1190,12 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 </Button>
               </div>
             </div>
-            <div className="mt-3 flex items-center justify-between bg-secondary rounded-lg px-3 py-2">
-              <span className="text-xs text-muted-foreground">
-                {Number(p.balance) >= 0 ? dueLabel : "Advance"}
+            <div className="mt-3 flex items-center justify-between bg-secondary/80 rounded-lg px-3 py-2">
+              <span className="text-xs text-muted-foreground font-medium">
+                {Number(p.balance) > 0 ? dueLabel : Number(p.balance) < 0 ? "Advance" : "Settled"}
               </span>
-              <span className={`font-medium ${Number(p.balance) > 0 ? "text-primary font-bold" : Number(p.balance) < 0 ? "text-emerald-500 font-bold" : "text-primary/70"}`}>
-                {fmt(Math.abs(Number(p.balance)))}
+              <span className={`font-bold text-sm ${Number(p.balance) > 0 ? "text-orange-600 dark:text-orange-400" : Number(p.balance) < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                {Number(p.balance) === 0 ? "Rs. 0" : fmt(Math.abs(Number(p.balance)))}
               </span>
             </div>
           </Card>
