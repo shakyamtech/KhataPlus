@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { fmt } from "@/lib/format";
+import { fmt, fmtQty } from "@/lib/format";
 import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -18,6 +18,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+
+type OrderItem = {
+  product_name: string;
+  qty: number;
+  unit: string;
+  price?: number;
+  total?: number;
+};
 
 type Party = { id: string; name: string; phone: string | null; balance: number };
 type Entry = { 
@@ -31,6 +39,7 @@ type Entry = {
   note?: string | null; 
   created_at: string;
   products?: string;
+  order_items?: OrderItem[];
   is_order?: boolean;
 };
 
@@ -103,8 +112,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const salesData = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const ledgerData = lSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Load items for these sales
-        const prodsMap: Record<string, string> = {};
+        const prodsMap: Record<string, OrderItem[]> = {};
         const saleIds = salesData.map(s => s.id);
         const chunks = [];
         for (let i = 0; i < saleIds.length; i += 10) chunks.push(saleIds.slice(i, i + 10));
@@ -114,8 +122,16 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             const chunkSnap = await getDocs(chunkQ);
             chunkSnap.docs.forEach(d => {
               const data = d.data();
-              if (!prodsMap[data.sale_id]) prodsMap[data.sale_id] = "";
-              prodsMap[data.sale_id] += (prodsMap[data.sale_id] ? ", " : "") + `${data.product_name} ×${data.qty}`;
+              if (!prodsMap[data.sale_id]) prodsMap[data.sale_id] = [];
+              const price = Number(data.sell_price ?? data.price ?? 0);
+              const qty = Number(data.qty ?? data.quantity ?? 1);
+              prodsMap[data.sale_id].push({
+                product_name: data.product_name || "Item",
+                qty,
+                unit: data.unit || "pcs",
+                price,
+                total: price * qty
+              });
             });
           }
         }
@@ -126,11 +142,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         salesData.forEach((s: any) => {
           saleIdsSet.add(s.id);
           const totalAmt = Number(s.total || 0);
-          
-          // Payments made specifically on this sale
           const salePayments = ledgerData.filter((l: any) => l.reference_id === s.id && (l.entry_type === "payment_in" || l.entry_type === "payment"));
           const paidAmt = salePayments.reduce((sum: number, l: any) => sum + Number(l.amount || 0), 0);
           const dueAmt = Math.max(0, totalAmt - paidAmt);
+          const orderItems = prodsMap[s.id] || [];
 
           items.push({
             id: s.id,
@@ -142,7 +157,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             due_amount: dueAmt,
             created_at: s.created_at,
             note: s.note,
-            products: prodsMap[s.id] || ""
+            order_items: orderItems,
+            products: orderItems.map(it => `${it.product_name} ×${it.qty}`).join(", ")
           });
         });
 
@@ -170,8 +186,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const purData = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const ledgerData = lSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Load items for these purchases
-        const prodsMap: Record<string, string> = {};
+        const prodsMap: Record<string, OrderItem[]> = {};
         const purIds = purData.map(p => p.id);
         const purChunks = [];
         for (let i = 0; i < purIds.length; i += 10) purChunks.push(purIds.slice(i, i + 10));
@@ -181,8 +196,16 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             const chunkSnap = await getDocs(chunkQ);
             chunkSnap.docs.forEach(d => {
               const data = d.data();
-              if (!prodsMap[data.purchase_id]) prodsMap[data.purchase_id] = "";
-              prodsMap[data.purchase_id] += (prodsMap[data.purchase_id] ? ", " : "") + `${data.product_name} ×${data.qty}`;
+              if (!prodsMap[data.purchase_id]) prodsMap[data.purchase_id] = [];
+              const price = Number(data.cost_price ?? data.price ?? 0);
+              const qty = Number(data.qty ?? data.quantity ?? 1);
+              prodsMap[data.purchase_id].push({
+                product_name: data.product_name || "Item",
+                qty,
+                unit: data.unit || "pcs",
+                price,
+                total: price * qty
+              });
             });
           }
         }
@@ -193,11 +216,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         purData.forEach((pu: any) => {
           purIdsSet.add(pu.id);
           const totalAmt = Number(pu.total || 0);
-          
-          // Payments made specifically on this purchase
           const purPayments = ledgerData.filter((l: any) => l.reference_id === pu.id && (l.entry_type === "payment_out" || l.entry_type === "payment"));
           const paidAmt = purPayments.reduce((sum: number, l: any) => sum + Number(l.amount || 0), 0);
           const dueAmt = Math.max(0, totalAmt - paidAmt);
+          const orderItems = prodsMap[pu.id] || [];
 
           items.push({
             id: pu.id,
@@ -209,7 +231,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             due_amount: dueAmt,
             created_at: pu.created_at,
             note: pu.note,
-            products: prodsMap[pu.id] || ""
+            order_items: orderItems,
+            products: orderItems.map(it => `${it.product_name} ×${it.qty}`).join(", ")
           });
         });
 
@@ -238,152 +261,147 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     if (type !== "supplier" || !selected || !user) return;
     setBusyAnalysis(true);
     try {
-      // Fetch all purchases for this user to get global min/max prices
       const allPurQ = query(collection(db, "purchases"), where("user_id", "==", user.uid));
       const allPurSnap = await getDocs(allPurQ);
       const allPurDocs = allPurSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const allPurIds = allPurDocs.map(d => d.id);
 
-      // Fetch all purchase items in chunks
       const allPi: any[] = [];
       const chunkSize = 10;
       for (let i = 0; i < allPurIds.length; i += chunkSize) {
-        const chunk = allPurIds.slice(i, i + chunkSize);
-        if (chunk.length === 0) continue;
-        const piQ = query(collection(db, "purchase_items"), where("purchase_id", "in", chunk));
-        const snap = await getDocs(piQ);
-        allPi.push(...snap.docs.map(d => d.data()));
+        const chunkIds = allPurIds.slice(i, i + chunkSize);
+        if (chunkIds.length > 0) {
+          const piQ = query(collection(db, "purchase_items"), where("purchase_id", "in", chunkIds));
+          const piSnap = await getDocs(piQ);
+          piSnap.docs.forEach(d => allPi.push(d.data()));
+        }
       }
 
-      // Group by product
-      const productStats = new Map<string, { minPrice: number, maxPrice: number, supplierPrices: Map<string, number>, name: string, unit: string }>();
-
+      const itemMap: Record<string, { min: number; max: number; prices: number[] }> = {};
       allPi.forEach(pi => {
-        const pid = pi.product_id;
-        const price = Number(pi.cost_price);
-        const purchase = allPurDocs.find(p => p.id === pi.purchase_id);
-        const supId = purchase?.supplier_id;
-
-        if (!productStats.has(pid)) {
-          productStats.set(pid, { minPrice: price, maxPrice: price, supplierPrices: new Map(), name: pi.product_name, unit: pi.unit });
-        }
-        
-        const stats = productStats.get(pid)!;
-        stats.minPrice = Math.min(stats.minPrice, price);
-        stats.maxPrice = Math.max(stats.maxPrice, price);
-        
-        if (supId) {
-          // Store the latest/lowest price from this supplier (we just keep the lowest we got from them for simplicity)
-          if (!stats.supplierPrices.has(supId)) {
-            stats.supplierPrices.set(supId, price);
-          } else {
-            stats.supplierPrices.set(supId, Math.min(stats.supplierPrices.get(supId)!, price));
-          }
+        const name = pi.product_name;
+        const price = Number(pi.cost_price || 0);
+        if (!name || isNaN(price) || price <= 0) return;
+        if (!itemMap[name]) {
+          itemMap[name] = { min: price, max: price, prices: [price] };
+        } else {
+          itemMap[name].min = Math.min(itemMap[name].min, price);
+          itemMap[name].max = Math.max(itemMap[name].max, price);
+          itemMap[name].prices.push(price);
         }
       });
 
-      // Now filter for products supplied by the selected supplier
-      const sItems: any[] = [];
-      productStats.forEach((stats, pid) => {
-        if (stats.supplierPrices.has(selected.id)) {
-          const supplierPrice = stats.supplierPrices.get(selected.id)!;
-          let status = "average";
-          if (stats.supplierPrices.size === 1) status = "only";
-          else if (supplierPrice <= stats.minPrice) status = "cheapest";
-          else if (supplierPrice >= stats.maxPrice && stats.maxPrice > stats.minPrice) status = "expensive";
+      const supplierPurIds = allPurDocs.filter(d => d.supplier_id === selected.id).map(d => d.id);
+      const supplierPi = allPi.filter(pi => supplierPurIds.includes(pi.purchase_id));
 
-          sItems.push({
-            id: pid,
-            name: stats.name,
-            unit: stats.unit,
-            supplierPrice,
-            globalMin: stats.minPrice,
-            globalMax: stats.maxPrice,
-            status
-          });
+      const uniqueSupplierItems: Record<string, any> = {};
+      supplierPi.forEach(pi => {
+        const name = pi.product_name;
+        if (!name) return;
+        if (!uniqueSupplierItems[name]) {
+          uniqueSupplierItems[name] = pi;
         }
       });
 
-      setAnalysisItems(sItems.sort((a, b) => a.name.localeCompare(b.name)));
+      const analysisList = Object.values(uniqueSupplierItems).map(pi => {
+        const name = pi.product_name;
+        const currentPrice = Number(pi.cost_price || 0);
+        const stats = itemMap[name] || { min: currentPrice, max: currentPrice, prices: [currentPrice] };
+        
+        let status: "cheapest" | "expensive" | "average" | "only" = "only";
+        if (stats.prices.length > 1) {
+          if (currentPrice === stats.min && currentPrice < stats.max) status = "cheapest";
+          else if (currentPrice === stats.max && currentPrice > stats.min) status = "expensive";
+          else status = "average";
+        }
+
+        return {
+          id: pi.id || name,
+          name,
+          unit: pi.unit || "pcs",
+          supplierPrice: currentPrice,
+          globalMin: stats.min,
+          globalMax: stats.max,
+          status
+        };
+      });
+
+      setAnalysisItems(analysisList);
     } catch (e: any) {
-      toast.error(e.message);
+      console.error("Error loading price analysis:", e);
+      toast.error("Failed to load price analysis");
     } finally {
       setBusyAnalysis(false);
     }
   };
 
   useEffect(() => {
-    if (activeTab === "analysis" && type === "supplier" && selected) {
+    if (activeTab === "analysis" && selected) {
       loadAnalysis();
     }
   }, [activeTab, selected]);
 
-  const add = async () => {
-    const nameTrim = name.trim();
-    const phoneTrim = phone.trim();
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error("Name is required");
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim();
 
-    if (!nameTrim) return toast.error("Name required");
-
-    if (type === "customer" && (nameTrim.toLowerCase() === "walk-in" || nameTrim.toLowerCase() === "walkin")) {
-      return toast.error("'Walk-in' is a reserved system name");
+    if (cleanName.toLowerCase() === "walk-in" || cleanName.toLowerCase() === "walkin") {
+      return toast.error('"Walk-in" is a reserved system name. Please use another name.');
     }
 
-    // Check duplicate
-    const existing = items.find((p) => {
-      const pName = (p.name || "").trim().toLowerCase();
-      const pPhone = (p.phone || "").trim();
-      if (phoneTrim && pPhone && pPhone === phoneTrim) return true;
-      if (pName === nameTrim.toLowerCase()) return true;
-      return false;
-    });
+    const dupName = items.some(p => p.name.toLowerCase() === cleanName.toLowerCase());
+    if (dupName) {
+      return toast.error(`A ${type} named "${cleanName}" already exists.`);
+    }
 
-    if (existing) {
-      if (phoneTrim && (existing.phone || "").trim() === phoneTrim) {
-        return toast.error(`${type === "customer" ? "Customer" : "Supplier"} with phone '${phoneTrim}' already exists (${existing.name})`);
+    if (cleanPhone) {
+      const dupPhone = items.some(p => p.phone && p.phone.trim() === cleanPhone);
+      if (dupPhone) {
+        return toast.error(`Phone number "${cleanPhone}" is already registered with another ${type}.`);
       }
-      return toast.error(`${type === "customer" ? "Customer" : "Supplier"} '${existing.name}' already exists`);
     }
 
     setBusyAdd(true);
     try {
-      const ref = doc(collection(db, type === "customer" ? "customers" : "suppliers"));
-      await setDoc(ref, {
-        id: ref.id,
-        user_id: user!.uid,
-        name: nameTrim,
-        phone: phoneTrim || null,
+      const partyRef = doc(collection(db, table));
+      const initBal = Number(openingBalance || 0);
+      const batch = writeBatch(db);
+
+      batch.set(partyRef, {
+        id: partyRef.id,
+        user_id: user?.uid,
+        name: name.trim(),
+        phone: phone.trim() || null,
         balance: 0,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       });
 
-      const ob = Number(openingBalance);
-      if (ob > 0) {
-        const entryRef = doc(collection(db, "ledger_entries"));
-        let entryType = "";
-        let title = "";
+      if (initBal > 0) {
+        const ledgerRef = doc(collection(db, "ledger_entries"));
+        const isReceivable = balanceType === "receivable";
+        const entryType = isReceivable ? "debit" : "credit";
 
-        if (type === "customer") {
-          if (balanceType === "receivable") { entryType = "sale"; title = "Opening Balance (Overdue)"; }
-          else { entryType = "payment_in"; title = "Opening Advance"; }
-        } else {
-          if (balanceType === "payable") { entryType = "purchase"; title = "Opening Balance (Overdue)"; }
-          else { entryType = "payment_out"; title = "Opening Advance"; }
-        }
-
-        await setDoc(entryRef, {
-          id: entryRef.id,
-          user_id: user!.uid,
-          party_id: ref.id,
+        batch.set(ledgerRef, {
+          id: ledgerRef.id,
+          user_id: user?.uid,
           party_type: type,
+          party_id: partyRef.id,
+          party_name: name.trim(),
           entry_type: entryType,
-          title: title,
-          amount: ob,
-          note: "Initial balance setup",
+          amount: initBal,
+          note: `Opening Balance (${balanceType})`,
           created_at: new Date().toISOString()
         });
       }
 
-      setName(""); setPhone(""); setOpeningBalance(""); setOpen(false); toast.success("Added"); load();
+      await batch.commit();
+
+      setName(""); setPhone(""); setOpeningBalance("");
+      setOpen(false);
+      load();
+      toast.success(`${type === "customer" ? "Customer" : "Supplier"} added successfully!`);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -392,44 +410,63 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Delete?")) return;
+    if (!confirm(`Are you sure you want to delete this ${type}? All ledger entries will remain.`)) return;
     try {
-      const q = query(collection(db, "ledger_entries"), where("party_id", "==", id));
+      await deleteDoc(doc(db, table, id));
+      setSelected(null);
+      load();
+      toast.success("Deleted");
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const clearLedgerHistory = async () => {
+    if (!selected || !user) return;
+    try {
+      const q = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid), where("party_id", "==", selected.id));
       const snap = await getDocs(q);
-      if (!snap.empty) {
-        toast.error(`Cannot delete this ${type} because they have existing transactions.`);
-        return;
-      }
-      await deleteDoc(doc(db, type === "customer" ? "customers" : "suppliers", id));
-      toast.success("Deleted successfully");
+      
+      const batch = writeBatch(db);
+      snap.docs.forEach((d) => batch.delete(d.ref));
+      
+      const pRef = doc(db, table, selected.id);
+      batch.update(pRef, { balance: 0 });
+
+      await batch.commit();
+      
+      toast.success("Ledger history cleared successfully");
+      openLedger({ ...selected, balance: 0 });
       load();
     } catch (e: any) {
       toast.error(e.message);
     }
   };
 
-  const recordPayment = async () => {
-    if (!selected || !payAmount) return;
+  const recordPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selected || !payAmount || Number(payAmount) <= 0) return toast.error("Enter a valid amount");
     setBusyPayment(true);
     try {
       const batch = writeBatch(db);
-      
-      const entryRef = doc(collection(db, "ledger_entries"));
-      batch.set(entryRef, {
-        id: entryRef.id,
-        user_id: user!.uid,
-        party_id: selected.id,
+      const lRef = doc(collection(db, "ledger_entries"));
+
+      batch.set(lRef, {
+        id: lRef.id,
+        user_id: user?.uid,
         party_type: type,
+        party_id: selected.id,
         entry_type: type === "customer" ? "payment_in" : "payment_out",
+        party_name: selected.name,
         amount: Number(payAmount),
-        note: payNote || null,
+        note: (payNote ? payNote + " " : "") + `(Ledger Payment)`,
         created_at: new Date().toISOString()
       });
 
       const cashRef = doc(collection(db, "cash_transactions"));
       batch.set(cashRef, {
         id: cashRef.id,
-        user_id: user!.uid,
+        user_id: user?.uid,
         direction: type === "customer" ? "in" : "out",
         category: type === "customer" ? "customer_payment" : "supplier_payment",
         party_id: selected.id,
@@ -458,15 +495,49 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           <div className="flex gap-2">
           <Button variant="outline" onClick={async () => {
             const shop = await getShopInfo();
-            const rowsHtml = entries.map((e) => `<tr>
-              <td style="font-size:11px; color:#4b5563; vertical-align:top;">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}</td>
-              <td style="text-transform:capitalize; vertical-align:top;">
-                <strong>${escapeHtml(e.title)}</strong>
-                ${e.products ? `<br/><span style="font-size:11px;color:#4b5563;">${type === "customer" ? "🛒" : "📦"} ${escapeHtml(e.products)}</span>` : ""}
-                ${e.note ? `<br/><span style="font-size:11px;color:#6b7280;">💬 ${escapeHtml(e.note)}</span>` : ""}
-              </td>
-              <td class="num" style="font-weight:600; vertical-align:top; font-size:13px;">${fmt(e.amount)}</td>
-            </tr>`).join("");
+            const rowsHtml = entries.map((e) => `
+              <tr style="border-bottom: 1.5px solid #e5e7eb;">
+                <td style="font-size:11px; color:#4b5563; vertical-align:top; padding:8px 4px;">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}</td>
+                <td style="vertical-align:top; padding:8px 4px;">
+                  <div style="font-weight:700; font-size:13px; color:#111827; display:flex; align-items:center; gap:6px;">
+                    <span>${escapeHtml(e.title)}</span>
+                    ${e.payment_mode ? `<span style="font-size:9.5px; text-transform:uppercase; background:#f3f4f6; border:1px solid #e5e7eb; padding:1px 5px; border-radius:4px; font-weight:600; color:#4b5563;">${escapeHtml(e.payment_mode)}</span>` : ""}
+                  </div>
+                  
+                  ${e.order_items && e.order_items.length > 0 ? `
+                    <div style="margin-top:6px; background:#f9fafb; border:1px solid #f3f4f6; border-radius:6px; padding:6px 8px;">
+                      <table style="width:100%; border-collapse:collapse; margin:0; font-size:11px;">
+                        <thead>
+                          <tr style="border-bottom:1px solid #e5e7eb; color:#6b7280; text-align:left;">
+                            <th style="padding:2px 0; font-weight:600; font-size:10px;">Item</th>
+                            <th style="padding:2px 4px; text-align:center; font-weight:600; font-size:10px;">Qty</th>
+                            <th style="padding:2px 4px; text-align:right; font-weight:600; font-size:10px;">Rate</th>
+                            <th style="padding:2px 0; text-align:right; font-weight:600; font-size:10px;">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${e.order_items.map(it => `
+                            <tr style="border-bottom:1px dashed #f3f4f6;">
+                              <td style="padding:3px 0; font-weight:600; color:#1f2937;">${escapeHtml(it.product_name)}</td>
+                              <td style="padding:3px 4px; text-align:center; color:#4b5563;">${fmtQty(it.qty)} <span style="font-size:9.5px; color:#9ca3af;">${escapeHtml(it.unit)}</span></td>
+                              <td style="padding:3px 4px; text-align:right; color:#4b5563;">${it.price ? fmt(it.price) : "-"}</td>
+                              <td style="padding:3px 0; text-align:right; font-weight:700; color:#111827;">${it.total ? fmt(it.total) : (it.price ? fmt(it.price * it.qty) : "-")}</td>
+                            </tr>
+                          `).join("")}
+                        </tbody>
+                      </table>
+                    </div>
+                  ` : e.products ? `
+                    <div style="font-size:11.5px; color:#4b5563; margin-top:3px;">${type === "customer" ? "🛒" : "📦"} ${escapeHtml(e.products)}</div>
+                  ` : ""}
+                  
+                  ${e.note ? `<div style="font-size:11px; color:#6b7280; margin-top:4px; font-style:italic;">💬 ${escapeHtml(e.note)}</div>` : ""}
+                </td>
+                <td class="num" style="font-weight:700; vertical-align:top; font-size:13.5px; padding:8px 4px; color:${!e.is_order || e.title.toLowerCase().includes("payment") ? "#059669" : "#ea580c"};">
+                  ${!e.is_order ? `+${fmt(e.amount)}` : fmt(e.amount)}
+                </td>
+              </tr>
+            `).join("");
 
             const isDebt = Number(selected.balance) > 0;
             const isAdvance = Number(selected.balance) < 0;
@@ -546,28 +617,19 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={async () => {
-                  try {
-                    const q = query(collection(db, "ledger_entries"), where("party_type", "==", type), where("party_id", "==", selected.id));
-                    const snap = await getDocs(q);
-                    const batch = writeBatch(db);
-                    snap.docs.forEach((doc) => batch.delete(doc.ref));
-                    await batch.commit();
-                    toast.success("History cleared"); openLedger(selected); load();
-                  } catch (e: any) { toast.error(e.message); }
-                }} className="bg-destructive text-destructive-foreground">Clear All</AlertDialogAction>
+                <AlertDialogAction onClick={clearLedgerHistory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Yes, Clear History</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
 
-          <Button onClick={() => setPayOpen(true)} className="bg-gradient-primary text-primary-foreground">
+          <Button onClick={() => { setPayOpen(true); setPayAmount(String(Math.abs(Number(selected.balance)) || "")); }}>
             <Wallet className="h-4 w-4 mr-1" /> Record Payment
           </Button>
           </div>
         } />
-        <Card className="p-5 mb-4 shadow-card border-0">
-          <div className="text-xs uppercase text-muted-foreground tracking-wide">
-            {Number(selected.balance) >= 0 ? `Outstanding ${dueLabel}` : "Advance / Overpaid"}
+        <Card className="p-6 mb-6 shadow-card border-0">
+          <div className="text-xs uppercase font-medium text-muted-foreground">
+            Outstanding {dueLabel}
           </div>
           <div className={`font-display text-3xl mt-1 ${Number(selected.balance) > 0 ? "text-orange-600" : "text-purple-600"}`}>
             {fmt(Math.abs(Number(selected.balance)))}
@@ -601,7 +663,23 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                           {format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}
                         </div>
 
-                        {e.products ? (
+                        {e.order_items && e.order_items.length > 0 ? (
+                          <div className="mt-2 bg-secondary/40 border border-border/40 rounded-lg p-2.5 space-y-1.5 text-xs">
+                            {e.order_items.map((it, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-foreground/90 gap-2">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <span className="text-[11px]">{type === "customer" ? "🛒" : "📦"}</span>
+                                  <span className="font-semibold truncate">{it.product_name}</span>
+                                </div>
+                                <div className="shrink-0 text-muted-foreground font-mono text-[11px] flex items-center gap-2">
+                                  <span>{fmtQty(it.qty)} {it.unit}</span>
+                                  {it.price ? <span>@ {fmt(it.price)}</span> : null}
+                                  <span className="font-bold text-foreground">{fmt(it.total ?? ((it.price || 0) * it.qty))}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : e.products ? (
                           <div className="text-xs font-medium text-foreground/90 flex items-center gap-1.5 mt-1">
                             {type === "customer" ? <ShoppingCart className="h-3.5 w-3.5 shrink-0 text-primary" /> : <span>📦</span>}
                             <span className="truncate">{e.products}</span>
@@ -706,7 +784,23 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                       {format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}
                     </div>
 
-                    {e.products ? (
+                    {e.order_items && e.order_items.length > 0 ? (
+                      <div className="mt-2 bg-secondary/40 border border-border/40 rounded-lg p-2.5 space-y-1.5 text-xs">
+                        {e.order_items.map((it, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-foreground/90 gap-2">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="text-[11px]">{type === "customer" ? "🛒" : "📦"}</span>
+                              <span className="font-semibold truncate">{it.product_name}</span>
+                            </div>
+                            <div className="shrink-0 text-muted-foreground font-mono text-[11px] flex items-center gap-2">
+                              <span>{fmtQty(it.qty)} {it.unit}</span>
+                              {it.price ? <span>@ {fmt(it.price)}</span> : null}
+                              <span className="font-bold text-foreground">{fmt(it.total ?? ((it.price || 0) * it.qty))}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : e.products ? (
                       <div className="text-xs font-medium text-foreground/90 flex items-center gap-1.5 mt-1">
                         {type === "customer" ? <ShoppingCart className="h-3.5 w-3.5 shrink-0 text-primary" /> : <span>📦</span>}
                         <span className="truncate">{e.products}</span>
@@ -752,7 +846,6 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           </Card>
         )}
 
-        {/* Payment Dialog for Ledger View */}
         <Dialog open={payOpen} onOpenChange={setPayOpen}>
           <DialogContent>
             <DialogHeader>
