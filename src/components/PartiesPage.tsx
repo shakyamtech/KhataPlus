@@ -605,15 +605,15 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             ` : `<div></div>`}
             <div class="bill-info-item" style="text-align:right; margin-top:4px;">
               <span class="bill-info-label">Entry Type</span>
-              <span class="bill-info-value" style="text-transform:capitalize; color:#059669; font-weight:700;">${escapeHtml(e.title)}</span>
+              <span class="bill-info-value" style="text-transform:capitalize; color:${isReceived ? '#059669' : '#dc2626'}; font-weight:700;">${escapeHtml(e.title)}</span>
             </div>
           </div>
 
-          <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:16px; text-align:center; margin:16px 0;">
-            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:#166534; letter-spacing:0.06em; margin-bottom:4px;">
+          <div style="background:${isReceived ? '#f0fdf4' : '#fef2f2'}; border:1.5px solid ${isReceived ? '#86efac' : '#fca5a5'}; border-radius:10px; padding:16px; text-align:center; margin:16px 0;">
+            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:${isReceived ? '#166534' : '#991b1b'}; letter-spacing:0.06em; margin-bottom:4px;">
               ${isReceived ? "Amount Received (प्राप्त रकम)" : "Amount Paid (भुक्तानी रकम)"}
             </div>
-            <div style="font-size:26px; font-weight:800; color:#15803d; letter-spacing:-0.02em;">
+            <div style="font-size:26px; font-weight:800; color:${isReceived ? '#15803d' : '#b91c1c'}; letter-spacing:-0.02em;">
               ${fmt(e.amount)}
             </div>
           </div>
@@ -710,8 +710,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                           </div>
                         </div>
                         <div style="text-align:right;">
-                          <div style="font-size:14px; font-weight:800; color:${!e.is_order || e.title.toLowerCase().includes("payment") ? "#059669" : "#ea580c"};">
-                            ${!e.is_order ? `+${fmt(e.amount)}` : fmt(e.amount)}
+                          <div style="font-size:14px; font-weight:800; color:${!e.is_order ? (type === 'customer' ? '#059669' : '#dc2626') : '#ea580c'};">
+                            ${fmt(e.amount)}
                           </div>
                           ${e.is_order ? `<div style="font-size:9.5px; color:#6b7280; font-weight:600;">TOTAL BILL</div>` : ""}
                         </div>
@@ -918,11 +918,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                       
                       <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                         <div className={`font-bold text-base ${
-                          !e.is_order || e.title.toLowerCase().includes("payment")
-                            ? "text-emerald-500 dark:text-emerald-400" 
+                          !e.is_order
+                            ? "text-rose-600 dark:text-rose-400" 
                             : "text-orange-600 dark:text-orange-500"
                         }`}>
-                          {!e.is_order ? `+${fmt(e.amount)}` : fmt(e.amount)}
+                          {fmt(e.amount)}
                         </div>
                         <div className="flex items-center gap-1.5">
                           {e.is_order && (
@@ -1054,11 +1054,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                   
                   <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                     <div className={`font-bold text-base ${
-                      !e.is_order || e.title.toLowerCase().includes("payment")
+                      !e.is_order
                         ? "text-emerald-500 dark:text-emerald-400" 
                         : "text-orange-600 dark:text-orange-500"
                     }`}>
-                      {!e.is_order ? `+${fmt(e.amount)}` : fmt(e.amount)}
+                      {fmt(e.amount)}
                     </div>
                     <div className="flex items-center gap-1.5">
                       {e.is_order && (
