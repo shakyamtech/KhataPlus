@@ -196,13 +196,21 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
       if (edit.id) {
         const { stock_qty, cost_price, ...updatePayload } = payload;
         await updateDoc(doc(db, "products", edit.id), updatePayload);
-        if (edit.has_expiry && edit.expiry_date) {
-            const bQ = query(collection(db, "product_batches"), where("product_id", "==", edit.id));
-            const bSnap = await getDocs(bQ);
-            if (!bSnap.empty) {
-                const docs = bSnap.docs;
-                docs.sort((a, b) => new Date(b.data().created_at).getTime() - new Date(a.data().created_at).getTime());
-                await updateDoc(doc(db, "product_batches", docs[0].id), { expiry_date: edit.expiry_date });
+        
+        const bQ = query(collection(db, "product_batches"), where("product_id", "==", edit.id));
+        const bSnap = await getDocs(bQ);
+        if (!bSnap.empty) {
+            const docs = bSnap.docs;
+            docs.sort((a, b) => new Date(b.data().created_at || 0).getTime() - new Date(a.data().created_at || 0).getTime());
+            const updateBatchPayload: any = {};
+            if (batchNameVal) updateBatchPayload.batch_name = batchNameVal;
+            if (edit.has_expiry) {
+              if (edit.expiry_date) updateBatchPayload.expiry_date = edit.expiry_date;
+            } else {
+              updateBatchPayload.expiry_date = null;
+            }
+            if (Object.keys(updateBatchPayload).length > 0) {
+              await updateDoc(doc(db, "product_batches", docs[0].id), updateBatchPayload);
             }
         }
       } else {

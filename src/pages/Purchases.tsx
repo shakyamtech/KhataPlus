@@ -219,8 +219,11 @@ const Purchases = () => {
     toast.loading(`Loading items...`, { id: "load-items" });
     try {
       const q = query(collection(db, "purchase_items"), where("purchase_id", "==", p.id));
-      const snap = await getDocs(q);
+      const pbQ = query(collection(db, "product_batches"), where("purchase_id", "==", p.id));
+      const [snap, pbSnap] = await Promise.all([getDocs(q), getDocs(pbQ)]);
+
       const pi = snap.docs.map(d => d.data());
+      const pbDocs = pbSnap.docs.map(d => d.data());
 
       if (pi.length === 0) {
         toast.error("No items found!", { id: "load-items", duration: 5000 });
@@ -229,15 +232,18 @@ const Purchases = () => {
 
       const mappedItems = pi.map((item: any) => {
         const prod = products.find(p => p.id === item.product_id);
+        const relatedBatch = pbDocs.find(b => b.product_id === item.product_id);
+        const batchName = item.batch_name || relatedBatch?.batch_name || "";
+        const expiryDate = item.expiry_date || relatedBatch?.expiry_date || "";
         return {
           product_id: item.product_id,
           product_name: item.product_name || "Unknown Product",
           unit: item.unit || "kg",
           cost_price: Number(item.cost_price || item.price || 0),
           qty: Number(item.qty || item.quantity || 0),
-          batch_name: item.batch_name || "",
-          has_expiry: prod ? !!prod.has_expiry : false,
-          expiry_date: item.expiry_date || ""
+          batch_name: batchName === "N/A" ? "" : batchName,
+          has_expiry: prod ? !!prod.has_expiry : (item.has_expiry || !!expiryDate),
+          expiry_date: expiryDate
         };
       });
 
@@ -336,7 +342,9 @@ const Purchases = () => {
           product_name: item.product_name,
           unit: item.unit,
           qty: Number(item.qty),
-          cost_price: Number(item.cost_price)
+          cost_price: Number(item.cost_price),
+          batch_name: item.batch_name?.trim() || "",
+          expiry_date: item.has_expiry ? (item.expiry_date || null) : null
         });
 
         const pRef = doc(db, "products", item.product_id);
