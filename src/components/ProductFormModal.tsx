@@ -118,20 +118,23 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
     if (open) {
       if (product && product.id) {
         setEdit({ ...blankProduct, ...product });
-        if (product.has_expiry) {
-          const fetchExpiry = async () => {
-            try {
-              const q = query(collection(db, "product_batches"), where("product_id", "==", product.id));
-              const snap = await getDocs(q);
-              if (!snap.empty) {
-                const docs = snap.docs;
-                docs.sort((a, b) => new Date(b.data().created_at).getTime() - new Date(a.data().created_at).getTime());
-                setEdit(prev => ({ ...prev, expiry_date: docs[0].data().expiry_date || "" }));
-              }
-            } catch(e) {}
-          };
-          fetchExpiry();
-        }
+        const fetchBatchInfo = async () => {
+          try {
+            const q = query(collection(db, "product_batches"), where("product_id", "==", product.id));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              const docs = snap.docs;
+              docs.sort((a, b) => new Date(b.data().created_at || 0).getTime() - new Date(a.data().created_at || 0).getTime());
+              const latestData = docs[0].data();
+              setEdit((prev: any) => ({ 
+                ...prev, 
+                batch_name: latestData.batch_name || "",
+                expiry_date: latestData.expiry_date || "" 
+              }));
+            }
+          } catch(e) {}
+        };
+        fetchBatchInfo();
       } else {
         setEdit(product ? { ...blankProduct, ...product } : blankProduct);
       }
@@ -187,6 +190,9 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
     setBusy(true);
     try {
       let savedId = edit.id;
+      const batchNameVal = edit.batch_name?.trim() || "";
+      const expiryDateVal = edit.has_expiry ? (edit.expiry_date || "") : "";
+
       if (edit.id) {
         const { stock_qty, cost_price, ...updatePayload } = payload;
         await updateDoc(doc(db, "products", edit.id), updatePayload);
@@ -211,11 +217,11 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
             id: batchRef.id,
             user_id: user.uid,
             product_id: ref.id,
-            batch_name: edit.batch_name?.trim() || "Initial Batch",
+            batch_name: batchNameVal || "Initial Batch",
             original_qty: payload.stock_qty,
             remaining_qty: payload.stock_qty,
             cost_price: payload.cost_price,
-            expiry_date: edit.has_expiry ? (edit.expiry_date || null) : null,
+            expiry_date: expiryDateVal || null,
             created_at: new Date().toISOString()
           });
         }
@@ -225,7 +231,12 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
       onOpenChange(false);
       setEdit(blankProduct);
       if (onSuccess && savedId) {
-        onSuccess(savedId, { id: savedId, ...payload });
+        onSuccess(savedId, { 
+          id: savedId, 
+          ...payload, 
+          batch_name: batchNameVal, 
+          expiry_date: expiryDateVal 
+        });
       }
     } catch (e: any) {
       toast.error(e.message);

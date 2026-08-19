@@ -176,21 +176,26 @@ const Purchases = () => {
     if (!p) return;
     if (items.find((i) => i.product_id === p.id)) return;
 
-    let batch_name = "";
-    let expiry_date = "";
+    let batch_name = directProduct?.batch_name || "";
+    let expiry_date = directProduct?.expiry_date || "";
+    const hasExpiry = directProduct ? !!directProduct.has_expiry : !!p.has_expiry;
 
-    try {
-      const batchQ = query(collection(db, "product_batches"), where("product_id", "==", p.id), orderBy("created_at", "desc"), limit(1));
-      const batchSnap = await getDocs(batchQ);
-      if (!batchSnap.empty) {
-        const latestBatch = batchSnap.docs[0].data();
-        batch_name = latestBatch.batch_name || "";
-        if (p.has_expiry && latestBatch.expiry_date) {
-          expiry_date = latestBatch.expiry_date;
+    if (!batch_name || (hasExpiry && !expiry_date)) {
+      try {
+        const batchQ = query(collection(db, "product_batches"), where("product_id", "==", p.id));
+        const batchSnap = await getDocs(batchQ);
+        if (!batchSnap.empty) {
+          const batches = batchSnap.docs.map(d => d.data());
+          batches.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+          const latestBatch = batches[0];
+          if (!batch_name) batch_name = latestBatch.batch_name || "";
+          if (hasExpiry && !expiry_date && latestBatch.expiry_date) {
+            expiry_date = latestBatch.expiry_date;
+          }
         }
+      } catch (e) {
+        console.error("Error fetching latest batch", e);
       }
-    } catch (e) {
-      console.error("Error fetching latest batch", e);
     }
 
     setItems((arr) => [...arr, { 
@@ -200,7 +205,7 @@ const Purchases = () => {
       cost_price: Number(p.cost_price || 0), 
       qty: 1, 
       batch_name, 
-      has_expiry: !!p.has_expiry, 
+      has_expiry: hasExpiry, 
       expiry_date 
     }]);
     setProductPick("");
