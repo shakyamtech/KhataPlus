@@ -459,25 +459,77 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           <Button variant="outline" onClick={async () => {
             const shop = await getShopInfo();
             const rowsHtml = entries.map((e) => `<tr>
-              <td>${format(new Date(e.created_at), "dd MMM, hh:mm a")}</td>
-              <td style="text-transform:capitalize">
+              <td style="font-size:11px; color:#4b5563; vertical-align:top;">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}</td>
+              <td style="text-transform:capitalize; vertical-align:top;">
                 <strong>${escapeHtml(e.title)}</strong>
-                ${e.products ? `<br/><span style="font-size:11px;color:#555">${type === "customer" ? "🛒" : "📦"} ${escapeHtml(e.products)}</span>` : ""}
-                ${e.note ? `<br/><span style="font-size:11px;color:#777">💬 ${escapeHtml(e.note)}</span>` : ""}
+                ${e.products ? `<br/><span style="font-size:11px;color:#4b5563;">${type === "customer" ? "🛒" : "📦"} ${escapeHtml(e.products)}</span>` : ""}
+                ${e.note ? `<br/><span style="font-size:11px;color:#6b7280;">💬 ${escapeHtml(e.note)}</span>` : ""}
               </td>
-              <td>${fmt(e.amount)}</td>
+              <td class="num" style="font-weight:600; vertical-align:top; font-size:13px;">${fmt(e.amount)}</td>
             </tr>`).join("");
+
+            const isDebt = Number(selected.balance) > 0;
+            const isAdvance = Number(selected.balance) < 0;
+
             const body = `
-              <div class="center">
-                <h1 style="font-size:22px; margin-bottom: 4px">${escapeHtml(shop.name)}</h1>
-                ${shop.phone ? `<div class="muted">Phone: ${escapeHtml(shop.phone)}</div>` : ""}
-                ${shop.pan ? `<div class="muted">PAN: ${escapeHtml(shop.pan)}</div>` : ""}
-                <h2 style="font-size:18px; margin-top: 8px">${escapeHtml(selected.name)}</h2>
-                <div class="muted">${type === "customer" ? "Customer" : "Supplier"} Ledger · ${format(new Date(), "dd MMM yyyy")}</div>
-              </div>
-              <hr/>
-              <div class="row total"><span>Outstanding ${dueLabel}</span><span>${fmt(Math.abs(Number(selected.balance)))}</span></div>
-              <table><thead><tr><th>Date</th><th>Detail</th><th>Amount</th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+              <div class="receipt-card">
+                <div class="shop-header">
+                  <div class="shop-title">${escapeHtml(shop.name)}</div>
+                  <div class="shop-meta">
+                    ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
+                    ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
+                    <div style="margin-top:2px; font-weight:600; color:#374151;">${type === "customer" ? "Customer" : "Supplier"} Account Ledger</div>
+                  </div>
+                </div>
+
+                <div class="bill-info">
+                  <div class="bill-info-item">
+                    <span class="bill-info-label">${type === "customer" ? "Customer" : "Supplier"}</span>
+                    <span class="bill-info-value">${escapeHtml(selected.name)}</span>
+                  </div>
+                  <div class="bill-info-item" style="text-align:right;">
+                    <span class="bill-info-label">Statement Date</span>
+                    <span class="bill-info-value">${format(new Date(), "dd MMM yyyy")}</span>
+                  </div>
+                  ${selected.phone ? `
+                  <div class="bill-info-item" style="margin-top:4px;">
+                    <span class="bill-info-label">Contact Number</span>
+                    <span class="bill-info-value">${escapeHtml(selected.phone)}</span>
+                  </div>
+                  ` : `<div></div>`}
+                  <div class="bill-info-item" style="text-align:right; margin-top:4px;">
+                    <span class="bill-info-label">Account Balance</span>
+                    <span class="bill-info-value" style="color:${isDebt ? '#dc2626' : isAdvance ? '#059669' : '#111827'}; font-weight:700;">
+                      ${isDebt ? `Due: ${fmt(selected.balance)}` : isAdvance ? `Advance: ${fmt(Math.abs(selected.balance))}` : "Settled (Rs. 0)"}
+                    </span>
+                  </div>
+                </div>
+
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width:28%;">Date</th>
+                      <th>Particulars / Details</th>
+                      <th class="num" style="width:26%;">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rowsHtml.length > 0 ? rowsHtml : `<tr><td colspan="3" style="text-align:center; padding:12px; color:#9ca3af;">No transaction records found</td></tr>`}
+                  </tbody>
+                </table>
+
+                <div class="summary-section">
+                  <div class="summary-row grand-total">
+                    <span>Outstanding ${dueLabel}</span>
+                    <span>${fmt(Math.abs(Number(selected.balance)))}</span>
+                  </div>
+                </div>
+
+                <div class="receipt-footer">
+                  <div class="footer-highlight">Thank you for your business!</div>
+                  <div class="brand-tag">KhataPlus Store Management System</div>
+                </div>
+              </div>`;
             printHTML(`${selected.name} — Ledger`, body);
           }}><Printer className="h-4 w-4 mr-1" />Print</Button>
 

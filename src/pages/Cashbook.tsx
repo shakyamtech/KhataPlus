@@ -371,23 +371,68 @@ const Cashbook = () => {
     });
     
     const rowsHtml = sortedPrintRows.map((r) => `<tr>
-      <td>${r.created_at ? format(new Date(r.created_at), "dd MMM, hh:mm a") : "-"}</td>
-      <td style="text-transform:capitalize">${escapeHtml((r.category || "other").replace("_", " "))}${r.note ? ` — ${escapeHtml(r.note)}` : ""}</td>
-      <td style="color:${r.direction === "in" ? "#0a7d3a" : "#b91c1c"}">${r.direction === "in" ? "+" : "−"}${fmt(r.amount)}</td>
+      <td style="font-size:11px; color:#4b5563; vertical-align:top;">${r.created_at ? format(new Date(r.created_at), "dd MMM, hh:mm a") : "-"}</td>
+      <td style="text-transform:capitalize; vertical-align:top;">
+        <strong>${escapeHtml((r.category || "other").replace("_", " "))}</strong>
+        ${r.note ? `<br/><span style="font-size:11px;color:#6b7280;">💬 ${escapeHtml(r.note)}</span>` : ""}
+      </td>
+      <td class="num" style="color:${r.direction === "in" ? "#059669" : "#dc2626"}; font-weight:700; vertical-align:top; font-size:13px;">${r.direction === "in" ? "+" : "−"}${fmt(r.amount)}</td>
     </tr>`).join("");
+
     const body = `
-      <div class="center">
-        <h1 style="font-size:22px; margin-bottom: 4px">${escapeHtml(shop.name)}</h1>
-        ${shop.phone ? `<div class="muted">Phone: ${escapeHtml(shop.phone)}</div>` : ""}
-        ${shop.pan ? `<div class="muted">PAN: ${escapeHtml(shop.pan)}</div>` : ""}
-        <h2 style="font-size:16px; font-weight:600; margin-top: 8px">Cashbook</h2>
-        <div class="muted">${format(new Date(), "dd MMM yyyy, hh:mm a")}</div>
+      <div class="receipt-card">
+        <div class="shop-header">
+          <div class="shop-title">${escapeHtml(shop.name)}</div>
+          <div class="shop-meta">
+            ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
+            ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
+            <div style="margin-top:2px; font-weight:600; color:#374151;">Cashbook Financial Statement</div>
+          </div>
+        </div>
+
+        <div class="bill-info">
+          <div class="bill-info-item">
+            <span class="bill-info-label">Statement Type</span>
+            <span class="bill-info-value">Cash In & Out Flows</span>
+          </div>
+          <div class="bill-info-item" style="text-align:right;">
+            <span class="bill-info-label">Generated On</span>
+            <span class="bill-info-value">${format(new Date(), "dd MMM yyyy, hh:mm a")}</span>
+          </div>
+        </div>
+
+        <div class="summary-section" style="margin-bottom:14px; background:#f9fafb; padding:10px 12px; border-radius:8px; border:1px solid #f3f4f6;">
+          <div class="summary-row">
+            <span>Total Cash In (+)</span>
+            <span style="color:#059669; font-weight:700;">+${fmt(totalIn)}</span>
+          </div>
+          <div class="summary-row">
+            <span>Total Cash Out (−)</span>
+            <span style="color:#dc2626; font-weight:700;">−${fmt(totalOut)}</span>
+          </div>
+          <div class="summary-row grand-total" style="margin:4px 0 0 0; padding:6px 0 0 0; border-bottom:none;">
+            <span>Net Cash Balance</span>
+            <span style="color:${balance >= 0 ? '#059669' : '#dc2626'};">${fmt(balance)}</span>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width:28%;">Date</th>
+              <th>Category & Detail</th>
+              <th class="num" style="width:26%;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml.length > 0 ? rowsHtml : `<tr><td colspan="3" style="text-align:center; padding:12px; color:#9ca3af;">No transaction records found</td></tr>`}
+          </tbody>
+        </table>
+
+        <div class="receipt-footer">
+          <div class="brand-tag">KhataPlus Cashbook Statement</div>
+        </div>
       </div>
-      <hr/>
-      <div class="row"><span>Cash In</span><span>${fmt(totalIn)}</span></div>
-      <div class="row"><span>Cash Out</span><span>${fmt(totalOut)}</span></div>
-      <div class="row total"><span>Balance</span><span>${fmt(balance)}</span></div>
-      <table><thead><tr><th>Date</th><th>Detail</th><th>Amount</th></tr></thead><tbody>${rowsHtml}</tbody></table>
     `;
     printHTML("Cashbook", body);
   };
