@@ -495,50 +495,6 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           <div className="flex gap-2">
           <Button variant="outline" onClick={async () => {
             const shop = await getShopInfo();
-            const rowsHtml = entries.map((e) => `
-              <tr style="border-bottom: 1.5px solid #e5e7eb;">
-                <td style="font-size:11px; color:#4b5563; vertical-align:top; padding:8px 4px;">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}</td>
-                <td style="vertical-align:top; padding:8px 4px;">
-                  <div style="font-weight:700; font-size:13px; color:#111827; display:flex; align-items:center; gap:6px;">
-                    <span>${escapeHtml(e.title)}</span>
-                    ${e.payment_mode ? `<span style="font-size:9.5px; text-transform:uppercase; background:#f3f4f6; border:1px solid #e5e7eb; padding:1px 5px; border-radius:4px; font-weight:600; color:#4b5563;">${escapeHtml(e.payment_mode)}</span>` : ""}
-                  </div>
-                  
-                  ${e.order_items && e.order_items.length > 0 ? `
-                    <div style="margin-top:6px; background:#f9fafb; border:1px solid #f3f4f6; border-radius:6px; padding:6px 8px;">
-                      <table style="width:100%; border-collapse:collapse; margin:0; font-size:11px;">
-                        <thead>
-                          <tr style="border-bottom:1px solid #e5e7eb; color:#6b7280; text-align:left;">
-                            <th style="padding:2px 0; font-weight:600; font-size:10px;">Item</th>
-                            <th style="padding:2px 4px; text-align:center; font-weight:600; font-size:10px;">Qty</th>
-                            <th style="padding:2px 4px; text-align:right; font-weight:600; font-size:10px;">Rate</th>
-                            <th style="padding:2px 0; text-align:right; font-weight:600; font-size:10px;">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          ${e.order_items.map(it => `
-                            <tr style="border-bottom:1px dashed #f3f4f6;">
-                              <td style="padding:3px 0; font-weight:600; color:#1f2937;">${escapeHtml(it.product_name)}</td>
-                              <td style="padding:3px 4px; text-align:center; color:#4b5563;">${fmtQty(it.qty)} <span style="font-size:9.5px; color:#9ca3af;">${escapeHtml(it.unit)}</span></td>
-                              <td style="padding:3px 4px; text-align:right; color:#4b5563;">${it.price ? fmt(it.price) : "-"}</td>
-                              <td style="padding:3px 0; text-align:right; font-weight:700; color:#111827;">${it.total ? fmt(it.total) : (it.price ? fmt(it.price * it.qty) : "-")}</td>
-                            </tr>
-                          `).join("")}
-                        </tbody>
-                      </table>
-                    </div>
-                  ` : e.products ? `
-                    <div style="font-size:11.5px; color:#4b5563; margin-top:3px;">${type === "customer" ? "🛒" : "📦"} ${escapeHtml(e.products)}</div>
-                  ` : ""}
-                  
-                  ${e.note ? `<div style="font-size:11px; color:#6b7280; margin-top:4px; font-style:italic;">💬 ${escapeHtml(e.note)}</div>` : ""}
-                </td>
-                <td class="num" style="font-weight:700; vertical-align:top; font-size:13.5px; padding:8px 4px; color:${!e.is_order || e.title.toLowerCase().includes("payment") ? "#059669" : "#ea580c"};">
-                  ${!e.is_order ? `+${fmt(e.amount)}` : fmt(e.amount)}
-                </td>
-              </tr>
-            `).join("");
-
             const isDebt = Number(selected.balance) > 0;
             const isAdvance = Number(selected.balance) < 0;
 
@@ -576,18 +532,64 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                   </div>
                 </div>
 
-                <table>
-                  <thead>
-                    <tr>
-                      <th style="width:28%;">Date</th>
-                      <th>Particulars / Details</th>
-                      <th class="num" style="width:26%;">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${rowsHtml.length > 0 ? rowsHtml : `<tr><td colspan="3" style="text-align:center; padding:12px; color:#9ca3af;">No transaction records found</td></tr>`}
-                  </tbody>
-                </table>
+                <div style="margin-bottom:14px;">
+                  ${entries.map((e) => `
+                    <div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; margin-bottom:12px; background:#ffffff;">
+                      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #f3f4f6;">
+                        <div>
+                          <div style="font-weight:700; font-size:13px; color:#111827; display:flex; align-items:center; gap:6px;">
+                            <span>${escapeHtml(e.title)}</span>
+                            ${e.payment_mode ? `<span style="font-size:9.5px; text-transform:uppercase; background:#f3f4f6; border:1px solid #e5e7eb; padding:1px 5px; border-radius:4px; font-weight:600; color:#4b5563;">${escapeHtml(e.payment_mode)}</span>` : ""}
+                          </div>
+                          <div style="font-size:11px; color:#6b7280; margin-top:2px;">
+                            ${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}
+                          </div>
+                        </div>
+                        <div style="text-align:right;">
+                          <div style="font-size:14px; font-weight:800; color:${!e.is_order || e.title.toLowerCase().includes("payment") ? "#059669" : "#ea580c"};">
+                            ${!e.is_order ? `+${fmt(e.amount)}` : fmt(e.amount)}
+                          </div>
+                          ${e.is_order ? `<div style="font-size:9.5px; color:#6b7280; font-weight:600;">TOTAL BILL</div>` : ""}
+                        </div>
+                      </div>
+
+                      ${e.order_items && e.order_items.length > 0 ? `
+                        <table style="width:100%; border-collapse:collapse; margin-bottom:4px; font-size:11.5px;">
+                          <thead>
+                            <tr style="border-bottom:1.5px solid #d1d5db; color:#4b5563;">
+                              <th style="text-align:left; padding:4px 2px; font-weight:700; font-size:10.5px; text-transform:uppercase;">Item</th>
+                              <th style="text-align:center; padding:4px 4px; font-weight:700; font-size:10.5px; text-transform:uppercase; width:18%;">Qty</th>
+                              <th style="text-align:right; padding:4px 4px; font-weight:700; font-size:10.5px; text-transform:uppercase; width:22%;">Rate</th>
+                              <th style="text-align:right; padding:4px 2px; font-weight:700; font-size:10.5px; text-transform:uppercase; width:25%;">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${e.order_items.map(it => `
+                              <tr style="border-bottom:1px dashed #e5e7eb;">
+                                <td style="padding:5px 2px; font-weight:600; color:#111827;">${escapeHtml(it.product_name)}</td>
+                                <td style="padding:5px 4px; text-align:center; color:#4b5563;">${fmtQty(it.qty)} <span style="font-size:10px; color:#9ca3af;">${escapeHtml(it.unit)}</span></td>
+                                <td style="padding:5px 4px; text-align:right; color:#4b5563;">${it.price ? fmt(it.price) : "-"}</td>
+                                <td style="padding:5px 2px; text-align:right; font-weight:700; color:#111827;">${it.total ? fmt(it.total) : (it.price ? fmt(it.price * it.qty) : "-")}</td>
+                              </tr>
+                            `).join("")}
+                          </tbody>
+                        </table>
+                      ` : e.products ? `
+                        <div style="font-size:12px; color:#4b5563; padding:4px 0;">${type === "customer" ? "🛒" : "📦"} ${escapeHtml(e.products)}</div>
+                      ` : ""}
+
+                      ${e.is_order && (Number(e.paid_amount || 0) > 0 || Number(e.due_amount || 0) > 0) ? `
+                        <div style="display:flex; justify-content:flex-end; gap:12px; font-size:11px; margin-top:6px; padding-top:4px; border-top:1px dashed #e5e7eb; color:#6b7280;">
+                          <span>Paid: <strong style="color:#059669;">${fmt(e.paid_amount ?? e.amount)}</strong></span>
+                          ${Number(e.due_amount || 0) > 0 ? `<span>Due: <strong style="color:#ea580c;">${fmt(e.due_amount!)}</strong></span>` : `<span style="color:#059669;">(Fully Paid)</span>`}
+                        </div>
+                      ` : ""}
+
+                      ${e.note ? `<div style="font-size:11px; color:#6b7280; margin-top:4px; font-style:italic;">💬 ${escapeHtml(e.note)}</div>` : ""}
+                    </div>
+                  `).join("")}
+                  ${entries.length === 0 ? `<div style="text-align:center; padding:20px; color:#9ca3af;">No transaction records found</div>` : ""}
+                </div>
 
                 <div class="summary-section">
                   <div class="summary-row grand-total">
