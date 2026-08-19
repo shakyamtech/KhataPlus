@@ -419,41 +419,6 @@ const Auth = () => {
             </Tabs>
           </Card>
         </div>
-
-        {/* Feature Cards Showcase */}
-        <div className="hidden lg:block w-full max-w-4xl pt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
-            <div className="p-4 rounded-2xl glass-panel shadow-soft hover:shadow-card transition-all duration-300 group hover:-translate-y-1">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary transition-all duration-300">
-                <ShoppingBag className="h-5 w-5 text-primary group-hover:text-primary-foreground" />
-              </div>
-              <h3 className="font-bold text-sm text-foreground mb-1">{t.posTitle}</h3>
-              <p className="text-xs text-muted-foreground">{t.posDesc}</p>
-            </div>
-            <div className="p-4 rounded-2xl glass-panel shadow-soft hover:shadow-card transition-all duration-300 group hover:-translate-y-1">
-              <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-3 group-hover:bg-accent transition-all duration-300">
-                <BarChart3 className="h-5 w-5 text-orange-600 group-hover:text-accent-foreground" />
-              </div>
-              <h3 className="font-bold text-sm text-foreground mb-1">{t.profitTitle}</h3>
-              <p className="text-xs text-muted-foreground">{t.profitDesc}</p>
-            </div>
-            <div className="p-4 rounded-2xl glass-panel shadow-soft hover:shadow-card transition-all duration-300 group hover:-translate-y-1">
-              <div className="h-10 w-10 rounded-lg bg-lime-500/10 flex items-center justify-center mb-3 group-hover:bg-lime-600 transition-all duration-300">
-                <Users className="h-5 w-5 text-lime-700 group-hover:text-white" />
-              </div>
-              <h3 className="font-bold text-sm text-foreground mb-1">{t.ledgerTitle}</h3>
-              <p className="text-xs text-muted-foreground">{t.ledgerDesc}</p>
-            </div>
-            <div className="p-4 rounded-2xl glass-panel shadow-soft hover:shadow-card transition-all duration-300 group hover:-translate-y-1">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary transition-all duration-300">
-                <CheckCircle2 className="h-5 w-5 text-primary group-hover:text-primary-foreground" />
-              </div>
-              <h3 className="font-bold text-sm text-foreground mb-1">{t.recipeTitle}</h3>
-              <p className="text-xs text-muted-foreground">{t.recipeDesc}</p>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   );
