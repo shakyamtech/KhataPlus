@@ -1,96 +1,135 @@
 import { useEffect, useState } from "react";
-import { BookText } from "lucide-react";
+import { BookText, Store, Sparkles } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
-export const SplashScreen = () => {
+interface SplashScreenProps {
+  customShopName?: string;
+  onFinished?: () => void;
+  duration?: number;
+}
+
+export const SplashScreen = ({ customShopName, onFinished, duration = 2200 }: SplashScreenProps) => {
   const [stage, setStage] = useState<"loading" | "fading" | "hidden">("loading");
-
-  const [shopName, setShopName] = useState("KhataPlus");
+  const [shopName, setShopName] = useState(() => {
+    return customShopName || localStorage.getItem("khataplus_shop_name") || "KhataPlus";
+  });
 
   useEffect(() => {
-    // Prevent scrolling while splash screen is visible
-    document.body.style.overflow = 'hidden';
-    
-    // Always use the default brand name for the splash screen
-    setShopName("KhataPlus");
+    document.body.style.overflow = "hidden";
 
-    // Start fading out at 2.2 seconds
+    // Try fetching fresh shop name from Firestore if user logged in
+    const fetchLatestShop = async () => {
+      if (customShopName) {
+        setShopName(customShopName);
+        return;
+      }
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const docRef = doc(db, "profiles", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data?.shop_name) {
+              setShopName(data.shop_name);
+              localStorage.setItem("khataplus_shop_name", data.shop_name);
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    fetchLatestShop();
+
     const fadeTimer = setTimeout(() => {
       setStage("fading");
-    }, 2200);
+    }, duration);
 
-    // Completely unmount at 3 seconds
     const hideTimer = setTimeout(() => {
       setStage("hidden");
-      document.body.style.overflow = 'unset';
-    }, 3000);
-    
+      document.body.style.overflow = "unset";
+      if (onFinished) onFinished();
+    }, duration + 600);
+
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(hideTimer);
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
-  }, []);
+  }, [customShopName, duration, onFinished]);
 
   if (stage === "hidden") return null;
 
-  return (
-    <div className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background overflow-hidden transition-all duration-700 ease-in-out ${stage === "fading" ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-      {/* Background Decorative Circles */}
-      <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+  const isBrandDefault = shopName.toLowerCase() === "khataplus";
 
-      <div className="relative flex flex-col items-center">
-        {/* Logo Container with Enhanced Animation */}
-        <div className="relative mb-10 group">
+  return (
+    <div className={`fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-[#071324] text-white overflow-hidden transition-all duration-700 ease-in-out ${stage === "fading" ? "opacity-0 scale-105 pointer-events-none" : "opacity-100 scale-100"}`}>
+      {/* Background Glowing Mesh Gradients */}
+      <div className="absolute top-[-15%] left-[-15%] w-[450px] h-[450px] bg-cyan-500/15 rounded-full blur-[100px] animate-pulse" />
+      <div className="absolute bottom-[-15%] right-[-15%] w-[500px] h-[500px] bg-blue-500/15 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1.2s" }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-sky-400/10 rounded-full blur-[80px]" />
+
+      <div className="relative flex flex-col items-center max-w-lg px-6 text-center">
+        {/* Animated Brand Logo Badge */}
+        <div className="relative mb-8 group">
           {/* Dynamic Layered Glows */}
-          <div className="absolute inset-0 bg-cyan-400/30 dark:bg-cyan-500/10 rounded-[2rem] blur-2xl scale-150 animate-logo-glow" />
-          <div className="absolute inset-0 bg-blue-500/20 dark:bg-blue-500/10 rounded-[2rem] blur-xl scale-110 animate-logo-glow-alt" />
+          <div className="absolute inset-0 bg-cyan-400/30 rounded-3xl blur-2xl scale-125 animate-logo-glow" />
+          <div className="absolute inset-0 bg-blue-500/20 rounded-3xl blur-xl scale-110 animate-logo-glow-alt" />
           
           {/* Main Logo Card */}
-          <div className="relative h-28 w-28 bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] rounded-[2.2rem] flex items-center justify-center shadow-[0_20px_50px_rgba(6,182,212,0.3)] border border-white/20 animate-logo-entrance">
-            <BookText className="h-14 w-14 text-white animate-logo-float drop-shadow-[0_4px_8px_rgba(0,0,0,0.1)]" />
+          <div className="relative h-24 w-24 bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 rounded-3xl flex items-center justify-center shadow-[0_20px_50px_rgba(6,182,212,0.35)] border border-cyan-300/30 animate-logo-entrance">
+            <BookText className="h-12 w-12 text-white animate-logo-float drop-shadow-[0_4px_8px_rgba(0,0,0,0.2)]" />
           </div>
           
-          {/* Decorative Particles */}
-          <div className="absolute -top-2 -right-2 h-4 w-4 bg-blue-400 rounded-full blur-[2px] animate-bounce" style={{ animationDelay: '0.5s' }} />
-          <div className="absolute -bottom-1 -left-1 h-3 w-3 bg-cyan-300 rounded-full blur-[1px] animate-bounce" style={{ animationDelay: '0.8s' }} />
+          {/* Floating Sparkle Particles */}
+          <div className="absolute -top-3 -right-3 h-6 w-6 bg-amber-400/90 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{ animationDelay: "0.4s" }}>
+            <Sparkles className="h-3.5 w-3.5 text-black" />
+          </div>
         </div>
 
-        <div className="text-center space-y-2 px-4">
-          <h1 className={`font-serif font-bold tracking-tight text-foreground animate-text-reveal break-words leading-tight max-w-md [text-wrap:balance] ${shopName.length > 12 ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"}`}>
+        {/* Welcome Text & Shop Name */}
+        <div className="space-y-2.5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-semibold uppercase tracking-wider animate-text-reveal">
+            <Store className="h-3.5 w-3.5 text-cyan-400" />
+            <span>{isBrandDefault ? "स्मार्ट पसल व्यवस्थापन • Smart POS" : "स्वागत छ • Welcome Back"}</span>
+          </div>
+
+          <h1 className="font-serif font-black tracking-tight text-white animate-text-reveal text-3xl sm:text-4xl md:text-5xl leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] [text-wrap:balance]" style={{ animationDelay: "0.15s" }}>
             {shopName}
           </h1>
-          <p className="text-xs md:text-sm text-muted-foreground font-medium tracking-wide uppercase animate-text-reveal" style={{ animationDelay: '0.3s' }}>
-            Smart Business Management
+
+          <p className="text-xs sm:text-sm text-cyan-200/70 font-medium tracking-wide animate-text-reveal" style={{ animationDelay: "0.3s" }}>
+            {isBrandDefault ? "Loading application..." : "पसलको ड्यासबोर्ड र इन्भेन्टरी लोड हुँदैछ..."}
           </p>
         </div>
 
-        {/* Loading Indicator */}
-        <div className="mt-16 w-56 h-1.5 bg-secondary rounded-full overflow-hidden border border-border shadow-inner">
-          <div className="h-full bg-gradient-to-r from-cyan-500 via-blue-400 to-blue-600 w-full animate-loading-progress" />
+        {/* Loading Progress Bar */}
+        <div className="mt-10 w-64 h-1.5 bg-blue-950/80 rounded-full overflow-hidden border border-cyan-500/20 shadow-inner">
+          <div className="h-full bg-gradient-to-r from-cyan-500 via-sky-300 to-blue-500 w-full animate-loading-progress rounded-full" />
         </div>
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes logo-entrance {
-          0% { opacity: 0; transform: scale(0.3) rotate(-15deg); }
-          60% { opacity: 1; transform: scale(1.1) rotate(5deg); }
+          0% { opacity: 0; transform: scale(0.4) rotate(-15deg); }
+          60% { opacity: 1; transform: scale(1.1) rotate(4deg); }
           100% { opacity: 1; transform: scale(1) rotate(0deg); }
         }
         @keyframes logo-float {
           0%, 100% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-12px) scale(1.05); }
+          50% { transform: translateY(-8px) scale(1.04); }
         }
         @keyframes logo-glow {
-          0%, 100% { transform: scale(1.5); opacity: 0.3; }
-          50% { transform: scale(1.8); opacity: 0.5; }
+          0%, 100% { transform: scale(1.3); opacity: 0.35; }
+          50% { transform: scale(1.6); opacity: 0.6; }
         }
         @keyframes logo-glow-alt {
-          0%, 100% { transform: scale(1.1); opacity: 0.2; }
-          50% { transform: scale(1.3); opacity: 0.4; }
+          0%, 100% { transform: scale(1.1); opacity: 0.25; }
+          50% { transform: scale(1.35); opacity: 0.45; }
         }
         @keyframes text-reveal {
-          0% { opacity: 0; transform: translateY(15px); filter: blur(5px); }
+          0% { opacity: 0; transform: translateY(14px); filter: blur(4px); }
           100% { opacity: 1; transform: translateY(0); filter: blur(0); }
         }
         @keyframes loading-progress {
@@ -100,29 +139,27 @@ export const SplashScreen = () => {
         }
         
         .animate-logo-entrance { 
-          animation: logo-entrance 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; 
+          animation: logo-entrance 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; 
         }
         .animate-logo-float { 
-          animation: logo-float 3s ease-in-out infinite; 
-          animation-delay: 1.2s;
+          animation: logo-float 2.8s ease-in-out infinite; 
+          animation-delay: 1.1s;
         }
         .animate-logo-glow { 
-          animation: logo-glow 4s ease-in-out infinite; 
+          animation: logo-glow 3.5s ease-in-out infinite; 
         }
         .animate-logo-glow-alt { 
-          animation: logo-glow-alt 4s ease-in-out infinite; 
-          animation-delay: 2s;
+          animation: logo-glow-alt 3.5s ease-in-out infinite; 
+          animation-delay: 1.8s;
         }
         .animate-text-reveal { 
-          animation: text-reveal 1s cubic-bezier(0.22, 1, 0.36, 1) forwards; 
+          animation: text-reveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards; 
           opacity: 0; 
         }
         .animate-loading-progress { 
-          animation: loading-progress 2.5s cubic-bezier(0.65, 0, 0.35, 1) infinite; 
+          animation: loading-progress 2s cubic-bezier(0.65, 0, 0.35, 1) infinite; 
         }
       `}} />
     </div>
   );
 };
-
-
