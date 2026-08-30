@@ -81,11 +81,6 @@ export const SplashScreen = ({ customShopName, onFinished, duration = 2200 }: Sp
           <div className="relative h-24 w-24 bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 rounded-3xl flex items-center justify-center shadow-[0_20px_50px_rgba(6,182,212,0.35)] border border-cyan-300/30 animate-logo-entrance">
             <BookText className="h-12 w-12 text-white animate-logo-float drop-shadow-[0_4px_8px_rgba(0,0,0,0.2)]" />
           </div>
-          
-          {/* Floating Sparkle Particles */}
-          <div className="absolute -top-3 -right-3 h-6 w-6 bg-amber-400/90 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{ animationDelay: "0.4s" }}>
-            <Sparkles className="h-3.5 w-3.5 text-black" />
-          </div>
         </div>
 
         {/* Welcome Text & Shop Name */}
