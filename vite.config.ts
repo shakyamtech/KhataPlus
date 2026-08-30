@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => ({
         name: "KhataPlus - Shop POS & Inventory",
         short_name: "KhataPlus",
         description: "Modern POS and Inventory for your Shop",
-        theme_color: "#6b21a8",
+        theme_color: "#0284c7",
         icons: [
           {
             src: "icon-192.png",
@@ -46,7 +46,7 @@ export default defineConfig(({ mode }) => ({
           }
         ],
         display: "standalone",
-        background_color: "#ffffff"
+        background_color: "#071324"
       }
     })
   ].filter(Boolean),
