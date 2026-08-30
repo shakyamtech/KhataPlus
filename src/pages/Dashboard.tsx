@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { fmt } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wallet, Package, AlertTriangle, ShoppingCart, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import { InstallAppQRCard } from "@/components/InstallAppQRCard";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -306,33 +307,39 @@ const Dashboard = () => {
           </div>
         </Card>
 
-        {/* Start Billing Card */}
-        <Link to="/pos" className="block outline-none">
-          <Card className="p-6 shadow-elegant border-0 bg-gradient-primary text-primary-foreground hover:shadow-glow hover:-translate-y-1.5 transition-all duration-300 ease-out h-full flex flex-col justify-between group overflow-hidden relative min-h-[220px]">
-            {/* Glowing background bubble */}
-            <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl group-hover:scale-150 transition-transform duration-700 ease-out" />
-            
-            {/* Light Slash Effect */}
-            <div className="absolute inset-0 -translate-x-[150%] group-hover:translate-x-[150%] w-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[25deg] transition-transform duration-1000 ease-in-out z-0 pointer-events-none" />
-            
-            <div className="relative z-10 flex flex-col justify-between h-full">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md shadow-soft group-hover:scale-110 group-hover:-translate-y-1 group-hover:bg-white group-hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all duration-300 relative z-20">
-                <ShoppingCart className="h-6 w-6 text-white group-hover:text-primary group-hover:translate-x-1 group-hover:-rotate-12 transition-all duration-300 ease-out" />
-              </div>
-              <div className="mt-8">
-                <h3 className="font-display text-2xl font-bold">Start Billing</h3>
-                <div className="relative h-10 mt-1.5 overflow-hidden">
-                  <p className="absolute inset-0 text-primary-foreground/80 text-sm transition-transform duration-500 group-hover:-translate-y-full">
-                    Open the POS to make a quick sale and update inventory in real-time.
-                  </p>
-                  <p className="absolute inset-0 translate-y-full text-white font-bold text-sm transition-transform duration-500 group-hover:translate-y-0 flex items-center">
-                    Let's make some real money! 💸
-                  </p>
+        {/* Right Action Column */}
+        <div className="flex flex-col gap-4">
+          {/* Start Billing Card */}
+          <Link to="/pos" className="block outline-none flex-1">
+            <Card className="p-6 shadow-elegant border-0 bg-gradient-primary text-primary-foreground hover:shadow-glow hover:-translate-y-1.5 transition-all duration-300 ease-out h-full flex flex-col justify-between group overflow-hidden relative min-h-[190px]">
+              {/* Glowing background bubble */}
+              <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl group-hover:scale-150 transition-transform duration-700 ease-out" />
+              
+              {/* Light Slash Effect */}
+              <div className="absolute inset-0 -translate-x-[150%] group-hover:translate-x-[150%] w-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[25deg] transition-transform duration-1000 ease-in-out z-0 pointer-events-none" />
+              
+              <div className="relative z-10 flex flex-col justify-between h-full">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md shadow-soft group-hover:scale-110 group-hover:-translate-y-1 group-hover:bg-white group-hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all duration-300 relative z-20">
+                  <ShoppingCart className="h-6 w-6 text-white group-hover:text-primary group-hover:translate-x-1 group-hover:-rotate-12 transition-all duration-300 ease-out" />
+                </div>
+                <div className="mt-6">
+                  <h3 className="font-display text-2xl font-bold">Start Billing</h3>
+                  <div className="relative h-10 mt-1.5 overflow-hidden">
+                    <p className="absolute inset-0 text-primary-foreground/80 text-sm transition-transform duration-500 group-hover:-translate-y-full">
+                      Open the POS to make a quick sale and update inventory in real-time.
+                    </p>
+                    <p className="absolute inset-0 translate-y-full text-white font-bold text-sm transition-transform duration-500 group-hover:translate-y-0 flex items-center">
+                      Let's make some real money! 💸
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
-        </Link>
+            </Card>
+          </Link>
+
+          {/* Quick QR Install Card */}
+          <InstallAppQRCard />
+        </div>
       </div>
     </div>
   );

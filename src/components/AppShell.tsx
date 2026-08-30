@@ -4,8 +4,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck,
   BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-  Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles
+  Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode
 } from "lucide-react";
+import { InstallAppModal } from "@/components/InstallAppModal";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -77,6 +78,7 @@ export const AppShell = () => {
   const [shopOpen, setShopOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [installModalOpen, setInstallModalOpen] = useState(false);
   const [hasMigrated, setHasMigrated] = useState(true);
 
   const migrateToBatches = async () => {
@@ -382,13 +384,35 @@ export const AppShell = () => {
                     </div>
                 </div>
 
-                <div className="p-3 border-t border-sidebar-border mt-auto">
-                    <div className="px-3 py-1 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} 1.6.0</div>
+                <div className="p-3 border-t border-sidebar-border mt-auto space-y-2">
+                    <button
+                        onClick={() => setInstallModalOpen(true)}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-sidebar-accent/50 hover:bg-sidebar-accent text-sidebar-foreground border border-sidebar-border/40 text-xs font-semibold transition-all group shadow-xs hover:border-primary/40"
+                    >
+                        <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-primary/20 text-primary group-hover:scale-110 transition-transform">
+                                <Smartphone className="h-3.5 w-3.5" />
+                            </div>
+                            <span>{lang === "NEP" ? "मोबाइल एप (QR)" : "Get Mobile App"}</span>
+                        </div>
+                        <QrCode className="h-4 w-4 text-sidebar-foreground/60 group-hover:text-primary transition-colors" />
+                    </button>
+                    <div className="px-1 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} 1.6.0</div>
                 </div>
             </aside>
 
             {/* Desktop top-right profile corner */}
             <div className="hidden md:flex fixed top-4 right-6 z-50 items-center gap-2">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setInstallModalOpen(true)}
+                    className="h-10 px-3.5 rounded-full bg-card/85 backdrop-blur-md border-border/80 text-xs font-semibold hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300 shadow-sm gap-2 text-foreground"
+                >
+                    <QrCode className="h-4 w-4 text-primary group-hover:text-primary-foreground" />
+                    <span>{lang === "NEP" ? "मोबाइल एप" : "Mobile App"}</span>
+                </Button>
+
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-2 ring-primary/20 hover:ring-primary/45 focus:ring-primary/50 transition-all select-none p-0 flex items-center justify-center bg-card shadow-sm hover:scale-105 active:scale-95 duration-200">
@@ -418,6 +442,9 @@ export const AppShell = () => {
                             setShopOpen(true);
                         }} className="cursor-pointer font-medium gap-2">
                             <Store className="h-4 w-4 text-primary" /> {lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setInstallModalOpen(true)} className="cursor-pointer font-medium gap-2">
+                            <Smartphone className="h-4 w-4 text-primary" /> {lang === "NEP" ? "मोबाइल एप (QR Scan)" : "Mobile App (QR Scan)"}
                         </DropdownMenuItem>
                         
                         {/* Theme options Submenu */}
@@ -508,6 +535,25 @@ export const AppShell = () => {
                                 })}
                             </nav>
 
+                            {/* Mobile App Install Button inside drawer */}
+                            <div className="px-3 pt-2">
+                                <button
+                                    onClick={() => {
+                                        setMobileMenuOpen(false);
+                                        setInstallModalOpen(true);
+                                    }}
+                                    className="w-full flex items-center justify-between p-3 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-xs font-bold transition-all shadow-sm"
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-1 rounded-lg bg-primary text-primary-foreground">
+                                            <Smartphone className="h-4 w-4" />
+                                        </div>
+                                        <span>{lang === "NEP" ? "मोबाइल एप इन्स्टल गर्नुहोस् (QR)" : "Install Mobile App (QR)"}</span>
+                                    </div>
+                                    <QrCode className="h-4 w-4" />
+                                </button>
+                            </div>
+
                             {/* Mobile Language Switcher Row */}
                             <div className="px-6 py-4 border-t border-sidebar-border/60">
                                 <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
@@ -541,6 +587,16 @@ export const AppShell = () => {
                     <div className="text-sm font-bold bg-sidebar-accent px-3 py-1.5 rounded-lg text-sidebar-foreground truncate max-w-[220px] uppercase tracking-tight">{shopName}</div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => setInstallModalOpen(true)}
+                        className="h-9 w-9 rounded-full bg-sidebar-accent/80 text-sidebar-foreground hover:text-primary transition-colors"
+                        title={lang === "NEP" ? "मोबाइल एप / QR" : "Mobile App / QR"}
+                    >
+                        <QrCode className="h-4 w-4" />
+                    </Button>
+
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-primary/20 hover:ring-primary/40 focus:ring-primary/50 transition-all select-none p-0 flex items-center justify-center">
@@ -570,6 +626,9 @@ export const AppShell = () => {
                                 setShopOpen(true);
                             }} className="cursor-pointer font-medium gap-2">
                                 <Store className="h-4 w-4 text-primary" /> {lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setInstallModalOpen(true)} className="cursor-pointer font-medium gap-2">
+                                <Smartphone className="h-4 w-4 text-primary" /> {lang === "NEP" ? "मोबाइल एप (QR Scan)" : "Mobile App (QR Scan)"}
                             </DropdownMenuItem>
                             
                             {/* Theme options Submenu */}
@@ -867,6 +926,11 @@ export const AppShell = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Install App Modal */}
+            <InstallAppModal open={installModalOpen} onOpenChange={setInstallModalOpen} />
         </div>
     );
 };
+
+export default AppShell;

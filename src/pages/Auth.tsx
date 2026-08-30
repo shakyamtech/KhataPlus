@@ -10,10 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { BookText, Eye, EyeOff, Leaf, ShoppingBag, BarChart3, Users, Sparkles, CheckCircle2 } from "lucide-react";
+import { BookText, Eye, EyeOff, Leaf, ShoppingBag, BarChart3, Users, Sparkles, CheckCircle2, Smartphone, QrCode } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { InstallAppModal } from "@/components/InstallAppModal";
+import { InstallAppQRCard } from "@/components/InstallAppQRCard";
 
 const emailSchema = z.string().trim().email("Invalid email").max(255);
 const pwSchema = z.string().min(6, "Min 6 characters").max(100);
@@ -29,6 +31,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [panNo, setPanNo] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [installModalOpen, setInstallModalOpen] = useState(false);
   const { lang, setLang, t } = useLanguage();
 
   const changeLang = (l: "ENG" | "NEP") => {
@@ -133,20 +136,30 @@ const Auth = () => {
       {/* Noise filter to prevent banding on Auth page only */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.02] dark:opacity-[0.035] z-0" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E\")" }} />
       
-      {/* Floating English / Nepali Language Switcher */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-1 bg-white/80 backdrop-blur-md border border-white/40 p-1 rounded-xl shadow-soft dark:bg-secondary/40 dark:border-white/10">
-        <button 
-          onClick={() => changeLang("ENG")} 
-          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-300 ${lang === "ENG" ? "bg-primary text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-white"}`}
+      {/* Floating English / Nepali Language Switcher & Mobile App Button */}
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+        <button
+          onClick={() => setInstallModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-white/80 dark:bg-secondary/40 backdrop-blur-md border border-white/40 dark:border-white/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 shadow-soft"
         >
-          ENG
+          <QrCode className="h-3.5 w-3.5" />
+          <span>{lang === "NEP" ? "मोबाइल एप / QR" : "Get App (QR)"}</span>
         </button>
-        <button 
-          onClick={() => changeLang("NEP")} 
-          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-300 ${lang === "NEP" ? "bg-primary text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-white"}`}
-        >
-          नेपाली
-        </button>
+
+        <div className="flex items-center gap-1 bg-white/80 backdrop-blur-md border border-white/40 p-1 rounded-xl shadow-soft dark:bg-secondary/40 dark:border-white/10">
+          <button 
+            onClick={() => changeLang("ENG")} 
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-300 ${lang === "ENG" ? "bg-primary text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-white"}`}
+          >
+            ENG
+          </button>
+          <button 
+            onClick={() => changeLang("NEP")} 
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all duration-300 ${lang === "NEP" ? "bg-primary text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-white"}`}
+          >
+            नेपाली
+          </button>
+        </div>
       </div>
 
       {/* Custom Styles for beautiful organic animations */}
@@ -268,6 +281,9 @@ const Auth = () => {
               <span>Cloud Auto-Sync</span>
             </div>
           </div>
+
+          {/* QR Code Card for Android & iOS App Install */}
+          <InstallAppQRCard className="mt-1" />
         </div>
 
         {/* Centered Sign In / Sign Up Card */}
@@ -418,8 +434,22 @@ const Auth = () => {
               </TabsContent>
             </Tabs>
           </Card>
+
+          {/* Mobile Install App Button */}
+          <div className="mt-4 text-center lg:hidden">
+            <button
+              onClick={() => setInstallModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/70 dark:bg-secondary/40 backdrop-blur-md border border-white/40 dark:border-white/10 text-xs font-semibold text-foreground shadow-soft hover:bg-primary hover:text-primary-foreground transition-all duration-300 active:scale-95"
+            >
+              <Smartphone className="h-4 w-4 text-primary" />
+              <span>{lang === "NEP" ? "📱 मोबाइल एप इन्स्टल गर्नुहोस् (Android / iOS)" : "📱 Install Mobile App (Android / iOS)"}</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Reusable Install App Modal */}
+      <InstallAppModal open={installModalOpen} onOpenChange={setInstallModalOpen} />
     </div>
   );
 };

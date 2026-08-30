@@ -74,6 +74,9 @@ const translations = {
     fullShopName: "Shop Settings",
     cancel: "Cancel",
     saving: "Saving...",
+    mobileApp: "Mobile App",
+    scanToInstall: "Scan to Install",
+    installApp: "Install App",
   },
   NEP: {
     // Auth Page
@@ -138,6 +141,9 @@ const translations = {
     fullShopName: "पसल सेटिङहरू",
     cancel: "रद्द गर्नुहोस्",
     saving: "बचत हुँदैछ...",
+    mobileApp: "मोबाइल एप",
+    scanToInstall: "स्क्यान गरी इन्स्टल गर्नुहोस्",
+    installApp: "एप इन्स्टल गर्नुहोस्",
   }
 };
 
