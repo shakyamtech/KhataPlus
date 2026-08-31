@@ -92,6 +92,7 @@ const Purchases = () => {
   const [busy, setBusy] = useState(false);
   const [busySupplier, setBusySupplier] = useState(false);
   const [cashBalance, setCashBalance] = useState(0);
+  const [editingOriginalPaid, setEditingOriginalPaid] = useState<number>(0);
 
   const load = async () => {
     if (!user) return;
@@ -143,23 +144,13 @@ const Purchases = () => {
 
   const total = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.cost_price) || 0), 0);
 
-  // Set default amount paid only when total or payment mode changes, 
-  // but don't force it if the user is typing or if we are EDITING.
+  // Set default amount paid only when total changes in new purchase
   useEffect(() => {
     if (editingId) return; // Don't auto-fill if we are editing an existing record
-
     if (paymentMode !== "credit") {
       setAmountPaid(total.toFixed(2));
-    } else {
-      if (Number(amountPaid) === total) setAmountPaid("0");
     }
-  }, [paymentMode, editingId]);
-
-  // Update amount paid when items change ONLY if it's not a credit purchase and NOT editing
-  useEffect(() => {
-    if (editingId) return;
-    if (paymentMode !== "credit") setAmountPaid(total.toFixed(2));
-  }, [total, editingId]);
+  }, [total, paymentMode, editingId]);
 
   const addProduct = async (id: string, directProduct?: any) => {
     let p = directProduct || products.find((x) => x.id === id);
@@ -248,6 +239,7 @@ const Purchases = () => {
       });
 
       setEditingId(p.id);
+      setEditingOriginalPaid(Number(p.amount_paid || 0));
       setSupplierId(p.supplier_id || "none");
       setPaymentMode(p.payment_mode);
       setAmountPaid((p.amount_paid || 0).toString());
@@ -308,10 +300,25 @@ const Purchases = () => {
 
   const save = async () => {
     if (items.length === 0) return toast.error("Add items");
-    if (paymentMode === "credit" && (supplierId === "none" || !supplierId)) return toast.error("Pick a supplier for credit");
 
     const paid = Number(amountPaid || 0);
     const purchaseTotal = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.cost_price) || 0), 0);
+
+    if (paid < 0) return toast.error("Amount paid cannot be negative");
+    if (paid > purchaseTotal) return toast.error(`Amount paid cannot exceed total purchase amount (${fmt(purchaseTotal)})`);
+
+    // If there is any unpaid due amount, supplier is required
+    if (paid < purchaseTotal && (supplierId === "none" || !supplierId)) {
+      return toast.error("Please pick a supplier for credit / unpaid balance");
+    }
+
+    // Check cash in hand balance if paying immediately
+    if (paid > 0) {
+      const availableCash = cashBalance + (editingId ? editingOriginalPaid : 0);
+      if (paid > availableCash) {
+        return toast.error(`Insufficient Cash in Hand! Available: ${fmt(availableCash)}, Required: ${fmt(paid)}. Please choose Credit or reduce Amount Paid.`);
+      }
+    }
 
     setBusy(true);
     try {
@@ -414,7 +421,7 @@ const Purchases = () => {
       await batch.commit();
 
       toast.success(editingId ? "Purchase updated" : "Purchase recorded");
-      setItems([]); setSupplierId("none"); setPaymentMode("cash"); setShowForm(false); setEditingId(null); load();
+      setItems([]); setSupplierId("none"); setPaymentMode("cash"); setShowForm(false); setEditingId(null); setEditingOriginalPaid(0); load();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -471,7 +478,14 @@ const Purchases = () => {
             toast.warning("Warning: You have 0 cash balance! You will only be able to make Credit purchases.", { duration: 6000 });
           }
           setShowForm(!showForm);
-          if (showForm) { setEditingId(null); setItems([]); setSupplierId("none"); }
+          if (showForm) { 
+            setEditingId(null); 
+            setEditingOriginalPaid(0);
+            setItems([]); 
+            setSupplierId("none"); 
+            setPaymentMode("cash");
+            setAmountPaid("0");
+          }
         }} className="bg-gradient-primary text-primary-foreground">
           {showForm ? <X className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
           {showForm ? "Cancel" : "New Purchase"}
@@ -572,7 +586,19 @@ const Purchases = () => {
           <div className="grid sm:grid-cols-3 gap-3 mt-4 items-end">
             <div>
               <Label>Payment</Label>
-              <Select value={paymentMode} onValueChange={(v: any) => setPaymentMode(v)}>
+              <Select 
+                value={paymentMode} 
+                onValueChange={(v: string) => {
+                  setPaymentMode(v);
+                  if (v === "credit") {
+                    setAmountPaid("0");
+                  } else {
+                    if (Number(amountPaid) === 0) {
+                      setAmountPaid(total.toFixed(2));
+                    }
+                  }
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
@@ -583,7 +609,15 @@ const Purchases = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Amount Paid</Label><Input type="number" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} onWheel={(e) => e.currentTarget.blur()} /></div>
+            <div>
+              <Label>Amount Paid</Label>
+              <Input type="number" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
+              {total > 0 && Number(amountPaid || 0) < total && (
+                <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-1">
+                  Due to Supplier: {fmt(total - Number(amountPaid || 0))}
+                </div>
+              )}
+            </div>
             <div className="flex items-center justify-between bg-gradient-primary text-primary-foreground rounded-lg px-3 py-2">
               <span>Total</span><span className="font-display text-xl">{fmt(total)}</span>
             </div>

@@ -403,16 +403,6 @@ export const AppShell = () => {
 
             {/* Desktop top-right profile corner */}
             <div className="hidden md:flex fixed top-4 right-6 z-50 items-center gap-2">
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setInstallModalOpen(true)}
-                    className="h-10 px-3.5 rounded-full bg-card/85 backdrop-blur-md border-border/80 text-xs font-semibold hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300 shadow-sm gap-2 text-foreground"
-                >
-                    <QrCode className="h-4 w-4 text-primary group-hover:text-primary-foreground" />
-                    <span>{lang === "NEP" ? "मोबाइल एप" : "Mobile App"}</span>
-                </Button>
-
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-2 ring-primary/20 hover:ring-primary/45 focus:ring-primary/50 transition-all select-none p-0 flex items-center justify-center bg-card shadow-sm hover:scale-105 active:scale-95 duration-200">
