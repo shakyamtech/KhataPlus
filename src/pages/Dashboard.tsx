@@ -7,7 +7,6 @@ import { Card } from "@/components/ui/card";
 import { fmt } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wallet, Package, AlertTriangle, ShoppingCart, Users } from "lucide-react";
 import { Link } from "react-router-dom";
-import { InstallAppQRCard } from "@/components/InstallAppQRCard";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -336,9 +335,6 @@ const Dashboard = () => {
               </div>
             </Card>
           </Link>
-
-          {/* Quick QR Install Card */}
-          <InstallAppQRCard />
         </div>
       </div>
     </div>
