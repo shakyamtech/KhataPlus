@@ -226,7 +226,7 @@ const POS = () => {
         return false;
       }
     } else {
-      if (1 > totalAvailable) {
+      if (totalAvailable <= 0) {
         toast.error(p.has_expired_stock ? 'Cannot sell: All stock is expired' : 'Out of stock');
         return false;
       }
@@ -244,7 +244,7 @@ const POS = () => {
         unit: p.unit, 
         sell_price: Number(p.sell_price), 
         cost_price: Number(p.cost_price), 
-        qty: 1,
+        qty: totalAvailable < 1 && totalAvailable > 0 ? +Number(totalAvailable).toFixed(3) : 1,
         selected_batch_id: "auto",
         available_batches: p.active_batches || [],
         earliest_expiry: p.earliest_expiry,
@@ -270,7 +270,7 @@ const POS = () => {
         selected_batch_id: batchId,
         earliest_batch_name: selectedBatch?.batch_name || i.earliest_batch_name,
         earliest_expiry: selectedBatch?.expiry_date || i.earliest_expiry,
-        qty: newQty <= 0 ? 1 : newQty
+        qty: newQty <= 0 ? (maxAvailable > 0 ? +Number(Math.min(1, maxAvailable)).toFixed(3) : 0) : newQty
       };
     }));
   };
