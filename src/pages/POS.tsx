@@ -204,14 +204,15 @@ const POS = () => {
     }
   });
 
-  const getTotalAvailable = (productId: string, selectedBatchId?: string) => {
+  const getTotalAvailable = (productId: string, selectedBatchId?: string): number => {
     const p = products.find(prod => prod.id === productId);
     if (!p) return 0;
     if (selectedBatchId && selectedBatchId !== "auto" && p.active_batches) {
       const b = p.active_batches.find(x => x.id === selectedBatchId);
-      return b ? b.remaining_qty : 0;
+      return b ? Number(b.remaining_qty) || 0 : 0;
     }
-    return p.valid_stock !== undefined ? p.valid_stock : p.stock_qty;
+    const val = p.valid_stock !== undefined ? p.valid_stock : p.stock_qty;
+    return Number(val) || 0;
   };
 
   const addToCart = (p: Product): boolean => {
