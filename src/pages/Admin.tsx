@@ -41,22 +41,35 @@ const Admin = () => {
   const load = async () => {
     setBusy(true);
     try {
-      const { collection, getDocs } = await import("firebase/firestore");
-      const { db } = await import("@/lib/firebase");
-      
-      const querySnapshot = await getDocs(collection(db, "profiles"));
+      const [profilesSnap, rolesSnap] = await Promise.all([
+        getDocs(collection(db, "profiles")),
+        getDocs(collection(db, "user_roles"))
+      ]);
+
+      const adminUserIds = new Set<string>();
+      rolesSnap.forEach((docSnap) => {
+        const rData = docSnap.data();
+        if (rData.role === "admin" && rData.user_id) {
+          adminUserIds.add(rData.user_id);
+        }
+      });
+
       const loadedUsers: AdminUser[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
+      profilesSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        const userRoles: string[] = Array.isArray(data.roles) ? [...data.roles] : [];
+        if (adminUserIds.has(docSnap.id) && !userRoles.includes("admin")) {
+          userRoles.push("admin");
+        }
+
         loadedUsers.push({
-          id: doc.id,
-          email: data.email || data.id + "@unknown",
+          id: docSnap.id,
+          email: data.email || docSnap.id + "@unknown",
           created_at: data.created_at || new Date().toISOString(),
           last_sign_in_at: data.updated_at || null,
           full_name: data.full_name || "",
           shop_name: data.shop_name || "",
-          roles: data.roles || [],
+          roles: userRoles,
           banned_until: data.banned_until || null
         });
       });
@@ -75,23 +88,55 @@ const Admin = () => {
   if (loading) return <div className="p-8">Loading…</div>;
   if (!isAdmin) return <Navigate to="/" replace />;
 
-  const notSupported = () => {
-    toast.error("This action requires Firebase Cloud Functions (Billing Enabled). Please use Firebase Console.");
-  };
-
-  const toggleAdmin = notSupported;
-  const del = async (u: AdminUser) => {
-    if (!confirm(`Are you sure you want to remove ${u.email} from the app's list?`)) return;
+  const toggleAdmin = async (u: AdminUser) => {
+    const isCurrentlyAdmin = u.roles.includes("admin");
+    setBusy(true);
     try {
-      const { deleteDoc } = await import("firebase/firestore");
-      await deleteDoc(doc(db, "profiles", u.id));
-      toast.success("User profile removed from the list.");
-      load();
+      const { collection, query, where, getDocs, doc, setDoc, deleteDoc } = await import("firebase/firestore");
+      if (isCurrentlyAdmin) {
+        // Remove from user_roles
+        const q = query(collection(db, "user_roles"), where("user_id", "==", u.id), where("role", "==", "admin"));
+        const snap = await getDocs(q);
+        for (const d of snap.docs) {
+          await deleteDoc(d.ref);
+        }
+        toast.success(`Removed admin privileges from ${u.email}`);
+      } else {
+        // Add to user_roles
+        const newRef = doc(collection(db, "user_roles"));
+        await setDoc(newRef, {
+          id: newRef.id,
+          user_id: u.id,
+          role: "admin",
+          created_at: new Date().toISOString()
+        });
+        toast.success(`Granted admin privileges to ${u.email}`);
+      }
+      await load();
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message || "Failed to update admin role");
+    } finally {
+      setBusy(false);
     }
   };
-  const toggleBan = notSupported;
+
+  const toggleBan = async (u: AdminUser) => {
+    const isBanned = u.banned_until && new Date(u.banned_until) > new Date();
+    setBusy(true);
+    try {
+      const { doc, updateDoc } = await import("firebase/firestore");
+      const targetDate = isBanned ? null : new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString();
+      await updateDoc(doc(db, "profiles", u.id), {
+        banned_until: targetDate
+      });
+      toast.success(isBanned ? `Restored access for ${u.email}` : `Suspended ${u.email}`);
+      await load();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update suspension status");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const saveProfile = async () => {
     if (!editing) return;
