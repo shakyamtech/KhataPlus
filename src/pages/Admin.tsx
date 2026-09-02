@@ -162,25 +162,74 @@ const Admin = () => {
   const resetData = async (u: AdminUser) => {
     setResettingId(u.id);
     try {
-      const collections = [
-        "sales", "sale_items", "purchases", "purchase_items",
-        "cash_transactions", "ledger_entries", "expenses"
-      ];
+      // 1. Get all products for this user
+      const prodQ = query(collection(db, "products"), where("user_id", "==", u.id));
+      const prodSnap = await getDocs(prodQ);
+      const prodIds = prodSnap.docs.map(d => d.id);
 
-      // Delete all records belonging to this user across all collections
+      // 2. Delete all product batches
+      const batchQ = query(collection(db, "product_batches"), where("user_id", "==", u.id));
+      const batchSnap = await getDocs(batchQ);
+      if (!batchSnap.empty) {
+        const bBatch = writeBatch(db);
+        batchSnap.docs.forEach(d => bBatch.delete(d.ref));
+        await bBatch.commit();
+      }
+
+      // 3. Delete all sale_items and purchase_items linked to user's products
+      for (let i = 0; i < prodIds.length; i += 30) {
+        const chunk = prodIds.slice(i, i + 30);
+        if (chunk.length > 0) {
+          const [siSnap, piSnap] = await Promise.all([
+            getDocs(query(collection(db, "sale_items"), where("product_id", "in", chunk))),
+            getDocs(query(collection(db, "purchase_items"), where("product_id", "in", chunk)))
+          ]);
+          if (!siSnap.empty || !piSnap.empty) {
+            const itemBatch = writeBatch(db);
+            siSnap.docs.forEach(d => itemBatch.delete(d.ref));
+            piSnap.docs.forEach(d => itemBatch.delete(d.ref));
+            await itemBatch.commit();
+          }
+        }
+      }
+
+      // 4. Delete user-level transaction collections
+      const collections = [
+        "sales", "purchases", "cash_transactions", 
+        "ledger_entries", "expenses", "stock_adjustments"
+      ];
       for (const col of collections) {
         const q = query(collection(db, col), where("user_id", "==", u.id));
         const snap = await getDocs(q);
-        // Firestore batch supports max 500 ops
-        const chunks: typeof snap.docs[] = [];
-        for (let i = 0; i < snap.docs.length; i += 490) {
-          chunks.push(snap.docs.slice(i, i + 490));
-        }
-        for (const chunk of chunks) {
+        for (let i = 0; i < snap.docs.length; i += 450) {
+          const chunk = snap.docs.slice(i, i + 450);
           const batch = writeBatch(db);
           chunk.forEach(d => batch.delete(d.ref));
           await batch.commit();
         }
+      }
+
+      // 5. Reset product stock quantities to 0
+      if (!prodSnap.empty) {
+        for (let i = 0; i < prodSnap.docs.length; i += 450) {
+          const chunk = prodSnap.docs.slice(i, i + 450);
+          const stockBatch = writeBatch(db);
+          chunk.forEach(d => stockBatch.update(d.ref, { stock_qty: 0 }));
+          await stockBatch.commit();
+        }
+      }
+
+      // 6. Reset customer and supplier balances to 0
+      const [custSnap, suppSnap] = await Promise.all([
+        getDocs(query(collection(db, "customers"), where("user_id", "==", u.id))),
+        getDocs(query(collection(db, "suppliers"), where("user_id", "==", u.id)))
+      ]);
+      const partyDocs = [...custSnap.docs, ...suppSnap.docs];
+      for (let i = 0; i < partyDocs.length; i += 450) {
+        const chunk = partyDocs.slice(i, i + 450);
+        const pBatch = writeBatch(db);
+        chunk.forEach(d => pBatch.update(d.ref, { balance: 0 }));
+        await pBatch.commit();
       }
 
       toast.success(`Data reset for ${u.email}. Products & contacts preserved.`);

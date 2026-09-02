@@ -295,42 +295,75 @@ export const AppShell = () => {
             const credential = EmailAuthProvider.credential(user.email!, password);
             await reauthenticateWithCredential(user, credential);
 
-            // Delete all transaction tables for this user
+            // 1. Get all products for this user
+            const prodQ = query(collection(db, "products"), where("user_id", "==", user.uid));
+            const prodSnap = await getDocs(prodQ);
+            const prodIds = prodSnap.docs.map(d => d.id);
+
+            // 2. Delete all product batches
+            const batchQ = query(collection(db, "product_batches"), where("user_id", "==", user.uid));
+            const batchSnap = await getDocs(batchQ);
+            if (!batchSnap.empty) {
+                const bBatch = writeBatch(db);
+                batchSnap.docs.forEach(d => bBatch.delete(d.ref));
+                await bBatch.commit();
+            }
+
+            // 3. Delete all sale_items and purchase_items linked to user's products
+            for (let i = 0; i < prodIds.length; i += 30) {
+                const chunk = prodIds.slice(i, i + 30);
+                if (chunk.length > 0) {
+                    const [siSnap, piSnap] = await Promise.all([
+                        getDocs(query(collection(db, "sale_items"), where("product_id", "in", chunk))),
+                        getDocs(query(collection(db, "purchase_items"), where("product_id", "in", chunk)))
+                    ]);
+                    if (!siSnap.empty || !piSnap.empty) {
+                        const itemBatch = writeBatch(db);
+                        siSnap.docs.forEach(d => itemBatch.delete(d.ref));
+                        piSnap.docs.forEach(d => itemBatch.delete(d.ref));
+                        await itemBatch.commit();
+                    }
+                }
+            }
+
+            // 4. Delete all user-level transaction tables
             const tablesToWipe = [
-                "sales", "sale_items", 
-                "purchases", "purchase_items", 
-                "cash_transactions", "ledger_entries", 
-                "expenses", "stock_adjustments"
+                "sales", "purchases", "cash_transactions", 
+                "ledger_entries", "expenses", "stock_adjustments"
             ];
             for (const t of tablesToWipe) {
                 const q = query(collection(db, t), where("user_id", "==", user.uid));
                 const snapshot = await getDocs(q);
                 
-                // Firestore batches can only have 500 writes, so chunk them
-                const chunks = [];
-                for (let i = 0; i < snapshot.docs.length; i += 500) {
-                    chunks.push(snapshot.docs.slice(i, i + 500));
-                }
-                
-                for (const chunk of chunks) {
+                for (let i = 0; i < snapshot.docs.length; i += 450) {
+                    const chunk = snapshot.docs.slice(i, i + 450);
                     const batch = writeBatch(db);
                     chunk.forEach((d) => batch.delete(d.ref));
                     await batch.commit();
                 }
             }
             
-            // Reset customer and supplier balances to 0
-            const partyQ = query(collection(db, "parties"), where("user_id", "==", user.uid));
-            const pSnapshot = await getDocs(partyQ);
-            
-            const pChunks = [];
-            for (let i = 0; i < pSnapshot.docs.length; i += 500) {
-                pChunks.push(pSnapshot.docs.slice(i, i + 500));
+            // 5. Reset product stock quantities to 0
+            if (!prodSnap.empty) {
+                for (let i = 0; i < prodSnap.docs.length; i += 450) {
+                    const chunk = prodSnap.docs.slice(i, i + 450);
+                    const stockBatch = writeBatch(db);
+                    chunk.forEach(d => stockBatch.update(d.ref, { stock_qty: 0 }));
+                    await stockBatch.commit();
+                }
             }
-            
-            for (const chunk of pChunks) {
+
+            // 6. Reset customer and supplier balances to 0
+            const [custSnap, suppSnap] = await Promise.all([
+                getDocs(query(collection(db, "customers"), where("user_id", "==", user.uid))),
+                getDocs(query(collection(db, "suppliers"), where("user_id", "==", user.uid)))
+            ]);
+
+            const partyDocs = [...custSnap.docs, ...suppSnap.docs];
+            for (let i = 0; i < partyDocs.length; i += 450) {
+                const chunk = partyDocs.slice(i, i + 450);
                 const pBatch = writeBatch(db);
-                chunk.forEach((d) => pBatch.update(d.ref, { balance: 0 }));
+                chunk.forEach(d => pBatch.update(d.ref, { balance: 0 }));
                 await pBatch.commit();
             }
 
