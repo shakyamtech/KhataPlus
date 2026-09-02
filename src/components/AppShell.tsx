@@ -173,10 +173,31 @@ export const AppShell = () => {
                     setShopPhone(data.shop_phone || data.phone || "");
                     setPanNo(data.pan_no || "");
                     setFullName(data.full_name || "");
-                    setHasMigrated(data.migrated_to_batches === true);
+
+                    if (data.migrated_to_batches !== undefined) {
+                        setHasMigrated(data.migrated_to_batches === true);
+                    } else {
+                        // Check if user has any products; if not, they are new and don't need migration
+                        const prodQ = query(collection(db, "products"), where("user_id", "==", user.uid));
+                        const prodSnap = await getDocs(prodQ);
+                        if (prodSnap.empty) {
+                            setHasMigrated(true);
+                            setDoc(docRef, { migrated_to_batches: true }, { merge: true }).catch(() => {});
+                        } else {
+                            // Check if any product lacks a batch
+                            const batchQ = query(collection(db, "product_batches"), where("user_id", "==", user.uid));
+                            const batchSnap = await getDocs(batchQ);
+                            if (!batchSnap.empty) {
+                                setHasMigrated(true);
+                                setDoc(docRef, { migrated_to_batches: true }, { merge: true }).catch(() => {});
+                            } else {
+                                setHasMigrated(false);
+                            }
+                        }
+                    }
                 } else {
                     setShopName("KhataPlus Shop");
-                    setHasMigrated(false);
+                    setHasMigrated(true);
                 }
             } catch (e) {
                 console.error(e);

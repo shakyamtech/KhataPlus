@@ -124,6 +124,7 @@ const Auth = () => {
         shop_name: chosenShop,
         shop_phone: shopPhone.trim() || null,
         pan_no: panNo,
+        migrated_to_batches: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
