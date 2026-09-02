@@ -89,22 +89,25 @@ const Products = () => {
 
   const remove = async (id: string) => {
     try {
-      const siQ = query(collection(db, "sale_items"), where("product_id", "==", id), limit(1));
-      const siSnap = await getDocs(siQ);
-      if (!siSnap.empty) {
-        return toast.error("Cannot delete! First delete this product's Sales from Cashbook.");
-      }
+      const [siSnap, piSnap, pbSnap, ingSnap] = await Promise.all([
+        getDocs(query(collection(db, "sale_items"), where("product_id", "==", id))),
+        getDocs(query(collection(db, "purchase_items"), where("product_id", "==", id))),
+        getDocs(query(collection(db, "product_batches"), where("product_id", "==", id))),
+        getDocs(query(collection(db, "product_ingredients"), where("product_id", "==", id)))
+      ]);
 
-      const piQ = query(collection(db, "purchase_items"), where("product_id", "==", id), limit(1));
-      const piSnap = await getDocs(piQ);
-      if (!piSnap.empty) {
-        return toast.error("Cannot delete! First delete this product's Purchases from Cashbook.");
-      }
+      const batch = writeBatch(db);
+      siSnap.forEach(d => batch.delete(d.ref));
+      piSnap.forEach(d => batch.delete(d.ref));
+      pbSnap.forEach(d => batch.delete(d.ref));
+      ingSnap.forEach(d => batch.delete(d.ref));
+      batch.delete(doc(db, "products", id));
 
-      await deleteDoc(doc(db, "products", id));
+      await batch.commit();
+      toast.success(lang === "NEP" ? "सामान सफलतापूर्वक हटाइयो" : "Product deleted successfully");
       load();
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message || "Failed to delete product");
     }
   };
 
