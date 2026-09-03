@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { collection, doc, query, where, getDoc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, increment, orderBy, limit } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
@@ -200,6 +200,27 @@ const Cashbook = () => {
     };
     return acc;
   }, {} as Record<string, { in: number; out: number; count: number }>);
+
+  const runningBalances = useMemo(() => {
+    const chrono = [...rows].sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateA - dateB;
+    });
+
+    let cumulative = 0;
+    const map = new Map<string, number>();
+    chrono.forEach((r) => {
+      const amt = Number(r.amount) || 0;
+      if (r.direction === "in") {
+        cumulative += amt;
+      } else {
+        cumulative -= amt;
+      }
+      map.set(r.id, Math.round(cumulative * 100) / 100);
+    });
+    return map;
+  }, [rows]);
 
   const filtered = dateFilteredRows
     .filter((r) => filter === "all" || r.direction === filter)
@@ -702,7 +723,16 @@ const Cashbook = () => {
                 ) : null}
               </div>
             </div>
-            <div className={`font-medium ${r.direction === "in" ? "text-success" : "text-destructive"}`}>{r.direction === "in" ? "+" : "-"}{fmt(r.amount)}</div>
+            <div className="text-right shrink-0">
+              <div className={`font-medium ${r.direction === "in" ? "text-success" : "text-destructive"}`}>
+                {r.direction === "in" ? "+" : "−"}{fmt(r.amount)}
+              </div>
+              {runningBalances.has(r.id) && (
+                <div className="text-[11px] text-muted-foreground font-normal mt-0.5">
+                  Bal: {fmt(runningBalances.get(r.id) || 0)}
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {r.reference_id && <span className="text-[10px] text-muted-foreground italic px-1">auto</span>}
               <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
