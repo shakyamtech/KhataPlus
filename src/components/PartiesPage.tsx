@@ -58,6 +58,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState(""); const [payNote, setPayNote] = useState("");
+  const [payPaymentMode, setPayPaymentMode] = useState<string>("cash");
   const [busyAdd, setBusyAdd] = useState(false);
   const [busyPayment, setBusyPayment] = useState(false);
   const [analysisItems, setAnalysisItems] = useState<any[]>([]);
@@ -459,6 +460,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         entry_type: type === "customer" ? "payment_in" : "payment_out",
         party_name: selected.name,
         amount: Number(payAmount),
+        payment_mode: payPaymentMode,
         note: (payNote ? payNote + " " : "") + `(Ledger Payment)`,
         created_at: new Date().toISOString()
       });
@@ -472,13 +474,14 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         party_id: selected.id,
         party_name: selected.name,
         amount: Number(payAmount),
+        payment_mode: payPaymentMode,
         note: (payNote ? payNote + " " : "") + `(Ledger Payment)`,
         created_at: new Date().toISOString()
       });
 
       await batch.commit();
 
-      toast.success("Payment recorded"); setPayOpen(false); setPayAmount(""); setPayNote("");
+      toast.success("Payment recorded"); setPayOpen(false); setPayAmount(""); setPayNote(""); setPayPaymentMode("cash");
       openLedger(selected); load();
     } catch (e: any) {
       toast.error(e.message);
@@ -1095,7 +1098,24 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
-              <div><Label>Amount</Label><Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} autoFocus /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Amount</Label>
+                  <Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} autoFocus />
+                </div>
+                <div>
+                  <Label>Payment Mode</Label>
+                  <Select value={payPaymentMode} onValueChange={setPayPaymentMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="esewa">eSewa</SelectItem>
+                      <SelectItem value="khalti">Khalti</SelectItem>
+                      <SelectItem value="bank">Bank</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div><Label>Note</Label><Input value={payNote} placeholder="Optional note" onChange={(e) => setPayNote(e.target.value)} /></div>
               <Button onClick={recordPayment} disabled={busyPayment} className="w-full bg-gradient-primary text-primary-foreground">
                 {busyPayment ? (
@@ -1211,7 +1231,24 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
-              <div><Label>Amount</Label><Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} autoFocus /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Amount</Label>
+                  <Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} autoFocus />
+                </div>
+                <div>
+                  <Label>Payment Mode</Label>
+                  <Select value={payPaymentMode} onValueChange={setPayPaymentMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="esewa">eSewa</SelectItem>
+                      <SelectItem value="khalti">Khalti</SelectItem>
+                      <SelectItem value="bank">Bank</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div><Label>Note</Label><Input value={payNote} placeholder="Optional note" onChange={(e) => setPayNote(e.target.value)} /></div>
               <Button onClick={recordPayment} disabled={busyPayment} className="w-full bg-gradient-primary text-primary-foreground">
                 {busyPayment ? (

@@ -183,9 +183,11 @@ const Cashbook = () => {
   const totalOut = Math.round(dateFilteredRows.filter((r) => r.direction === "out").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
 
   const getRowPaymentMode = (r: any): string => {
-    if (r.category === "sale" && r.reference_id && salesDetails[r.reference_id]) return salesDetails[r.reference_id].mode || "cash";
-    if ((r.category === "purchase" || r.category === "purchases") && r.reference_id && purchaseDetails[r.reference_id]) return purchaseDetails[r.reference_id].mode || "cash";
-    return r.payment_mode || "cash";
+    const rawMode = r.payment_mode ||
+      ((r.category === "sale" || r.category === "sales") && r.reference_id && salesDetails[r.reference_id]?.mode) ||
+      ((r.category === "purchase" || r.category === "purchases") && r.reference_id && purchaseDetails[r.reference_id]?.mode) ||
+      "cash";
+    return String(rawMode).toLowerCase();
   };
 
   const paymentModes = ["cash", "esewa", "khalti", "bank", "credit"] as const;
@@ -369,15 +371,29 @@ const Cashbook = () => {
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
       return sortBy === "newest" ? dateB - dateA : dateA - dateB;
     });
+
+    const printIn = Math.round(filtered.filter((r) => r.direction === "in").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
+    const printOut = Math.round(filtered.filter((r) => r.direction === "out").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
+    const printBalance = Math.round(filtered.reduce((s, r) => s + (r.direction === "in" ? Number(r.amount) : -Number(r.amount)), 0) * 100) / 100;
     
-    const rowsHtml = sortedPrintRows.map((r) => `<tr>
-      <td style="font-size:11px; color:#4b5563; vertical-align:top;">${r.created_at ? format(new Date(r.created_at), "dd MMM, hh:mm a") : "-"}</td>
-      <td style="text-transform:capitalize; vertical-align:top;">
-        <strong>${escapeHtml((r.category || "other").replace("_", " "))}</strong>
-        ${r.note ? `<br/><span style="font-size:11px;color:#6b7280;">💬 ${escapeHtml(r.note)}</span>` : ""}
-      </td>
-      <td class="num" style="color:${r.direction === "in" ? "#059669" : "#dc2626"}; font-weight:700; vertical-align:top; font-size:13px;">${r.direction === "in" ? "+" : "−"}${fmt(r.amount)}</td>
-    </tr>`).join("");
+    const rowsHtml = sortedPrintRows.map((r) => {
+      const mode = getRowPaymentMode(r);
+      const sDetail = (r.category === "sale" || r.category === "sales") && r.reference_id ? salesDetails[r.reference_id] : null;
+      const pDetail = (r.category === "purchase" || r.category === "purchases") && r.reference_id ? purchaseDetails[r.reference_id] : null;
+      const title = sDetail ? `${sDetail.customer} (Sale)` : pDetail ? `${pDetail.supplier} (Purchase)` : r.party_name ? `${r.party_name} (${(r.category || "other").replace("_", " ")})` : (r.category || "other").replace("_", " ");
+
+      return `<tr>
+        <td style="font-size:11px; color:#4b5563; vertical-align:top;">${r.created_at ? format(new Date(r.created_at), "dd MMM, hh:mm a") : "-"}</td>
+        <td style="text-transform:capitalize; vertical-align:top;">
+          <strong>${escapeHtml(title)}</strong>
+          <span style="font-size:10px; margin-left:6px; background:#f3f4f6; border:1px solid #e5e7eb; padding:1px 5px; border-radius:4px; font-weight:600; color:#4b5563; text-transform:uppercase;">${escapeHtml(mode)}</span>
+          ${sDetail?.products ? `<br/><span style="font-size:11px;color:#4b5563;">📦 ${escapeHtml(sDetail.products)}</span>` : ""}
+          ${pDetail?.products ? `<br/><span style="font-size:11px;color:#4b5563;">📦 ${escapeHtml(pDetail.products)}</span>` : ""}
+          ${r.note ? `<br/><span style="font-size:11px;color:#6b7280;">💬 ${escapeHtml(r.note)}</span>` : ""}
+        </td>
+        <td class="num" style="color:${r.direction === "in" ? "#059669" : "#dc2626"}; font-weight:700; vertical-align:top; font-size:13px;">${r.direction === "in" ? "+" : "−"}${fmt(r.amount)}</td>
+      </tr>`;
+    }).join("");
 
     const body = `
       <div class="receipt-card">
@@ -393,7 +409,7 @@ const Cashbook = () => {
         <div class="bill-info">
           <div class="bill-info-item">
             <span class="bill-info-label">Statement Type</span>
-            <span class="bill-info-value">Cash In & Out Flows</span>
+            <span class="bill-info-value">${paymentFilter === "all" ? "All Payment Modes" : paymentFilter.toUpperCase() + " Transactions"}</span>
           </div>
           <div class="bill-info-item" style="text-align:right;">
             <span class="bill-info-label">Generated On</span>
@@ -403,16 +419,16 @@ const Cashbook = () => {
 
         <div class="summary-section" style="margin-bottom:14px; background:#f9fafb; padding:10px 12px; border-radius:8px; border:1px solid #f3f4f6;">
           <div class="summary-row">
-            <span>Total Cash In (+)</span>
-            <span style="color:#059669; font-weight:700;">+${fmt(totalIn)}</span>
+            <span>Total In (+)</span>
+            <span style="color:#059669; font-weight:700;">+${fmt(printIn)}</span>
           </div>
           <div class="summary-row">
-            <span>Total Cash Out (−)</span>
-            <span style="color:#dc2626; font-weight:700;">−${fmt(totalOut)}</span>
+            <span>Total Out (−)</span>
+            <span style="color:#dc2626; font-weight:700;">−${fmt(printOut)}</span>
           </div>
           <div class="summary-row grand-total" style="margin:4px 0 0 0; padding:6px 0 0 0; border-bottom:none;">
-            <span>Net Cash Balance</span>
-            <span style="color:${balance >= 0 ? '#059669' : '#dc2626'};">${fmt(balance)}</span>
+            <span>Net Balance</span>
+            <span style="color:${printBalance >= 0 ? '#059669' : '#dc2626'};">${fmt(printBalance)}</span>
           </div>
         </div>
 
@@ -581,31 +597,46 @@ const Cashbook = () => {
         )}
       </Card>
 
-      {/* Payment Mode Breakdown (Simplified) */}
+      {/* Payment Mode Breakdown */}
       <Card className="p-3 mb-4 shadow-card border-0 bg-card">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Payment Mode</div>
+        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+          {lang === "NEP" ? "भुक्तानी माध्यम (Payment Mode)" : "Payment Mode"}
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setPaymentFilter("all")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-              paymentFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border flex items-center gap-1.5 ${
+              paymentFilter === "all" ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
             }`}
           >
-            All
+            <span>{lang === "NEP" ? "सबै" : "All"}</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${paymentFilter === "all" ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background/80 text-muted-foreground"}`}>
+              {dateFilteredRows.length}
+            </span>
           </button>
-          {(["cash", "esewa", "khalti", "bank", "credit"] as const).map(mode => {
-            const totals = paymentModeTotals[mode];
-            if (totals.count === 0) return null;
-            const isActive = paymentFilter === mode;
+          {([
+            { id: "cash", label: "Cash" },
+            { id: "esewa", label: "eSewa" },
+            { id: "khalti", label: "Khalti" },
+            { id: "bank", label: "Bank" },
+            { id: "credit", label: "Credit" }
+          ] as const).map(({ id, label }) => {
+            const totals = paymentModeTotals[id];
+            const isActive = paymentFilter === id;
             return (
               <button
-                key={mode}
-                onClick={() => setPaymentFilter(mode)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-                  isActive ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
+                key={id}
+                onClick={() => setPaymentFilter(id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border flex items-center gap-1.5 ${
+                  isActive ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
                 }`}
               >
-                <span className="capitalize">{mode}</span>
+                <span>{label}</span>
+                {totals?.count > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background/80 text-muted-foreground"}`}>
+                    {totals.count}
+                  </span>
+                )}
               </button>
             );
           })}

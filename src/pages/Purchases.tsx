@@ -382,6 +382,7 @@ const Purchases = () => {
           direction: "out",
           amount: paid,
           category: "purchase",
+          payment_mode: paymentMode,
           note: `Purchase ${purchaseRef.id}`,
           reference_id: purchaseRef.id,
           created_at: new Date().toISOString()

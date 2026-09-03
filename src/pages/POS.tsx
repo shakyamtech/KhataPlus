@@ -569,6 +569,7 @@ const POS = () => {
           direction: "in",
           amount: paid,
           category: "sales",
+          payment_mode: paymentMode,
           note: `Sale ${saleRef.id}`,
           reference_id: saleRef.id,
           created_at: new Date().toISOString()
