@@ -15,10 +15,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { Switch } from "@/components/ui/switch";
+import { getShopInfo, ShopInfo } from "@/lib/shop";
 
 const DEFAULT_UNITS = ["pcs", "set", "doz"];
 
-export const blankProduct = { name: "", unit: "pcs", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "", batch_name: "", has_expiry: false, expiry_date: "" };
+export const blankProduct = { name: "", unit: "pcs", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "", hs_code: "", batch_name: "", has_expiry: false, expiry_date: "" };
 
 function ModalDatePicker({ value, onChange }: { value: string; onChange: (val: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -68,6 +69,7 @@ interface ProductFormModalProps {
 
 export function ProductFormModal({ open, onOpenChange, product, onSuccess }: ProductFormModalProps) {
   const { user } = useAuth();
+  const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [edit, setEdit] = useState<any>(blankProduct);
   const [busy, setBusy] = useState(false);
   const [customUnits, setCustomUnits] = useState<string[]>(() => {
@@ -116,6 +118,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
 
   useEffect(() => {
     if (open) {
+      getShopInfo().then(info => setShopInfo(info));
       if (product && product.id) {
         setEdit({ ...blankProduct, ...product });
         const fetchBatchInfo = async () => {
@@ -163,6 +166,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
       low_stock_threshold: edit.low_stock_threshold === "" ? 0 : Number(edit.low_stock_threshold),
       unit: edit.unit || "pcs",
       barcode: edit.barcode?.trim() || null,
+      hs_code: edit.hs_code?.trim() || null,
       has_expiry: !!edit.has_expiry
     };
 
@@ -264,10 +268,24 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Name</Label><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." /></div>
-              <div className="space-y-1.5"><Label>Barcode (Optional)</Label><Input value={edit.barcode || ""} onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} placeholder="Scan barcode..." /></div>
+            <div className="space-y-1.5">
+              <Label>Name</Label>
+              <Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." />
             </div>
+            
+            <div className={cn("grid gap-3", shopInfo?.is_vat_registered ? "grid-cols-2" : "grid-cols-1")}>
+              <div className="space-y-1.5">
+                <Label>Barcode (Optional)</Label>
+                <Input value={edit.barcode || ""} onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} placeholder="Scan or type barcode..." />
+              </div>
+              {shopInfo?.is_vat_registered && (
+                <div className="space-y-1.5">
+                  <Label>HS Code (Optional)</Label>
+                  <Input value={edit.hs_code || ""} onChange={(e) => setEdit({ ...edit, hs_code: e.target.value })} placeholder="e.g. 8471.30" />
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer my-2" onClick={() => setEdit({ ...edit, has_expiry: !edit.has_expiry })}>
               <div className="space-y-0.5 pointer-events-none">
                 <Label htmlFor="has_expiry" className="text-sm font-semibold text-primary">Tracks Expiry Date?</Label>

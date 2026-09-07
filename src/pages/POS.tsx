@@ -39,6 +39,7 @@ type Product = {
   low_stock_threshold: number; 
   is_manufactured: boolean; 
   barcode: string | null; 
+  hs_code?: string | null;
   valid_stock?: number; 
   has_expired_stock?: boolean;
   earliest_expiry?: string;
@@ -54,6 +55,7 @@ type CartItem = {
   sell_price: number | string; 
   cost_price: number; 
   qty: number | string;
+  hs_code?: string | null;
   selected_batch_id?: string;
   available_batches?: ActiveBatch[];
   earliest_expiry?: string;
@@ -261,6 +263,7 @@ const POS = () => {
         sell_price: Number(p.sell_price), 
         cost_price: Number(p.cost_price), 
         qty: totalAvailable < 1 && totalAvailable > 0 ? +Number(totalAvailable).toFixed(3) : 1,
+        hs_code: p.hs_code || null,
         selected_batch_id: "auto",
         available_batches: p.active_batches || [],
         earliest_expiry: p.earliest_expiry,
@@ -670,7 +673,7 @@ const POS = () => {
           const a4Rows = cart.map((i, idx) => `
             <tr>
               <td class="center" style="width:40px;">${idx + 1}</td>
-              <td class="center" style="width:70px; color:#6b7280;">-</td>
+              <td class="center" style="width:70px; color:${i.hs_code ? '#111' : '#6b7280'};">${escapeHtml(i.hs_code || "-")}</td>
               <td><strong>${escapeHtml(i.product_name)}</strong></td>
               <td class="num" style="width:100px;">${fmtQty(i.qty)} <span style="font-size:11px; color:#555;">${escapeHtml(i.unit)}</span></td>
               <td class="num" style="width:100px;">${(Number(i.sell_price) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
