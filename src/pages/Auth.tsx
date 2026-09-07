@@ -203,8 +203,8 @@ const Auth = () => {
       {/* Main 2-Column Responsive Layout */}
       <div className="w-full max-w-5xl z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center my-auto py-2">
         
-        {/* Left/Bottom Column: Branding Showcase, IRD Banner & Features */}
-        <div className="lg:col-span-6 flex flex-col justify-center space-y-4 lg:space-y-6 order-2 lg:order-1">
+        {/* Left Column: Branding Showcase, IRD Banner & Features */}
+        <div className="lg:col-span-6 flex flex-col justify-center space-y-4 lg:space-y-6">
           <div className="space-y-2 lg:space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-md">
@@ -301,8 +301,8 @@ const Auth = () => {
           </div>
         </div>
 
-        {/* Right/Top Column: Modern Glassmorphic Login/Register Card with Corner Sash Ribbon */}
-        <div className="lg:col-span-6 w-full max-w-md mx-auto relative order-1 lg:order-2">
+        {/* Right Column: Modern Glassmorphic Login/Register Card with Corner Sash Ribbon */}
+        <div className="lg:col-span-6 w-full max-w-md mx-auto relative">
           <Card className="p-5 sm:p-6 shadow-2xl backdrop-blur-xl bg-white/80 dark:bg-card/75 border border-white/60 dark:border-white/10 rounded-2xl relative overflow-hidden transition-all duration-300">
             {/* Model 1: Authentic Bold Corner Sash Ribbon */}
             <div className="absolute top-0 right-0 w-36 h-36 overflow-hidden pointer-events-none z-30">
