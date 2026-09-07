@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon, Search } from "lucide-react";
+import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon, Search, Receipt, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -19,6 +19,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { ProductFormModal } from "@/components/ProductFormModal";
+import { getShopInfo, ShopInfo } from "@/lib/shop";
 
 type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null; has_expiry?: boolean };
 type Supplier = { id: string; name: string };
@@ -75,6 +76,9 @@ const ExpiryDatePicker = ({ value, onChange }: { value: string; onChange: (val: 
 
 const Purchases = () => {
   const { user } = useAuth();
+  const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
+  const [purchaseType, setPurchaseType] = useState<"vat_bill" | "non_vat">("vat_bill");
+  const [supplierBillNo, setSupplierBillNo] = useState<string>("");
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [history, setHistory] = useState<any[]>([]);
@@ -103,8 +107,15 @@ const Purchases = () => {
       const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(20));
       const txQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
 
-      const [pSnap, sSnap, purSnap, txSnap] = await Promise.all([getDocs(pQ), getDocs(sQ), getDocs(purQ), getDocs(txQ)]);
+      const [pSnap, sSnap, purSnap, txSnap, sInfo] = await Promise.all([
+        getDocs(pQ), 
+        getDocs(sQ), 
+        getDocs(purQ), 
+        getDocs(txQ),
+        getShopInfo()
+      ]);
       
+      setShopInfo(sInfo);
       const cBal = txSnap.docs.reduce((s, r) => s + (r.data().direction === "in" ? Number(r.data().amount) : -Number(r.data().amount)), 0);
       setCashBalance(cBal);
       
@@ -143,15 +154,19 @@ const Purchases = () => {
     }
   });
 
-  const total = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.cost_price) || 0), 0);
+  const isVatShop = shopInfo?.is_vat_registered === true;
+  const isVatBill = isVatShop && purchaseType === "vat_bill";
+  const taxableTotal = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.cost_price) || 0), 0);
+  const vatAmount = isVatBill ? Number((taxableTotal * 0.13).toFixed(2)) : 0;
+  const grandTotal = isVatBill ? Number((taxableTotal + vatAmount).toFixed(2)) : taxableTotal;
 
-  // Set default amount paid only when total changes in new purchase
+  // Set default amount paid only when grandTotal changes in new purchase
   useEffect(() => {
     if (editingId) return; // Don't auto-fill if we are editing an existing record
     if (paymentMode !== "credit") {
-      setAmountPaid(total.toFixed(2));
+      setAmountPaid(grandTotal.toFixed(2));
     }
-  }, [total, paymentMode, editingId]);
+  }, [grandTotal, paymentMode, editingId]);
 
   const addProduct = async (id: string, directProduct?: any) => {
     let p = directProduct || products.find((x) => x.id === id);
@@ -243,6 +258,8 @@ const Purchases = () => {
       setEditingOriginalPaid(Number(p.amount_paid || 0));
       setSupplierId(p.supplier_id || "none");
       setPaymentMode(p.payment_mode);
+      setPurchaseType(p.is_vat_bill === false ? "non_vat" : "vat_bill");
+      setSupplierBillNo(p.supplier_bill_no || "");
       setAmountPaid((p.amount_paid || 0).toString());
       setItems(mappedItems);
       setShowForm(true);
@@ -303,7 +320,7 @@ const Purchases = () => {
     if (items.length === 0) return toast.error("Add items");
 
     const paid = Number(amountPaid || 0);
-    const purchaseTotal = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.cost_price) || 0), 0);
+    const purchaseTotal = grandTotal;
 
     if (paid < 0) return toast.error("Amount paid cannot be negative");
     if (paid > purchaseTotal) return toast.error(`Amount paid cannot exceed total purchase amount (${fmt(purchaseTotal)})`);
@@ -337,6 +354,10 @@ const Purchases = () => {
         payment_mode: paymentMode,
         amount_paid: paid,
         total: purchaseTotal,
+        is_vat_bill: isVatBill,
+        taxable_amount: taxableTotal,
+        vat_amount: vatAmount,
+        supplier_bill_no: supplierBillNo?.trim() || null,
         note: editingId ? "Updated purchase" : null,
         created_at: new Date().toISOString()
       });
@@ -423,7 +444,15 @@ const Purchases = () => {
       await batch.commit();
 
       toast.success(editingId ? "Purchase updated" : "Purchase recorded");
-      setItems([]); setSupplierId("none"); setPaymentMode("cash"); setShowForm(false); setEditingId(null); setEditingOriginalPaid(0); load();
+      setItems([]); 
+      setSupplierId("none"); 
+      setPaymentMode("cash"); 
+      setPurchaseType("vat_bill");
+      setSupplierBillNo("");
+      setShowForm(false); 
+      setEditingId(null); 
+      setEditingOriginalPaid(0); 
+      load();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -486,6 +515,8 @@ const Purchases = () => {
             setItems([]); 
             setSupplierId("none"); 
             setPaymentMode("cash");
+            setPurchaseType("vat_bill");
+            setSupplierBillNo("");
             setAmountPaid("0");
           }
         }} className="bg-gradient-primary text-primary-foreground">
@@ -496,6 +527,55 @@ const Purchases = () => {
 
       {showForm && (
         <Card className="p-4 mb-6 shadow-elegant border-0">
+          {isVatShop && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-3 grid sm:grid-cols-2 gap-3 items-center">
+              <div>
+                <Label className="text-xs font-bold text-primary mb-1.5 block">
+                  खरिद बिलको प्रकार (Bill Type)
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseType("vat_bill")}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition-all border",
+                      purchaseType === "vat_bill"
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-background/80 hover:bg-background text-muted-foreground border-border"
+                    )}
+                  >
+                    <Receipt className="h-3.5 w-3.5" />
+                    VAT Bill (13%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseType("non_vat")}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition-all border",
+                      purchaseType === "non_vat"
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-background/80 hover:bg-background text-muted-foreground border-border"
+                    )}
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Non-VAT (0%)
+                  </button>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs font-bold text-foreground mb-1.5 block">
+                  सप्लायरको बिल नं. (Supplier Bill No) <span className="text-[10px] text-muted-foreground font-normal">(Optional)</span>
+                </Label>
+                <Input
+                  className="h-8 text-xs bg-background font-medium"
+                  placeholder="उदा: INV-1024 वा बिल नम्बर"
+                  value={supplierBillNo}
+                  onChange={(e) => setSupplierBillNo(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="grid sm:grid-cols-2 gap-3 mb-3">
             <div>
               <Label>Supplier</Label>
@@ -535,7 +615,7 @@ const Purchases = () => {
                 <div>Batch</div>
                 <div>Expiry</div>
                 <div>Qty</div>
-                <div>Rate</div>
+                <div>Rate {isVatBill && <span className="text-[10px] normal-case opacity-75">(Taxable)</span>}</div>
                 <div className="text-right">Total</div>
                 <div className="w-9 text-center">Action</div>
               </div>
@@ -569,7 +649,7 @@ const Purchases = () => {
                     <Input className="h-9 font-medium text-xs sm:text-sm bg-background" type="number" step="0.001" value={i.qty} onChange={(e) => updateItem(i.product_id, "qty", e.target.value)} placeholder="Qty" onWheel={(e) => e.currentTarget.blur()} />
                   </div>
                   <div className="space-y-1 sm:space-y-0">
-                    <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Rate</Label>
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Rate {isVatBill && "(Taxable)"}</Label>
                     <Input className="h-9 font-medium text-xs sm:text-sm bg-background" type="number" step="0.01" value={i.cost_price} onChange={(e) => updateItem(i.product_id, "cost_price", e.target.value)} placeholder="Rate" onWheel={(e) => e.currentTarget.blur()} />
                   </div>
                   <div className="text-right sm:text-right space-y-1 sm:space-y-0">
@@ -596,7 +676,7 @@ const Purchases = () => {
                     setAmountPaid("0");
                   } else {
                     if (Number(amountPaid) === 0) {
-                      setAmountPaid(total.toFixed(2));
+                      setAmountPaid(grandTotal.toFixed(2));
                     }
                   }
                 }}
@@ -614,15 +694,28 @@ const Purchases = () => {
             <div>
               <Label>Amount Paid</Label>
               <Input type="number" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
-              {total > 0 && Number(amountPaid || 0) < total && (
+              {grandTotal > 0 && Number(amountPaid || 0) < grandTotal && (
                 <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-1">
-                  Due to Supplier: {fmt(total - Number(amountPaid || 0))}
+                  Due to Supplier: {fmt(grandTotal - Number(amountPaid || 0))}
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-between bg-gradient-primary text-primary-foreground rounded-lg px-3 py-2">
-              <span>Total</span><span className="font-display text-xl">{fmt(total)}</span>
-            </div>
+            {isVatBill ? (
+              <div className="bg-gradient-primary text-primary-foreground rounded-lg p-2.5 flex flex-col justify-between shadow-soft">
+                <div className="flex justify-between text-[11px] opacity-90 pb-1 border-b border-white/20">
+                  <span>Taxable: {fmt(taxableTotal)}</span>
+                  <span>+13% VAT: {fmt(vatAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs font-bold uppercase tracking-wider">Total (VAT Incl.)</span>
+                  <span className="font-display text-xl font-bold">{fmt(grandTotal)}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between bg-gradient-primary text-primary-foreground rounded-lg px-3 py-2">
+                <span>Total</span><span className="font-display text-xl">{fmt(grandTotal)}</span>
+              </div>
+            )}
           </div>
           <Button onClick={save} disabled={busy} className="w-full mt-4 bg-accent text-accent-foreground h-11 font-semibold">
             {busy ? (
@@ -659,7 +752,8 @@ const Purchases = () => {
               const mode = (paymentModeLabels[h.payment_mode] || h.payment_mode || "").toLowerCase();
               const amt = String(h.total);
               const dateStr = h.created_at ? format(new Date(h.created_at), "dd MMM yyyy").toLowerCase() : "";
-              return supp.includes(q) || mode.includes(q) || amt.includes(q) || dateStr.includes(q);
+              const billNo = (h.supplier_bill_no || "").toLowerCase();
+              return supp.includes(q) || mode.includes(q) || amt.includes(q) || dateStr.includes(q) || billNo.includes(q);
             });
 
             return (
@@ -667,8 +761,27 @@ const Purchases = () => {
                 {filteredHistory.map((h: any) => (
                   <div key={h.id} className="p-3 flex items-center justify-between gap-2 hover:bg-secondary/20 transition-colors">
                     <div className="min-w-0">
-                      <div className="font-medium truncate">{h.suppliers?.name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground">{format(new Date(h.created_at), "dd MMM yyyy, hh:mm a")} · {paymentModeLabels[h.payment_mode] || h.payment_mode}</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium truncate">{h.suppliers?.name ?? "—"}</span>
+                        {h.is_vat_bill && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
+                            VAT 13%
+                          </span>
+                        )}
+                        {h.supplier_bill_no && (
+                          <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            Bill #{h.supplier_bill_no}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span>{format(new Date(h.created_at), "dd MMM yyyy, hh:mm a")} · {paymentModeLabels[h.payment_mode] || h.payment_mode}</span>
+                        {h.is_vat_bill && (
+                          <span className="text-[11px] text-primary/80 font-medium">
+                            (Taxable: {fmt(h.taxable_amount ?? (h.total / 1.13))} + VAT: {fmt(h.vat_amount ?? (h.total - h.total / 1.13))})
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="font-medium">{fmt(h.total)}</div>
