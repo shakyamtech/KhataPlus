@@ -47,6 +47,12 @@ const translations = {
     ledgerDesc: "Track supplier payments and customer credit (Udhaar).",
     recipeTitle: "Recipe System",
     recipeDesc: "Auto-deduct stock for items crafted directly in-house.",
+    irdBadge: "Nepal IRD Compliant",
+    irdTitle: "IRD Standards Compliant",
+    irdDesc: "Schedule 8, 9 & 10, 13% VAT & PAN invoicing standards.",
+    trustTax: "IRD Standards Compliant (अनुसूची ८, ९ र १०)",
+    trustPrint: "Thermal & Official A4 Print",
+    trustSync: "Auto Cloud & Offline Sync",
 
     // Sidebar & Navigation
     dashboard: "Dashboard",
@@ -114,6 +120,12 @@ const translations = {
     ledgerDesc: "सप्लायर भुक्तानी र ग्राहकको उधारो (उधारो खाता) ट्र्याक गर्नुहोस्।",
     recipeTitle: "रेसिपी प्रणाली",
     recipeDesc: "पसले आफैंले तयार पारेको सामानको स्टक स्वतः घटाउनुहोस्।",
+    irdBadge: "नेपाल IRD मापदण्ड बमोजिम",
+    irdTitle: "भ्याट तथा करमैत्री (IRD Compliant)",
+    irdDesc: "अनुसूची ८, ९ र १०, १३% भ्याट तथा प्यान बिलिङ मापदण्ड अनुसार।",
+    trustTax: "नेपाल IRD कर मापदण्ड (अनुसूची ८, ९ र १०)",
+    trustPrint: "थर्मल तथा आधिकारिक A4 प्रिन्ट",
+    trustSync: "स्वतः क्लाउड तथा अफलाइन सिंक",
 
     // Sidebar & Navigation
     dashboard: "ड्यासबोर्ड",

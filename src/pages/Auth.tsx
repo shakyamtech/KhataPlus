@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { BookText, Eye, EyeOff, Leaf, ShoppingBag, BarChart3, Users, Sparkles, CheckCircle2, Smartphone, QrCode } from "lucide-react";
+import { BookText, Eye, EyeOff, Leaf, ShoppingBag, BarChart3, Users, Sparkles, CheckCircle2, Smartphone, QrCode, ShieldCheck, Receipt } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { InstallAppModal } from "@/components/InstallAppModal";
@@ -206,14 +206,21 @@ const Auth = () => {
         {/* Left Column: Branding Showcase & QR Code Card */}
         <div className="lg:col-span-6 flex flex-col justify-center space-y-4 lg:space-y-6">
           <div className="space-y-2 lg:space-y-3">
-            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-md">
-              <div className="p-1 rounded-full bg-primary/20">
-                <BookText className="h-4 w-4 text-primary" />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-md">
+                <div className="p-1 rounded-full bg-primary/20">
+                  <BookText className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-sm font-bold tracking-tight text-foreground">KhataPlus</span>
+                <span className="text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded bg-primary text-primary-foreground">
+                  Shop POS
+                </span>
               </div>
-              <span className="text-sm font-bold tracking-tight text-foreground">KhataPlus</span>
-              <span className="text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded bg-primary text-primary-foreground">
-                Shop POS
-              </span>
+
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 backdrop-blur-md text-xs font-bold shadow-soft">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>{t.irdBadge}</span>
+              </div>
             </div>
 
             <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight leading-[1.15]">
@@ -225,8 +232,28 @@ const Auth = () => {
             </p>
           </div>
 
+          {/* IRD Standards Highlight Banner */}
+          <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-500/10 via-primary/5 to-blue-500/10 border border-emerald-500/30 backdrop-blur-sm flex items-center justify-between shadow-soft">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <Receipt className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                  {t.irdTitle}
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-emerald-600 text-white rounded tracking-wide">
+                    अनुसूची ८, ९ र १०
+                  </span>
+                </h3>
+                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                  {t.irdDesc}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Quick Feature Pills */}
-          <div className="grid grid-cols-2 gap-2.5 pt-1">
+          <div className="grid grid-cols-2 gap-2.5 pt-0.5">
             <div className="p-2.5 rounded-xl bg-white/40 dark:bg-secondary/30 backdrop-blur-sm border border-border/40 flex items-start gap-2.5 shadow-soft">
               <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mt-0.5">
                 <ShoppingBag className="h-4 w-4" />
@@ -268,10 +295,10 @@ const Auth = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs font-semibold text-muted-foreground">
-            <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Offline Ready</span>
-            <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Thermal Receipt Print</span>
-            <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Auto Cloud Sync</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-semibold text-muted-foreground">
+            <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> {t.trustTax}</span>
+            <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> {t.trustPrint}</span>
+            <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> {t.trustSync}</span>
           </div>
 
           {/* Scannable Mobile Install App Card */}
