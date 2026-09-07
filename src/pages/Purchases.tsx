@@ -325,6 +325,16 @@ const Purchases = () => {
     if (paid < 0) return toast.error("Amount paid cannot be negative");
     if (paid > purchaseTotal) return toast.error(`Amount paid cannot exceed total purchase amount (${fmt(purchaseTotal)})`);
 
+    // If VAT Bill is selected, supplier and bill no are strictly mandatory
+    if (isVatBill) {
+      if (supplierId === "none" || !supplierId) {
+        return toast.error("भ्याट खरिद बिल (VAT Bill) का लागि सप्लायर छान्नु अनिवार्य छ!");
+      }
+      if (!supplierBillNo?.trim()) {
+        return toast.error("भ्याट खरिद बिल (VAT Bill) का लागि सप्लायरको बिल नं. (Supplier Bill No) अनिवार्य छ!");
+      }
+    }
+
     // If there is any unpaid due amount, supplier is required
     if (paid < purchaseTotal && (supplierId === "none" || !supplierId)) {
       return toast.error("Please pick a supplier for credit / unpaid balance");
@@ -564,10 +574,13 @@ const Purchases = () => {
               </div>
               <div>
                 <Label className="text-xs font-bold text-foreground mb-1.5 block">
-                  सप्लायरको बिल नं. (Supplier Bill No) <span className="text-[10px] text-muted-foreground font-normal">(Optional)</span>
+                  सप्लायरको बिल नं. (Supplier Bill No) {isVatBill ? <span className="text-destructive font-bold">* (अनिवार्य)</span> : <span className="text-[10px] text-muted-foreground font-normal">(Optional)</span>}
                 </Label>
                 <Input
-                  className="h-8 text-xs bg-background font-medium"
+                  className={cn(
+                    "h-8 text-xs bg-background font-medium",
+                    isVatBill && !supplierBillNo.trim() && "border-destructive/60 focus:border-destructive"
+                  )}
                   placeholder="उदा: INV-1024 वा बिल नम्बर"
                   value={supplierBillNo}
                   onChange={(e) => setSupplierBillNo(e.target.value)}

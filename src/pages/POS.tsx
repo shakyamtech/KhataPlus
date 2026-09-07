@@ -432,6 +432,16 @@ const POS = () => {
       const paid = Number(amountPaid || 0);
       if (paymentMode === "credit" && customerId === "walk-in") return toast.error("Pick a customer for credit sale");
       if (amountPaid !== "" && paid < total && customerId === "walk-in") return toast.error("Pick a customer to record remaining due / credit");
+
+      if (shopInfo?.is_vat_registered && invoiceType === "tax_invoice") {
+        const panClean = buyerPan.trim();
+        if (!panClean) {
+          return toast.error("कर बिजक (Tax Invoice) जारी गर्न ग्राहकको ९-अङ्कको PAN नम्बर अनिवार्य छ!");
+        }
+        if (!/^\d{9}$/.test(panClean)) {
+          return toast.error("कृपया सही ९-अङ्कको PAN नम्बर मात्र प्रविष्ट गर्नुहोस् (PAN must be 9 digits)!");
+        }
+      }
       
       setBusy(true);
       const ratio = subtotal > 0 ? total / subtotal : 1;
@@ -1108,12 +1118,18 @@ const POS = () => {
                 {invoiceType === "tax_invoice" && (
                   <div className="grid grid-cols-2 gap-2 pt-1 border-t border-primary/10">
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase font-semibold">Buyer PAN No.</Label>
+                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center gap-1">
+                        Buyer PAN No. <span className="text-destructive">* (अनिवार्य)</span>
+                      </Label>
                       <Input
-                        placeholder="9-digit Buyer PAN"
-                        className="h-7 text-xs"
+                        placeholder="९-अङ्कको PAN (९ Digits)"
+                        maxLength={9}
+                        className={cn(
+                          "h-7 text-xs bg-background font-medium",
+                          !buyerPan.trim() && "border-destructive/60 focus:border-destructive"
+                        )}
                         value={buyerPan}
-                        onChange={(e) => setBuyerPan(e.target.value)}
+                        onChange={(e) => setBuyerPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
                       />
                     </div>
                     <div>
