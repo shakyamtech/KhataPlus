@@ -310,15 +310,15 @@ const Auth = () => {
         {/* Right Column: Modern Glassmorphic Login/Register Card with Corner Sash Ribbon */}
         <div className="lg:col-span-6 w-full max-w-md mx-auto relative">
           <Card className="p-5 sm:p-6 shadow-2xl backdrop-blur-xl bg-white/80 dark:bg-card/75 border border-white/60 dark:border-white/10 rounded-2xl relative overflow-hidden transition-all duration-300">
-            {/* Model 1: Authentic Corner Sash Ribbon */}
-            <div className="absolute top-0 right-0 w-32 h-32 overflow-hidden pointer-events-none z-20">
-              <div className="absolute top-6 -right-10 w-40 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white text-center py-1.5 shadow-lg transform rotate-45 border-y border-white/30 backdrop-blur-md">
-                <div className="flex items-center justify-center gap-1 text-[9.5px] font-extrabold uppercase tracking-wider leading-none text-white drop-shadow-sm">
-                  <ShieldCheck className="h-2.5 w-2.5 text-white" />
+            {/* Model 1: Authentic Bold Corner Sash Ribbon */}
+            <div className="absolute top-0 right-0 w-36 h-36 overflow-hidden pointer-events-none z-30">
+              <div className="absolute top-7 -right-11 w-44 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white text-center py-1.5 shadow-xl transform rotate-45 border-y border-white/30 backdrop-blur-md">
+                <div className="flex items-center justify-center gap-1 text-[10px] font-extrabold uppercase tracking-wider leading-tight text-white drop-shadow">
+                  <ShieldCheck className="h-3 w-3 text-white" />
                   <span>100% SECURE</span>
                 </div>
-                <div className="text-[7.5px] font-bold text-emerald-100 uppercase tracking-widest leading-none mt-0.5 opacity-90">
-                  Cloud Synced
+                <div className="text-[7.5px] font-bold text-emerald-100 uppercase tracking-widest leading-none opacity-95 mt-0.5">
+                  CLOUD SYNCED
                 </div>
               </div>
             </div>
