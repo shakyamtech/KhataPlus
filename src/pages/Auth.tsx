@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { BookText, Eye, EyeOff, Leaf, ShoppingBag, BarChart3, Users, Sparkles, CheckCircle2, Smartphone, QrCode, ShieldCheck, Receipt } from "lucide-react";
+import { BookText, Eye, EyeOff, Leaf, ShoppingBag, BarChart3, Users, Boxes, Sparkles, CheckCircle2, Smartphone, QrCode, ShieldCheck, Receipt } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { InstallAppModal } from "@/components/InstallAppModal";
@@ -286,11 +286,11 @@ const Auth = () => {
 
             <div className="p-2.5 rounded-xl bg-white/40 dark:bg-secondary/30 backdrop-blur-sm border border-border/40 flex items-start gap-2.5 shadow-soft">
               <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 mt-0.5">
-                <Sparkles className="h-4 w-4" />
+                <Boxes className="h-4 w-4" />
               </div>
               <div>
-                <h2 className="font-bold text-xs text-foreground">{t.recipeTitle}</h2>
-                <p className="text-[11px] text-muted-foreground leading-tight">{t.recipeDesc}</p>
+                <h2 className="font-bold text-xs text-foreground">{t.inventoryTitle || t.recipeTitle}</h2>
+                <p className="text-[11px] text-muted-foreground leading-tight">{t.inventoryDesc || t.recipeDesc}</p>
               </div>
             </div>
           </div>
