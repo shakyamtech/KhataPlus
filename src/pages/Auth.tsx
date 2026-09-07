@@ -307,19 +307,19 @@ const Auth = () => {
           </div>
         </div>
 
-        {/* Right Column: Modern Glassmorphic Login/Register Card with Floating Ribbon */}
+        {/* Right Column: Modern Glassmorphic Login/Register Card with Hanging Top-Center Ribbon */}
         <div className="lg:col-span-6 w-full max-w-md mx-auto relative pt-4 sm:pt-5">
-          {/* Floating Trust Ribbon Badge */}
-          <div className="absolute top-0 right-3 sm:right-5 z-20 animate-float-gentle pointer-events-none">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white shadow-lg shadow-emerald-600/25 border border-white/30 backdrop-blur-md">
+          {/* Hanging Top-Center Trust Ribbon Badge */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 animate-float-gentle pointer-events-none w-max max-w-[92%]">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white shadow-xl shadow-emerald-600/30 border border-white/40 backdrop-blur-md">
               <div className="p-1 rounded-full bg-white/20">
                 <ShieldCheck className="h-3.5 w-3.5 text-white animate-pulse" />
               </div>
-              <div className="flex flex-col text-left">
+              <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
                 <span className="text-[10.5px] font-extrabold tracking-tight leading-none text-white drop-shadow-sm">
                   {t.ribbonTitle}
                 </span>
-                <div className="flex items-center gap-1.5 text-[9px] font-semibold text-emerald-100 mt-0.5 leading-none opacity-95">
+                <div className="flex items-center justify-center gap-1.5 text-[9px] font-semibold text-emerald-100 mt-0.5 leading-none opacity-95">
                   <span className="flex items-center gap-0.5"><Laptop className="h-2.5 w-2.5" /> Laptop</span>
                   <span>·</span>
                   <span className="flex items-center gap-0.5"><Smartphone className="h-2.5 w-2.5" /> Mobile/Tab</span>
@@ -330,12 +330,12 @@ const Auth = () => {
             </div>
           </div>
 
-          <Card className="p-5 sm:p-6 shadow-2xl backdrop-blur-xl bg-white/80 dark:bg-card/75 border border-white/60 dark:border-white/10 rounded-2xl relative overflow-hidden transition-all duration-300">
+          <Card className="p-5 sm:p-6 shadow-2xl backdrop-blur-xl bg-white/80 dark:bg-card/75 border border-white/60 dark:border-white/10 rounded-2xl relative overflow-hidden transition-all duration-300 pt-7">
             <div className="mb-4">
-              <h2 className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              <h2 className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-foreground text-center sm:text-left">
                 {t.welcome}
               </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5 text-center sm:text-left">
                 {t.access}
               </p>
             </div>
