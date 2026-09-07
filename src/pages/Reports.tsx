@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { format, startOfDay, subDays } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
+import { printHTML, escapeHtml } from "@/lib/print";
 import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale } from "lucide-react";
 
 const Reports = () => {
@@ -182,7 +183,175 @@ const Reports = () => {
   }, [sales, range]);
 
   const handlePrintVatReport = () => {
-    window.print();
+    if (!shopInfo) return;
+    const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
+    const isPayable = vatTotals.netVat >= 0;
+    const netStatusText = isPayable ? "सरकारलाई तिर्नुपर्ने भ्याट (Net VAT Payable to IRD)" : "भ्याट क्रेडिट (अर्को महिना सर्ने / VAT Credit Carried Forward)";
+
+    const purchaseRows = vatTotals.purchasesList.map((p, idx) => `
+      <tr>
+        <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
+        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}</td>
+        <td style="border:1px solid #111; padding:5px 6px;"><strong>${escapeHtml(p.supplierName)}</strong></td>
+        <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(p.supplierPan)}</td>
+        <td style="text-align:center; border:1px solid #111; padding:5px 6px;">${escapeHtml(p.billNo)}</td>
+        <td style="text-align:right; border:1px solid #111; padding:5px 6px;">${(p.taxable || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td style="text-align:right; font-weight:600; border:1px solid #111; padding:5px 6px;">${(p.vat || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td style="text-align:right; font-weight:700; border:1px solid #111; padding:5px 6px;">${(p.total || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      </tr>
+    `).join("");
+
+    const salesRows = vatTotals.salesList.map((s, idx) => `
+      <tr>
+        <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
+        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</td>
+        <td style="text-align:center; font-family:monospace; font-weight:600; border:1px solid #111; padding:5px 6px;">${s.id.slice(-6).toUpperCase()}</td>
+        <td style="border:1px solid #111; padding:5px 6px;"><strong>${escapeHtml(s.customerName)}</strong></td>
+        <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(s.customerPan)}</td>
+        <td style="text-align:right; border:1px solid #111; padding:5px 6px;">${(s.taxable || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td style="text-align:right; font-weight:600; border:1px solid #111; padding:5px 6px;">${(s.vat || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td style="text-align:right; font-weight:700; border:1px solid #111; padding:5px 6px;">${(s.total || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      </tr>
+    `).join("");
+
+    const body = `
+      <div style="background:#ffffff; color:#000000; padding:10px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
+        
+        <!-- Header -->
+        <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px;">
+          <h1 style="font-size:20px; font-weight:800; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.02em;">${escapeHtml(shopInfo.name)}</h1>
+          ${shopInfo.address ? `<div style="font-size:12px; font-weight:500;">${escapeHtml(shopInfo.address)}</div>` : ''}
+          <div style="font-size:12px; font-weight:600; margin-top:2px;">
+            VAT / PAN No: <strong>${escapeHtml(shopInfo.pan || 'N/A')}</strong> ${shopInfo.phone ? `· Ph: <strong>${escapeHtml(shopInfo.phone)}</strong>` : ''}
+          </div>
+          <div style="display:inline-block; margin-top:8px; padding:3px 14px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
+            मूल्य अभिवृद्धि कर विवरण तथा खाताहरू (VAT Return & Registers)
+          </div>
+          <div style="font-size:11px; color:#333; margin-top:4px;">
+            अवधि (Period): <strong>Last ${range} Days</strong> · तयार मिति (Report Date): <strong>${dateFormatted}</strong>
+          </div>
+        </div>
+
+        <!-- Section 1: VAT Summary (अनुसूची १०) -->
+        <div style="margin-bottom:16px; page-break-inside:avoid;">
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:4px 8px; border:1px solid #111; border-bottom:none;">
+            १. भ्याट समरी विवरण (VAT Return Summary - अनुसूची १०)
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:11.5px; border:1px solid #111;">
+            <thead>
+              <tr style="background:#f9fafb;">
+                <th style="border:1px solid #111; padding:6px 8px; text-align:left;">विवरण (Particulars)</th>
+                <th style="border:1px solid #111; padding:6px 8px; text-align:right;">करयोग्य रकम (Taxable Amount)</th>
+                <th style="border:1px solid #111; padding:6px 8px; text-align:right;">१३% भ्याट रकम (VAT Amount)</th>
+                <th style="border:1px solid #111; padding:6px 8px; text-align:right;">कुल जम्मा (Total Amount)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="border:1px solid #111; padding:6px 8px;"><strong>कुल बिक्री (Output Tax on Sales)</strong></td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right;">Rs. ${vatTotals.taxableSales.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:600;">Rs. ${vatTotals.outputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:700;">Rs. ${(vatTotals.totalSalesWithVat + vatTotals.nonTaxableSales).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+              <tr>
+                <td style="border:1px solid #111; padding:6px 8px;"><strong>कुल खरिद कट्टी (Input Tax Credit on Purchases)</strong></td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right;">Rs. ${vatTotals.taxablePurchases.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:600;">Rs. ${vatTotals.inputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:700;">Rs. ${(vatTotals.totalPurchasesWithVat + vatTotals.nonTaxablePurchases).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+              <tr style="background:#f3f4f6; font-weight:bold;">
+                <td colspan="2" style="border:1px solid #111; padding:6px 8px; font-size:12px;">${netStatusText}</td>
+                <td colspan="2" style="border:1px solid #111; padding:6px 8px; text-align:right; font-size:13px;">
+                  Rs. ${Math.abs(vatTotals.netVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Section 2: Purchase Register (अनुसूची ८) -->
+        <div style="margin-bottom:16px; page-break-inside:avoid;">
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:4px 8px; border:1px solid #111; border-bottom:none; display:flex; justify-content:space-between;">
+            <span>२. खरिद खाता (Purchase Register - अनुसूची ८)</span>
+            <span style="font-size:11px; font-weight:normal;">जम्मा खरिद बिल: ${vatTotals.purchasesList.length}</span>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:10.5px; border:1px solid #111;">
+            <thead>
+              <tr style="background:#f9fafb;">
+                <th style="border:1px solid #111; padding:4px 5px; width:30px; text-align:center;">क्र.सं.</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:left;">मिति</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:left;">सप्लायरको नाम</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:center;">PAN नं.</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:center;">बिल नं.</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:right;">करयोग्य खरिद</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:right;">१३% भ्याट</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:right;">कुल रकम</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${purchaseRows || `<tr><td colspan="8" style="border:1px solid #111; padding:8px; text-align:center; color:#666;">कुनै खरिद बिल फेला परेन।</td></tr>`}
+            </tbody>
+            <tfoot>
+              <tr style="background:#f3f4f6; font-weight:bold; border-top:1.5px solid #111;">
+                <td colspan="5" style="border:1px solid #111; padding:5px; text-align:right;">कुल जम्मा (Total Purchases):</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatTotals.taxablePurchases.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatTotals.inputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${(vatTotals.totalPurchasesWithVat + vatTotals.nonTaxablePurchases).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Section 3: Sales Register (अनुसूची ९) -->
+        <div style="margin-bottom:20px; page-break-inside:avoid;">
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:4px 8px; border:1px solid #111; border-bottom:none; display:flex; justify-content:space-between;">
+            <span>३. बिक्री खाता (Sales Register - अनुसूची ९)</span>
+            <span style="font-size:11px; font-weight:normal;">जम्मा बिक्री बिल: ${vatTotals.salesList.length}</span>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:10.5px; border:1px solid #111;">
+            <thead>
+              <tr style="background:#f9fafb;">
+                <th style="border:1px solid #111; padding:4px 5px; width:30px; text-align:center;">क्र.सं.</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:left;">मिति</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:center;">कर बिजक नं.</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:left;">खरिदकर्ताको नाम</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:center;">ग्राहक PAN</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:right;">करयोग्य बिक्री</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:right;">१३% भ्याट</th>
+                <th style="border:1px solid #111; padding:4px 5px; text-align:right;">कुल रकम</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${salesRows || `<tr><td colspan="8" style="border:1px solid #111; padding:8px; text-align:center; color:#666;">कुनै बिक्री बिल फेला परेन।</td></tr>`}
+            </tbody>
+            <tfoot>
+              <tr style="background:#f3f4f6; font-weight:bold; border-top:1.5px solid #111;">
+                <td colspan="5" style="border:1px solid #111; padding:5px; text-align:right;">कुल जम्मा (Total Sales):</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatTotals.taxableSales.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatTotals.outputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${(vatTotals.totalSalesWithVat + vatTotals.nonTaxableSales).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Official Signatures -->
+        <div style="display:flex; justify-content:space-between; margin-top:28px; padding-top:10px; page-break-inside:avoid; font-size:11.5px;">
+          <div style="border-top:1px dashed #444; width:150px; text-align:center; padding-top:4px;">
+            तयार गर्ने (Prepared By)
+          </div>
+          <div style="border-top:1px dashed #444; width:150px; text-align:center; padding-top:4px;">
+            लेखापाल (Accountant)
+          </div>
+          <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px;">
+            प्रमाणित गर्ने / प्रोप्राइटर (Authorized Signatory)
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    printHTML(`VAT_Report_${shopInfo.name}_${range}days`, body, { paperSize: "a4" });
   };
 
   return (
