@@ -985,17 +985,23 @@ export const AppShell = () => {
                                 </span>
                             </div>
 
-                            <div className="max-h-56 overflow-y-auto pr-1 space-y-3 text-xs divide-y divide-border/30">
+                            <div className="max-h-60 overflow-y-auto pr-2 space-y-3.5 text-xs divide-y divide-border/40">
                                 {/* Version 2.1.1 */}
-                                <div className="space-y-1.5 pt-1">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-bold text-foreground flex items-center gap-1.5">
-                                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                                            v2.1.1 <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">{lang === "NEP" ? "हालको (Latest)" : "Latest"}</span>
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground font-medium">07 Sep 2026</span>
+                                <div className="space-y-2 pt-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="relative flex h-2.5 w-2.5 shrink-0">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                                            </span>
+                                            <span className="font-bold text-foreground text-sm">v2.1.1</span>
+                                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                {lang === "NEP" ? "हालको" : "Latest"}
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground font-medium shrink-0">07 Sep 2026</span>
                                     </div>
-                                    <ul className="text-[11.5px] text-muted-foreground space-y-1 list-disc list-inside">
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1.5 pl-3 list-disc list-outside">
                                         <li>{lang === "NEP" ? "VAT (१३%) दर्ता र POS मा कर बिजक छनोट प्रणाली" : "VAT (13%) vs PAN Registration & Dual POS Billing"}</li>
                                         <li>{lang === "NEP" ? "आधिकारिक Full A4 कर बिजक (Buyer PAN, Address र शब्दमा रकम)" : "Official Nepal A4 Tax Invoice (कर बिजक with Buyer PAN & Words)"}</li>
                                         <li>{lang === "NEP" ? "भ्याट सामानहरूका लागि HS Code समर्थन" : "HS Code Support for VAT Registered Products"}</li>
@@ -1005,12 +1011,12 @@ export const AppShell = () => {
                                 </div>
 
                                 {/* Version 2.0.0 */}
-                                <div className="space-y-1.5 pt-2.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-semibold text-foreground">v2.0.0</span>
-                                        <span className="text-[10px] text-muted-foreground font-medium">Aug 2026</span>
+                                <div className="space-y-2 pt-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="font-bold text-foreground text-sm">v2.0.0</span>
+                                        <span className="text-[10px] text-muted-foreground font-medium shrink-0">Aug 2026</span>
                                     </div>
-                                    <ul className="text-[11.5px] text-muted-foreground space-y-1 list-disc list-inside">
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1.5 pl-3 list-disc list-outside">
                                         <li>{lang === "NEP" ? "रियल-टाइम मल्टी-डिभाइस सिंक र अफलाइन गति सुधार" : "Realtime Multi-Device Sync & Offline PWA Optimization"}</li>
                                         <li>{lang === "NEP" ? "थर्मल प्रिन्टर (POS Receipt) र कस्टम युनिट्स व्यवस्थापन" : "Thermal Receipt Printing & Custom Product Units"}</li>
                                         <li>{lang === "NEP" ? "डेबुक, क्यासबुक र पार्टी लेजर विश्लेषण" : "Advanced Cashbook & Party Ledger Analytics"}</li>
@@ -1018,12 +1024,12 @@ export const AppShell = () => {
                                 </div>
 
                                 {/* Version 1.6.0 */}
-                                <div className="space-y-1.5 pt-2.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-semibold text-foreground">v1.6.0</span>
-                                        <span className="text-[10px] text-muted-foreground font-medium">Jul 2026</span>
+                                <div className="space-y-2 pt-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="font-bold text-foreground text-sm">v1.6.0</span>
+                                        <span className="text-[10px] text-muted-foreground font-medium shrink-0">Jul 2026</span>
                                     </div>
-                                    <ul className="text-[11.5px] text-muted-foreground space-y-1 list-disc list-inside">
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1.5 pl-3 list-disc list-outside">
                                         <li>{lang === "NEP" ? "नयाँ FIFO (First-In, First-Out) ब्याच प्रणाली लागू" : "FIFO Batch Tracking System"}</li>
                                         <li>{lang === "NEP" ? "सटिक नाफा-नोक्सान (Profit & Loss) गणना" : "Accurate Profit & Loss Calculation"}</li>
                                         <li>{lang === "NEP" ? "बारकोड स्क्यानर समर्थनमा विशेष सुधार" : "Improved Barcode Scanner Support"}</li>
@@ -1031,12 +1037,12 @@ export const AppShell = () => {
                                 </div>
 
                                 {/* Version 1.0.0 */}
-                                <div className="space-y-1.5 pt-2.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-semibold text-foreground">v1.0.0</span>
-                                        <span className="text-[10px] text-muted-foreground font-medium">Initial Release</span>
+                                <div className="space-y-2 pt-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="font-bold text-foreground text-sm">v1.0.0</span>
+                                        <span className="text-[10px] text-muted-foreground font-medium shrink-0">Initial Release</span>
                                     </div>
-                                    <ul className="text-[11.5px] text-muted-foreground space-y-1 list-disc list-inside">
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1.5 pl-3 list-disc list-outside">
                                         <li>{lang === "NEP" ? "KhataPlus POS तथा डिजिटल खाता प्रणालीको सुरुआत" : "Initial Release of KhataPlus POS & Ledger Management"}</li>
                                     </ul>
                                 </div>
