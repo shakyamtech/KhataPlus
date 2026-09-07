@@ -55,6 +55,8 @@ const translations = {
     trustTax: "IRD Standards Compliant (अनुसूची ८, ९ र १०)",
     trustPrint: "Thermal & Official A4 Print",
     trustSync: "Auto Cloud & Offline Sync",
+    ribbonTitle: "100% Secure & Cloud Synced",
+    ribbonSubtitle: "Laptop · Mobile · Tab (Android & iOS)",
 
     // Sidebar & Navigation
     dashboard: "Dashboard",
@@ -130,6 +132,8 @@ const translations = {
     trustTax: "नेपाल IRD कर मापदण्ड (अनुसूची ८, ९ र १०)",
     trustPrint: "थर्मल तथा आधिकारिक A4 प्रिन्ट",
     trustSync: "स्वतः क्लाउड तथा अफलाइन सिंक",
+    ribbonTitle: "१००% सुरक्षित र क्लाउड सिंक",
+    ribbonSubtitle: "ल्यापटप · मोबाइल · ट्याब (Android र iOS)",
 
     // Sidebar & Navigation
     dashboard: "ड्यासबोर्ड",

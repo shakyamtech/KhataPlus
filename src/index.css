@@ -282,3 +282,17 @@ input[type=number] {
 input[type=number]:focus {
   pointer-events: auto;
 }
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-float-gentle {
+  animation: floatGentle 3.5s ease-in-out infinite;
+}
+
