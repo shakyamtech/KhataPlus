@@ -3,9 +3,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
-  LayoutDashboard, ShoppingCart, Package, Users, Truck,
-  BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-  Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode
+    LayoutDashboard, ShoppingCart, Package, Users, Truck,
+    BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode
 } from "lucide-react";
 import { InstallAppModal } from "@/components/InstallAppModal";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -16,157 +16,157 @@ import { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs, writ
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuPortal,
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubTrigger,
+    DropdownMenuSubContent,
+    DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { useColorTheme } from "@/contexts/ColorThemeContext";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/pos", label: "POS Billing", icon: ShoppingCart },
-  { to: "/products", label: "Products", icon: Package },
-  { to: "/customers", label: "Customers", icon: Users },
-  { to: "/suppliers", label: "Suppliers", icon: Truck },
-  { to: "/purchases", label: "Purchases", icon: BookOpen },
-  { to: "/cashbook", label: "Cashbook", icon: Wallet },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
-  { to: "/balance-sheet", label: "Balance Sheet", icon: FileSpreadsheet },
+    { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+    { to: "/pos", label: "POS Billing", icon: ShoppingCart },
+    { to: "/products", label: "Products", icon: Package },
+    { to: "/customers", label: "Customers", icon: Users },
+    { to: "/suppliers", label: "Suppliers", icon: Truck },
+    { to: "/purchases", label: "Purchases", icon: BookOpen },
+    { to: "/cashbook", label: "Cashbook", icon: Wallet },
+    { to: "/reports", label: "Reports", icon: BarChart3 },
+    { to: "/balance-sheet", label: "Balance Sheet", icon: FileSpreadsheet },
 ];
 
 export const AppShell = () => {
-  const { lang, setLang, t } = useLanguage();
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
-  const { isAdmin } = useIsAdmin();
-  const { setTheme } = useTheme();
-  const { colorTheme, setColorTheme } = useColorTheme();
-  const [shopName, setShopName] = useState("My Shop");
-  const [newName, setNewName] = useState("");
-  const [shopPhone, setShopPhone] = useState("");
-  const [panNo, setPanNo] = useState("");
-  const [taxType, setTaxType] = useState<"pan" | "vat">("pan");
-  const [shopAddress, setShopAddress] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [password, setPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [shopOpen, setShopOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [aboutOpen, setAboutOpen] = useState(false);
-  const [installModalOpen, setInstallModalOpen] = useState(false);
-  const [hasMigrated, setHasMigrated] = useState(true);
+    const { lang, setLang, t } = useLanguage();
+    const { user, signOut } = useAuth();
+    const navigate = useNavigate();
+    const { isAdmin } = useIsAdmin();
+    const { setTheme } = useTheme();
+    const { colorTheme, setColorTheme } = useColorTheme();
+    const [shopName, setShopName] = useState("My Shop");
+    const [newName, setNewName] = useState("");
+    const [shopPhone, setShopPhone] = useState("");
+    const [panNo, setPanNo] = useState("");
+    const [taxType, setTaxType] = useState<"pan" | "vat">("pan");
+    const [shopAddress, setShopAddress] = useState("");
+    const [fullName, setFullName] = useState("");
+    const [password, setPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
+    const [shopOpen, setShopOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [aboutOpen, setAboutOpen] = useState(false);
+    const [installModalOpen, setInstallModalOpen] = useState(false);
+    const [hasMigrated, setHasMigrated] = useState(true);
 
-  const migrateToBatches = async () => {
-    if (!user) return;
-    try {
-      setBusy(true);
-      toast.loading("Migrating old stock to batches...", { id: "mig" });
-      const q = query(collection(db, "products"), where("user_id", "==", user.uid));
-      const snap = await getDocs(q);
-      
-      const chunks: any[][] = [];
-      let currentChunk: any[] = [];
-      snap.docs.forEach((d) => {
-        currentChunk.push(d);
-        if (currentChunk.length === 450) {
-          chunks.push(currentChunk);
-          currentChunk = [];
-        }
-      });
-      if (currentChunk.length > 0) chunks.push(currentChunk);
+    const migrateToBatches = async () => {
+        if (!user) return;
+        try {
+            setBusy(true);
+            toast.loading("Migrating old stock to batches...", { id: "mig" });
+            const q = query(collection(db, "products"), where("user_id", "==", user.uid));
+            const snap = await getDocs(q);
 
-      let count = 0;
-      for (const chunk of chunks) {
-        const batch = writeBatch(db);
-        for (const d of chunk) {
-          const product = d.data();
-          if (product.stock_qty > 0) {
-            const bq = query(collection(db, "product_batches"), where("product_id", "==", d.id));
-            const bSnap = await getDocs(bq);
-            if (bSnap.empty) {
-              const batchRef = doc(collection(db, "product_batches"));
-              batch.set(batchRef, {
-                id: batchRef.id,
-                user_id: user.uid,
-                product_id: d.id,
-                batch_name: "Initial Batch",
-                original_qty: product.stock_qty,
-                remaining_qty: product.stock_qty,
-                cost_price: product.cost_price || 0,
-                created_at: new Date().toISOString()
-              });
-              count++;
+            const chunks: any[][] = [];
+            let currentChunk: any[] = [];
+            snap.docs.forEach((d) => {
+                currentChunk.push(d);
+                if (currentChunk.length === 450) {
+                    chunks.push(currentChunk);
+                    currentChunk = [];
+                }
+            });
+            if (currentChunk.length > 0) chunks.push(currentChunk);
+
+            let count = 0;
+            for (const chunk of chunks) {
+                const batch = writeBatch(db);
+                for (const d of chunk) {
+                    const product = d.data();
+                    if (product.stock_qty > 0) {
+                        const bq = query(collection(db, "product_batches"), where("product_id", "==", d.id));
+                        const bSnap = await getDocs(bq);
+                        if (bSnap.empty) {
+                            const batchRef = doc(collection(db, "product_batches"));
+                            batch.set(batchRef, {
+                                id: batchRef.id,
+                                user_id: user.uid,
+                                product_id: d.id,
+                                batch_name: "Initial Batch",
+                                original_qty: product.stock_qty,
+                                remaining_qty: product.stock_qty,
+                                cost_price: product.cost_price || 0,
+                                created_at: new Date().toISOString()
+                            });
+                            count++;
+                        }
+                    }
+                }
+                await batch.commit();
             }
-          }
+
+            await setDoc(doc(db, "profiles", user.uid), { migrated_to_batches: true }, { merge: true });
+            setHasMigrated(true);
+
+            toast.success(`Migrated ${count} products to batches!`, { id: "mig" });
+        } catch (e: any) {
+            toast.error(e.message, { id: "mig" });
+        } finally {
+            setBusy(false);
         }
-        await batch.commit();
-      }
-      
-      await setDoc(doc(db, "profiles", user.uid), { migrated_to_batches: true }, { merge: true });
-      setHasMigrated(true);
+    };
 
-      toast.success(`Migrated ${count} products to batches!`, { id: "mig" });
-    } catch (e: any) {
-      toast.error(e.message, { id: "mig" });
-    } finally {
-      setBusy(false);
-    }
-  };
+    const navTranslationKeys: Record<string, string> = {
+        "Dashboard": t.dashboard,
+        "POS Billing": t.posBilling,
+        "Products": t.products,
+        "Customers": t.customers,
+        "Suppliers": t.suppliers,
+        "Purchases": t.purchases,
+        "Cashbook": t.cashbook,
+        "Reports": t.reports,
+        "Balance Sheet": t.balanceSheet,
+        "Admin": t.admin,
+    };
 
-  const navTranslationKeys: Record<string, string> = {
-    "Dashboard": t.dashboard,
-    "POS Billing": t.posBilling,
-    "Products": t.products,
-    "Customers": t.customers,
-    "Suppliers": t.suppliers,
-    "Purchases": t.purchases,
-    "Cashbook": t.cashbook,
-    "Reports": t.reports,
-    "Balance Sheet": t.balanceSheet,
-    "Admin": t.admin,
-  };
+    const navItems = isAdmin ? [...nav, { to: "/admin", label: "Admin", icon: Shield }] : nav;
 
-  const navItems = isAdmin ? [...nav, { to: "/admin", label: "Admin", icon: Shield }] : nav;
-
-  useEffect(() => {
+    useEffect(() => {
         if (!user) {
             setShopName("My Shop");
             return;
         }
-        
+
         const loadProfile = async () => {
             try {
                 const docRef = doc(db, "profiles", user.uid);
                 const docSnap = await getDoc(docRef);
-                
+
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     const sName = data.shop_name || "KhataPlus Shop";
@@ -188,14 +188,14 @@ export const AppShell = () => {
                         const prodSnap = await getDocs(prodQ);
                         if (prodSnap.empty) {
                             setHasMigrated(true);
-                            setDoc(docRef, { migrated_to_batches: true }, { merge: true }).catch(() => {});
+                            setDoc(docRef, { migrated_to_batches: true }, { merge: true }).catch(() => { });
                         } else {
                             // Check if any product lacks a batch
                             const batchQ = query(collection(db, "product_batches"), where("user_id", "==", user.uid));
                             const batchSnap = await getDocs(batchQ);
                             if (!batchSnap.empty) {
                                 setHasMigrated(true);
-                                setDoc(docRef, { migrated_to_batches: true }, { merge: true }).catch(() => {});
+                                setDoc(docRef, { migrated_to_batches: true }, { merge: true }).catch(() => { });
                             } else {
                                 setHasMigrated(false);
                             }
@@ -216,7 +216,7 @@ export const AppShell = () => {
 
     useEffect(() => {
         if (!user) return;
-        
+
         const updatePresence = async () => {
             try {
                 await updateDoc(doc(db, "profiles", user.uid), {
@@ -226,7 +226,7 @@ export const AppShell = () => {
                 console.error("Error updating presence:", e);
             }
         };
-        
+
         updatePresence();
         const interval = setInterval(updatePresence, 3 * 60 * 1000);
         return () => clearInterval(interval);
@@ -234,10 +234,10 @@ export const AppShell = () => {
 
     const handleSaveProfile = async () => {
         if (!fullName.trim()) return toast.error("Name cannot be empty");
-        
+
         setBusy(true);
         try {
-            await setDoc(doc(db, "profiles", user.uid), { 
+            await setDoc(doc(db, "profiles", user.uid), {
                 full_name: fullName
             }, { merge: true });
 
@@ -248,7 +248,7 @@ export const AppShell = () => {
                 }
                 const credential = EmailAuthProvider.credential(user.email!, password);
                 await reauthenticateWithCredential(user, credential);
-                
+
                 if (newPassword.length < 6) {
                     toast.error("New password must be at least 6 characters.");
                 } else {
@@ -270,10 +270,10 @@ export const AppShell = () => {
 
     const handleSaveShop = async () => {
         if (!newName.trim()) return toast.error("Shop name cannot be empty");
-        
+
         setBusy(true);
         try {
-            await setDoc(doc(db, "profiles", user.uid), { 
+            await setDoc(doc(db, "profiles", user.uid), {
                 shop_name: newName,
                 shop_phone: shopPhone.trim() || null,
                 shop_address: shopAddress.trim() || null,
@@ -281,7 +281,7 @@ export const AppShell = () => {
                 tax_type: taxType,
                 is_vat_registered: taxType === "vat"
             }, { merge: true });
-            
+
             setShopName(newName);
             localStorage.setItem("khataplus_shop_name", newName);
 
@@ -298,7 +298,7 @@ export const AppShell = () => {
     const handleSelfReset = async () => {
         if (!password) return toast.error("Please enter your current password to confirm");
         if (!user?.uid) return;
-        
+
         setBusy(true);
         try {
             const credential = EmailAuthProvider.credential(user.email!, password);
@@ -337,13 +337,13 @@ export const AppShell = () => {
 
             // 4. Delete all user-level transaction tables
             const tablesToWipe = [
-                "sales", "purchases", "cash_transactions", 
+                "sales", "purchases", "cash_transactions",
                 "ledger_entries", "expenses", "stock_adjustments"
             ];
             for (const t of tablesToWipe) {
                 const q = query(collection(db, t), where("user_id", "==", user.uid));
                 const snapshot = await getDocs(q);
-                
+
                 for (let i = 0; i < snapshot.docs.length; i += 450) {
                     const chunk = snapshot.docs.slice(i, i + 450);
                     const batch = writeBatch(db);
@@ -351,7 +351,7 @@ export const AppShell = () => {
                     await batch.commit();
                 }
             }
-            
+
             // 5. Reset product stock quantities to 0
             if (!prodSnap.empty) {
                 for (let i = 0; i < prodSnap.docs.length; i += 450) {
@@ -379,7 +379,7 @@ export const AppShell = () => {
             toast.success(lang === "NEP" ? "सबै कारोबार र लेजर सफलतापूर्वक रिसेट गरियो!" : "All transactions and ledgers reset successfully!");
             setShopOpen(false);
             setPassword("");
-            
+
             // Delay reload so toast is visible
             setTimeout(() => {
                 window.location.reload();
@@ -413,10 +413,9 @@ export const AppShell = () => {
                                 to={n.to}
                                 end={n.end}
                                 className={({ isActive }) =>
-                                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth ${
-                                        isActive
-                                            ? "bg-sidebar-accent text-sidebar-primary"
-                                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth ${isActive
+                                        ? "bg-sidebar-accent text-sidebar-primary"
+                                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                                     }`
                                 }
                             >
@@ -425,20 +424,20 @@ export const AppShell = () => {
                         );
                     })}
                 </nav>
-                
+
                 {/* Desktop Language Switcher Footer Option */}
                 <div className="px-6 py-3 border-t border-sidebar-border/60">
                     <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
                         <span>{t.language}</span>
                         <div className="flex items-center gap-1 bg-sidebar-accent/50 p-0.5 rounded-lg border border-sidebar-border/40">
-                            <button 
-                                onClick={() => setLang("ENG")} 
+                            <button
+                                onClick={() => setLang("ENG")}
                                 className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-200 ${lang === "ENG" ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"}`}
                             >
                                 ENG
                             </button>
-                            <button 
-                                onClick={() => setLang("NEP")} 
+                            <button
+                                onClick={() => setLang("NEP")}
                                 className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-200 ${lang === "NEP" ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"}`}
                             >
                                 नेपाली
@@ -499,7 +498,7 @@ export const AppShell = () => {
                         <DropdownMenuItem onClick={() => setInstallModalOpen(true)} className="cursor-pointer font-medium gap-2">
                             <Smartphone className="h-4 w-4 text-primary" /> {lang === "NEP" ? "मोबाइल एप (QR Scan)" : "Mobile App (QR Scan)"}
                         </DropdownMenuItem>
-                        
+
                         {/* Theme options Submenu */}
                         <DropdownMenuSub>
                             <DropdownMenuSubTrigger className="font-medium gap-2">
@@ -529,17 +528,17 @@ export const AppShell = () => {
                                 </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                         </DropdownMenuSub>
-                        
+
                         <DropdownMenuItem onClick={() => setAboutOpen(true)} className="cursor-pointer font-medium gap-2">
                             <Info className="h-4 w-4 text-primary" /> {lang === "NEP" ? "हाम्रो बारेमा" : "About App"}
                         </DropdownMenuItem>
-                        
+
                         {!hasMigrated && (
                             <DropdownMenuItem onClick={migrateToBatches} className="cursor-pointer font-medium gap-2 text-amber-600">
                                 <Package className="h-4 w-4 text-amber-600" /> Migrate to Batches
                             </DropdownMenuItem>
                         )}
-                        
+
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={async () => { await signOut(); navigate("/auth"); }} className="cursor-pointer font-bold text-destructive hover:bg-destructive/10 hover:text-destructive gap-2">
                             <LogOut className="h-4 w-4" /> {t.signOut}
@@ -577,8 +576,7 @@ export const AppShell = () => {
                                     return (
                                         <NavLink key={n.to} to={n.to} end={n.end} onClick={() => setMobileMenuOpen(false)}
                                             className={({ isActive }) =>
-                                                `flex items-center gap-4 px-4 py-4 rounded-xl text-sm font-medium transition-all ${
-                                                    isActive ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
+                                                `flex items-center gap-4 px-4 py-4 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
                                                 }`
                                             }
                                         >
@@ -612,14 +610,14 @@ export const AppShell = () => {
                                 <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
                                     <span>{t.language}</span>
                                     <div className="flex items-center gap-1 bg-sidebar-accent/50 p-0.5 rounded-lg border border-sidebar-border/40">
-                                        <button 
-                                            onClick={() => setLang("ENG")} 
+                                        <button
+                                            onClick={() => setLang("ENG")}
                                             className={`px-3 py-1 rounded text-[10px] font-bold transition-all duration-200 ${lang === "ENG" ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"}`}
                                         >
                                             ENG
                                         </button>
-                                        <button 
-                                            onClick={() => setLang("NEP")} 
+                                        <button
+                                            onClick={() => setLang("NEP")}
                                             className={`px-3 py-1 rounded text-[10px] font-bold transition-all duration-200 ${lang === "NEP" ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"}`}
                                         >
                                             नेपाली
@@ -640,8 +638,8 @@ export const AppShell = () => {
                     <div className="text-sm font-bold bg-sidebar-accent px-3 py-1.5 rounded-lg text-sidebar-foreground truncate max-w-[220px] uppercase tracking-tight">{shopName}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button 
-                        variant="ghost" 
+                    <Button
+                        variant="ghost"
                         size="icon"
                         onClick={() => setInstallModalOpen(true)}
                         className="h-9 w-9 rounded-full bg-sidebar-accent/80 text-sidebar-foreground hover:text-primary transition-colors"
@@ -683,7 +681,7 @@ export const AppShell = () => {
                             <DropdownMenuItem onClick={() => setInstallModalOpen(true)} className="cursor-pointer font-medium gap-2">
                                 <Smartphone className="h-4 w-4 text-primary" /> {lang === "NEP" ? "मोबाइल एप (QR Scan)" : "Mobile App (QR Scan)"}
                             </DropdownMenuItem>
-                            
+
                             {/* Theme options Submenu */}
                             <DropdownMenuSub>
                                 <DropdownMenuSubTrigger className="font-medium gap-2">
@@ -713,11 +711,11 @@ export const AppShell = () => {
                                     </DropdownMenuSubContent>
                                 </DropdownMenuPortal>
                             </DropdownMenuSub>
-                            
+
                             <DropdownMenuItem onClick={() => setAboutOpen(true)} className="cursor-pointer font-medium gap-2">
                                 <Info className="h-4 w-4 text-primary" /> {lang === "NEP" ? "हाम्रो बारेमा" : "About App"}
                             </DropdownMenuItem>
-                            
+
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={async () => { await signOut(); navigate("/auth"); }} className="cursor-pointer font-bold text-destructive hover:bg-destructive/10 hover:text-destructive gap-2">
                                 <LogOut className="h-4 w-4" /> {t.signOut}
@@ -733,18 +731,18 @@ export const AppShell = () => {
 
             {/* Mobile bottom nav (Quick Access) */}
             <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur-md text-sidebar-foreground border-t border-sidebar-border grid grid-cols-5 h-16">
-              {[nav[0], nav[1], nav[2], nav[6], nav[7]].map((n) => {
-                const translatedLabel = navTranslationKeys[n.label] || n.label;
-                return (
-                    <NavLink key={n.to} to={n.to} end={n.end}
-                      className={({ isActive }) =>
-                        `flex flex-col items-center justify-center gap-1 transition-all ${isActive ? "text-sidebar-primary bg-sidebar-accent/30" : "text-sidebar-foreground/40"}`}
-                    >
-                      <n.icon className="h-5 w-5" />
-                      <span className="text-[9px] font-medium">{translatedLabel}</span>
-                    </NavLink>
-                );
-              })}
+                {[nav[0], nav[1], nav[2], nav[6], nav[7]].map((n) => {
+                    const translatedLabel = navTranslationKeys[n.label] || n.label;
+                    return (
+                        <NavLink key={n.to} to={n.to} end={n.end}
+                            className={({ isActive }) =>
+                                `flex flex-col items-center justify-center gap-1 transition-all ${isActive ? "text-sidebar-primary bg-sidebar-accent/30" : "text-sidebar-foreground/40"}`}
+                        >
+                            <n.icon className="h-5 w-5" />
+                            <span className="text-[9px] font-medium">{translatedLabel}</span>
+                        </NavLink>
+                    );
+                })}
             </nav>
 
             {/* Profile Settings Modal */}
@@ -769,15 +767,15 @@ export const AppShell = () => {
                         <div className="pt-2 border-t space-y-2">
                             <Label>{t.currentPassword} <span className="text-muted-foreground/60 font-normal">{lang === "NEP" ? "(नयाँ पासवर्ड परिवर्तन गर्न मात्र आवश्यक)" : "(Only required to change password)"}</span></Label>
                             <div className="relative">
-                                <Input 
-                                    type={showPassword ? "text" : "password"} 
-                                    value={password} 
-                                    onChange={(e) => setPassword(e.target.value)} 
+                                <Input
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Required to save changes"
                                     autoComplete="off"
                                     autoFocus={false}
                                 />
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -790,14 +788,14 @@ export const AppShell = () => {
                         <div className="pt-2 border-t space-y-2">
                             <Label>{t.newPassword} <span className="text-muted-foreground/60 font-normal">{t.panOptional}</span></Label>
                             <div className="relative">
-                                <Input 
-                                    type={showNewPassword ? "text" : "password"} 
-                                    value={newPassword} 
-                                    onChange={(e) => setNewPassword(e.target.value)} 
+                                <Input
+                                    type={showNewPassword ? "text" : "password"}
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
                                     placeholder="Leave blank to keep current"
                                     autoComplete="new-password"
                                 />
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => setShowNewPassword(!showNewPassword)}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -846,11 +844,10 @@ export const AppShell = () => {
                                 <button
                                     type="button"
                                     onClick={() => setTaxType("pan")}
-                                    className={`p-2.5 rounded-xl text-left border transition-all ${
-                                        taxType === "pan" 
-                                            ? "bg-primary/10 border-primary text-primary font-bold shadow-sm" 
+                                    className={`p-2.5 rounded-xl text-left border transition-all ${taxType === "pan"
+                                            ? "bg-primary/10 border-primary text-primary font-bold shadow-sm"
                                             : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/40"
-                                    }`}
+                                        }`}
                                 >
                                     <div className="text-xs font-bold">PAN (Non-VAT)</div>
                                     <div className="text-[10px] opacity-80 font-normal">
@@ -860,11 +857,10 @@ export const AppShell = () => {
                                 <button
                                     type="button"
                                     onClick={() => setTaxType("vat")}
-                                    className={`p-2.5 rounded-xl text-left border transition-all ${
-                                        taxType === "vat" 
-                                            ? "bg-primary/10 border-primary text-primary font-bold shadow-sm" 
+                                    className={`p-2.5 rounded-xl text-left border transition-all ${taxType === "vat"
+                                            ? "bg-primary/10 border-primary text-primary font-bold shadow-sm"
                                             : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/40"
-                                    }`}
+                                        }`}
                                 >
                                     <div className="text-xs font-bold">VAT (13%)</div>
                                     <div className="text-[10px] opacity-80 font-normal">
@@ -881,15 +877,15 @@ export const AppShell = () => {
                         <div className="pt-2 border-t space-y-2">
                             <Label>{t.currentPassword} <span className="text-muted-foreground/60 font-normal">{lang === "NEP" ? "(डाटा रिसेट गर्न मात्र आवश्यक)" : "(Only required to reset data)"}</span></Label>
                             <div className="relative">
-                                <Input 
-                                    type={showPassword ? "text" : "password"} 
-                                    value={password} 
-                                    onChange={(e) => setPassword(e.target.value)} 
+                                <Input
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Required to save changes"
                                     autoComplete="off"
                                     autoFocus={false}
                                 />
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -905,15 +901,15 @@ export const AppShell = () => {
                                 {lang === "NEP" ? "खतरा क्षेत्र (Danger Zone)" : "Danger Zone"}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                {lang === "NEP" 
+                                {lang === "NEP"
                                     ? "आफ्नो पसलको सबै नाफा-नोक्सान, क्यासबुक, उधारो लेजर र खरिद/बिक्री डाटा रिसेट गर्नुहोस्। सामानको सूची (Products) सुरक्षित रहनेछ।"
                                     : "Reset all your profit/loss, cashbook, credit ledgers, and sales/purchase data. Your product catalog will be preserved intact."}
                             </p>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button 
+                                    <Button
                                         type="button"
-                                        variant="outline" 
+                                        variant="outline"
                                         size="sm"
                                         className="border-destructive/30 text-destructive hover:bg-destructive hover:text-white transition-all h-9 w-full"
                                     >
@@ -934,8 +930,8 @@ export const AppShell = () => {
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
-                                        <AlertDialogAction 
-                                            onClick={handleSelfReset} 
+                                        <AlertDialogAction
+                                            onClick={handleSelfReset}
                                             className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                                         >
                                             {lang === "NEP" ? "डाटा रिसेट गर्नुहोस्" : "Reset Data"}
@@ -968,12 +964,12 @@ export const AppShell = () => {
                             {lang === "NEP" ? `संस्करण ${APP_VERSION_NEP}` : `Version ${APP_VERSION}`}
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="py-3 space-y-3 w-full">
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                            {lang === "NEP" 
+                            {lang === "NEP"
                                 ? "सबै प्रकारका व्यवसायहरूका लागि आधुनिक, छिटो र सरल बिलिङ, कर बिजक र लेजर व्यवस्थापन प्रणाली।"
-                                : "A premium, super-fast point-of-sale (POS), tax billing, and ledger bookkeeping solution tailored perfectly for all businesses."}
+                                : "A premium, super-fast point-of-sale (POS), tax billing, and ledger bookkeeping solution built perfectly for all businesses."}
                         </p>
 
                         <div className="bg-primary/5 rounded-xl p-3.5 text-left border border-primary/10">
@@ -1049,7 +1045,7 @@ export const AppShell = () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="p-3 rounded-xl bg-secondary/60 border border-border/40 backdrop-blur-sm space-y-0.5">
                             <div className="text-[11px] text-muted-foreground font-medium">
                                 {lang === "NEP" ? "द्वारा विकसित:" : "Developed By:"}
@@ -1059,15 +1055,15 @@ export const AppShell = () => {
                                 <ArrowRight className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" />
                             </a>
                         </div>
-                        
+
                         <p className="text-[10px] text-muted-foreground/60 italic">
                             © {new Date().getFullYear()} KhataPlus POS · All Rights Reserved
                         </p>
                     </div>
-                    
+
                     <DialogFooter className="w-full sm:justify-center">
-                        <Button 
-                            onClick={() => setAboutOpen(false)} 
+                        <Button
+                            onClick={() => setAboutOpen(false)}
                             className="bg-primary text-primary-foreground font-semibold px-8 h-9 text-xs"
                         >
                             {lang === "NEP" ? "बन्द गर्नुहोस्" : "Close"}
