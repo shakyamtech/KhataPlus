@@ -845,8 +845,8 @@ export const AppShell = () => {
                                     type="button"
                                     onClick={() => setTaxType("pan")}
                                     className={`p-2.5 rounded-xl text-left border transition-all ${taxType === "pan"
-                                            ? "bg-primary/10 border-primary text-primary font-bold shadow-sm"
-                                            : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/40"
+                                        ? "bg-primary/10 border-primary text-primary font-bold shadow-sm"
+                                        : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/40"
                                         }`}
                                 >
                                     <div className="text-xs font-bold">PAN (Non-VAT)</div>
@@ -858,8 +858,8 @@ export const AppShell = () => {
                                     type="button"
                                     onClick={() => setTaxType("vat")}
                                     className={`p-2.5 rounded-xl text-left border transition-all ${taxType === "vat"
-                                            ? "bg-primary/10 border-primary text-primary font-bold shadow-sm"
-                                            : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/40"
+                                        ? "bg-primary/10 border-primary text-primary font-bold shadow-sm"
+                                        : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/40"
                                         }`}
                                 >
                                     <div className="text-xs font-bold">VAT (13%)</div>
@@ -1048,7 +1048,7 @@ export const AppShell = () => {
 
                         <div className="p-3 rounded-xl bg-secondary/60 border border-border/40 backdrop-blur-sm space-y-0.5">
                             <div className="text-[11px] text-muted-foreground font-medium">
-                                {lang === "NEP" ? "द्वारा विकसित:" : "Developed By:"}
+                                {lang === "NEP" ? "द्वारा विकसित:" : "Developed & Managed By:"}
                             </div>
                             <a href="https://shakyamahesh.com.np" target="_blank" rel="noopener noreferrer" className="group inline-flex items-center justify-center gap-1.5 text-sm font-extrabold text-primary hover:text-primary/80 underline decoration-primary/30 hover:decoration-primary/80 underline-offset-4 transition-all duration-300">
                                 <span>Mahesh Shakya</span>
