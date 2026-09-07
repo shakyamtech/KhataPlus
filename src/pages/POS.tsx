@@ -13,7 +13,8 @@ import { fmt, fmtQty } from "@/lib/format";
 import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { getShopInfo } from "@/lib/shop";
+import { getShopInfo, ShopInfo } from "@/lib/shop";
+import { numberToWords } from "@/lib/format";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -62,6 +63,10 @@ type CartItem = {
 
 const POS = () => {
   const { user } = useAuth();
+  const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
+  const [invoiceType, setInvoiceType] = useState<"abbreviated" | "tax_invoice">("abbreviated");
+  const [buyerPan, setBuyerPan] = useState("");
+  const [buyerAddress, setBuyerAddress] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -188,6 +193,9 @@ const POS = () => {
 
       setProducts(p.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any); 
       setCustomers(c.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any);
+
+      const shop = await getShopInfo();
+      setShopInfo(shop);
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -339,8 +347,6 @@ const POS = () => {
   const paidVal = Number(amountPaid || 0);
   const tenderedVal = Number(tendered || 0);
   
-  // For cash mode, if tendered cash is entered less than subtotal, automatically treat the shortfall as discount.
-  // For credit mode, if amountPaid is entered less than subtotal, treat that shortfall as discount.
   let autoDiscount = 0;
   if (typedDiscount === 0) {
     if (paymentMode === "cash" && tenderedVal > 0 && tenderedVal < subtotal) {
@@ -350,18 +356,15 @@ const POS = () => {
     }
   }
   const discountNum = Math.max(0, Math.min(typedDiscount > 0 ? typedDiscount : autoDiscount, subtotal));
-  // Round to nearest whole Rupee to fix Ajit's issue
   const total = Math.round(subtotal - discountNum);
 
   useEffect(() => {
-    // For paid modes, keep amountPaid perfectly synced to the dynamic discounted total
     if (paymentMode !== "credit") {
       setAmountPaid(total.toString());
     }
   }, [paymentMode, total]);
 
   useEffect(() => {
-    // For credit mode, set default paid to 0 only when switching mode or changing cart items
     if (paymentMode === "credit") {
       setAmountPaid("0");
     }
@@ -377,7 +380,6 @@ const POS = () => {
       return toast.error("'Walk-in' is a reserved system name");
     }
 
-    // Check duplicate
     const existing = customers.find((c) => {
       const cName = (c.name || "").trim().toLowerCase();
       const cPhone = (c.phone || "").trim();
@@ -427,7 +429,6 @@ const POS = () => {
       setBusy(true);
       const ratio = subtotal > 0 ? total / subtotal : 1;
       
-      // Ensure all numbers are valid before sending to database
       const itemsToSend = cart.map((i) => {
         const qty = Number(i.qty) || 0;
         const price = Number(i.sell_price) || 0;
@@ -445,33 +446,31 @@ const POS = () => {
         };
       });
 
-      // FETCH BATCHES FOR FIFO
       let allBatches: any[] = [];
       const productIds = Array.from(new Set(itemsToSend.map(i => i.product_id)));
-      const chunks = [];
-      for (let i = 0; i < productIds.length; i += 10) {
-        chunks.push(productIds.slice(i, i + 10));
-      }
-      for (const chunk of chunks) {
-        const bQ = query(collection(db, "product_batches"), where("product_id", "in", chunk));
+      if (productIds.length > 0) {
+        const bQ = query(
+          collection(db, "product_batches"), 
+          where("user_id", "==", user!.uid)
+        );
         const bSnap = await getDocs(bQ);
-        const chunkBatches = bSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).filter(b => b.remaining_qty > 0);
-        allBatches.push(...chunkBatches);
+        allBatches = bSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as any))
+          .filter(b => productIds.includes(b.product_id));
+
+        allBatches.sort((a, b) => {
+          if (a.expiry_date && b.expiry_date) {
+            return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+          }
+          if (a.expiry_date) return -1;
+          if (b.expiry_date) return 1;
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        });
       }
-      // Sort batches with FEFO (First Expired First Out): Earliest expiry first, then batches without expiry by created_at
-      allBatches.sort((a, b) => {
-        if (a.expiry_date && b.expiry_date) {
-          return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
-        }
-        if (a.expiry_date) return -1;
-        if (b.expiry_date) return 1;
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      });
 
       const now = new Date();
       now.setHours(0,0,0,0);
 
-      // Validate non-expired stock
       for (const item of itemsToSend) {
         const pBatches = allBatches.filter(b => b.product_id === item.product_id);
         let validStock = 0;
@@ -480,7 +479,7 @@ const POS = () => {
           if (b.expiry_date && new Date(b.expiry_date) < now) {
             hasExpired = true;
           } else {
-            validStock += b.remaining_qty;
+            validStock += (Number(b.remaining_qty) || 0);
           }
         }
         if (item.qty > validStock) {
@@ -488,7 +487,6 @@ const POS = () => {
         }
       }
 
-      // Filter out expired batches so they are not used for sale
       allBatches = allBatches.filter(b => !b.expiry_date || new Date(b.expiry_date) >= now);
 
       let costTotal = 0;
@@ -548,6 +546,10 @@ const POS = () => {
         costTotal += itemCostTotal;
       }
 
+      const isVatInvoice = shopInfo?.is_vat_registered && invoiceType === "tax_invoice";
+      const taxableAmount = isVatInvoice ? +(total / 1.13).toFixed(2) : null;
+      const vatAmount = isVatInvoice && taxableAmount !== null ? +(total - taxableAmount).toFixed(2) : null;
+
       const batch = writeBatch(db);
       const saleRef = doc(collection(db, "sales"));
       
@@ -560,6 +562,11 @@ const POS = () => {
         total: total,
         cost_total: costTotal,
         note: Number(discount) > 0 ? `Discount given: Rs. ${discount}` : null,
+        invoice_type: invoiceType,
+        buyer_pan: isVatInvoice ? (buyerPan.trim() || null) : null,
+        buyer_address: isVatInvoice ? (buyerAddress.trim() || null) : null,
+        taxable_amount: taxableAmount,
+        vat_amount: vatAmount,
         created_at: new Date().toISOString()
       });
 
@@ -632,10 +639,7 @@ const POS = () => {
       await batch.commit();
 
       toast.success(`Sale complete — ${fmt(total)}`);
-      const change = Number(tendered || 0) - paid;
-      if (paymentMode === "cash" && change > 0) toast.success(`Return change: ${fmt(change)}`);
-
-      // Build & print receipt safely
+      
       try {
         const shop = await getShopInfo();
         const customerName = customerId === "walk-in" ? "Walk-in" : (customers.find((c) => c.id === customerId)?.name ?? "Walk-in");
@@ -655,67 +659,158 @@ const POS = () => {
         const dueAmount = total - paid;
         const changeAmount = Number(tendered || 0) - paid;
 
-        const body = `
-          <div class="receipt-card">
-            <div class="shop-header">
-              <div class="shop-title">${escapeHtml(shop.name)}</div>
-              <div class="shop-meta">
-                ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
-                ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
-                <div>Tax Invoice / Sales Receipt</div>
+        let body = "";
+
+        if (shop.is_vat_registered && invoiceType === "tax_invoice") {
+          const calcTaxable = taxableAmount ?? +(total / 1.13).toFixed(2);
+          const calcVat = vatAmount ?? +(total - calcTaxable).toFixed(2);
+
+          body = `
+            <div class="receipt-card">
+              <div class="shop-header">
+                <div class="shop-title">${escapeHtml(shop.name)}</div>
+                <div class="shop-meta">
+                  ${shop.address ? `<div>${escapeHtml(shop.address)}</div>` : ""}
+                  ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
+                  <div>PAN / VAT No: <strong>${escapeHtml(shop.pan || "N/A")}</strong></div>
+                  <div style="font-weight:700; margin-top:5px; font-size:13px; color:#111827; letter-spacing:0.02em;">कर बिजक (TAX INVOICE)</div>
+                </div>
+              </div>
+
+              <div class="bill-info">
+                <div class="bill-info-item">
+                  <span class="bill-info-label">Invoice No</span>
+                  <span class="bill-info-value">#${escapeHtml(billNo)}</span>
+                </div>
+                <div class="bill-info-item" style="text-align:right;">
+                  <span class="bill-info-label">Date & Time</span>
+                  <span class="bill-info-value">${format(new Date(), "dd MMM yyyy, hh:mm a")}</span>
+                </div>
+                <div class="bill-info-item">
+                  <span class="bill-info-label">Buyer Name</span>
+                  <span class="bill-info-value">${escapeHtml(customerName)}${customerPhone ? ` (${escapeHtml(customerPhone)})` : ""}</span>
+                </div>
+                <div class="bill-info-item" style="text-align:right;">
+                  <span class="bill-info-label">Buyer PAN</span>
+                  <span class="bill-info-value">${escapeHtml(buyerPan.trim() || "N/A")}</span>
+                </div>
+                ${buyerAddress.trim() ? `
+                  <div class="bill-info-item" style="grid-column: span 2;">
+                    <span class="bill-info-label">Buyer Address</span>
+                    <span class="bill-info-value">${escapeHtml(buyerAddress.trim())}</span>
+                  </div>
+                ` : ""}
+                <div class="bill-info-item">
+                  <span class="bill-info-label">Payment Mode</span>
+                  <span class="bill-info-value" style="text-transform:uppercase;">${escapeHtml(paymentMode)}</span>
+                </div>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:20px;">#</th>
+                    <th>Particulars</th>
+                    <th class="num">Qty</th>
+                    <th class="num">Rate</th>
+                    <th class="num">Total</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+
+              <div class="summary-section">
+                <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+                ${discountNum > 0 ? `<div class="summary-row discount"><span>Discount</span><span>-${fmt(discountNum)}</span></div>` : ""}
+                <div class="summary-row"><span>Non-Taxable Amount</span><span>${fmt(0)}</span></div>
+                <div class="summary-row"><span>Taxable Amount</span><span>${fmt(calcTaxable)}</span></div>
+                <div class="summary-row"><span>13% VAT</span><span>${fmt(calcVat)}</span></div>
+                <div class="summary-row grand-total"><span>Grand Total</span><span>${fmt(total)}</span></div>
+                <div style="font-size:11px; font-weight:600; color:#374151; padding: 4px 0; border-bottom: 1px dashed #e5e7eb; margin-bottom: 5px;">
+                  In Words: ${escapeHtml(numberToWords(total))}
+                </div>
+                <div class="summary-row paid"><span>Paid (${paymentMode.toUpperCase()})</span><span>${fmt(paid)}</span></div>
+                ${dueAmount > 0 ? `<div class="summary-row due"><span>Outstanding Due</span><span>${fmt(dueAmount)}</span></div>` : ""}
+                ${paymentMode === "cash" && Number(tendered || 0) > 0 && changeAmount > 0 ? `
+                  <div class="summary-row change"><span>Tendered: ${fmt(Number(tendered))}</span><span>Change: ${fmt(changeAmount)}</span></div>
+                ` : ""}
+              </div>
+
+              <div class="receipt-footer">
+                <div class="footer-highlight">Thank you for your business!</div>
+                <div class="brand-tag">KhataPlus Point of Sale</div>
               </div>
             </div>
+          `;
+        } else {
+          const invoiceTitle = shop.is_vat_registered 
+            ? "संक्षिप्त कर बिजक (Abbreviated Tax Invoice)" 
+            : "बिक्री बिल (Sales Receipt)";
 
-            <div class="bill-info">
-              <div class="bill-info-item">
-                <span class="bill-info-label">Bill No</span>
-                <span class="bill-info-value">#${escapeHtml(billNo)}</span>
+          body = `
+            <div class="receipt-card">
+              <div class="shop-header">
+                <div class="shop-title">${escapeHtml(shop.name)}</div>
+                <div class="shop-meta">
+                  ${shop.address ? `<div>${escapeHtml(shop.address)}</div>` : ""}
+                  ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
+                  ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
+                  <div style="font-weight:600; margin-top:3px;">${escapeHtml(invoiceTitle)}</div>
+                </div>
               </div>
-              <div class="bill-info-item" style="text-align:right;">
-                <span class="bill-info-label">Date & Time</span>
-                <span class="bill-info-value">${format(new Date(), "dd MMM yyyy, hh:mm a")}</span>
+
+              <div class="bill-info">
+                <div class="bill-info-item">
+                  <span class="bill-info-label">Bill No</span>
+                  <span class="bill-info-value">#${escapeHtml(billNo)}</span>
+                </div>
+                <div class="bill-info-item" style="text-align:right;">
+                  <span class="bill-info-label">Date & Time</span>
+                  <span class="bill-info-value">${format(new Date(), "dd MMM yyyy, hh:mm a")}</span>
+                </div>
+                <div class="bill-info-item">
+                  <span class="bill-info-label">Customer</span>
+                  <span class="bill-info-value">${escapeHtml(customerName)}${customerPhone ? ` (${escapeHtml(customerPhone)})` : ""}</span>
+                </div>
+                <div class="bill-info-item" style="text-align:right;">
+                  <span class="bill-info-label">Payment</span>
+                  <span class="bill-info-value" style="text-transform:uppercase;">${escapeHtml(paymentMode)}</span>
+                </div>
               </div>
-              <div class="bill-info-item">
-                <span class="bill-info-label">Customer</span>
-                <span class="bill-info-value">${escapeHtml(customerName)}${customerPhone ? ` (${escapeHtml(customerPhone)})` : ""}</span>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:20px;">#</th>
+                    <th>Item</th>
+                    <th class="num">Qty</th>
+                    <th class="num">Rate</th>
+                    <th class="num">Total</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+
+              <div class="summary-section">
+                <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+                ${discountNum > 0 ? `<div class="summary-row discount"><span>Discount</span><span>-${fmt(discountNum)}</span></div>` : ""}
+                <div class="summary-row grand-total"><span>Grand Total</span><span>${fmt(total)}</span></div>
+                <div class="summary-row paid"><span>Paid (${paymentMode.toUpperCase()})</span><span>${fmt(paid)}</span></div>
+                ${dueAmount > 0 ? `<div class="summary-row due"><span>Outstanding Due</span><span>${fmt(dueAmount)}</span></div>` : ""}
+                ${paymentMode === "cash" && Number(tendered || 0) > 0 && changeAmount > 0 ? `
+                  <div class="summary-row change"><span>Tendered: ${fmt(Number(tendered))}</span><span>Change: ${fmt(changeAmount)}</span></div>
+                ` : ""}
               </div>
-              <div class="bill-info-item" style="text-align:right;">
-                <span class="bill-info-label">Payment</span>
-                <span class="bill-info-value" style="text-transform:uppercase;">${escapeHtml(paymentMode)}</span>
+
+              <div class="receipt-footer">
+                <div class="footer-highlight">Thank you for shopping with us!</div>
+                <div>Please visit again</div>
+                <div class="brand-tag">KhataPlus Point of Sale</div>
               </div>
             </div>
+          `;
+        }
 
-            <table>
-              <thead>
-                <tr>
-                  <th style="width:20px;">#</th>
-                  <th>Item</th>
-                  <th class="num">Qty</th>
-                  <th class="num">Rate</th>
-                  <th class="num">Total</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-
-            <div class="summary-section">
-              <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
-              ${discountNum > 0 ? `<div class="summary-row discount"><span>Discount</span><span>-${fmt(discountNum)}</span></div>` : ""}
-              <div class="summary-row grand-total"><span>Grand Total</span><span>${fmt(total)}</span></div>
-              <div class="summary-row paid"><span>Paid (${paymentMode.toUpperCase()})</span><span>${fmt(paid)}</span></div>
-              ${dueAmount > 0 ? `<div class="summary-row due"><span>Outstanding Due</span><span>${fmt(dueAmount)}</span></div>` : ""}
-              ${paymentMode === "cash" && Number(tendered || 0) > 0 && changeAmount > 0 ? `
-                <div class="summary-row change"><span>Tendered: ${fmt(Number(tendered))}</span><span>Change: ${fmt(changeAmount)}</span></div>
-              ` : ""}
-            </div>
-
-            <div class="receipt-footer">
-              <div class="footer-highlight">Thank you for shopping with us!</div>
-              <div>Please visit again</div>
-              <div class="brand-tag">KhataPlus Point of Sale</div>
-            </div>
-          </div>
-        `;
         const safeCustName = customerName.replace(/[^a-zA-Z0-9_\s-]/g, "").trim().replace(/\s+/g, "_") || "Customer";
         const fileName = `${safeCustName}_Bill_${billNo}`;
         printHTML(fileName, body);
@@ -724,6 +819,7 @@ const POS = () => {
       }
 
       setCart([]); setDiscount(""); setTendered(""); setAmountPaid(""); setCustomerId("walk-in");
+      setBuyerPan(""); setBuyerAddress(""); setInvoiceType("abbreviated");
       load();
     } catch (e: any) {
       toast.error(e.message);
@@ -891,6 +987,63 @@ const POS = () => {
           </div>
 
           <div className="my-3 border-t pt-3 space-y-2">
+            {shopInfo?.is_vat_registered && (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-primary">Invoice Format (बिल ढाँचा)</Label>
+                  <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setInvoiceType("abbreviated")}
+                      className={cn(
+                        "px-2 py-1 rounded text-xs font-medium transition-all",
+                        invoiceType === "abbreviated"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      संक्षिप्त (Abbreviated)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInvoiceType("tax_invoice")}
+                      className={cn(
+                        "px-2 py-1 rounded text-xs font-medium transition-all",
+                        invoiceType === "tax_invoice"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      कर बिजक (VAT 13%)
+                    </button>
+                  </div>
+                </div>
+
+                {invoiceType === "tax_invoice" && (
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-primary/10">
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground uppercase font-semibold">Buyer PAN No.</Label>
+                      <Input
+                        placeholder="9-digit Buyer PAN"
+                        className="h-7 text-xs"
+                        value={buyerPan}
+                        onChange={(e) => setBuyerPan(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground uppercase font-semibold">Buyer Address</Label>
+                      <Input
+                        placeholder="Buyer's Location"
+                        className="h-7 text-xs"
+                        value={buyerAddress}
+                        onChange={(e) => setBuyerAddress(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <Label className="text-xs">Customer</Label>
               <div className="flex gap-2">
@@ -990,15 +1143,23 @@ const POS = () => {
             </div>
           </div>
 
-          {discountNum > 0 && (
-            <div className="space-y-1 mb-2 text-sm">
-              <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-              <div className="flex justify-between text-muted-foreground"><span>Discount</span><span>− {fmt(discountNum)}</span></div>
-            </div>
-          )}
+          <div className="space-y-1 mb-2 text-sm">
+            {discountNum > 0 && (
+              <>
+                <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+                <div className="flex justify-between text-muted-foreground"><span>Discount</span><span>− {fmt(discountNum)}</span></div>
+              </>
+            )}
+            {shopInfo?.is_vat_registered && invoiceType === "tax_invoice" && (
+              <div className="pt-1 border-t text-xs space-y-1 text-muted-foreground">
+                <div className="flex justify-between"><span>Taxable Amount</span><span>{fmt(+(total / 1.13).toFixed(2))}</span></div>
+                <div className="flex justify-between"><span>13% VAT</span><span>{fmt(+(total - +(total / 1.13).toFixed(2)).toFixed(2))}</span></div>
+              </div>
+            )}
+          </div>
 
           <div className="flex items-center justify-between bg-gradient-primary text-primary-foreground rounded-xl p-3 mb-3">
-            <span className="font-medium">Total</span>
+            <span className="font-medium">{shopInfo?.is_vat_registered && invoiceType === "tax_invoice" ? "Total (VAT Incl.)" : "Total"}</span>
             <span className="font-display text-2xl">{fmt(total)}</span>
           </div>
 

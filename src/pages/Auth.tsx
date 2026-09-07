@@ -30,6 +30,8 @@ const Auth = () => {
   const [shopPhone, setShopPhone] = useState("");
   const [fullName, setFullName] = useState("");
   const [panNo, setPanNo] = useState("");
+  const [taxType, setTaxType] = useState<"pan" | "vat">("pan");
+  const [shopAddress, setShopAddress] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [installModalOpen, setInstallModalOpen] = useState(false);
   const [showLoginSplash, setShowLoginSplash] = useState(false);
@@ -123,7 +125,10 @@ const Auth = () => {
         full_name: fullName,
         shop_name: chosenShop,
         shop_phone: shopPhone.trim() || null,
+        shop_address: shopAddress.trim() || null,
         pan_no: panNo,
+        tax_type: taxType,
+        is_vat_registered: taxType === "vat",
         migrated_to_batches: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -369,11 +374,64 @@ const Auth = () => {
                       />
                     </div>
                     <div>
-                      <Label className="text-foreground/90 font-medium mb-1.5 block">{t.panNo} <span className="text-[10px] text-muted-foreground font-normal">{t.panOptional}</span></Label>
+                      <Label className="text-foreground/90 font-medium mb-1.5 block">
+                        {lang === "NEP" ? "पसलको ठेगाना" : "Shop Address"} <span className="text-[10px] text-muted-foreground font-normal">{t.shopPhoneOptional}</span>
+                      </Label>
+                      <Input 
+                        value={shopAddress} 
+                        onChange={(e) => setShopAddress(e.target.value)} 
+                        placeholder={lang === "NEP" ? "जस्तै: नयाँ सडक, काठमाडौं" : "e.g. New Road, Kathmandu"} 
+                        autoComplete="street-address"
+                        className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground/90 font-medium block text-xs">
+                        {lang === "NEP" ? "व्यवसाय दर्ता प्रकार (Business Type)" : "Business Registration Type"}
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTaxType("pan")}
+                          className={`p-2 rounded-xl text-left border transition-all ${
+                            taxType === "pan" 
+                              ? "bg-primary/10 border-primary text-primary font-bold shadow-sm" 
+                              : "bg-white/50 dark:bg-secondary/40 border-border/50 text-muted-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="text-xs font-bold">PAN (Non-VAT)</div>
+                          <div className="text-[10px] opacity-80 font-normal">
+                            {lang === "NEP" ? "सामान्य प्यान पसल" : "Retail & POS bills"}
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setTaxType("vat")}
+                          className={`p-2 rounded-xl text-left border transition-all ${
+                            taxType === "vat" 
+                              ? "bg-primary/10 border-primary text-primary font-bold shadow-sm" 
+                              : "bg-white/50 dark:bg-secondary/40 border-border/50 text-muted-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="text-xs font-bold">VAT (13%)</div>
+                          <div className="text-[10px] opacity-80 font-normal">
+                            {lang === "NEP" ? "कर बिजक (Tax Invoice)" : "Full 13% Tax Invoices"}
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-foreground/90 font-medium mb-1.5 block">
+                        {taxType === "vat" ? (lang === "NEP" ? "PAN / VAT नम्बर (९ अंक)" : "VAT / PAN No. (9 Digits)") : t.panNo}{" "}
+                        <span className="text-[10px] text-muted-foreground font-normal">{t.panOptional}</span>
+                      </Label>
                       <Input 
                         value={panNo} 
                         onChange={(e) => setPanNo(e.target.value)} 
-                        placeholder={t.panPlaceholder} 
+                        placeholder={taxType === "vat" ? "e.g. 601234567" : t.panPlaceholder} 
                         autoComplete="off"
                         className="bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
                       />

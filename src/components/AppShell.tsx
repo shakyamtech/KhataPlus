@@ -68,6 +68,8 @@ export const AppShell = () => {
   const [newName, setNewName] = useState("");
   const [shopPhone, setShopPhone] = useState("");
   const [panNo, setPanNo] = useState("");
+  const [taxType, setTaxType] = useState<"pan" | "vat">("pan");
+  const [shopAddress, setShopAddress] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -171,8 +173,11 @@ export const AppShell = () => {
                     setNewName(sName);
                     localStorage.setItem("khataplus_shop_name", sName);
                     setShopPhone(data.shop_phone || data.phone || "");
+                    setShopAddress(data.shop_address || data.address || "");
                     setPanNo(data.pan_no || "");
                     setFullName(data.full_name || "");
+                    const isVat = data.tax_type === "vat" || data.is_vat_registered === true;
+                    setTaxType(isVat ? "vat" : "pan");
 
                     if (data.migrated_to_batches !== undefined) {
                         setHasMigrated(data.migrated_to_batches === true);
@@ -270,7 +275,10 @@ export const AppShell = () => {
             await setDoc(doc(db, "profiles", user.uid), { 
                 shop_name: newName,
                 shop_phone: shopPhone.trim() || null,
-                pan_no: panNo
+                shop_address: shopAddress.trim() || null,
+                pan_no: panNo,
+                tax_type: taxType,
+                is_vat_registered: taxType === "vat"
             }, { merge: true });
             
             setShopName(newName);
@@ -826,8 +834,47 @@ export const AppShell = () => {
                             <Input value={shopPhone} onChange={(e) => setShopPhone(e.target.value)} placeholder={t.shopPhonePlaceholder} />
                         </div>
                         <div className="space-y-2">
-                            <Label>{t.panNo}</Label>
-                            <Input value={panNo} onChange={(e) => setPanNo(e.target.value)} placeholder="Enter PAN number..." />
+                            <Label>{lang === "NEP" ? "पसलको ठेगाना" : "Shop Address"}</Label>
+                            <Input value={shopAddress} onChange={(e) => setShopAddress(e.target.value)} placeholder={lang === "NEP" ? "जस्तै: नयाँ सडक, काठमाडौं" : "e.g. New Road, Kathmandu"} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold">
+                                {lang === "NEP" ? "व्यवसाय दर्ता प्रकार (Registration Type)" : "Business Registration Type"}
+                            </Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setTaxType("pan")}
+                                    className={`p-2.5 rounded-xl text-left border transition-all ${
+                                        taxType === "pan" 
+                                            ? "bg-primary/10 border-primary text-primary font-bold shadow-sm" 
+                                            : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/40"
+                                    }`}
+                                >
+                                    <div className="text-xs font-bold">PAN (Non-VAT)</div>
+                                    <div className="text-[10px] opacity-80 font-normal">
+                                        {lang === "NEP" ? "सामान्य प्यान पसल" : "Standard Retail bills"}
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setTaxType("vat")}
+                                    className={`p-2.5 rounded-xl text-left border transition-all ${
+                                        taxType === "vat" 
+                                            ? "bg-primary/10 border-primary text-primary font-bold shadow-sm" 
+                                            : "bg-secondary/40 border-border text-muted-foreground hover:border-primary/40"
+                                    }`}
+                                >
+                                    <div className="text-xs font-bold">VAT (13%)</div>
+                                    <div className="text-[10px] opacity-80 font-normal">
+                                        {lang === "NEP" ? "कर बिजक (Tax Invoice)" : "Full 13% Tax Invoices"}
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>{taxType === "vat" ? (lang === "NEP" ? "PAN / VAT नम्बर (९ अंक)" : "VAT / PAN Number (9 Digits)") : t.panNo}</Label>
+                            <Input value={panNo} onChange={(e) => setPanNo(e.target.value)} placeholder={taxType === "vat" ? "Enter 9-digit VAT number..." : "Enter PAN number..."} />
                         </div>
 
                         <div className="pt-2 border-t space-y-2">
