@@ -586,25 +586,6 @@ export const AppShell = () => {
                                 })}
                             </nav>
 
-                            {/* Mobile App Install Button inside drawer */}
-                            <div className="px-3 pt-2">
-                                <button
-                                    onClick={() => {
-                                        setMobileMenuOpen(false);
-                                        setInstallModalOpen(true);
-                                    }}
-                                    className="w-full flex items-center justify-between p-3 rounded-xl bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-xs font-bold transition-all shadow-sm"
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="p-1 rounded-lg bg-primary text-primary-foreground">
-                                            <Smartphone className="h-4 w-4" />
-                                        </div>
-                                        <span>{lang === "NEP" ? "मोबाइल एप इन्स्टल गर्नुहोस् (QR)" : "Install Mobile App (QR)"}</span>
-                                    </div>
-                                    <QrCode className="h-4 w-4" />
-                                </button>
-                            </div>
-
                             {/* Mobile Language Switcher Row */}
                             <div className="px-6 py-4 border-t border-sidebar-border/60">
                                 <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
