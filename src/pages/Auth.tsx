@@ -295,14 +295,8 @@ const Auth = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-semibold text-muted-foreground">
-            <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> {t.trustTax}</span>
-            <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> {t.trustPrint}</span>
-            <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> {t.trustSync}</span>
-          </div>
-
           {/* Scannable Mobile Install App Card */}
-          <div className="hidden lg:block pt-1">
+          <div className="hidden lg:block pt-1.5">
             <InstallAppQRCard onOpenGuide={() => setInstallModalOpen(true)} />
           </div>
         </div>
