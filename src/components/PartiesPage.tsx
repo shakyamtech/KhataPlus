@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2 } from "lucide-react";
+import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
@@ -64,6 +64,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [analysisItems, setAnalysisItems] = useState<any[]>([]);
   const [busyAnalysis, setBusyAnalysis] = useState(false);
   const [activeTab, setActiveTab] = useState("ledger");
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     if (!user) return;
@@ -100,6 +101,14 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   };
   useEffect(() => { if (user) load(); }, [user]);
   useEffect(() => { if (open) { setBalanceType(type === "customer" ? "receivable" : "payable"); } }, [open, type]);
+
+  const filtered = items.filter((p) => {
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
+    const nameMatch = p.name.toLowerCase().includes(q);
+    const phoneMatch = p.phone ? p.phone.toLowerCase().includes(q) : false;
+    return nameMatch || phoneMatch;
+  });
 
   const openLedger = async (p: Party) => {
     setSelected(p);
@@ -1189,8 +1198,18 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         </Dialog>
       } />
 
+      <div className="relative max-w-sm mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input 
+          className="pl-9 bg-card border-border text-sm" 
+          placeholder={`Search ${type === "customer" ? "customers" : "suppliers"} by name or phone...`} 
+          value={search} 
+          onChange={(e) => setSearch(e.target.value)} 
+        />
+      </div>
+
       <div className="grid sm:grid-cols-2 gap-3">
-        {items.map((p) => (
+        {filtered.map((p) => (
           <Card key={p.id} className="p-4 shadow-card border border-transparent cursor-pointer hover:shadow-elegant hover:-translate-y-1 hover:border-primary/40 transition-all duration-300 outline-none group" onClick={() => openLedger(p)}>
             <div className="flex items-start justify-between">
               <div>
@@ -1263,7 +1282,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             </div>
           </DialogContent>
         </Dialog>
-        {items.length === 0 && <div className="col-span-full text-center text-muted-foreground py-12">No {type}s yet</div>}
+        {items.length === 0 ? (
+          <div className="col-span-full text-center text-muted-foreground py-12">No {type}s yet. Click + Add to add one.</div>
+        ) : filtered.length === 0 ? (
+          <div className="col-span-full text-center text-muted-foreground py-12">No {type}s found matching "{search}"</div>
+        ) : null}
       </div>
     </div>
   );
