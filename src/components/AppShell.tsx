@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck,
   BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
@@ -459,7 +460,7 @@ export const AppShell = () => {
                         </div>
                         <QrCode className="h-4 w-4 text-sidebar-foreground/60 group-hover:text-primary transition-colors" />
                     </button>
-                    <div className="px-1 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} 1.6.0</div>
+                    <div className="px-1 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} {lang === "NEP" ? APP_VERSION_NEP : APP_VERSION}</div>
                 </div>
             </aside>
 
@@ -628,7 +629,7 @@ export const AppShell = () => {
                             </div>
 
                             <div className="p-6 border-t border-sidebar-border mt-auto">
-                                <div className="px-1 mb-4 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} 1.6.0</div>
+                                <div className="px-1 mb-4 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} {lang === "NEP" ? APP_VERSION_NEP : APP_VERSION}</div>
                                 <Button className="w-full justify-start gap-3 h-12 rounded-xl shadow-lg bg-[#FACC15] hover:bg-[#EAB308] text-black border-none font-bold"
                                     onClick={async () => { await signOut(); navigate("/auth"); }}>
                                     <LogOut className="h-5 w-5" /> {t.signOut}
@@ -964,7 +965,7 @@ export const AppShell = () => {
                             KhataPlus POS
                         </DialogTitle>
                         <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                            {lang === "NEP" ? "संस्करण २.१.१" : "Version 2.1.1"}
+                            {lang === "NEP" ? `संस्करण ${APP_VERSION_NEP}` : `Version ${APP_VERSION}`}
                         </DialogDescription>
                     </DialogHeader>
                     
