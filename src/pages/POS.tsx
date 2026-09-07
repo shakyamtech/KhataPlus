@@ -139,7 +139,8 @@ const POS = () => {
           return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
         });
 
-        const combinedBatches = [...validBatches, ...invalidBatches];
+        // Keep all active batches, and limit 0-stock/expired historical batches to the 5 most recent in POS
+        const combinedBatches = [...validBatches, ...invalidBatches.slice(0, 5)];
 
         activeBatchesMap[productId] = combinedBatches.map((b: any) => ({
           id: b.id,
