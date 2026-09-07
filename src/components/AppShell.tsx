@@ -964,41 +964,92 @@ export const AppShell = () => {
                             KhataPlus POS
                         </DialogTitle>
                         <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                            {lang === "NEP" ? "संस्करण १.६.०" : "Version 1.6.0"}
+                            {lang === "NEP" ? "संस्करण २.१.१" : "Version 2.1.1"}
                         </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="py-4 space-y-4 w-full">
-                        <p className="text-sm text-muted-foreground leading-relaxed">
+                    <div className="py-3 space-y-3 w-full">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
                             {lang === "NEP" 
-                                ? "सबै प्रकारका व्यवसायहरूका लागि आधुनिक, छिटो र सरल बिलिङ र लेजर व्यवस्थापन प्रणाली।"
-                                : "A premium, super-fast point-of-sale (POS) and ledger bookkeeping solution tailored perfectly for all types of businesses."}
+                                ? "सबै प्रकारका व्यवसायहरूका लागि आधुनिक, छिटो र सरल बिलिङ, कर बिजक र लेजर व्यवस्थापन प्रणाली।"
+                                : "A premium, super-fast point-of-sale (POS), tax billing, and ledger bookkeeping solution tailored perfectly for all businesses."}
                         </p>
 
-                        <div className="bg-primary/5 rounded-xl p-4 text-left border border-primary/10">
-                            <div className="text-xs font-bold text-primary uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                <Sparkles className="h-3.5 w-3.5" /> {lang === "NEP" ? "नयाँ के छ?" : "What's New?"}
+                        <div className="bg-primary/5 rounded-xl p-3.5 text-left border border-primary/10">
+                            <div className="text-xs font-bold text-primary uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                                <span className="flex items-center gap-1.5">
+                                    <Sparkles className="h-3.5 w-3.5" /> {lang === "NEP" ? "अपडेट इतिहास (Changelog)" : "Release History"}
+                                </span>
+                                <span className="text-[10px] font-semibold text-muted-foreground lowercase">
+                                    {lang === "NEP" ? "तल स्क्रोल गर्नुहोस्" : "scroll for history"}
+                                </span>
                             </div>
-                            <ul className="text-[13px] text-muted-foreground space-y-1.5 list-disc list-inside">
-                                <li>{lang === "NEP" ? "नयाँ FIFO (First-In, First-Out) प्रणाली लागू" : "New FIFO Batch Tracking System"}</li>
-                                <li>{lang === "NEP" ? "सटिक नाफा-नोक्सान रिपोर्टिङ" : "Accurate Profit & Loss Calculation"}</li>
-                                <li>{lang === "NEP" ? "रेसिपी (Manufactured Products) हटाइयो" : "Removed Manufactured Products"}</li>
-                                <li>{lang === "NEP" ? "बारकोड स्क्यानर समर्थन (अझै सुधारिएको)" : "Improved Barcode Scanner Support"}</li>
-                                {!hasMigrated && (
-                                    <li className="text-destructive font-bold">
-                                        {lang === "NEP" ? "कृपया Profile बाट 'Migrate to Batches' मा क्लिक गर्नुहोस्!" : "Please click 'Migrate to Batches' from Profile Menu!"}
-                                    </li>
-                                )}
-                            </ul>
+
+                            <div className="max-h-56 overflow-y-auto pr-1 space-y-3 text-xs divide-y divide-border/30">
+                                {/* Version 2.1.1 */}
+                                <div className="space-y-1.5 pt-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-bold text-foreground flex items-center gap-1.5">
+                                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                                            v2.1.1 <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">{lang === "NEP" ? "हालको (Latest)" : "Latest"}</span>
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground font-medium">07 Sep 2026</span>
+                                    </div>
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1 list-disc list-inside">
+                                        <li>{lang === "NEP" ? "VAT (१३%) दर्ता र POS मा कर बिजक छनोट प्रणाली" : "VAT (13%) vs PAN Registration & Dual POS Billing"}</li>
+                                        <li>{lang === "NEP" ? "आधिकारिक Full A4 कर बिजक (Buyer PAN, Address र शब्दमा रकम)" : "Official Nepal A4 Tax Invoice (कर बिजक with Buyer PAN & Words)"}</li>
+                                        <li>{lang === "NEP" ? "भ्याट सामानहरूका लागि HS Code समर्थन" : "HS Code Support for VAT Registered Products"}</li>
+                                        <li>{lang === "NEP" ? "ग्राहक, आपूर्तिकर्ता, क्यासबुक र खरिदमा रियल-टाइम सर्च" : "Instant Search in Customers, Suppliers, Cashbook & Purchases"}</li>
+                                        <li>{lang === "NEP" ? "स्मार्ट ब्याच ट्र्याकिङ (FEFO/FIFO अटो-सेलेक्सन र ० स्टक फिल्टर)" : "Smart Batch Management (FEFO/FIFO + 0-stock disabling)"}</li>
+                                    </ul>
+                                </div>
+
+                                {/* Version 2.0.0 */}
+                                <div className="space-y-1.5 pt-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-foreground">v2.0.0</span>
+                                        <span className="text-[10px] text-muted-foreground font-medium">Aug 2026</span>
+                                    </div>
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1 list-disc list-inside">
+                                        <li>{lang === "NEP" ? "रियल-टाइम मल्टी-डिभाइस सिंक र अफलाइन गति सुधार" : "Realtime Multi-Device Sync & Offline PWA Optimization"}</li>
+                                        <li>{lang === "NEP" ? "थर्मल प्रिन्टर (POS Receipt) र कस्टम युनिट्स व्यवस्थापन" : "Thermal Receipt Printing & Custom Product Units"}</li>
+                                        <li>{lang === "NEP" ? "डेबुक, क्यासबुक र पार्टी लेजर विश्लेषण" : "Advanced Cashbook & Party Ledger Analytics"}</li>
+                                    </ul>
+                                </div>
+
+                                {/* Version 1.6.0 */}
+                                <div className="space-y-1.5 pt-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-foreground">v1.6.0</span>
+                                        <span className="text-[10px] text-muted-foreground font-medium">Jul 2026</span>
+                                    </div>
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1 list-disc list-inside">
+                                        <li>{lang === "NEP" ? "नयाँ FIFO (First-In, First-Out) ब्याच प्रणाली लागू" : "FIFO Batch Tracking System"}</li>
+                                        <li>{lang === "NEP" ? "सटिक नाफा-नोक्सान (Profit & Loss) गणना" : "Accurate Profit & Loss Calculation"}</li>
+                                        <li>{lang === "NEP" ? "बारकोड स्क्यानर समर्थनमा विशेष सुधार" : "Improved Barcode Scanner Support"}</li>
+                                    </ul>
+                                </div>
+
+                                {/* Version 1.0.0 */}
+                                <div className="space-y-1.5 pt-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-foreground">v1.0.0</span>
+                                        <span className="text-[10px] text-muted-foreground font-medium">Initial Release</span>
+                                    </div>
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1 list-disc list-inside">
+                                        <li>{lang === "NEP" ? "KhataPlus POS तथा डिजिटल खाता प्रणालीको सुरुआत" : "Initial Release of KhataPlus POS & Ledger Management"}</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div className="p-4 rounded-xl bg-secondary/60 border border-border/40 backdrop-blur-sm space-y-1">
-                            <div className="text-xs text-muted-foreground font-medium">
+                        <div className="p-3 rounded-xl bg-secondary/60 border border-border/40 backdrop-blur-sm space-y-0.5">
+                            <div className="text-[11px] text-muted-foreground font-medium">
                                 {lang === "NEP" ? "द्वारा विकसित:" : "Developed By:"}
                             </div>
-                            <a href="https://shakyamahesh.com.np" target="_blank" rel="noopener noreferrer" className="group inline-flex items-center justify-center gap-1.5 text-base font-extrabold text-primary hover:text-primary/80 underline decoration-primary/30 hover:decoration-primary/80 underline-offset-4 transition-all duration-300">
+                            <a href="https://shakyamahesh.com.np" target="_blank" rel="noopener noreferrer" className="group inline-flex items-center justify-center gap-1.5 text-sm font-extrabold text-primary hover:text-primary/80 underline decoration-primary/30 hover:decoration-primary/80 underline-offset-4 transition-all duration-300">
                                 <span>Mahesh Shakya</span>
-                                <ArrowRight className="h-4 w-4 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" />
+                                <ArrowRight className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" />
                             </a>
                         </div>
                         
@@ -1010,7 +1061,7 @@ export const AppShell = () => {
                     <DialogFooter className="w-full sm:justify-center">
                         <Button 
                             onClick={() => setAboutOpen(false)} 
-                            className="bg-primary text-primary-foreground font-semibold px-8"
+                            className="bg-primary text-primary-foreground font-semibold px-8 h-9 text-xs"
                         >
                             {lang === "NEP" ? "बन्द गर्नुहोस्" : "Close"}
                         </Button>
