@@ -111,19 +111,19 @@ const POS = () => {
         let validStock = 0;
         let hasExpired = false;
 
-        const validBatches = pBatches.filter((b: any) => {
-          if (b.remaining_qty > 0) {
-            if (b.expiry_date && new Date(b.expiry_date) < now) {
-              hasExpired = true;
-              return false;
-            }
-            return true;
-          }
-          return false;
-        });
+        const validBatches: any[] = [];
+        const invalidBatches: any[] = [];
 
-        validBatches.forEach((b: any) => {
-          validStock += Number(b.remaining_qty) || 0;
+        pBatches.forEach((b: any) => {
+          const rem = Number(b.remaining_qty) || 0;
+          const isExp = b.expiry_date && new Date(b.expiry_date) < now;
+          if (rem > 0 && !isExp) {
+            validBatches.push(b);
+            validStock += rem;
+          } else {
+            if (isExp && rem > 0) hasExpired = true;
+            invalidBatches.push(b);
+          }
         });
 
         validBatches.sort((a: any, b: any) => {
@@ -135,7 +135,13 @@ const POS = () => {
           return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
         });
 
-        activeBatchesMap[productId] = validBatches.map((b: any) => ({
+        invalidBatches.sort((a: any, b: any) => {
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        });
+
+        const combinedBatches = [...validBatches, ...invalidBatches];
+
+        activeBatchesMap[productId] = combinedBatches.map((b: any) => ({
           id: b.id,
           batch_name: b.batch_name || "N/A",
           expiry_date: b.expiry_date || null,
@@ -261,8 +267,24 @@ const POS = () => {
     setCart((c) => c.map((i) => {
       if (i.product_id !== productId) return i;
       
+      if (batchId === "auto") {
+        const firstAvailable = i.available_batches?.find(b => (Number(b.remaining_qty) || 0) > 0);
+        return {
+          ...i,
+          selected_batch_id: "auto",
+          earliest_batch_name: firstAvailable?.batch_name || i.earliest_batch_name,
+          earliest_expiry: firstAvailable?.expiry_date || i.earliest_expiry,
+        };
+      }
+
       const selectedBatch = i.available_batches?.find(b => b.id === batchId);
-      const maxAvailable = selectedBatch ? selectedBatch.remaining_qty : getTotalAvailable(productId);
+      const remaining = Number(selectedBatch?.remaining_qty) || 0;
+      if (!selectedBatch || remaining <= 0) {
+        toast.error("Selected batch is out of stock");
+        return i;
+      }
+      
+      const maxAvailable = remaining;
       const currentQty = Number(i.qty) || 1;
       const newQty = Math.min(currentQty, maxAvailable);
       
@@ -803,11 +825,22 @@ const POS = () => {
                             <SelectItem value="auto" className="text-xs font-medium">
                               ⚡ Auto (FEFO: Earliest Expiry)
                             </SelectItem>
-                            {i.available_batches.map((b) => (
-                              <SelectItem key={b.id} value={b.id} className="text-xs">
-                                {b.batch_name} {b.expiry_date ? `(Exp: ${format(new Date(b.expiry_date), "dd MMM yyyy")})` : ''} · {b.remaining_qty} in stock
-                              </SelectItem>
-                            ))}
+                            {i.available_batches.map((b) => {
+                              const rem = Number(b.remaining_qty) || 0;
+                              const isOut = rem <= 0;
+                              const isExp = !!(b.expiry_date && new Date(b.expiry_date) < new Date());
+                              const isDisabled = isOut || isExp;
+                              return (
+                                <SelectItem 
+                                  key={b.id} 
+                                  value={b.id} 
+                                  disabled={isDisabled}
+                                  className={`text-xs ${isDisabled ? "opacity-50 line-through text-muted-foreground cursor-not-allowed" : ""}`}
+                                >
+                                  {b.batch_name} {b.expiry_date ? `(Exp: ${format(new Date(b.expiry_date), "dd MMM yyyy")})` : ''} · {fmtQty(rem)} in stock {isOut ? '(Out of stock)' : isExp ? '(Expired)' : ''}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </div>

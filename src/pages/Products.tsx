@@ -183,10 +183,15 @@ const Products = () => {
     try {
       const q = query(collection(db, "product_batches"), where("product_id", "==", p.id));
       const snap = await getDocs(q);
-      let items = snap.docs.map(d => d.data() as any);
-      items = items.filter(i => i.remaining_qty > 0);
-      items.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      setBatchesList(items);
+      const items = snap.docs.map(d => d.data() as any);
+      
+      const activeBatches = items.filter(i => (Number(i.remaining_qty) || 0) > 0);
+      const emptyBatches = items.filter(i => (Number(i.remaining_qty) || 0) <= 0);
+      
+      activeBatches.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+      emptyBatches.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      
+      setBatchesList([...activeBatches, ...emptyBatches]);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -446,25 +451,35 @@ const Products = () => {
               <div className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" /></div>
             ) : batchesList.length > 0 ? (
               <div className="space-y-2">
-                {batchesList.map((b, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-secondary rounded-lg border border-transparent hover:border-border transition-colors">
-                    <div className="min-w-0">
-                      <div className="font-semibold text-sm truncate">{b.batch_name || "N/A"}</div>
-                      <div className="text-xs text-muted-foreground flex gap-3">
-                        <span>Cost: {fmt(b.cost_price)}</span>
-                        {b.expiry_date && (
-                          <span className={`font-medium ${new Date(b.expiry_date) < new Date() ? 'text-red-500' : 'text-orange-500'}`}>
-                            Exp: {format(new Date(b.expiry_date), "dd MMM yyyy")}
-                          </span>
-                        )}
+                {batchesList.map((b, idx) => {
+                  const rem = Number(b.remaining_qty) || 0;
+                  const isOut = rem <= 0;
+                  const isFirstActive = idx === 0 && !isOut;
+                  return (
+                    <div key={idx} className={`flex items-center justify-between p-3 bg-secondary rounded-lg border transition-colors ${isOut ? 'opacity-60 border-dashed border-border' : 'border-transparent hover:border-border'}`}>
+                      <div className="min-w-0">
+                        <div className={`font-semibold text-sm truncate ${isOut ? 'line-through text-muted-foreground' : ''}`}>
+                          {b.batch_name || "N/A"}
+                        </div>
+                        <div className="text-xs text-muted-foreground flex gap-3">
+                          <span>Cost: {fmt(b.cost_price)}</span>
+                          {b.expiry_date && (
+                            <span className={`font-medium ${new Date(b.expiry_date) < new Date() ? 'text-red-500' : 'text-orange-500'}`}>
+                              Exp: {format(new Date(b.expiry_date), "dd MMM yyyy")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className={`font-bold ${isOut ? 'text-muted-foreground' : 'text-foreground'}`}>
+                          {fmtQty(rem)} {activeProduct?.unit}
+                        </div>
+                        {isFirstActive && <div className="text-[10px] text-green-600 uppercase font-bold tracking-wider">Next to sell</div>}
+                        {isOut && <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Out of stock</div>}
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-bold text-foreground">{fmtQty(b.remaining_qty)} {activeProduct?.unit}</div>
-                      {idx === 0 && <div className="text-[10px] text-green-600 uppercase font-bold tracking-wider">Next to sell</div>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center text-sm text-muted-foreground py-8 bg-secondary/50 rounded-lg border border-dashed">
