@@ -359,7 +359,11 @@ const POS = () => {
     }
   }
   const discountNum = Math.max(0, Math.min(typedDiscount > 0 ? typedDiscount : autoDiscount, subtotal));
-  const total = Math.round(subtotal - discountNum);
+  
+  const isVatInvoice = Boolean(shopInfo?.is_vat_registered && invoiceType === "tax_invoice");
+  const taxableSubtotal = Math.max(0, +(subtotal - discountNum).toFixed(2));
+  const vatAmountCalc = isVatInvoice ? +(taxableSubtotal * 0.13).toFixed(2) : 0;
+  const total = isVatInvoice ? +(taxableSubtotal + vatAmountCalc).toFixed(2) : Math.round(subtotal - discountNum);
 
   useEffect(() => {
     if (paymentMode !== "credit") {
@@ -371,7 +375,7 @@ const POS = () => {
     if (paymentMode === "credit") {
       setAmountPaid("0");
     }
-  }, [paymentMode, subtotal]);
+  }, [paymentMode, subtotal, isVatInvoice]);
 
   const saveNewCustomer = async () => {
     const nameTrim = newCustomerName.trim();
@@ -549,9 +553,9 @@ const POS = () => {
         costTotal += itemCostTotal;
       }
 
-      const isVatInvoice = shopInfo?.is_vat_registered && invoiceType === "tax_invoice";
-      const taxableAmount = isVatInvoice ? +(total / 1.13).toFixed(2) : null;
-      const vatAmount = isVatInvoice && taxableAmount !== null ? +(total - taxableAmount).toFixed(2) : null;
+      const isVatInvoice = Boolean(shopInfo?.is_vat_registered && invoiceType === "tax_invoice");
+      const taxableAmount = isVatInvoice ? taxableSubtotal : null;
+      const vatAmount = isVatInvoice ? vatAmountCalc : null;
 
       const batch = writeBatch(db);
       const saleRef = doc(collection(db, "sales"));
@@ -665,8 +669,8 @@ const POS = () => {
         let body = "";
 
         if (shop.is_vat_registered && invoiceType === "tax_invoice") {
-          const calcTaxable = taxableAmount ?? +(total / 1.13).toFixed(2);
-          const calcVat = vatAmount ?? +(total - calcTaxable).toFixed(2);
+          const calcTaxable = taxableAmount ?? taxableSubtotal;
+          const calcVat = vatAmount ?? vatAmountCalc;
           const formattedDate = format(new Date(), "dd/MM/yyyy");
           const formattedTime = format(new Date(), "hh:mm:ss a");
 
@@ -1234,8 +1238,8 @@ const POS = () => {
             )}
             {shopInfo?.is_vat_registered && invoiceType === "tax_invoice" && (
               <div className="pt-1 border-t text-xs space-y-1 text-muted-foreground">
-                <div className="flex justify-between"><span>Taxable Amount</span><span>{fmt(+(total / 1.13).toFixed(2))}</span></div>
-                <div className="flex justify-between"><span>13% VAT</span><span>{fmt(+(total - +(total / 1.13).toFixed(2)).toFixed(2))}</span></div>
+                <div className="flex justify-between"><span>Taxable Amount (करयोग्य)</span><span>{fmt(taxableSubtotal)}</span></div>
+                <div className="flex justify-between"><span>+13% VAT</span><span className="text-primary font-semibold">+ {fmt(vatAmountCalc)}</span></div>
               </div>
             )}
           </div>
