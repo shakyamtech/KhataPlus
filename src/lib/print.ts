@@ -231,6 +231,24 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       margin-top: 14px;
     }
 
+    table {
+      page-break-inside: auto;
+    }
+    tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    thead {
+      display: table-header-group;
+    }
+    tfoot {
+      display: table-footer-group;
+    }
+    .signature-box, .a4-signatures {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
     @media print {
       body {
         padding: 0;

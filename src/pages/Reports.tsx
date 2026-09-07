@@ -270,7 +270,7 @@ const Reports = () => {
         </div>
 
         <!-- Section 2: Purchase Register (अनुसूची ८) -->
-        <div style="margin-bottom:16px; page-break-inside:avoid;">
+        <div style="margin-bottom:16px;">
           <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:4px 8px; border:1px solid #111; border-bottom:none; display:flex; justify-content:space-between;">
             <span>२. खरिद खाता (Purchase Register - अनुसूची ८)</span>
             <span style="font-size:11px; font-weight:normal;">जम्मा खरिद बिल: ${vatTotals.purchasesList.length}</span>
@@ -303,7 +303,7 @@ const Reports = () => {
         </div>
 
         <!-- Section 3: Sales Register (अनुसूची ९) -->
-        <div style="margin-bottom:20px; page-break-inside:avoid;">
+        <div style="margin-bottom:20px;">
           <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:4px 8px; border:1px solid #111; border-bottom:none; display:flex; justify-content:space-between;">
             <span>३. बिक्री खाता (Sales Register - अनुसूची ९)</span>
             <span style="font-size:11px; font-weight:normal;">जम्मा बिक्री बिल: ${vatTotals.salesList.length}</span>
@@ -336,7 +336,7 @@ const Reports = () => {
         </div>
 
         <!-- Official Signatures -->
-        <div style="display:flex; justify-content:space-between; margin-top:28px; padding-top:10px; page-break-inside:avoid; font-size:11.5px;">
+        <div class="signature-box" style="display:flex; justify-content:space-between; margin-top:28px; padding-top:10px; font-size:11.5px;">
           <div style="border-top:1px dashed #444; width:150px; text-align:center; padding-top:4px;">
             तयार गर्ने (Prepared By)
           </div>
