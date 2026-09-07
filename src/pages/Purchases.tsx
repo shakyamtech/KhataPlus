@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon } from "lucide-react";
+import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -78,6 +78,7 @@ const Purchases = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [searchHistory, setSearchHistory] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [supplierId, setSupplierId] = useState<string>("none");
@@ -637,38 +638,69 @@ const Purchases = () => {
       )}
 
       <Card className="shadow-card border-0">
-        <div className="p-4 border-b font-display text-lg">Recent Purchases</div>
+        <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="font-display text-lg">Recent Purchases</div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input 
+              className="pl-8 h-8 text-xs bg-background/80 border-border" 
+              placeholder="Search by supplier or amount..." 
+              value={searchHistory} 
+              onChange={(e) => setSearchHistory(e.target.value)} 
+            />
+          </div>
+        </div>
         <div className="divide-y">
-          {history.map((h: any) => (
-            <div key={h.id} className="p-3 flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="font-medium truncate">{h.suppliers?.name ?? "—"}</div>
-                <div className="text-xs text-muted-foreground">{format(new Date(h.created_at), "dd MMM yyyy, hh:mm a")} · {paymentModeLabels[h.payment_mode] || h.payment_mode}</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="font-medium">{fmt(h.total)}</div>
-                <Button size="icon" variant="ghost" onClick={() => editPurchase(h)} className="h-8 w-8 text-muted-foreground"><Pencil className="h-4 w-4" /></Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete this purchase?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Stock will be reduced back, the cash entry removed, and any supplier credit reversed.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => removePurchase(h.id)}>Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </div>
-          ))}
-          {history.length === 0 && <div className="p-6 text-center text-muted-foreground text-sm">No purchases yet</div>}
+          {(() => {
+            const filteredHistory = history.filter((h: any) => {
+              const q = searchHistory.toLowerCase().trim();
+              if (!q) return true;
+              const supp = (h.suppliers?.name || "").toLowerCase();
+              const mode = (paymentModeLabels[h.payment_mode] || h.payment_mode || "").toLowerCase();
+              const amt = String(h.total);
+              const dateStr = h.created_at ? format(new Date(h.created_at), "dd MMM yyyy").toLowerCase() : "";
+              return supp.includes(q) || mode.includes(q) || amt.includes(q) || dateStr.includes(q);
+            });
+
+            return (
+              <>
+                {filteredHistory.map((h: any) => (
+                  <div key={h.id} className="p-3 flex items-center justify-between gap-2 hover:bg-secondary/20 transition-colors">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{h.suppliers?.name ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground">{format(new Date(h.created_at), "dd MMM yyyy, hh:mm a")} · {paymentModeLabels[h.payment_mode] || h.payment_mode}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium">{fmt(h.total)}</div>
+                      <Button size="icon" variant="ghost" onClick={() => editPurchase(h)} className="h-8 w-8 text-muted-foreground"><Pencil className="h-4 w-4" /></Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this purchase?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Stock will be reduced back, the cash entry removed, and any supplier credit reversed.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => removePurchase(h.id)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                ))}
+                {history.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">No purchases yet</div>
+                ) : filteredHistory.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">No purchases found matching "{searchHistory}"</div>
+                ) : null}
+              </>
+            );
+          })()}
         </div>
       </Card>
 

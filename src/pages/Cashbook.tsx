@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmt } from "@/lib/format";
-import { Plus, ArrowDownCircle, ArrowUpCircle, Wallet, Trash2, Printer, Loader2 } from "lucide-react";
+import { Plus, ArrowDownCircle, ArrowUpCircle, Wallet, Trash2, Printer, Loader2, Search } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
@@ -67,6 +67,7 @@ const Cashbook = () => {
   const [purchaseDetails, setPurchaseDetails] = useState<Record<string, { supplier: string; products: string; mode: string }>>({});
   const [paymentFilter, setPaymentFilter] = useState<"all" | "cash" | "esewa" | "khalti" | "bank" | "credit">("all");
   const [paymentMode, setPaymentMode] = useState<string>("cash");
+  const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -224,7 +225,22 @@ const Cashbook = () => {
 
   const filtered = dateFilteredRows
     .filter((r) => filter === "all" || r.direction === filter)
-    .filter((r) => paymentFilter === "all" || getRowPaymentMode(r) === paymentFilter);
+    .filter((r) => paymentFilter === "all" || getRowPaymentMode(r) === paymentFilter)
+    .filter((r) => {
+      const q = search.toLowerCase().trim();
+      if (!q) return true;
+      const sDetail = (r.category === "sale" || r.category === "sales") && r.reference_id ? salesDetails[r.reference_id] : null;
+      const pDetail = (r.category === "purchase" || r.category === "purchases") && r.reference_id ? purchaseDetails[r.reference_id] : null;
+      
+      const party = (sDetail ? sDetail.customer : pDetail ? pDetail.supplier : r.party_name || "").toLowerCase();
+      const category = (r.category || "").toLowerCase();
+      const note = (r.note || "").toLowerCase();
+      const products = (sDetail?.products || pDetail?.products || "").toLowerCase();
+      const mode = getRowPaymentMode(r).toLowerCase();
+      const amountStr = String(r.amount);
+
+      return party.includes(q) || category.includes(q) || note.includes(q) || products.includes(q) || mode.includes(q) || amountStr.includes(q);
+    });
 
   const resetForm = () => { 
     setEditId(null); setAmount(""); setNote(""); setCategory(""); setDirection("in"); setPartyId(null); setPaymentMode("cash");
@@ -664,25 +680,36 @@ const Cashbook = () => {
         </div>
       </Card>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-        <Tabs value={filter} onValueChange={(v: any) => setFilter(v)} className="w-fit">
-          <TabsList>
-            <TabsTrigger value="all">{lang === "NEP" ? "सबै" : "All"}</TabsTrigger>
-            <TabsTrigger value="in">{lang === "NEP" ? "भित्र" : "In"}</TabsTrigger>
-            <TabsTrigger value="out">{lang === "NEP" ? "बाहिर" : "Out"}</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium">{lang === "NEP" ? "क्रमबद्ध:" : "Sort:"}</span>
-          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-            <SelectTrigger className="w-[160px] h-9 bg-card">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">{lang === "NEP" ? "नयाँ पहिले" : "Newest First"}</SelectItem>
-              <SelectItem value="oldest">{lang === "NEP" ? "पुरानो पहिले" : "Oldest First"}</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            className="pl-9 h-9 bg-card border-border text-sm" 
+            placeholder={lang === "NEP" ? "खर्च, पार्टी, सामान वा नोट खोज्नुहोस्..." : "Search by note, party, item, category..."} 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 justify-between sm:justify-end">
+          <Tabs value={filter} onValueChange={(v: any) => setFilter(v)} className="w-fit">
+            <TabsList className="h-9">
+              <TabsTrigger value="all" className="text-xs">{lang === "NEP" ? "सबै" : "All"}</TabsTrigger>
+              <TabsTrigger value="in" className="text-xs">{lang === "NEP" ? "भित्र" : "In"}</TabsTrigger>
+              <TabsTrigger value="out" className="text-xs">{lang === "NEP" ? "बाहिर" : "Out"}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          <div className="flex items-center gap-1.5">
+            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <SelectTrigger className="w-[140px] h-9 bg-card text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest" className="text-xs">{lang === "NEP" ? "नयाँ पहिले" : "Newest First"}</SelectItem>
+                <SelectItem value="oldest" className="text-xs">{lang === "NEP" ? "पुरानो पहिले" : "Oldest First"}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -765,7 +792,11 @@ const Cashbook = () => {
           );
           });
         })()}
-        {filtered.length === 0 && <div className="p-6 text-center text-muted-foreground text-sm">No entries</div>}
+        {rows.length === 0 ? (
+          <div className="p-6 text-center text-muted-foreground text-sm">No entries yet</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-6 text-center text-muted-foreground text-sm">No entries found matching "{search}"</div>
+        ) : null}
       </Card>
     </div>
   );
