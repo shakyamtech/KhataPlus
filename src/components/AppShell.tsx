@@ -84,6 +84,16 @@ export const AppShell = () => {
     const [installModalOpen, setInstallModalOpen] = useState(false);
     const [hasMigrated, setHasMigrated] = useState(true);
 
+    const [taxInvoicePrefix, setTaxInvoicePrefix] = useState("TAX-");
+    const [taxInvoiceSuffix, setTaxInvoiceSuffix] = useState("");
+    const [taxInvoiceNextNo, setTaxInvoiceNextNo] = useState("1");
+    const [abbreviatedPrefix, setAbbreviatedPrefix] = useState("ABB-");
+    const [abbreviatedSuffix, setAbbreviatedSuffix] = useState("");
+    const [abbreviatedNextNo, setAbbreviatedNextNo] = useState("1");
+    const [billPrefix, setBillPrefix] = useState("BILL-");
+    const [billSuffix, setBillSuffix] = useState("");
+    const [billNextNo, setBillNextNo] = useState("1");
+
     const migrateToBatches = async () => {
         if (!user) return;
         try {
@@ -176,9 +186,18 @@ export const AppShell = () => {
                     setShopPhone(data.shop_phone || data.phone || "");
                     setShopAddress(data.shop_address || data.address || "");
                     setPanNo(data.pan_no || "");
-                    setFullName(data.full_name || "");
                     const isVat = data.tax_type === "vat" || data.is_vat_registered === true;
                     setTaxType(isVat ? "vat" : "pan");
+
+                    setTaxInvoicePrefix(data.tax_invoice_prefix ?? "TAX-");
+                    setTaxInvoiceSuffix(data.tax_invoice_suffix ?? "");
+                    setTaxInvoiceNextNo(String(data.tax_invoice_next_no ?? 1));
+                    setAbbreviatedPrefix(data.abbreviated_prefix ?? "ABB-");
+                    setAbbreviatedSuffix(data.abbreviated_suffix ?? "");
+                    setAbbreviatedNextNo(String(data.abbreviated_next_no ?? 1));
+                    setBillPrefix(data.bill_prefix ?? "BILL-");
+                    setBillSuffix(data.bill_suffix ?? "");
+                    setBillNextNo(String(data.bill_next_no ?? 1));
 
                     if (data.migrated_to_batches !== undefined) {
                         setHasMigrated(data.migrated_to_batches === true);
@@ -279,7 +298,16 @@ export const AppShell = () => {
                 shop_address: shopAddress.trim() || null,
                 pan_no: panNo,
                 tax_type: taxType,
-                is_vat_registered: taxType === "vat"
+                is_vat_registered: taxType === "vat",
+                tax_invoice_prefix: taxInvoicePrefix.trim() || "TAX-",
+                tax_invoice_suffix: taxInvoiceSuffix.trim(),
+                tax_invoice_next_no: Math.max(1, parseInt(taxInvoiceNextNo) || 1),
+                abbreviated_prefix: abbreviatedPrefix.trim() || "ABB-",
+                abbreviated_suffix: abbreviatedSuffix.trim(),
+                abbreviated_next_no: Math.max(1, parseInt(abbreviatedNextNo) || 1),
+                bill_prefix: billPrefix.trim() || "BILL-",
+                bill_suffix: billSuffix.trim(),
+                bill_next_no: Math.max(1, parseInt(billNextNo) || 1)
             }, { merge: true });
 
             setShopName(newName);
@@ -375,6 +403,16 @@ export const AppShell = () => {
                 chunk.forEach(d => pBatch.update(d.ref, { balance: 0 }));
                 await pBatch.commit();
             }
+
+            // 7. Reset bill numbering counters to 1
+            await setDoc(doc(db, "profiles", user.uid), {
+                tax_invoice_next_no: 1,
+                abbreviated_next_no: 1,
+                bill_next_no: 1
+            }, { merge: true });
+            setTaxInvoiceNextNo("1");
+            setAbbreviatedNextNo("1");
+            setBillNextNo("1");
 
             toast.success(lang === "NEP" ? "सबै कारोबार र लेजर सफलतापूर्वक रिसेट गरियो!" : "All transactions and ledgers reset successfully!");
             setShopOpen(false);
@@ -853,6 +891,162 @@ export const AppShell = () => {
                         <div className="space-y-2">
                             <Label>{taxType === "vat" ? (lang === "NEP" ? "PAN / VAT नम्बर (९ अंक)" : "VAT / PAN Number (9 Digits)") : t.panNo}</Label>
                             <Input value={panNo} onChange={(e) => setPanNo(e.target.value)} placeholder={taxType === "vat" ? "Enter 9-digit VAT number..." : "Enter PAN number..."} />
+                        </div>
+
+                        {/* Invoice Numbering & Prefix Configuration */}
+                        <div className="pt-3 border-t space-y-3">
+                            <div className="space-y-0.5">
+                                <Label className="text-xs font-bold text-foreground">
+                                    {lang === "NEP" ? "बिल नम्बरिङ र सिरिज व्यवस्थापन" : "Invoice Numbering & Prefix Settings"}
+                                </Label>
+                                <div className="text-[10px] text-muted-foreground leading-tight">
+                                    {lang === "NEP" ? "बिलको Prefix, Suffix र सिरियल नम्बर कन्फिगर गर्नुहोस्।" : "Configure bill prefix, suffix and next serial sequence."}
+                                </div>
+                            </div>
+
+                            {taxType === "vat" ? (
+                                <div className="space-y-3 bg-secondary/30 rounded-xl p-3 border">
+                                    {/* 1. Tax Invoice Config */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-bold text-primary">१. कर बिजक (Tax Invoice Series)</Label>
+                                            <span className="text-[10px] font-mono font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded">
+                                                Preview: {taxInvoicePrefix.trim() || "TAX-"}{String(Math.max(1, parseInt(taxInvoiceNextNo) || 1)).padStart(4, "0")}{taxInvoiceSuffix.trim()}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div>
+                                                <Label className="text-[10px] text-muted-foreground">Prefix</Label>
+                                                <Input 
+                                                    value={taxInvoicePrefix} 
+                                                    onChange={(e) => setTaxInvoicePrefix(e.target.value.toUpperCase())} 
+                                                    placeholder="TAX-" 
+                                                    className="h-8 text-xs font-mono"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label className="text-[10px] text-muted-foreground">Next No.</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    min={1} 
+                                                    value={taxInvoiceNextNo} 
+                                                    onChange={(e) => setTaxInvoiceNextNo(e.target.value)} 
+                                                    placeholder="1" 
+                                                    className="h-8 text-xs font-mono"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
+                                                <Input 
+                                                    value={taxInvoiceSuffix} 
+                                                    onChange={(e) => setTaxInvoiceSuffix(e.target.value.toUpperCase())} 
+                                                    placeholder="/81-82" 
+                                                    className="h-8 text-xs font-mono"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 2. Abbreviated Invoice Config */}
+                                    <div className="space-y-2 pt-2 border-t">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-bold text-foreground">२. संक्षिप्त कर बिजक (Abbreviated Series)</Label>
+                                            <span className="text-[10px] font-mono font-semibold bg-secondary text-foreground px-2 py-0.5 rounded border">
+                                                Preview: {abbreviatedPrefix.trim() || "ABB-"}{String(Math.max(1, parseInt(abbreviatedNextNo) || 1)).padStart(4, "0")}{abbreviatedSuffix.trim()}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div>
+                                                <Label className="text-[10px] text-muted-foreground">Prefix</Label>
+                                                <Input 
+                                                    value={abbreviatedPrefix} 
+                                                    onChange={(e) => setAbbreviatedPrefix(e.target.value.toUpperCase())} 
+                                                    placeholder="ABB-" 
+                                                    className="h-8 text-xs font-mono"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label className="text-[10px] text-muted-foreground">Next No.</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    min={1} 
+                                                    value={abbreviatedNextNo} 
+                                                    onChange={(e) => setAbbreviatedNextNo(e.target.value)} 
+                                                    placeholder="1" 
+                                                    className="h-8 text-xs font-mono"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
+                                                <Input 
+                                                    value={abbreviatedSuffix} 
+                                                    onChange={(e) => setAbbreviatedSuffix(e.target.value.toUpperCase())} 
+                                                    placeholder="/81-82" 
+                                                    className="h-8 text-xs font-mono"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2 bg-secondary/30 rounded-xl p-3 border">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold text-primary">बिक्री बिल सिरिज (Sales Bill Series)</Label>
+                                        <span className="text-[10px] font-mono font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded">
+                                            Preview: {billPrefix.trim() || "BILL-"}{String(Math.max(1, parseInt(billNextNo) || 1)).padStart(4, "0")}{billSuffix.trim()}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <Label className="text-[10px] text-muted-foreground">Prefix</Label>
+                                            <Input 
+                                                value={billPrefix} 
+                                                onChange={(e) => setBillPrefix(e.target.value.toUpperCase())} 
+                                                placeholder="BILL-" 
+                                                className="h-8 text-xs font-mono"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-[10px] text-muted-foreground">Next No.</Label>
+                                            <Input 
+                                                type="number" 
+                                                min={1} 
+                                                value={billNextNo} 
+                                                onChange={(e) => setBillNextNo(e.target.value)} 
+                                                placeholder="1" 
+                                                className="h-8 text-xs font-mono"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
+                                            <Input 
+                                                value={billSuffix} 
+                                                onChange={(e) => setBillSuffix(e.target.value.toUpperCase())} 
+                                                placeholder="/81-82" 
+                                                className="h-8 text-xs font-mono"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-between pt-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs h-7 text-muted-foreground hover:text-foreground"
+                                    onClick={() => {
+                                        setTaxInvoiceNextNo("1");
+                                        setAbbreviatedNextNo("1");
+                                        setBillNextNo("1");
+                                        toast.info(lang === "NEP" ? "काउन्टर १ मा सेट भयो। लागू गर्न सेभ गर्नुहोस्।" : "Counters set to 1. Click Save to apply.");
+                                    }}
+                                >
+                                    <RotateCcw className="h-3 w-3 mr-1" />
+                                    {lang === "NEP" ? "काउन्टर १ मा रिसेट गर्नुहोस्" : "Reset Counters to 1"}
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="pt-2 border-t space-y-2">

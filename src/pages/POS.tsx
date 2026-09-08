@@ -652,16 +652,46 @@ const POS = () => {
         costTotal += itemCostTotal;
       }
 
-      const isVatInvoice = Boolean(shopInfo?.is_vat_registered && invoiceType === "tax_invoice");
+      const shop = await getShopInfo();
+      const isVatInvoice = Boolean(shop.is_vat_registered && invoiceType === "tax_invoice");
+      const isAbbreviated = Boolean(shop.is_vat_registered && invoiceType === "abbreviated");
       const nonTaxableAmount = isVatInvoice ? calcNonTaxable : null;
       const taxableAmount = isVatInvoice ? calcTaxableNet : null;
       const vatAmount = isVatInvoice ? vatAmountCalc : null;
+
+      let prefix = "BILL-";
+      let suffix = "";
+      let counterField = "bill_next_no";
+      let currentNo = 1;
+
+      if (isVatInvoice) {
+        prefix = shop.tax_invoice_prefix ?? "TAX-";
+        suffix = shop.tax_invoice_suffix ?? "";
+        counterField = "tax_invoice_next_no";
+        currentNo = Number(shop.tax_invoice_next_no ?? 1);
+      } else if (isAbbreviated) {
+        prefix = shop.abbreviated_prefix ?? "ABB-";
+        suffix = shop.abbreviated_suffix ?? "";
+        counterField = "abbreviated_next_no";
+        currentNo = Number(shop.abbreviated_next_no ?? 1);
+      } else {
+        prefix = shop.bill_prefix ?? "BILL-";
+        suffix = shop.bill_suffix ?? "";
+        counterField = "bill_next_no";
+        currentNo = Number(shop.bill_next_no ?? 1);
+      }
+
+      if (isNaN(currentNo) || currentNo < 1) currentNo = 1;
+      const formattedNum = String(currentNo).padStart(4, "0");
+      const generatedBillNo = `${prefix}${formattedNum}${suffix}`;
 
       const batch = writeBatch(db);
       const saleRef = doc(collection(db, "sales"));
       
       batch.set(saleRef, {
         id: saleRef.id,
+        bill_no: generatedBillNo,
+        bill_sequence: currentNo,
         user_id: user!.uid,
         customer_id: customerId === "walk-in" ? null : customerId,
         payment_mode: paymentMode,
@@ -676,6 +706,11 @@ const POS = () => {
         taxable_amount: taxableAmount,
         vat_amount: vatAmount,
         created_at: new Date().toISOString()
+      });
+
+      // Increment profile sequence counter
+      batch.update(doc(db, "profiles", user!.uid), {
+        [counterField]: increment(1)
       });
 
       for (const si of finalSaleItems) {
@@ -708,7 +743,7 @@ const POS = () => {
           amount: paid,
           category: "sales",
           payment_mode: paymentMode,
-          note: `Sale ${saleRef.id}`,
+          note: `Sale #${generatedBillNo}`,
           reference_id: saleRef.id,
           created_at: new Date().toISOString()
         });
@@ -723,7 +758,7 @@ const POS = () => {
           party_type: "customer",
           entry_type: "sale",
           amount: total,
-          note: `Sale ${saleRef.id}`,
+          note: `Sale #${generatedBillNo}`,
           reference_id: saleRef.id,
           created_at: new Date().toISOString()
         });
@@ -737,7 +772,7 @@ const POS = () => {
             party_type: "customer",
             entry_type: "payment_in",
             amount: paid,
-            note: `Payment for sale ${saleRef.id}`,
+            note: `Payment for sale #${generatedBillNo}`,
             reference_id: saleRef.id,
             created_at: new Date().toISOString()
           });
@@ -746,13 +781,12 @@ const POS = () => {
 
       await batch.commit();
 
-      toast.success(`Sale complete — ${fmt(total)}`);
+      toast.success(`Sale complete — ${fmt(total)} (${generatedBillNo})`);
       
       try {
-        const shop = await getShopInfo();
         const customerName = customerId === "walk-in" ? "Walk-in" : (customers.find((c) => c.id === customerId)?.name ?? "Walk-in");
         const customerPhone = customerId !== "walk-in" ? customers.find((c) => c.id === customerId)?.phone : "";
-        const billNo = saleRef.id.slice(-6).toUpperCase();
+        const billNo = generatedBillNo;
 
         const dueAmount = total - paid;
         const changeAmount = Number(tendered || 0) - paid;

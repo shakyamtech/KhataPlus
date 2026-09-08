@@ -207,7 +207,7 @@ const Reports = () => {
       <tr>
         <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
         <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</td>
-        <td style="text-align:center; font-family:monospace; font-weight:600; border:1px solid #111; padding:5px 6px;">${s.id.slice(-6).toUpperCase()}</td>
+        <td style="text-align:center; font-family:monospace; font-weight:600; border:1px solid #111; padding:5px 6px;">${escapeHtml(s.bill_no || s.id.slice(-6).toUpperCase())}</td>
         <td style="border:1px solid #111; padding:5px 6px;"><strong>${escapeHtml(s.customerName)}</strong></td>
         <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(s.customerPan)}</td>
         <td style="text-align:right; border:1px solid #111; padding:5px 6px;">${(s.taxable || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -635,7 +635,7 @@ const Reports = () => {
                         <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
                           {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
                         </td>
-                        <td className="p-3 font-mono font-semibold text-primary">{s.id.slice(-6).toUpperCase()}</td>
+                        <td className="p-3 font-mono font-semibold text-primary">{s.bill_no || s.id.slice(-6).toUpperCase()}</td>
                         <td className="p-3 font-semibold text-foreground truncate max-w-[160px]">{s.customerName}</td>
                         <td className="p-3 text-muted-foreground font-mono">{s.customerPan}</td>
                         <td className="p-3 text-right font-medium">{fmt(s.taxable)}</td>
