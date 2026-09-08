@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon, Search, Receipt, FileText } from "lucide-react";
+import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon, Search, Receipt, FileText, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { ProductFormModal } from "@/components/ProductFormModal";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
+import { printPurchaseVoucher } from "@/lib/invoicePrinter";
 
 type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null; has_expiry?: boolean };
 type Supplier = { id: string; name: string };
@@ -511,6 +512,51 @@ const Purchases = () => {
     }
   };
 
+  const handlePrintPurchase = async (h: any) => {
+    try {
+      const shop = await getShopInfo();
+      const piQ = query(collection(db, "purchase_items"), where("purchase_id", "==", h.id));
+      const piSnap = await getDocs(piQ);
+      const itemsList = piSnap.docs.map(d => {
+        const data = d.data();
+        const price = Number(data.cost_price ?? data.price ?? 0);
+        const qty = Number(data.qty ?? data.quantity ?? 1);
+        return {
+          product_name: data.product_name || "Item",
+          qty,
+          unit: data.unit || "pcs",
+          price,
+          total: price * qty
+        };
+      });
+
+      const supp = suppliers.find(s => s.id === h.supplier_id);
+
+      printPurchaseVoucher({
+        shop,
+        supplier: {
+          name: supp?.name || h.suppliers?.name || "Supplier",
+          phone: (supp as any)?.phone || null,
+          pan: (supp as any)?.pan || null,
+          address: (supp as any)?.address || null
+        },
+        voucherNo: h.id.slice(-6).toUpperCase(),
+        supplierBillNo: h.supplier_bill_no,
+        date: h.created_at,
+        paymentMode: h.payment_mode || "cash",
+        items: itemsList,
+        total: Number(h.total || 0),
+        paidAmount: Number(h.amount_paid || 0),
+        taxableAmount: h.taxable_amount,
+        vatAmount: h.vat_amount,
+        note: h.note,
+        isVatBill: Boolean(h.is_vat_bill)
+      });
+    } catch (e: any) {
+      toast.error("Failed to print purchase voucher: " + e.message);
+    }
+  };
+
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <PageHeader title="Purchases" subtitle="Stock-in from suppliers" actions={
@@ -796,8 +842,11 @@ const Purchases = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="font-medium">{fmt(h.total)}</div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="font-medium mr-1">{fmt(h.total)}</div>
+                      <Button size="icon" variant="ghost" title="Print Purchase Voucher" onClick={() => handlePrintPurchase(h)} className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10">
+                        <Printer className="h-4 w-4" />
+                      </Button>
                       <Button size="icon" variant="ghost" onClick={() => editPurchase(h)} className="h-8 w-8 text-muted-foreground"><Pencil className="h-4 w-4" /></Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

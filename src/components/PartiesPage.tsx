@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo } from "@/lib/shop";
-import { printSaleInvoice } from "@/lib/invoicePrinter";
+import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,6 +48,8 @@ type Entry = {
   buyer_address?: string | null;
   taxable_amount?: number;
   vat_amount?: number;
+  is_vat_bill?: boolean;
+  supplier_bill_no?: string;
 };
 
 export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
@@ -254,6 +256,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             due_amount: dueAmt,
             created_at: pu.created_at,
             note: pu.note,
+            is_vat_bill: pu.is_vat_bill,
+            supplier_bill_no: pu.supplier_bill_no,
+            taxable_amount: pu.taxable_amount,
+            vat_amount: pu.vat_amount,
             order_items: orderItems,
             products: orderItems.map(it => `${it.product_name} ×${it.qty}`).join(", ")
           });
@@ -547,87 +553,38 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           invoiceType: e.invoice_type
         });
         return;
+      } else {
+        // Universal Centralized Purchase Inward Voucher Printer (खरिद भौचर)
+        printPurchaseVoucher({
+          shop,
+          supplier: {
+            name: selected.name,
+            phone: selected.phone,
+            pan: selected.pan,
+            address: selected.address
+          },
+          voucherNo: e.id.slice(-6).toUpperCase(),
+          supplierBillNo: e.supplier_bill_no,
+          date: e.created_at,
+          paymentMode: e.payment_mode || "cash",
+          items: (e.order_items || []).map(it => ({
+            product_name: it.product_name,
+            qty: it.qty,
+            unit: it.unit,
+            price: Number(it.price || 0),
+            total: it.total ?? (Number(it.qty) * Number(it.price || 0)),
+            hs_code: it.hs_code
+          })),
+          total: e.amount,
+          paidAmount: e.paid_amount,
+          dueAmount: e.due_amount,
+          taxableAmount: e.taxable_amount,
+          vatAmount: e.vat_amount,
+          note: e.note,
+          isVatBill: e.is_vat_bill
+        });
+        return;
       }
-
-      const billTitle = "Purchase Bill";
-      const docTypeLabel = "Purchase Invoice / Receipt";
-
-      const rows = (e.order_items && e.order_items.length > 0)
-        ? e.order_items.map((it, idx) => `
-            <tr>
-              <td style="width:20px; color:#9ca3af; font-size:11px;">${idx + 1}</td>
-              <td class="item-name">${escapeHtml(it.product_name)}</td>
-              <td class="num">${fmtQty(it.qty)} <span style="font-size:10px; color:#6b7280;">${escapeHtml(it.unit)}</span></td>
-              <td class="num">${it.price ? fmt(it.price) : "-"}</td>
-              <td class="num" style="font-weight:700;">${it.total ? fmt(it.total) : (it.price ? fmt(it.price * it.qty) : "-")}</td>
-            </tr>
-          `).join("")
-        : `<tr><td colspan="5" style="text-align:center; padding:12px; color:#6b7280;">${escapeHtml(e.products || e.title)}</td></tr>`;
-
-      const body = `
-        <div class="receipt-card">
-          <div class="shop-header">
-            <div class="shop-title">${escapeHtml(shop.name)}</div>
-            <div class="shop-meta">
-              ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
-              ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
-              <div>${docTypeLabel}</div>
-            </div>
-          </div>
-
-          <div class="bill-info">
-            <div class="bill-info-item">
-              <span class="bill-info-label">Supplier</span>
-              <span class="bill-info-value">${escapeHtml(selected.name)}</span>
-            </div>
-            <div class="bill-info-item" style="text-align:right;">
-              <span class="bill-info-label">Date & Time</span>
-              <span class="bill-info-value">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}</span>
-            </div>
-            ${selected.phone ? `
-            <div class="bill-info-item" style="margin-top:4px;">
-              <span class="bill-info-label">Contact</span>
-              <span class="bill-info-value">${escapeHtml(selected.phone)}</span>
-            </div>
-            ` : `<div></div>`}
-            <div class="bill-info-item" style="text-align:right; margin-top:4px;">
-              <span class="bill-info-label">Payment Mode</span>
-              <span class="bill-info-value" style="text-transform:uppercase;">${escapeHtml(e.payment_mode || "Cash")}</span>
-            </div>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th style="width:20px;">#</th>
-                <th>Item</th>
-                <th class="num">Qty</th>
-                <th class="num">Rate</th>
-                <th class="num">Total</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-
-          <div class="summary-section">
-            <div class="summary-row grand-total"><span>Total Bill Amount</span><span>${fmt(e.amount)}</span></div>
-            ${(Number(e.paid_amount || 0) > 0 || Number(e.due_amount || 0) > 0) ? `
-              <div class="summary-row paid"><span>Paid Amount</span><span>${fmt(e.paid_amount ?? e.amount)}</span></div>
-              ${Number(e.due_amount || 0) > 0 ? `
-                <div class="summary-row due"><span>Due Amount</span><span>${fmt(e.due_amount!)}</span></div>
-              ` : ""}
-            ` : ""}
-          </div>
-
-          ${e.note ? `<div style="font-size:11.5px; color:#4b5563; margin-bottom:12px; font-style:italic;">Note: ${escapeHtml(e.note)}</div>` : ""}
-
-          <div class="receipt-footer">
-            <div class="footer-highlight">Thank you for your business!</div>
-            <div class="brand-tag">KhataPlus Store Management System</div>
-          </div>
-        </div>
-      `;
-      printHTML(`${selected.name} — ${billTitle}`, body);
 
     } else {
       const isReceived = type === "customer";

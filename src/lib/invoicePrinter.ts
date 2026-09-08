@@ -348,3 +348,225 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
     printHTML(fileName, body, { paperSize: "receipt" });
   }
 };
+
+export interface PurchaseVoucherData {
+  shop: InvoiceShopInfo;
+  supplier: {
+    name: string;
+    phone?: string | null;
+    pan?: string | null;
+    address?: string | null;
+  };
+  voucherNo: string;
+  supplierBillNo?: string | null;
+  date: Date | string;
+  paymentMode: string;
+  items: InvoiceItem[];
+  subtotal?: number;
+  taxableAmount?: number;
+  vatAmount?: number;
+  total: number;
+  paidAmount?: number;
+  dueAmount?: number;
+  note?: string | null;
+  isVatBill?: boolean;
+}
+
+/**
+ * Official Nepal Standard Purchase Inward Voucher Printer (खरिद भौचर).
+ * Perfect for internal office/store filing, physical stock verification, and auditor filing.
+ */
+export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
+  const {
+    shop,
+    supplier,
+    voucherNo,
+    supplierBillNo,
+    date,
+    paymentMode,
+    items,
+    total,
+    isVatBill
+  } = data;
+
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  const formattedDate = format(dateObj, "dd/MM/yyyy");
+  const formattedTime = format(dateObj, "hh:mm:ss a");
+
+  const rawSubtotal = items.reduce((sum, it) => sum + (it.total ?? (Number(it.qty) * Number(it.price))), 0);
+  const subtotal = data.subtotal ?? rawSubtotal;
+
+  const calcTaxable = data.taxableAmount !== undefined
+    ? Number(data.taxableAmount)
+    : (isVatBill ? subtotal / 1.13 : subtotal);
+  const calcVat = data.vatAmount !== undefined
+    ? Number(data.vatAmount)
+    : (isVatBill ? subtotal - calcTaxable : 0);
+
+  const paidAmt = data.paidAmount ?? 0;
+  const dueAmt = data.dueAmount ?? Math.max(0, total - paidAmt);
+
+  const supplierName = supplier.name || "Supplier";
+  const supplierPhone = supplier.phone || "";
+  const supplierPan = (supplier.pan || "").trim();
+  const supplierAddress = (supplier.address || "").trim();
+
+  const a4Rows = items.length > 0
+    ? items.map((i, idx) => `
+      <tr class="a4-item-row">
+        <td class="center" style="width:45px;">${idx + 1}</td>
+        <td><strong>${escapeHtml(i.product_name)}</strong></td>
+        <td class="num" style="width:70px;">${fmtQty(i.qty)}</td>
+        <td class="center" style="width:60px;">${escapeHtml(i.unit || "Pcs")}</td>
+        <td class="num" style="width:95px;">${(Number(i.price) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td class="num" style="width:110px; font-weight:700;">${((Number(i.qty) || 0) * (Number(i.price) || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      </tr>
+    `).join("")
+    : `<tr class="a4-item-row"><td colspan="6" style="text-align:center; padding:16px; color:#6b7280;">General Purchase Inward</td></tr>`;
+
+  const body = `
+    <div class="a4-container">
+      <div>
+        <div class="a4-header">
+          <div class="a4-company-name">${escapeHtml(shop.name)}</div>
+          ${shop.address ? `<div class="a4-company-address">${escapeHtml(shop.address)}</div>` : ""}
+          ${shop.phone ? `<div class="a4-company-phone">Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
+        </div>
+
+        <div class="a4-top-meta">
+          <div class="a4-vat-tag">VAT / PAN : <strong>${escapeHtml(shop.pan || "N/A")}</strong></div>
+          <div class="a4-title-center">PURCHASE VOUCHER (खरिद भौचर)</div>
+          <div class="a4-copy-tag">Store / Office Copy</div>
+        </div>
+
+        <div class="a4-boxes-grid">
+          <div class="a4-box">
+            <div class="a4-box-title">Supplier Details</div>
+            <div class="a4-box-content">
+              <div class="a4-cust-name">${escapeHtml(supplierName)}</div>
+              ${supplierAddress ? `<div class="a4-box-row"><span>Address :</span><span>${escapeHtml(supplierAddress)}</span></div>` : ""}
+              <div class="a4-box-row"><span>Phone :</span><span>${escapeHtml(supplierPhone || "-")}</span></div>
+              <div class="a4-box-row"><span>VAT / PAN :</span><span>${escapeHtml(supplierPan || "-")}</span></div>
+            </div>
+          </div>
+
+          <div class="a4-box">
+            <div class="a4-box-title">Voucher & Bill Details</div>
+            <div class="a4-box-content">
+              <div class="a4-box-row"><span>Inward No :</span><span>#${escapeHtml(voucherNo)}</span></div>
+              <div class="a4-box-row"><span>Supplier Bill No :</span><span>${escapeHtml(supplierBillNo || "N/A")}</span></div>
+              <div class="a4-box-row"><span>Date :</span><span>${formattedDate}</span></div>
+              <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode || "Cash")}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="a4-bill-type-row">
+          Purchase Type: &nbsp;<strong>${isVatBill ? "VAT Purchase (13% Inward Claim)" : "Non-VAT / General Inward"}</strong>
+        </div>
+
+        <div class="a4-table-box">
+          <table class="a4-tax-table">
+            <thead>
+              <tr>
+                <th style="width:45px;" class="center">S.No</th>
+                <th>Particulars (Item Inward)</th>
+                <th style="width:70px;" class="num">Qty</th>
+                <th style="width:60px;" class="center">Unit</th>
+                <th style="width:95px;" class="num">Cost Rate</th>
+                <th style="width:110px;" class="num">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${a4Rows}
+              <tr class="a4-filler-row">
+                <td>&nbsp;</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="a4-summary-grid">
+          <div class="a4-summary-left">
+            <div class="a4-print-date">
+              <strong>INWARD DATE & TIME:</strong> &nbsp;${formattedTime}&nbsp;&nbsp;${formattedDate}
+            </div>
+            <div class="a4-total-badge-box">
+              <div class="a4-total-label">TOTAL :</div>
+              <div class="a4-total-amount">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            </div>
+            <div class="a4-remarks-line">
+              <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (supplierBillNo ? `Supplier Invoice #${supplierBillNo}` : "Stock Inward Entry")}
+            </div>
+          </div>
+
+          <div class="a4-summary-right">
+            <table class="a4-calc-table">
+              <tbody>
+                <tr>
+                  <td class="label">Basic Amount</td>
+                  <td class="val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td class="label">Taxable Amount</td>
+                  <td class="val">${(calcTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td class="label">VAT @13%</td>
+                  <td class="val">${(calcVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                <tr class="net-row">
+                  <td class="label">Net Purchase</td>
+                  <td class="val">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td class="label">Paid to Supplier</td>
+                  <td class="val">${fmt(paidAmt)}</td>
+                </tr>
+                ${dueAmt > 0 ? `
+                  <tr>
+                    <td class="label" style="color:#b91c1c; font-weight:700;">Payable (Due)</td>
+                    <td class="val" style="color:#b91c1c; font-weight:700;">${fmt(dueAmt)}</td>
+                  </tr>
+                ` : ""}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="a4-words-bar">
+          <strong>In Words:</strong> ${escapeHtml(numberToWords(total))}
+        </div>
+
+        <div class="a4-eoe">E. O. & E. · Goods Inward Voucher</div>
+      </div>
+
+      <div>
+        <div class="a4-sign-grid">
+          <div class="a4-sign-col">
+            <div class="a4-sign-line">Received By (Store)</div>
+          </div>
+          <div class="a4-sign-col">
+            <div class="a4-sign-line">Entered By</div>
+          </div>
+          <div class="a4-sign-col">
+            <div class="a4-sign-line">Verified By</div>
+          </div>
+          <div class="a4-sign-col">
+            <div class="a4-sign-line">Authorized Signature</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const safeSuppName = supplierName.replace(/[^a-zA-Z0-9_\s-]/g, "").trim().replace(/\s+/g, "_") || "Supplier";
+  const fileName = `${safeSuppName}_PurchaseVoucher_${voucherNo}`;
+  printHTML(fileName, body, { paperSize: "a4" });
+};
+
