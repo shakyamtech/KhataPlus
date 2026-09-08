@@ -48,7 +48,7 @@ type Product = {
   is_expiring_soon?: boolean;
   active_batches?: ActiveBatch[];
 };
-type Customer = { id: string; name: string; phone?: string };
+type Customer = { id: string; name: string; phone?: string; pan?: string; address?: string };
 type CartItem = { 
   product_id: string; 
   product_name: string; 
@@ -86,6 +86,19 @@ const POS = () => {
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [busyCustomer, setBusyCustomer] = useState(false);
+
+  useEffect(() => {
+    if (customerId === "walk-in") {
+      setBuyerPan("");
+      setBuyerAddress("");
+    } else {
+      const c = customers.find(x => x.id === customerId);
+      if (c) {
+        setBuyerPan(c.pan || "");
+        setBuyerAddress(c.address || "");
+      }
+    }
+  }, [customerId, customers]);
 
   const load = async () => {
     if (!user) return;
