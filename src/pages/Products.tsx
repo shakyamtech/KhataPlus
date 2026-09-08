@@ -91,16 +91,33 @@ const Products = () => {
 
   const remove = async (id: string) => {
     try {
-      const [siSnap, piSnap, pbSnap, ingSnap] = await Promise.all([
-        getDocs(query(collection(db, "sale_items"), where("product_id", "==", id))),
-        getDocs(query(collection(db, "purchase_items"), where("product_id", "==", id))),
+      const [siSnap, piSnap] = await Promise.all([
+        getDocs(query(collection(db, "sale_items"), where("product_id", "==", id), limit(1))),
+        getDocs(query(collection(db, "purchase_items"), where("product_id", "==", id), limit(1)))
+      ]);
+
+      if (!siSnap.empty) {
+        return toast.error(
+          lang === "NEP"
+            ? "यो सामानको बिक्री (Sales) भइसकेको छ। बिल र लेखा हिसाब सुरक्षित राख्न यसलाई डिलिट गर्न मिल्दैन।"
+            : "This product has existing sales transactions. It cannot be deleted to preserve invoice and ledger integrity."
+        );
+      }
+
+      if (!piSnap.empty) {
+        return toast.error(
+          lang === "NEP"
+            ? "यो सामानको खरिद (Purchase) भइसकेको छ। खरिद बिल र सप्लायर हिसाब सुरक्षित राख्न यसलाई डिलिट गर्न मिल्दैन।"
+            : "This product has existing purchase entries. It cannot be deleted to preserve purchase and supplier ledger integrity."
+        );
+      }
+
+      const [pbSnap, ingSnap] = await Promise.all([
         getDocs(query(collection(db, "product_batches"), where("product_id", "==", id))),
         getDocs(query(collection(db, "product_ingredients"), where("product_id", "==", id)))
       ]);
 
       const batch = writeBatch(db);
-      siSnap.forEach(d => batch.delete(d.ref));
-      piSnap.forEach(d => batch.delete(d.ref));
       pbSnap.forEach(d => batch.delete(d.ref));
       ingSnap.forEach(d => batch.delete(d.ref));
       batch.delete(doc(db, "products", id));
