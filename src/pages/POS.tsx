@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
 import { collection, doc, query, where, getDocs, setDoc, writeBatch, increment } from "firebase/firestore";
@@ -80,12 +80,23 @@ const POS = () => {
   const [tendered, setTendered] = useState<string>("");
   const [discount, setDiscount] = useState<string>("");
   const [busy, setBusy] = useState(false);
-  const [tempAmount, setTempAmount] = useState<{id: string, val: string} | null>(null);
-  const [customerComboOpen, setCustomerComboOpen] = useState(false);
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerSuggestionsOpen, setCustomerSuggestionsOpen] = useState(false);
+  const customerContainerRef = useRef<HTMLDivElement>(null);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [busyCustomer, setBusyCustomer] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (customerContainerRef.current && !customerContainerRef.current.contains(e.target as Node)) {
+        setCustomerSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (customerId === "walk-in") {
@@ -225,6 +236,22 @@ const POS = () => {
     p.name.toLowerCase().includes(search.toLowerCase()) || 
     (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()))
   ), [products, search]);
+
+  const matchingCustomers = useMemo(() => {
+    const q = customerQuery.trim().toLowerCase();
+    if (!q) return [];
+    const isDigitsOnly = /^\d+$/.test(q);
+    if (isDigitsOnly) {
+      if (q.length < 5) return [];
+      return customers.filter(c => (c.phone || "").replace(/\D/g, "").includes(q));
+    } else {
+      if (q.length < 2) return [];
+      return customers.filter(c => 
+        c.name.toLowerCase().includes(q) || 
+        (c.phone && c.phone.includes(q))
+      );
+    }
+  }, [customers, customerQuery]);
 
   useBarcodeScanner({
     onScan: (barcode) => {
@@ -743,6 +770,7 @@ const POS = () => {
       }
 
       setCart([]); setDiscount(""); setTendered(""); setAmountPaid(""); setCustomerId("walk-in");
+      setCustomerQuery(""); setCustomerSuggestionsOpen(false);
       setBuyerPan(""); setBuyerAddress("");
       setInvoiceType(shopInfo?.is_vat_registered ? "tax_invoice" : "abbreviated");
       load();
@@ -983,60 +1011,111 @@ const POS = () => {
               </div>
             )}
 
-            <div>
-              <Label className="text-xs">Customer</Label>
-              <div className="flex gap-2">
-                <Popover open={customerComboOpen} onOpenChange={setCustomerComboOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={customerComboOpen}
-                      className="w-full justify-between font-normal text-left truncate"
+            <div ref={customerContainerRef} className="relative">
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs">Customer</Label>
+                {customerId !== "walk-in" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomerId("walk-in");
+                      setCustomerQuery("");
+                      setCustomerSuggestionsOpen(false);
+                    }}
+                    className="text-[10px] text-primary hover:underline"
+                  >
+                    Reset to Walk-in
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2 relative">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder={customerId === "walk-in" ? "Walk-in (Type name or 5-digit phone...)" : "Customer"}
+                    value={
+                      customerId !== "walk-in"
+                        ? `${customers.find((c: any) => c.id === customerId)?.name || "Customer"}${customers.find((c: any) => c.id === customerId)?.phone ? ` (${customers.find((c: any) => c.id === customerId)?.phone})` : ""}`
+                        : customerQuery
+                    }
+                    onChange={(e) => {
+                      if (customerId !== "walk-in") {
+                        setCustomerId("walk-in");
+                      }
+                      setCustomerQuery(e.target.value);
+                      setCustomerSuggestionsOpen(true);
+                    }}
+                    onFocus={() => {
+                      if (customerQuery.trim().length > 0) {
+                        setCustomerSuggestionsOpen(true);
+                      }
+                    }}
+                    className={cn(
+                      "pr-7 text-xs font-medium h-9",
+                      customerId !== "walk-in" && "border-primary/60 bg-primary/5 text-primary font-semibold"
+                    )}
+                  />
+                  {(customerQuery || customerId !== "walk-in") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerId("walk-in");
+                        setCustomerQuery("");
+                        setCustomerSuggestionsOpen(false);
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs p-1"
+                      title="Clear / Reset to Walk-in"
                     >
-                      {customerId === "walk-in" ? "Walk-in" : customers.find((c: any) => c.id === customerId)?.name || "Select Customer..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] lg:w-[400px] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search name or phone..." />
-                      <CommandList>
-                        <CommandEmpty>No customer found.</CommandEmpty>
-                        <CommandGroup>
-                          <CommandItem
-                            value="walk-in"
-                            onSelect={() => {
-                              setCustomerId("walk-in");
-                              setBuyerPan("");
-                              setBuyerAddress("");
-                              setCustomerComboOpen(false);
-                            }}
-                          >
-                            <Check className={cn("mr-2 h-4 w-4", customerId === "walk-in" ? "opacity-100" : "opacity-0")} />
-                            Walk-in
-                          </CommandItem>
-                          {customers.map((c: any) => (
-                            <CommandItem
+                      ✕
+                    </button>
+                  )}
+
+                  {customerSuggestionsOpen && customerId === "walk-in" && customerQuery.trim().length > 0 && (
+                    <div 
+                      className="absolute left-0 right-0 top-full mt-1 z-50 bg-popover text-popover-foreground border rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto"
+                    >
+                      {matchingCustomers.length > 0 ? (
+                        <div className="p-1">
+                          <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b">
+                            Matching Customers ({matchingCustomers.length})
+                          </div>
+                          {matchingCustomers.map((c: any) => (
+                            <div
                               key={c.id}
-                              value={c.name + " " + (c.phone || "")}
-                              onSelect={() => {
+                              onClick={() => {
                                 setCustomerId(c.id);
-                                if (c.pan) setBuyerPan(c.pan);
-                                if (c.address) setBuyerAddress(c.address);
-                                setCustomerComboOpen(false);
+                                setCustomerQuery("");
+                                setCustomerSuggestionsOpen(false);
                               }}
+                              className="px-3 py-2 text-xs rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center justify-between transition-colors"
                             >
-                              <Check className={cn("mr-2 h-4 w-4", customerId === c.id ? "opacity-100" : "opacity-0")} />
-                              {c.name} {c.phone && <span className="ml-1 text-muted-foreground text-xs">({c.phone})</span>}
-                            </CommandItem>
+                              <div>
+                                <div className="font-semibold text-foreground">{c.name}</div>
+                                <div className="text-[11px] text-muted-foreground">
+                                  {c.phone ? `📱 ${c.phone}` : "No phone"} {c.address ? `• 📍 ${c.address}` : ""}
+                                </div>
+                              </div>
+                              {c.pan && (
+                                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono font-medium">
+                                  PAN: {c.pan}
+                                </span>
+                              )}
+                            </div>
                           ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                <Button size="icon" variant="outline" onClick={() => setCustomerDialogOpen(true)} title="Add New Customer" className="shrink-0">
+                        </div>
+                      ) : (
+                        <div className="p-3 text-center text-xs text-muted-foreground">
+                          {/^\d+$/.test(customerQuery.trim()) && customerQuery.trim().length < 5 ? (
+                            <span>फोन नम्बरबाट खोज्न कम्तीमा ५ अङ्क टाइप गर्नुहोस् ({customerQuery.trim().length}/5)...</span>
+                          ) : (
+                            <span>कुनै ग्राहक फेला परेन (No customer found)</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <Button size="icon" variant="outline" onClick={() => setCustomerDialogOpen(true)} title="Add New Customer" className="shrink-0 h-9 w-9">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
