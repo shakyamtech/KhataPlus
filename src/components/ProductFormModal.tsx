@@ -287,33 +287,38 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
               )}
             </div>
 
-            {shopInfo?.is_vat_registered && (
-              <div 
-                className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer my-2" 
-                onClick={() => setEdit({ ...edit, is_taxable: edit.is_taxable === false ? true : false })}
-              >
-                <div className="space-y-0.5 pointer-events-none">
-                  <Label htmlFor="is_taxable" className="text-sm font-semibold text-primary">
-                    {edit.is_taxable !== false ? "कर लाग्ने वस्तु (Taxable - 13% VAT)" : "कर छुट वस्तु (Non-Taxable / Exempt - 0% VAT)"}
-                  </Label>
-                  <div className="text-[11px] text-muted-foreground leading-tight">
-                    {edit.is_taxable !== false ? "यस वस्तुको बिक्रीमा १३% भ्याट लागू हुन्छ।" : "नेपाल सरकारको अनुसूची १ अनुसार कर छुट (भ्याट नलाग्ने) वस्तु।"}
+            <div className={cn("grid gap-3 my-2", shopInfo?.is_vat_registered ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
+              {shopInfo?.is_vat_registered && (
+                <div 
+                  className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer" 
+                  onClick={() => setEdit({ ...edit, is_taxable: edit.is_taxable === false ? true : false })}
+                >
+                  <div className="space-y-0.5 pointer-events-none pr-2">
+                    <Label htmlFor="is_taxable" className="text-xs font-semibold text-primary block leading-tight">
+                      {edit.is_taxable !== false ? "कर लाग्ने वस्तु (13% VAT)" : "कर छुट वस्तु (0% VAT)"}
+                    </Label>
+                    <div className="text-[10px] text-muted-foreground leading-tight">
+                      {edit.is_taxable !== false ? "१३% भ्याट लागू हुने" : "अनुसूची १ कर छुट वस्तु"}
+                    </div>
                   </div>
+                  <Switch 
+                    id="is_taxable" 
+                    checked={edit.is_taxable !== false} 
+                    onCheckedChange={(c) => setEdit({ ...edit, is_taxable: Boolean(c) })} 
+                  />
                 </div>
-                <Switch 
-                  id="is_taxable" 
-                  checked={edit.is_taxable !== false} 
-                  onCheckedChange={(c) => setEdit({ ...edit, is_taxable: Boolean(c) })} 
-                />
-              </div>
-            )}
+              )}
 
-            <div className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer my-2" onClick={() => setEdit({ ...edit, has_expiry: !edit.has_expiry })}>
-              <div className="space-y-0.5 pointer-events-none">
-                <Label htmlFor="has_expiry" className="text-sm font-semibold text-primary">Tracks Expiry Date?</Label>
-                <div className="text-[11px] text-muted-foreground leading-tight">Enable if this item is perishable and expires.</div>
+              <div 
+                className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer" 
+                onClick={() => setEdit({ ...edit, has_expiry: !edit.has_expiry })}
+              >
+                <div className="space-y-0.5 pointer-events-none pr-2">
+                  <Label htmlFor="has_expiry" className="text-xs font-semibold text-primary block leading-tight">Tracks Expiry Date?</Label>
+                  <div className="text-[10px] text-muted-foreground leading-tight">Item perishable/expires</div>
+                </div>
+                <Switch id="has_expiry" checked={edit.has_expiry} onCheckedChange={(c) => setEdit({ ...edit, has_expiry: !!c })} />
               </div>
-              <Switch id="has_expiry" checked={edit.has_expiry} onCheckedChange={(c) => setEdit({ ...edit, has_expiry: !!c })} />
             </div>
             {!edit.id && (
               <div className="grid sm:grid-cols-2 gap-3">
