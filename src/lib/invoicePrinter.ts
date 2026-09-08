@@ -339,7 +339,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
         <div class="receipt-footer">
           <div class="footer-highlight">Thank you for shopping with us!</div>
           <div>Please visit again</div>
-          <div class="brand-tag">KhataPlus Point of Sale</div>
+          <div class="brand-tag">Powered by KhataPlus</div>
         </div>
       </div>
     `;
