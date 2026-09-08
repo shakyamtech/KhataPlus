@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { ProductFormModal } from "@/components/ProductFormModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Ingredient = {
   id: string;
@@ -34,6 +35,7 @@ type Product = {
 
 const Products = () => {
   const { user } = useAuth();
+  const { lang } = useLanguage();
   const [items, setItems] = useState<Product[]>([]);
   const [open, setOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
