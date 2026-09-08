@@ -11,7 +11,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { format, startOfDay, subDays } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale } from "lucide-react";
+import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight } from "lucide-react";
 
 const Reports = () => {
   const { user } = useAuth();
@@ -23,6 +23,12 @@ const Reports = () => {
   const [customers, setCustomers] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [wastage, setWastage] = useState(0);
+  const [allSales, setAllSales] = useState<any[]>([]);
+  const [allPurchases, setAllPurchases] = useState<any[]>([]);
+  const [vatMonth, setVatMonth] = useState<{ year: number; month: number }>(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
 
   const loadData = async () => {
     if (!user) return;
@@ -48,6 +54,9 @@ const Reports = () => {
       setShopInfo(sInfo);
       setSuppliers(suppSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setCustomers(custSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      // Store unfiltered data for monthly VAT calculations
+      setAllSales(sSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setAllPurchases(purSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
       const s = sSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => d.created_at >= since);
       const pur = purSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => d.created_at >= since);
@@ -169,6 +178,92 @@ const Reports = () => {
     };
   }, [sales, purchases, suppliers, customers]);
 
+  const MONTHS_EN = ["January", "February", "March", "April", "May", "June",
+                     "July", "August", "September", "October", "November", "December"];
+
+  const vatMonthlyTotals = useMemo(() => {
+    const sMap = new Map(suppliers.map(s => [s.id, s]));
+    const cMap = new Map(customers.map(c => [c.id, c]));
+
+    const isInMonth = (dateStr: string, y: number, m: number) => {
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      return d.getFullYear() === y && d.getMonth() === m;
+    };
+    const isBeforeMonth = (dateStr: string, y: number, m: number) => {
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      return d.getFullYear() < y || (d.getFullYear() === y && d.getMonth() < m);
+    };
+
+    // Carry forward: sum all months before selected
+    let prevOutputVat = 0;
+    let prevInputVat = 0;
+    allSales.forEach(s => {
+      if (!isBeforeMonth(s.created_at, vatMonth.year, vatMonth.month)) return;
+      const isTaxInv = s.invoice_type === "tax_invoice" || s.is_vat_invoice === true || Number(s.vat_amount) > 0;
+      if (isTaxInv) prevOutputVat += Number(s.vat_amount || 0);
+    });
+    allPurchases.forEach(p => {
+      if (!isBeforeMonth(p.created_at, vatMonth.year, vatMonth.month)) return;
+      const isVatBill = p.is_vat_bill === true || Number(p.vat_amount) > 0;
+      if (isVatBill) prevInputVat += Number(p.vat_amount || 0);
+    });
+    const prevNet = prevOutputVat - prevInputVat;
+    const openingCredit = prevNet < 0 ? Math.abs(prevNet) : 0;
+
+    // Current month calculations
+    let outputVat = 0, inputVat = 0, taxableSales = 0, taxablePurchases = 0;
+    let totalSalesWithVat = 0, nonTaxableSales = 0, totalPurchasesWithVat = 0, nonTaxablePurchases = 0;
+    const salesList: any[] = [];
+    const purchasesList: any[] = [];
+
+    allSales.forEach(s => {
+      if (!isInMonth(s.created_at, vatMonth.year, vatMonth.month)) return;
+      const isTaxInv = s.invoice_type === "tax_invoice" || s.is_vat_invoice === true || Number(s.vat_amount) > 0;
+      const nonTaxable = isTaxInv ? Number(s.non_taxable_amount || 0) : Number(s.total || 0);
+      const taxable = isTaxInv ? Number(s.taxable_amount ?? ((Number(s.total || 0) - nonTaxable) / 1.13)) : 0;
+      const vat = isTaxInv ? Number(s.vat_amount ?? (Number(s.total || 0) - taxable - nonTaxable)) : 0;
+      const cust = s.customer_id ? cMap.get(s.customer_id) : null;
+      if (isTaxInv) { taxableSales += taxable; outputVat += vat; nonTaxableSales += nonTaxable; totalSalesWithVat += Number(s.total || 0); }
+      else { nonTaxableSales += Number(s.total || 0); }
+      salesList.push({ ...s, isTaxInv, taxable, vat, customerName: s.customer_name || cust?.name || "Walk-in Customer", customerPan: s.buyer_pan || cust?.pan || "—" });
+    });
+
+    allPurchases.forEach(p => {
+      if (!isInMonth(p.created_at, vatMonth.year, vatMonth.month)) return;
+      const isVatBill = p.is_vat_bill === true || Number(p.vat_amount) > 0;
+      const taxable = isVatBill ? Number(p.taxable_amount ?? (Number(p.total || 0) / 1.13)) : Number(p.total || 0);
+      const vat = isVatBill ? Number(p.vat_amount ?? (Number(p.total || 0) - taxable)) : 0;
+      const supp = p.supplier_id ? sMap.get(p.supplier_id) : null;
+      if (isVatBill) { taxablePurchases += taxable; inputVat += vat; totalPurchasesWithVat += Number(p.total || 0); }
+      else { nonTaxablePurchases += Number(p.total || 0); }
+      purchasesList.push({ ...p, isVatBill, taxable, vat, supplierName: p.supplier_name || supp?.name || "—", supplierPan: p.supplier_pan || supp?.pan || "—", billNo: p.supplier_bill_no || "—" });
+    });
+
+    const netAfterCredit = outputVat - inputVat - openingCredit;
+    const netVat = netAfterCredit;
+    const closingCredit = netAfterCredit < 0 ? Math.abs(netAfterCredit) : 0;
+    const netPayable = netAfterCredit > 0 ? netAfterCredit : 0;
+
+    return {
+      outputVat, inputVat, taxableSales, taxablePurchases,
+      totalSalesWithVat, nonTaxableSales, totalPurchasesWithVat, nonTaxablePurchases,
+      openingCredit, netVat, netPayable, closingCredit,
+      salesList, purchasesList
+    };
+  }, [allSales, allPurchases, vatMonth, suppliers, customers]);
+
+  const goToPrevVatMonth = () => setVatMonth(prev =>
+    prev.month === 0 ? { year: prev.year - 1, month: 11 } : { ...prev, month: prev.month - 1 }
+  );
+  const goToNextVatMonth = () => {
+    const now = new Date();
+    if (vatMonth.year === now.getFullYear() && vatMonth.month === now.getMonth()) return;
+    setVatMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { ...prev, month: prev.month + 1 });
+  };
+  const vatMonthLabel = `${MONTHS_EN[vatMonth.month]} ${vatMonth.year}`;
+
   const chartData = useMemo(() => {
     const days = Number(range);
     const map = new Map<string, { day: string; sales: number; profit: number }>();
@@ -187,10 +282,15 @@ const Reports = () => {
   const handlePrintVatReport = () => {
     if (!shopInfo) return;
     const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
-    const isPayable = vatTotals.netVat >= 0;
-    const netStatusText = isPayable ? "सरकारलाई तिर्नुपर्ने भ्याट (Net VAT Payable to IRD)" : "भ्याट क्रेडिट (अर्को महिना सर्ने / VAT Credit Carried Forward)";
+    const isPayable = vatMonthlyTotals.netPayable > 0;
+    const netStatusText = isPayable 
+      ? "सरकारलाई तिर्नुपर्ने खुद भ्याट (Net VAT Payable to IRD)" 
+      : vatMonthlyTotals.closingCredit > 0 
+        ? "अर्को महिना सर्ने भ्याट क्रेडिट (Closing VAT Credit Carried Forward)"
+        : "खुद भ्याट दायित्व (Net VAT: Nil / Balanced)";
+    const netFinalAmount = isPayable ? vatMonthlyTotals.netPayable : vatMonthlyTotals.closingCredit;
 
-    const purchaseRows = vatTotals.purchasesList.map((p, idx) => `
+    const purchaseRows = vatMonthlyTotals.purchasesList.map((p, idx) => `
       <tr>
         <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
         <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}</td>
@@ -203,7 +303,7 @@ const Reports = () => {
       </tr>
     `).join("");
 
-    const salesRows = vatTotals.salesList.map((s, idx) => `
+    const salesRows = vatMonthlyTotals.salesList.map((s, idx) => `
       <tr>
         <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
         <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</td>
@@ -227,10 +327,10 @@ const Reports = () => {
             VAT / PAN No: <strong>${escapeHtml(shopInfo.pan || 'N/A')}</strong> ${shopInfo.phone ? `· Ph: <strong>${escapeHtml(shopInfo.phone)}</strong>` : ''}
           </div>
           <div style="display:inline-block; margin-top:8px; padding:3px 14px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
-            मूल्य अभिवृद्धि कर विवरण तथा खाताहरू (VAT Return & Registers)
+            मूल्य अभिवृद्धि कर मासिक विवरण तथा खाताहरू (Monthly VAT Return & Registers)
           </div>
           <div style="font-size:11px; color:#333; margin-top:4px;">
-            अवधि (Period): <strong>Last ${range} Days</strong> · तयार मिति (Report Date): <strong>${dateFormatted}</strong>
+            कर अवधि (Tax Period): <strong>${vatMonthLabel}</strong> · तयार मिति (Report Date): <strong>${dateFormatted}</strong>
           </div>
         </div>
 
@@ -249,22 +349,35 @@ const Reports = () => {
               </tr>
             </thead>
             <tbody>
+              ${vatMonthlyTotals.openingCredit > 0 ? `
+              <tr style="background:#fefce8;">
+                <td style="border:1px solid #111; padding:6px 8px;"><strong>(क) अघिल्लो महिनाबाट सरेको क्रेडिट (Opening VAT Credit Carried Forward)</strong></td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right;">—</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:600; color:#854d0e;">Rs. ${vatMonthlyTotals.openingCredit.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right;">—</td>
+              </tr>
+              ` : ''}
               <tr>
-                <td style="border:1px solid #111; padding:6px 8px;"><strong>कुल बिक्री (Output Tax on Sales)</strong></td>
-                <td style="border:1px solid #111; padding:6px 8px; text-align:right;">Rs. ${vatTotals.taxableSales.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:600;">Rs. ${vatTotals.outputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:700;">Rs. ${(vatTotals.totalSalesWithVat + vatTotals.nonTaxableSales).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px;"><strong>(ख) यस महिनाको कुल बिक्री (Output Tax on Current Month Sales)</strong></td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right;">Rs. ${vatMonthlyTotals.taxableSales.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:600;">Rs. ${vatMonthlyTotals.outputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:700;">Rs. ${(vatMonthlyTotals.totalSalesWithVat + vatMonthlyTotals.nonTaxableSales).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
               <tr>
-                <td style="border:1px solid #111; padding:6px 8px;"><strong>कुल खरिद कट्टी (Input Tax Credit on Purchases)</strong></td>
-                <td style="border:1px solid #111; padding:6px 8px; text-align:right;">Rs. ${vatTotals.taxablePurchases.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:600;">Rs. ${vatTotals.inputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:700;">Rs. ${(vatTotals.totalPurchasesWithVat + vatTotals.nonTaxablePurchases).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px;"><strong>(ग) यस महिनाको कुल खरिद कट्टी (Input Tax Credit on Current Month Purchases)</strong></td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right;">Rs. ${vatMonthlyTotals.taxablePurchases.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:600;">Rs. ${vatMonthlyTotals.inputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:700;">Rs. ${(vatMonthlyTotals.totalPurchasesWithVat + vatMonthlyTotals.nonTaxablePurchases).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
               <tr style="background:#f3f4f6; font-weight:bold;">
-                <td colspan="2" style="border:1px solid #111; padding:6px 8px; font-size:12px;">${netStatusText}</td>
-                <td colspan="2" style="border:1px solid #111; padding:6px 8px; text-align:right; font-size:13px;">
-                  Rs. ${Math.abs(vatTotals.netVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <td colspan="2" style="border:1px solid #111; padding:6px 8px; font-size:12px;">
+                  ${netStatusText}
+                  <div style="font-size:10px; font-weight:normal; color:#555; margin-top:2px;">
+                    हिसाब: बिक्री भ्याट (${vatMonthlyTotals.outputVat.toFixed(2)}) - खरिद भ्याट (${vatMonthlyTotals.inputVat.toFixed(2)})${vatMonthlyTotals.openingCredit > 0 ? ` - अघिल्लो क्रेडिट (${vatMonthlyTotals.openingCredit.toFixed(2)})` : ''}
+                  </div>
+                </td>
+                <td colspan="2" style="border:1px solid #111; padding:6px 8px; text-align:right; font-size:13px; color:${isPayable ? '#166534' : '#1e40af'};">
+                  Rs. ${netFinalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
               </tr>
             </tbody>
@@ -275,7 +388,7 @@ const Reports = () => {
         <div style="margin-bottom:16px;">
           <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:4px 8px; border:1px solid #111; border-bottom:none; display:flex; justify-content:space-between;">
             <span>२. खरिद खाता (Purchase Register - अनुसूची ८)</span>
-            <span style="font-size:11px; font-weight:normal;">जम्मा खरिद बिल: ${vatTotals.purchasesList.length}</span>
+            <span style="font-size:11px; font-weight:normal;">यस महिनाको जम्मा खरिद बिल: ${vatMonthlyTotals.purchasesList.length}</span>
           </div>
           <table style="width:100%; border-collapse:collapse; font-size:10.5px; border:1px solid #111;">
             <thead>
@@ -291,14 +404,14 @@ const Reports = () => {
               </tr>
             </thead>
             <tbody>
-              ${purchaseRows || `<tr><td colspan="8" style="border:1px solid #111; padding:8px; text-align:center; color:#666;">कुनै खरिद बिल फेला परेन।</td></tr>`}
+              ${purchaseRows || `<tr><td colspan="8" style="border:1px solid #111; padding:8px; text-align:center; color:#666;">यस महिना कुनै खरिद बिल फेला परेन।</td></tr>`}
             </tbody>
             <tfoot>
               <tr style="background:#f3f4f6; font-weight:bold; border-top:1.5px solid #111;">
                 <td colspan="5" style="border:1px solid #111; padding:5px; text-align:right;">कुल जम्मा (Total Purchases):</td>
-                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatTotals.taxablePurchases.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatTotals.inputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${(vatTotals.totalPurchasesWithVat + vatTotals.nonTaxablePurchases).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatMonthlyTotals.taxablePurchases.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatMonthlyTotals.inputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${(vatMonthlyTotals.totalPurchasesWithVat + vatMonthlyTotals.nonTaxablePurchases).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             </tfoot>
           </table>
@@ -308,7 +421,7 @@ const Reports = () => {
         <div style="margin-bottom:20px;">
           <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:4px 8px; border:1px solid #111; border-bottom:none; display:flex; justify-content:space-between;">
             <span>३. बिक्री खाता (Sales Register - अनुसूची ९)</span>
-            <span style="font-size:11px; font-weight:normal;">जम्मा बिक्री बिल: ${vatTotals.salesList.length}</span>
+            <span style="font-size:11px; font-weight:normal;">यस महिनाको जम्मा बिक्री बिल: ${vatMonthlyTotals.salesList.length}</span>
           </div>
           <table style="width:100%; border-collapse:collapse; font-size:10.5px; border:1px solid #111;">
             <thead>
@@ -324,14 +437,14 @@ const Reports = () => {
               </tr>
             </thead>
             <tbody>
-              ${salesRows || `<tr><td colspan="8" style="border:1px solid #111; padding:8px; text-align:center; color:#666;">कुनै बिक्री बिल फेला परेन।</td></tr>`}
+              ${salesRows || `<tr><td colspan="8" style="border:1px solid #111; padding:8px; text-align:center; color:#666;">यस महिना कुनै बिक्री बिल फेला परेन।</td></tr>`}
             </tbody>
             <tfoot>
               <tr style="background:#f3f4f6; font-weight:bold; border-top:1.5px solid #111;">
                 <td colspan="5" style="border:1px solid #111; padding:5px; text-align:right;">कुल जम्मा (Total Sales):</td>
-                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatTotals.taxableSales.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatTotals.outputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${(vatTotals.totalSalesWithVat + vatTotals.nonTaxableSales).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatMonthlyTotals.taxableSales.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatMonthlyTotals.outputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${(vatMonthlyTotals.totalSalesWithVat + vatMonthlyTotals.nonTaxableSales).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             </tfoot>
           </table>
@@ -353,7 +466,7 @@ const Reports = () => {
       </div>
     `;
 
-    printHTML(`VAT_Report_${shopInfo.name}_${range}days`, body, { paperSize: "a4" });
+    printHTML(`VAT_Report_${shopInfo.name}_${vatMonthLabel.replace(" ", "_")}`, body, { paperSize: "a4" });
   };
 
   return (
@@ -473,30 +586,84 @@ const Reports = () => {
 
         {isVatShop && (
           <TabsContent value="vat" className="space-y-6">
-            {/* Header & Print Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-card p-4 rounded-xl shadow-card border border-border/40">
+            {/* Header, Month Navigation & Print Actions */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-foreground">मूल्य अभिवृद्धि कर विवरण (VAT Return & Registers)</h2>
+                  <h2 className="text-lg font-bold text-foreground">मूल्य अभिवृद्धि कर मासिक विवरण (Monthly VAT Return)</h2>
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
                     Nepal IRD Standards
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  पसलको नाम: <strong className="text-foreground">{shopInfo?.name}</strong> · VAT/PAN: <strong className="text-foreground">{shopInfo?.pan || "N/A"}</strong> · अवधि: Last {range} days
+                  पसलको नाम: <strong className="text-foreground">{shopInfo?.name}</strong> · VAT/PAN: <strong className="text-foreground">{shopInfo?.pan || "N/A"}</strong>
                 </p>
               </div>
-              <Button onClick={handlePrintVatReport} variant="outline" size="sm" className="gap-2 shrink-0">
-                <Printer className="h-4 w-4 text-primary" />
-                प्रिन्ट / PDF (Print Statement)
-              </Button>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Month Picker Navigation */}
+                <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={goToPrevVatMonth}
+                    title="Previous Month"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="font-semibold text-xs px-3 min-w-[120px] text-center select-none text-foreground">
+                    {vatMonthLabel}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={goToNextVatMonth}
+                    disabled={vatMonth.year === new Date().getFullYear() && vatMonth.month === new Date().getMonth()}
+                    title="Next Month"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <Button onClick={handlePrintVatReport} variant="outline" size="sm" className="gap-2 shrink-0">
+                  <Printer className="h-4 w-4 text-primary" />
+                  प्रिन्ट / PDF
+                </Button>
+              </div>
             </div>
+
+            {/* Opening Carry-Forward Credit Banner */}
+            {vatMonthlyTotals.openingCredit > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-900 dark:text-amber-200">
+                <div className="flex items-center gap-2.5">
+                  <Scale className="h-5 w-5 text-amber-600 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-wider">
+                      अघिल्लो महिनाबाट सरेको भ्याट क्रेडिट (Opening VAT Credit Carried Forward)
+                    </div>
+                    <div className="text-[11px] opacity-80 mt-0.5">
+                      यो रकम अघिल्ला महिनाहरूको बढी खरिद भ्याट कट्टी हो र यस महिनाको बिक्री भ्याटबाट स्वतः समायोजन हुन्छ।
+                    </div>
+                  </div>
+                </div>
+                <div className="text-lg font-bold font-display text-amber-700 dark:text-amber-300 shrink-0 pl-7 sm:pl-0">
+                  {fmt(vatMonthlyTotals.openingCredit)}
+                </div>
+              </div>
+            )}
 
             {/* Section 1: VAT Summary (अनुसूची १०) */}
             <div>
-              <div className="text-xs font-bold text-primary uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                <Scale className="h-4 w-4" />
-                <span>१. भ्याट समरी (VAT Return Summary - अनुसूची १०)</span>
+              <div className="text-xs font-bold text-primary uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Scale className="h-4 w-4" />
+                  <span>१. भ्याट समरी (VAT Return Summary - अनुसूची १०)</span>
+                </div>
+                <span className="text-[11px] font-medium text-muted-foreground lowercase">अवधि: {vatMonthLabel}</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {/* Output VAT Card */}
@@ -506,11 +673,11 @@ const Reports = () => {
                     <ArrowUpRight className="h-4 w-4 text-emerald-500" />
                   </div>
                   <div className="font-display text-2xl font-bold text-foreground mt-2">
-                    {fmt(vatTotals.outputVat)}
+                    {fmt(vatMonthlyTotals.outputVat)}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1 flex justify-between border-t border-border/40 pt-1.5">
-                    <span>करयोग्य बिक्री (Taxable Sales):</span>
-                    <span className="font-semibold text-foreground">{fmt(vatTotals.taxableSales)}</span>
+                    <span>करयोग्य बिक्री:</span>
+                    <span className="font-semibold text-foreground">{fmt(vatMonthlyTotals.taxableSales)}</span>
                   </div>
                 </Card>
 
@@ -521,27 +688,43 @@ const Reports = () => {
                     <ArrowDownRight className="h-4 w-4 text-blue-500" />
                   </div>
                   <div className="font-display text-2xl font-bold text-foreground mt-2">
-                    {fmt(vatTotals.inputVat)}
+                    {fmt(vatMonthlyTotals.inputVat)}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1 flex justify-between border-t border-border/40 pt-1.5">
-                    <span>करयोग्य खरिद (Taxable Purchases):</span>
-                    <span className="font-semibold text-foreground">{fmt(vatTotals.taxablePurchases)}</span>
+                    <span>करयोग्य खरिद:</span>
+                    <span className="font-semibold text-foreground">{fmt(vatMonthlyTotals.taxablePurchases)}</span>
                   </div>
                 </Card>
 
                 {/* Net VAT Payable / Credit Card */}
-                <Card className={`p-4 shadow-elegant border-0 text-white ${vatTotals.netVat >= 0 ? "bg-gradient-to-br from-emerald-600 to-teal-700" : "bg-gradient-to-br from-blue-600 to-indigo-700"}`}>
+                <Card
+                  className={`p-4 shadow-elegant border-0 text-white ${
+                    vatMonthlyTotals.netPayable > 0
+                      ? "bg-gradient-to-br from-emerald-600 to-teal-700"
+                      : vatMonthlyTotals.closingCredit > 0
+                      ? "bg-gradient-to-br from-blue-600 to-indigo-700"
+                      : "bg-gradient-to-br from-slate-600 to-gray-700"
+                  }`}
+                >
                   <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider opacity-90">
-                    <span>{vatTotals.netVat >= 0 ? "सरकारलाई तिर्नुपर्ने भ्याट" : "भ्याट क्रेडिट (अर्को महिना सर्ने)"}</span>
+                    <span>
+                      {vatMonthlyTotals.netPayable > 0
+                        ? "सरकारलाई तिर्नुपर्ने खुद भ्याट"
+                        : vatMonthlyTotals.closingCredit > 0
+                        ? "अर्को महिना सर्ने भ्याट क्रेडिट"
+                        : "भ्याट हिसाब बराबर (Nil)"}
+                    </span>
                     <Receipt className="h-4 w-4 opacity-80" />
                   </div>
                   <div className="font-display text-2xl font-bold mt-2">
-                    {fmt(Math.abs(vatTotals.netVat))}
+                    {fmt(vatMonthlyTotals.netPayable > 0 ? vatMonthlyTotals.netPayable : vatMonthlyTotals.closingCredit)}
                   </div>
                   <div className="text-[11px] opacity-90 mt-1 border-t border-white/20 pt-1.5">
-                    {vatTotals.netVat >= 0 
-                      ? "Net Payable to IRD (Output VAT - Input VAT)" 
-                      : "VAT Credit Carried Forward to Next Month"}
+                    {vatMonthlyTotals.netPayable > 0
+                      ? `Net Payable to IRD (बिक्री भ्याट - खरिद भ्याट${vatMonthlyTotals.openingCredit > 0 ? " - अघिल्लो क्रेडिट" : ""})`
+                      : vatMonthlyTotals.closingCredit > 0
+                      ? "VAT Credit Carried Forward to Next Month"
+                      : "No tax payable or excess credit for this period"}
                   </div>
                 </Card>
               </div>
@@ -555,7 +738,7 @@ const Reports = () => {
                   <h3 className="font-bold text-sm text-foreground">२. खरिद खाता (Purchase Register - अनुसूची ८)</h3>
                 </div>
                 <span className="text-xs text-muted-foreground font-medium">
-                  जम्मा बिलहरू: {vatTotals.purchasesList.length}
+                  {vatMonthLabel} का बिलहरू: {vatMonthlyTotals.purchasesList.length}
                 </span>
               </div>
               <div className="overflow-x-auto">
@@ -572,7 +755,7 @@ const Reports = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {vatTotals.purchasesList.map((p: any) => (
+                    {vatMonthlyTotals.purchasesList.map((p: any) => (
                       <tr key={p.id} className="hover:bg-secondary/20 transition-colors">
                         <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
                           {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
@@ -585,19 +768,21 @@ const Reports = () => {
                         <td className="p-3 text-right font-bold text-foreground">{fmt(p.total)}</td>
                       </tr>
                     ))}
-                    {vatTotals.purchasesList.length === 0 && (
+                    {vatMonthlyTotals.purchasesList.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="p-6 text-center text-muted-foreground">यस अवधिमा कुनै खरिद बिल फेला परेन।</td>
+                        <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                          {vatMonthLabel} मा कुनै खरिद बिल फेला परेन।
+                        </td>
                       </tr>
                     )}
                   </tbody>
-                  {vatTotals.purchasesList.length > 0 && (
+                  {vatMonthlyTotals.purchasesList.length > 0 && (
                     <tfoot>
                       <tr className="bg-muted/40 font-bold border-t border-border">
                         <td colSpan={4} className="p-3 uppercase text-muted-foreground">कुल जम्मा (Total Purchases):</td>
-                        <td className="p-3 text-right text-foreground">{fmt(vatTotals.taxablePurchases)}</td>
-                        <td className="p-3 text-right text-blue-600 dark:text-blue-400">{fmt(vatTotals.inputVat)}</td>
-                        <td className="p-3 text-right text-primary">{fmt(vatTotals.totalPurchasesWithVat + vatTotals.nonTaxablePurchases)}</td>
+                        <td className="p-3 text-right text-foreground">{fmt(vatMonthlyTotals.taxablePurchases)}</td>
+                        <td className="p-3 text-right text-blue-600 dark:text-blue-400">{fmt(vatMonthlyTotals.inputVat)}</td>
+                        <td className="p-3 text-right text-primary">{fmt(vatMonthlyTotals.totalPurchasesWithVat + vatMonthlyTotals.nonTaxablePurchases)}</td>
                       </tr>
                     </tfoot>
                   )}
@@ -613,7 +798,7 @@ const Reports = () => {
                   <h3 className="font-bold text-sm text-foreground">३. बिक्री खाता (Sales Register - अनुसूची ९)</h3>
                 </div>
                 <span className="text-xs text-muted-foreground font-medium">
-                  जम्मा बिलहरू: {vatTotals.salesList.length}
+                  {vatMonthLabel} का बिलहरू: {vatMonthlyTotals.salesList.length}
                 </span>
               </div>
               <div className="overflow-x-auto">
@@ -630,7 +815,7 @@ const Reports = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {vatTotals.salesList.map((s: any) => (
+                    {vatMonthlyTotals.salesList.map((s: any) => (
                       <tr key={s.id} className="hover:bg-secondary/20 transition-colors">
                         <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
                           {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
@@ -643,19 +828,21 @@ const Reports = () => {
                         <td className="p-3 text-right font-bold text-foreground">{fmt(s.total)}</td>
                       </tr>
                     ))}
-                    {vatTotals.salesList.length === 0 && (
+                    {vatMonthlyTotals.salesList.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="p-6 text-center text-muted-foreground">यस अवधिमा कुनै बिक्री बिल फेला परेन।</td>
+                        <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                          {vatMonthLabel} मा कुनै बिक्री बिल फेला परेन।
+                        </td>
                       </tr>
                     )}
                   </tbody>
-                  {vatTotals.salesList.length > 0 && (
+                  {vatMonthlyTotals.salesList.length > 0 && (
                     <tfoot>
                       <tr className="bg-muted/40 font-bold border-t border-border">
                         <td colSpan={4} className="p-3 uppercase text-muted-foreground">कुल जम्मा (Total Sales):</td>
-                        <td className="p-3 text-right text-foreground">{fmt(vatTotals.taxableSales)}</td>
-                        <td className="p-3 text-right text-emerald-600 dark:text-emerald-400">{fmt(vatTotals.outputVat)}</td>
-                        <td className="p-3 text-right text-primary">{fmt(vatTotals.totalSalesWithVat + vatTotals.nonTaxableSales)}</td>
+                        <td className="p-3 text-right text-foreground">{fmt(vatMonthlyTotals.taxableSales)}</td>
+                        <td className="p-3 text-right text-emerald-600 dark:text-emerald-400">{fmt(vatMonthlyTotals.outputVat)}</td>
+                        <td className="p-3 text-right text-primary">{fmt(vatMonthlyTotals.totalSalesWithVat + vatMonthlyTotals.nonTaxableSales)}</td>
                       </tr>
                     </tfoot>
                   )}
