@@ -89,6 +89,18 @@ const POS = () => {
   const [newCustomerPan, setNewCustomerPan] = useState("");
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
   const [busyCustomer, setBusyCustomer] = useState(false);
+  const [tempAmount, setTempAmount] = useState<{ id: string; val: string } | null>(null);
+
+  const formatDateSafe = (dateStr?: string | null, fmtStr: string = "dd MMM yyyy") => {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "";
+      return format(d, fmtStr);
+    } catch {
+      return "";
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -899,7 +911,7 @@ const POS = () => {
                                   disabled={isDisabled}
                                   className={`text-xs ${isDisabled ? "opacity-50 line-through text-muted-foreground cursor-not-allowed" : ""}`}
                                 >
-                                  {b.batch_name} {b.expiry_date ? `(Exp: ${format(new Date(b.expiry_date), "dd MMM yyyy")})` : ''} · {fmtQty(rem)} in stock {isOut ? '(Out of stock)' : isExp ? '(Expired)' : ''}
+                                  {b.batch_name} {b.expiry_date && formatDateSafe(b.expiry_date) ? `(Exp: ${formatDateSafe(b.expiry_date)})` : ''} · {fmtQty(rem)} in stock {isOut ? '(Out of stock)' : isExp ? '(Expired)' : ''}
                                 </SelectItem>
                               );
                             })}
@@ -907,9 +919,9 @@ const POS = () => {
                         </Select>
                       </div>
                     ) : (
-                      i.earliest_expiry && (
+                      i.earliest_expiry && formatDateSafe(i.earliest_expiry) && (
                         <div className={`text-[10px] truncate mt-0.5 ${i.is_expiring_soon ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"}`}>
-                          {i.earliest_batch_name ? `Batch: ${i.earliest_batch_name} · ` : ""}Exp: {format(new Date(i.earliest_expiry), "dd MMM yyyy")}
+                          {i.earliest_batch_name ? `Batch: ${i.earliest_batch_name} · ` : ""}Exp: {formatDateSafe(i.earliest_expiry)}
                         </div>
                       )
                     )}
