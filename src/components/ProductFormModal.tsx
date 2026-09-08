@@ -261,14 +261,14 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setEdit(blankProduct); }}>
-        <DialogContent>
-          <DialogHeader className="-mx-6 -mt-6 p-6 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border-b border-primary/10 mb-4 rounded-t-lg">
-            <DialogTitle className="text-primary text-2xl font-display">{edit.id ? "Edit Product" : "New Product"}</DialogTitle>
-            <DialogDescription className="text-foreground/70">
+        <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader className="-mx-6 -mt-6 p-4 sm:p-5 px-6 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border-b border-primary/10 mb-3 rounded-t-lg">
+            <DialogTitle className="text-primary text-xl sm:text-2xl font-display">{edit.id ? "Edit Product" : "New Product"}</DialogTitle>
+            <DialogDescription className="text-foreground/70 text-xs sm:text-sm">
               {edit.id ? "Update the details for this product. Note: Stock Qty and Cost Price can only be modified via Purchases or Adjustments." : "Add a new item to your inventory."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="space-y-1.5">
               <Label>Name</Label>
               <Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." />
@@ -287,10 +287,10 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
               )}
             </div>
 
-            <div className={cn("grid gap-3 my-2", shopInfo?.is_vat_registered ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
+            <div className={cn("grid gap-3 my-1.5", shopInfo?.is_vat_registered ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
               {shopInfo?.is_vat_registered && (
                 <div 
-                  className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer" 
+                  className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer" 
                   onClick={() => setEdit({ ...edit, is_taxable: edit.is_taxable === false ? true : false })}
                 >
                   <div className="space-y-0.5 pointer-events-none pr-2">
@@ -310,7 +310,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
               )}
 
               <div 
-                className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer" 
+                className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer" 
                 onClick={() => setEdit({ ...edit, has_expiry: !edit.has_expiry })}
               >
                 <div className="space-y-0.5 pointer-events-none pr-2">
@@ -393,18 +393,32 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
               <div className="space-y-1.5"><Label>Cost Price (Rs.)</Label><Input type="number" step="0.01" disabled={!!edit.id} value={edit.cost_price} onChange={(e) => setEdit({ ...edit, cost_price: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
               <div className="space-y-1.5"><Label>Sell Price (Rs.)</Label><Input type="number" step="0.01" value={edit.sell_price} onChange={(e) => setEdit({ ...edit, sell_price: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
             </div>
-            <div className="space-y-1.5"><Label>Low-stock alert at</Label><Input type="number" step="0.001" value={edit.low_stock_threshold} onChange={(e) => setEdit({ ...edit, low_stock_threshold: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
-
-            <Button onClick={save} disabled={busy} className="w-full bg-gradient-primary text-primary-foreground mt-2">
-              {busy ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Saving...
-                </>
-              ) : (
-                "Save"
-              )}
-            </Button>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end pt-1">
+              <div className="space-y-1.5">
+                <Label>Low-stock alert at</Label>
+                <Input 
+                  type="number" 
+                  step="0.001" 
+                  value={edit.low_stock_threshold} 
+                  onChange={(e) => setEdit({ ...edit, low_stock_threshold: e.target.value })} 
+                  onWheel={(e) => e.currentTarget.blur()} 
+                  placeholder="e.g. 5"
+                />
+              </div>
+              <div>
+                <Button onClick={save} disabled={busy} className="w-full h-10 bg-gradient-primary text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-all">
+                  {busy ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    edit.id ? "Save Changes" : "Save Product"
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
