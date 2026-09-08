@@ -332,6 +332,15 @@ const Purchases = () => {
   const save = async () => {
     if (items.length === 0) return toast.error("Add items");
 
+    for (const item of items) {
+      if (Number(item.qty) <= 0) {
+        return toast.error(`'${item.product_name}' को Quantity सही प्रविष्ट गर्नुहोस्!`);
+      }
+      if (item.has_expiry && !item.expiry_date?.trim()) {
+        return toast.error(`'${item.product_name}' को Expiry Date छान्नु अनिवार्य छ!`);
+      }
+    }
+
     const paid = Number(amountPaid || 0);
     const purchaseTotal = grandTotal;
 

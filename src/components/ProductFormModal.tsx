@@ -171,6 +171,10 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
       has_expiry: !!edit.has_expiry
     };
 
+    if (payload.has_expiry && !edit.expiry_date?.trim()) {
+      return toast.error("कृपया सामानको Expiry Date छान्नुहोस् (Expiry Date is required when Track Expiry is enabled)");
+    }
+
     if (payload.barcode) {
       setBusy(true);
       try {
