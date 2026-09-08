@@ -17,22 +17,22 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     ${isA4 ? `
-    /* Official Full A4 Tax Invoice Styling */
+    /* Official Nepal Standard A4 Tax Invoice (IRD Compliant) */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #000000;
       background: #f3f4f6;
-      padding: 20px;
-      font-size: 12.5px;
+      padding: 16px;
+      font-size: 12px;
       line-height: 1.35;
     }
     
     .a4-container {
-      max-width: 800px;
-      min-height: 1040px;
+      max-width: 820px;
+      min-height: 1060px;
       margin: 0 auto;
       background: #ffffff;
-      padding: 30px 36px;
+      padding: 24px 30px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.08);
       display: flex;
       flex-direction: column;
@@ -41,95 +41,118 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
 
     .a4-header {
       text-align: center;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
     .a4-company-name {
-      font-size: 21px;
+      font-size: 20px;
       font-weight: 800;
-      letter-spacing: 0.02em;
-      text-decoration: underline;
-      text-underline-offset: 4px;
-      margin-bottom: 3px;
+      letter-spacing: 0.03em;
       text-transform: uppercase;
+      margin-bottom: 2px;
     }
-    .a4-company-meta {
-      font-size: 12px;
+    .a4-company-address {
+      font-size: 12.5px;
       font-weight: 500;
       color: #111;
-      line-height: 1.45;
     }
-
-    .a4-invoice-title {
-      text-align: center;
-      font-size: 15px;
-      font-weight: 700;
-      margin: 10px 0 8px 0;
-      text-decoration: underline;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      border-top: 1.5px solid #000;
-      border-bottom: 1.5px solid #000;
-      padding: 4px 0;
-    }
-
-    .a4-meta-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 12px;
-      border: 1px solid #000;
-      padding: 8px 12px;
-      margin-bottom: 0px;
+    .a4-company-phone {
       font-size: 12px;
+      font-weight: 500;
+      color: #333;
+      margin-top: 1px;
     }
-    .a4-meta-col {
+
+    .a4-top-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin: 10px 0 6px 0;
+      padding-bottom: 4px;
+    }
+    .a4-vat-tag {
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+    .a4-title-center {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .a4-copy-tag {
+      font-size: 12px;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .a4-boxes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    .a4-box {
+      border: 1.5px solid #000;
+      border-radius: 8px;
+      padding: 8px 12px;
+      position: relative;
+    }
+    .a4-box-title {
+      position: absolute;
+      top: -9px;
+      left: 14px;
+      background: #ffffff;
+      padding: 0 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .a4-box-content {
+      font-size: 12px;
       display: flex;
       flex-direction: column;
       gap: 3px;
     }
-    .a4-meta-row {
+    .a4-cust-name {
+      font-size: 13.5px;
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+    .a4-box-row {
       display: flex;
+      justify-content: space-between;
     }
-    .a4-meta-label {
-      width: 140px;
+    .a4-box-row span:first-child {
       font-weight: 600;
+      width: 80px;
     }
-    .a4-meta-colon {
-      margin-right: 6px;
-      font-weight: 600;
-    }
-    .a4-meta-val {
+    .a4-box-row span:last-child {
       font-weight: 600;
       flex: 1;
     }
 
-    .a4-mode-row {
-      display: flex;
-      justify-content: space-between;
-      border-left: 1px solid #000;
-      border-right: 1px solid #000;
-      border-bottom: 1px solid #000;
-      padding: 5px 12px;
-      font-size: 12px;
-      font-weight: 600;
-      background: #fafafa;
+    .a4-bill-type-row {
+      font-size: 12.5px;
+      font-weight: 700;
+      margin: 6px 0 6px 0;
     }
 
-    .a4-table-wrapper {
-      min-height: 280px;
+    .a4-table-box {
+      border: 1.5px solid #000;
+      min-height: 380px;
       display: flex;
       flex-direction: column;
-      border-left: 1px solid #000;
-      border-right: 1px solid #000;
-      border-bottom: 1px solid #000;
-      background: #ffffff;
+      margin-bottom: 0px;
     }
-
-    table.a4-table {
+    table.a4-tax-table {
       width: 100%;
       border-collapse: collapse;
-      height: auto;
+      height: 100%;
+      flex: 1;
     }
-    table.a4-table th {
+    table.a4-tax-table th {
       border-bottom: 1.5px solid #000;
       border-right: 1px solid #000;
       padding: 6px 8px;
@@ -138,98 +161,131 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       text-align: left;
       background: #fafafa;
     }
-    table.a4-table th:last-child {
+    table.a4-tax-table th:last-child {
       border-right: none;
     }
-    table.a4-table td {
+    table.a4-tax-table td {
       border-right: 1px solid #000;
-      border-bottom: 1px solid #e5e7eb;
-      padding: 6px 8px;
+      border-bottom: none; /* Clean continuous columns without horizontal lines */
+      padding: 4px 8px;
       font-size: 12px;
       vertical-align: top;
-      height: 24px;
     }
-    table.a4-table td:last-child {
+    table.a4-tax-table td:last-child {
       border-right: none;
     }
-    table.a4-table th.center, table.a4-table td.center {
+    table.a4-tax-table tr.a4-item-row td {
+      height: 22px;
+    }
+    table.a4-tax-table tr.a4-filler-row td {
+      height: auto;
+    }
+    table.a4-tax-table th.center, table.a4-tax-table td.center {
       text-align: center;
     }
-    table.a4-table th.num, table.a4-table td.num {
+    table.a4-tax-table th.num, table.a4-tax-table td.num {
       text-align: right;
     }
 
-    .a4-bottom-grid {
+    .a4-summary-grid {
       display: grid;
-      grid-template-columns: 1.3fr 1fr;
-      border-left: 1px solid #000;
-      border-right: 1px solid #000;
-      border-bottom: 1px solid #000;
+      grid-template-columns: 1.35fr 1fr;
+      border-left: 1.5px solid #000;
+      border-right: 1.5px solid #000;
+      border-bottom: 1.5px solid #000;
+      border-top: 1.5px solid #000;
     }
-    .a4-remarks-section {
-      padding: 10px 12px;
-      border-right: 1px solid #000;
+    .a4-summary-left {
+      padding: 8px 12px;
+      border-right: 1.5px solid #000;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      font-size: 12px;
     }
-    .a4-words-box {
-      font-style: italic;
-      font-weight: 600;
-      margin-top: 14px;
-      line-height: 1.4;
-    }
-
-    .a4-totals-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .a4-totals-table td {
-      padding: 5px 8px;
-      font-size: 12px;
-      border-bottom: 1px solid #000;
-    }
-    .a4-totals-table tr:last-child td {
-      border-bottom: none;
-    }
-    .a4-totals-label {
-      font-weight: 600;
-      width: 50%;
-    }
-    .a4-totals-val {
-      text-align: right;
+    .a4-print-date {
+      font-size: 11px;
       font-weight: 600;
     }
-    .a4-totals-table tr.net-total td {
-      font-weight: 800;
-      font-size: 13px;
-      border-top: 1.5px solid #000;
-      border-bottom: 1.5px double #000;
-      background: #fafafa;
+    .a4-total-badge-box {
+      background: #e5e7eb;
+      border: 1px solid #9ca3af;
+      padding: 8px 14px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-
-    .a4-signatures {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 24px;
-      text-align: center;
-      margin-top: 44px;
-      padding-top: 8px;
+    .a4-total-label {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+    }
+    .a4-total-amount {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.01em;
+    }
+    .a4-remarks-line {
       font-size: 11.5px;
       font-weight: 600;
     }
-    .a4-sig-line {
-      border-top: 1px dotted #000;
-      padding-top: 6px;
+
+    .a4-summary-right {
+      padding: 0;
+    }
+    table.a4-calc-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table.a4-calc-table td {
+      padding: 4px 8px;
+      font-size: 11.5px;
+      border-bottom: 1px solid #000;
+    }
+    table.a4-calc-table td.label {
+      font-weight: 600;
+      width: 55%;
+    }
+    table.a4-calc-table td.val {
+      text-align: right;
+      font-weight: 600;
+    }
+    table.a4-calc-table tr.net-row td {
+      font-weight: 800;
+      font-size: 13px;
+      border-top: 1.5px solid #000;
+      border-bottom: none;
+      background: #fafafa;
     }
 
-    .a4-print-time {
-      display: flex;
-      justify-content: flex-end;
+    .a4-words-bar {
+      border-left: 1.5px solid #000;
+      border-right: 1.5px solid #000;
+      border-bottom: 1.5px solid #000;
+      padding: 6px 12px;
+      font-size: 11.5px;
+      font-style: italic;
+      font-weight: 600;
+    }
+
+    .a4-eoe {
       font-size: 11px;
-      color: #333;
-      margin-top: 14px;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    .a4-sign-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 16px;
+      text-align: center;
+      margin-top: 48px;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+    .a4-sign-line {
+      border-top: 1.5px solid #000;
+      padding-top: 6px;
     }
 
     table {
@@ -244,10 +300,6 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     }
     tfoot {
       display: table-footer-group;
-    }
-    .signature-box, .a4-signatures {
-      page-break-inside: avoid;
-      break-inside: avoid;
     }
 
     @media print {
@@ -451,4 +503,3 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
 
 export const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-

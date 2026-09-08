@@ -49,8 +49,8 @@ export interface SaleInvoiceData {
 
 /**
  * Universal Sale Invoice Printer for KhataPlus.
- * Automatically selects between Official Nepal A4 Tax Invoice and Compact Thermal Slip
- * based on invoice type / VAT registration.
+ * Formats official Nepal IRD-standard Tax Invoices (matching BITRAN sample)
+ * and compact thermal receipts.
  */
 export const printSaleInvoice = (data: SaleInvoiceData) => {
   const {
@@ -87,7 +87,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
   let body = "";
 
   if (isTaxInvoice) {
-    // Official Nepal A4 Tax Invoice (कर बिजक)
+    // Official Nepal A4 Tax Invoice (कर बिजक) — Matching BITRAN Solutions Sample
     const calcTaxable = data.taxableAmount !== undefined
       ? Number(data.taxableAmount)
       : (subtotal - discountNum > 0 ? (subtotal - discountNum) / 1.13 : 0);
@@ -97,152 +97,155 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
 
     const a4Rows = items.length > 0
       ? items.map((i, idx) => `
-        <tr>
-          <td class="center" style="width:40px;">${idx + 1}</td>
-          <td class="center" style="width:70px; color:${i.hs_code ? '#111' : '#6b7280'};">${escapeHtml(i.hs_code || "-")}</td>
+        <tr class="a4-item-row">
+          <td class="center" style="width:45px;">${idx + 1}</td>
           <td><strong>${escapeHtml(i.product_name)}</strong></td>
-          <td class="num" style="width:100px;">${fmtQty(i.qty)} <span style="font-size:11px; color:#555;">${escapeHtml(i.unit || "pcs")}</span></td>
-          <td class="num" style="width:100px;">${(Number(i.price) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-          <td class="num" style="width:70px;">0.00</td>
-          <td class="num" style="width:120px; font-weight:600;">${((Number(i.qty) || 0) * (Number(i.price) || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td class="num" style="width:70px;">${fmtQty(i.qty)}</td>
+          <td class="center" style="width:60px;">${escapeHtml(i.unit || "Pcs")}</td>
+          <td class="num" style="width:95px;">${(Number(i.price) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td class="num" style="width:110px; font-weight:700;">${((Number(i.qty) || 0) * (Number(i.price) || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
       `).join("")
-      : `<tr><td colspan="7" style="text-align:center; padding:16px; color:#6b7280;">General Sale</td></tr>`;
+      : `<tr class="a4-item-row"><td colspan="6" style="text-align:center; padding:16px; color:#6b7280;">General Sale</td></tr>`;
 
     body = `
       <div class="a4-container">
         <div>
           <div class="a4-header">
             <div class="a4-company-name">${escapeHtml(shop.name)}</div>
-            <div class="a4-company-meta">
-              ${shop.address ? `<div>${escapeHtml(shop.address)}</div>` : ""}
-              ${shop.phone ? `<div>Ph.No: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
-              <div>VAT No. : <strong>${escapeHtml(shop.pan || "N/A")}</strong></div>
-            </div>
+            ${shop.address ? `<div class="a4-company-address">${escapeHtml(shop.address)}</div>` : ""}
+            ${shop.phone ? `<div class="a4-company-phone">Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
           </div>
 
-          <div class="a4-invoice-title">Tax Invoice</div>
+          <div class="a4-top-meta">
+            <div class="a4-vat-tag">VAT No : <strong>${escapeHtml(shop.pan || "N/A")}</strong></div>
+            <div class="a4-title-center">TAX INVOICE</div>
+            <div class="a4-copy-tag">Customer Copy</div>
+          </div>
 
-          <div class="a4-meta-grid">
-            <div class="a4-meta-col">
-              <div class="a4-meta-row">
-                <span class="a4-meta-label">Customer Name</span>
-                <span class="a4-meta-colon">:</span>
-                <span class="a4-meta-val">${escapeHtml(customerName)}</span>
-              </div>
-              <div class="a4-meta-row">
-                <span class="a4-meta-label">Pan / Vat No.</span>
-                <span class="a4-meta-colon">:</span>
-                <span class="a4-meta-val">${escapeHtml(buyerPan || "N/A")}</span>
-              </div>
-              <div class="a4-meta-row">
-                <span class="a4-meta-label">Customer Adress</span>
-                <span class="a4-meta-colon">:</span>
-                <span class="a4-meta-val">${escapeHtml(buyerAddress || "N/A")}</span>
-              </div>
-              <div class="a4-meta-row">
-                <span class="a4-meta-label">Customer Cnt No.</span>
-                <span class="a4-meta-colon">:</span>
-                <span class="a4-meta-val">${escapeHtml(customerPhone || "N/A")}</span>
+          <div class="a4-boxes-grid">
+            <div class="a4-box">
+              <div class="a4-box-title">Customer Details</div>
+              <div class="a4-box-content">
+                <div class="a4-cust-name">${escapeHtml(customerName)}</div>
+                ${buyerAddress ? `<div class="a4-box-row"><span>Address :</span><span>${escapeHtml(buyerAddress)}</span></div>` : ""}
+                <div class="a4-box-row"><span>Phone :</span><span>${escapeHtml(customerPhone || "-")}</span></div>
+                <div class="a4-box-row"><span>VAT No :</span><span>${escapeHtml(buyerPan || "-")}</span></div>
               </div>
             </div>
 
-            <div class="a4-meta-col">
-              <div class="a4-meta-row">
-                <span class="a4-meta-label">Invoice No.</span>
-                <span class="a4-meta-colon">:</span>
-                <span class="a4-meta-val">${escapeHtml(billNo)}</span>
-              </div>
-              <div class="a4-meta-row">
-                <span class="a4-meta-label">Date of Transaction</span>
-                <span class="a4-meta-colon">:</span>
-                <span class="a4-meta-val">${formattedDate}</span>
-              </div>
-              <div class="a4-meta-row">
-                <span class="a4-meta-label">Time of Transaction</span>
-                <span class="a4-meta-colon">:</span>
-                <span class="a4-meta-val">${formattedTime}</span>
+            <div class="a4-box">
+              <div class="a4-box-title">Invoice Details</div>
+              <div class="a4-box-content">
+                <div class="a4-box-row"><span>Bill No :</span><span>${escapeHtml(billNo)}</span></div>
+                <div class="a4-box-row"><span>Bill Date :</span><span>${formattedDate}</span></div>
+                <div class="a4-box-row"><span>Time :</span><span>${formattedTime}</span></div>
+                <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode || "Cash")}</span></div>
               </div>
             </div>
           </div>
 
-          <div class="a4-mode-row">
-            <div>Mode of Payment : <span style="text-transform:uppercase;">${escapeHtml(paymentMode || "cash")}</span></div>
-            <div>Bill Type : ${paymentMode === "credit" ? "Credit" : "Cash"}</div>
+          <div class="a4-bill-type-row">
+            Bill Type: &nbsp;<strong>${paymentMode === "credit" ? "Credit Memo" : "Cash Memo"}</strong>
           </div>
 
-          <div class="a4-table-wrapper">
-            <table class="a4-table">
+          <div class="a4-table-box">
+            <table class="a4-tax-table">
               <thead>
                 <tr>
-                  <th class="center" style="width:40px;">SNo</th>
-                  <th class="center" style="width:70px;">HSCode</th>
-                  <th>Particular</th>
-                  <th class="num" style="width:100px;">Qty</th>
-                  <th class="num" style="width:100px;">Rate</th>
-                  <th class="num" style="width:70px;">P.Disc</th>
-                  <th class="num" style="width:120px;">Amount</th>
+                  <th style="width:45px;" class="center">S.No</th>
+                  <th>Particulars</th>
+                  <th style="width:70px;" class="num">Qty</th>
+                  <th style="width:60px;" class="center">Unit</th>
+                  <th style="width:95px;" class="num">Rate</th>
+                  <th style="width:110px;" class="num">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 ${a4Rows}
+                <tr class="a4-filler-row">
+                  <td>&nbsp;</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                </tr>
               </tbody>
             </table>
           </div>
 
-          <div class="a4-bottom-grid">
-            <div class="a4-remarks-section">
-              <div>
-                <strong>Remarks :</strong> ${discountNum > 0 ? `Discount given: Rs. ${discountNum}` : (paymentMode === "credit" ? "Credit Sale" : (data.note ? escapeHtml(data.note) : "Standard Sale"))}
+          <div class="a4-summary-grid">
+            <div class="a4-summary-left">
+              <div class="a4-print-date">
+                <strong>BILL PRINT DATE & TIME:</strong> &nbsp;${formattedTime}&nbsp;&nbsp;${formattedDate}
               </div>
-              <div class="a4-words-box">
-                <strong>In Words :</strong> ${escapeHtml(numberToWords(total))}
+              <div class="a4-total-badge-box">
+                <div class="a4-total-label">TOTAL :</div>
+                <div class="a4-total-amount">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              </div>
+              <div class="a4-remarks-line">
+                <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (discountNum > 0 ? `Discount given: Rs. ${discountNum}` : (paymentMode === "credit" ? "Credit Sale" : "Standard Sale"))}
               </div>
             </div>
 
-            <div>
-              <table class="a4-totals-table">
+            <div class="a4-summary-right">
+              <table class="a4-calc-table">
                 <tbody>
                   <tr>
-                    <td class="a4-totals-label">Basic Amount</td>
-                    <td style="width:10px;">:</td>
-                    <td class="a4-totals-val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="label">Grand Total</td>
+                    <td class="val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
-                    <td class="a4-totals-label">Discount</td>
-                    <td style="width:10px;">:</td>
-                    <td class="a4-totals-val">${(discountNum || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="label">P. Discount</td>
+                    <td class="val">${discountNum > 0 ? `(${discountNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : "0.00"}</td>
                   </tr>
                   <tr>
-                    <td class="a4-totals-label">Taxable value</td>
-                    <td style="width:10px;">:</td>
-                    <td class="a4-totals-val">${(calcTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="label">Non-Taxable AMT</td>
+                    <td class="val">0.00</td>
                   </tr>
                   <tr>
-                    <td class="a4-totals-label">Vat 13 %</td>
-                    <td style="width:10px;">:</td>
-                    <td class="a4-totals-val">${(calcVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="label">Taxable Amount</td>
+                    <td class="val">${(calcTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
-                  <tr class="net-total">
-                    <td class="a4-totals-label">Net Amount</td>
-                    <td style="width:10px;">:</td>
-                    <td class="a4-totals-val">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <tr>
+                    <td class="label">Vat @13%</td>
+                    <td class="val">${(calcVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                  <tr>
+                    <td class="label">Round Off</td>
+                    <td class="val">0.00</td>
+                  </tr>
+                  <tr class="net-row">
+                    <td class="label">Net Total</td>
+                    <td class="val">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
+
+          <div class="a4-words-bar">
+            <strong>In Words:</strong> ${escapeHtml(numberToWords(total))}
+          </div>
+
+          <div class="a4-eoe">E. O. & E.</div>
         </div>
 
         <div>
-          <div class="a4-signatures">
-            <div class="a4-sig-line">Received By</div>
-            <div class="a4-sig-line">Prepared By</div>
-            <div class="a4-sig-line">For : ${escapeHtml(shop.name)}</div>
-          </div>
-
-          <div class="a4-print-time">
-            Print Date & Time : ${formattedDate} ${formattedTime}
+          <div class="a4-sign-grid">
+            <div class="a4-sign-col">
+              <div class="a4-sign-line">Prepared By</div>
+            </div>
+            <div class="a4-sign-col">
+              <div class="a4-sign-line">Checked By</div>
+            </div>
+            <div class="a4-sign-col">
+              <div class="a4-sign-line">Received By</div>
+            </div>
+            <div class="a4-sign-col">
+              <div class="a4-sign-line">Authorized Signature</div>
+            </div>
           </div>
         </div>
       </div>
