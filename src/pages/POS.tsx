@@ -86,6 +86,8 @@ const POS = () => {
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerPan, setNewCustomerPan] = useState("");
+  const [newCustomerAddress, setNewCustomerAddress] = useState("");
   const [busyCustomer, setBusyCustomer] = useState(false);
 
   useEffect(() => {
@@ -463,6 +465,13 @@ const POS = () => {
       return toast.error(`Customer '${existing.name}' already exists`);
     }
 
+    const panTrim = newCustomerPan.trim();
+    const addressTrim = newCustomerAddress.trim();
+
+    if (panTrim && !/^\d{9}$/.test(panTrim)) {
+      return toast.error("PAN नम्बर ९ अङ्कको हुनुपर्छ (PAN must be 9 digits)");
+    }
+
     setBusyCustomer(true);
     try {
       const ref = doc(collection(db, "customers"));
@@ -471,11 +480,14 @@ const POS = () => {
         user_id: user!.uid,
         name: nameTrim,
         phone: phoneTrim || null,
+        pan: panTrim || null,
+        address: addressTrim || null,
         balance: 0,
         created_at: new Date().toISOString()
       });
       toast.success("Customer added");
       setNewCustomerName(""); setNewCustomerPhone("");
+      setNewCustomerPan(""); setNewCustomerAddress("");
       setCustomerDialogOpen(false);
       await load();
       setCustomerId(ref.id);
@@ -1234,8 +1246,27 @@ const POS = () => {
             <DialogDescription>Add a new customer accounts.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label>Name</Label><Input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} /></div>
-            <div><Label>Phone</Label><Input value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} /></div>
+            <div><Label>Name *</Label><Input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="Full Name" /></div>
+            <div><Label>Phone (Optional)</Label><Input value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} placeholder="Mobile Number" /></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>PAN No. (Optional)</Label>
+                <Input 
+                  placeholder="९-अङ्कको PAN" 
+                  maxLength={9} 
+                  value={newCustomerPan} 
+                  onChange={(e) => setNewCustomerPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                />
+              </div>
+              <div>
+                <Label>Address (Optional)</Label>
+                <Input 
+                  placeholder="Location / Address" 
+                  value={newCustomerAddress} 
+                  onChange={(e) => setNewCustomerAddress(e.target.value)} 
+                />
+              </div>
+            </div>
             <Button onClick={saveNewCustomer} disabled={busyCustomer} className="w-full bg-gradient-primary text-primary-foreground">
               {busyCustomer ? (
                 <>

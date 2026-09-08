@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, doc, query, where, getDocs, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search } from "lucide-react";
+import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
@@ -62,6 +62,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [items, setItems] = useState<Party[]>([]);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(""); const [phone, setPhone] = useState("");
+  const [pan, setPan] = useState(""); const [address, setAddress] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
   const [balanceType, setBalanceType] = useState<"payable" | "receivable">(type === "customer" ? "receivable" : "payable");
   const [selected, setSelected] = useState<Party | null>(null);
@@ -70,6 +71,12 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [payAmount, setPayAmount] = useState(""); const [payNote, setPayNote] = useState("");
   const [payPaymentMode, setPayPaymentMode] = useState<string>("cash");
   const [busyAdd, setBusyAdd] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editPan, setEditPan] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [busyEdit, setBusyEdit] = useState(false);
   const [busyPayment, setBusyPayment] = useState(false);
   const [analysisItems, setAnalysisItems] = useState<any[]>([]);
   const [busyAnalysis, setBusyAnalysis] = useState(false);
@@ -394,6 +401,13 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       }
     }
 
+    const cleanPan = pan.trim();
+    const cleanAddress = address.trim();
+
+    if (cleanPan && !/^\d{9}$/.test(cleanPan)) {
+      return toast.error("PAN नम्बर ९ अङ्कको हुनुपर्छ (PAN must be 9 digits)");
+    }
+
     setBusyAdd(true);
     try {
       const partyRef = doc(collection(db, table));
@@ -403,8 +417,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       batch.set(partyRef, {
         id: partyRef.id,
         user_id: user?.uid,
-        name: name.trim(),
-        phone: phone.trim() || null,
+        name: cleanName,
+        phone: cleanPhone || null,
+        pan: cleanPan || null,
+        address: cleanAddress || null,
         balance: 0,
         created_at: new Date().toISOString(),
       });
@@ -419,7 +435,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           user_id: user?.uid,
           party_type: type,
           party_id: partyRef.id,
-          party_name: name.trim(),
+          party_name: cleanName,
           entry_type: entryType,
           amount: initBal,
           note: `Opening Balance (${balanceType})`,
@@ -429,7 +445,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
       await batch.commit();
 
-      setName(""); setPhone(""); setOpeningBalance("");
+      setName(""); setPhone(""); setPan(""); setAddress(""); setOpeningBalance("");
       setOpen(false);
       load();
       toast.success(`${type === "customer" ? "Customer" : "Supplier"} added successfully!`);
@@ -437,6 +453,46 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       toast.error(e.message);
     } finally {
       setBusyAdd(false);
+    }
+  };
+
+  const saveEditParty = async () => {
+    if (!selected) return;
+    const cleanName = editName.trim();
+    const cleanPhone = editPhone.trim();
+    const cleanPan = editPan.trim();
+    const cleanAddress = editAddress.trim();
+
+    if (!cleanName) return toast.error("Name is required");
+
+    if (cleanPan && !/^\d{9}$/.test(cleanPan)) {
+      return toast.error("PAN नम्बर ९ अङ्कको हुनुपर्छ (PAN must be 9 digits)");
+    }
+
+    setBusyEdit(true);
+    try {
+      await updateDoc(doc(db, table, selected.id), {
+        name: cleanName,
+        phone: cleanPhone || null,
+        pan: cleanPan || null,
+        address: cleanAddress || null,
+      });
+
+      setSelected(prev => prev ? {
+        ...prev,
+        name: cleanName,
+        phone: cleanPhone || null,
+        pan: cleanPan || null,
+        address: cleanAddress || null,
+      } : null);
+
+      toast.success(`${type === "customer" ? "Customer" : "Supplier"} updated successfully!`);
+      setEditOpen(false);
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusyEdit(false);
     }
   };
 
@@ -671,9 +727,23 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   if (selected) {
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto">
-        <Button variant="ghost" onClick={() => { setSelected(null); setActiveTab("ledger"); }} className="mb-3"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-        <PageHeader title={selected.name} subtitle={selected.phone ?? ""} actions={
+        <PageHeader 
+          title={selected.name} 
+          subtitle={`${selected.phone || "No phone"}${selected.pan ? ` • PAN: ${selected.pan}` : ""}${selected.address ? ` • 📍 ${selected.address}` : ""}`} 
+          actions={
           <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setEditName(selected.name || "");
+              setEditPhone(selected.phone || "");
+              setEditPan(selected.pan || "");
+              setEditAddress(selected.address || "");
+              setEditOpen(true);
+            }}
+          >
+            <Pencil className="h-4 w-4 mr-1" /> Edit Profile
+          </Button>
           <Button variant="outline" onClick={async () => {
             const shop = await getShopInfo();
             const isDebt = Number(selected.balance) > 0;
@@ -1161,8 +1231,27 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
-              <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
-              <div><Label>Phone</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+              <div><Label>Name *</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name" /></div>
+              <div><Label>Phone (Optional)</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Mobile Number" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>PAN No. (Optional)</Label>
+                  <Input 
+                    placeholder="९-अङ्कको PAN" 
+                    maxLength={9} 
+                    value={pan} 
+                    onChange={(e) => setPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                  />
+                </div>
+                <div>
+                  <Label>Address (Optional)</Label>
+                  <Input 
+                    placeholder="Location / City" 
+                    value={address} 
+                    onChange={(e) => setAddress(e.target.value)} 
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Opening Balance</Label>
@@ -1287,6 +1376,52 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Party Dialog */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit {type === "customer" ? "Customer" : "Supplier"} Profile</DialogTitle>
+              <DialogDescription>
+                Update contact, PAN and address details for {selected?.name || "this party"}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div><Label>Name *</Label><Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full Name" /></div>
+              <div><Label>Phone (Optional)</Label><Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Mobile Number" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>PAN No. (Optional)</Label>
+                  <Input 
+                    placeholder="९-अङ्कको PAN" 
+                    maxLength={9} 
+                    value={editPan} 
+                    onChange={(e) => setEditPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                  />
+                </div>
+                <div>
+                  <Label>Address (Optional)</Label>
+                  <Input 
+                    placeholder="Location / City" 
+                    value={editAddress} 
+                    onChange={(e) => setEditAddress(e.target.value)} 
+                  />
+                </div>
+              </div>
+              <Button onClick={saveEditParty} disabled={busyEdit} className="w-full bg-gradient-primary text-primary-foreground">
+                {busyEdit ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Saving Changes...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {items.length === 0 ? (
           <div className="col-span-full text-center text-muted-foreground py-12">No {type}s yet. Click + Add to add one.</div>
         ) : filtered.length === 0 ? (
