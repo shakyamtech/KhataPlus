@@ -23,7 +23,7 @@ import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printPurchaseVoucher } from "@/lib/invoicePrinter";
 
 type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null; has_expiry?: boolean };
-type Supplier = { id: string; name: string };
+type Supplier = { id: string; name: string; phone?: string; pan?: string; address?: string };
 type Item = { product_id: string; product_name: string; unit: string; cost_price: number | string; qty: number | string; batch_name?: string; has_expiry?: boolean; expiry_date?: string };
 
 const paymentModeLabels: Record<string, string> = {
@@ -95,6 +95,8 @@ const Purchases = () => {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState("");
   const [newSupplierPhone, setNewSupplierPhone] = useState("");
+  const [newSupplierPan, setNewSupplierPan] = useState("");
+  const [newSupplierAddress, setNewSupplierAddress] = useState("");
   const [busy, setBusy] = useState(false);
   const [busySupplier, setBusySupplier] = useState(false);
   const [cashBalance, setCashBalance] = useState(0);
@@ -292,6 +294,13 @@ const Purchases = () => {
       return toast.error(`Supplier '${existing.name}' already exists`);
     }
 
+    const panTrim = isVatShop ? newSupplierPan.trim() : "";
+    const addressTrim = isVatShop ? newSupplierAddress.trim() : "";
+
+    if (panTrim && !/^\d{9}$/.test(panTrim)) {
+      return toast.error("PAN नम्बर ९ अङ्कको हुनुपर्छ (PAN must be 9 digits)");
+    }
+
     setBusySupplier(true);
     try {
       const ref = doc(collection(db, "suppliers"));
@@ -300,11 +309,14 @@ const Purchases = () => {
         user_id: user!.uid,
         name: nameTrim,
         phone: phoneTrim || null,
+        pan: panTrim || null,
+        address: addressTrim || null,
         balance: 0,
         created_at: new Date().toISOString()
       });
       toast.success("Supplier added");
       setNewSupplierName(""); setNewSupplierPhone("");
+      setNewSupplierPan(""); setNewSupplierAddress("");
       setSupplierDialogOpen(false);
       await load();
       setSupplierId(ref.id);
@@ -887,8 +899,29 @@ const Purchases = () => {
             <DialogDescription>Add a new supplier accounts.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label>Name</Label><Input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} /></div>
-            <div><Label>Phone</Label><Input value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} /></div>
+            <div><Label>Name *</Label><Input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} placeholder="Supplier Name" /></div>
+            <div><Label>Phone (Optional)</Label><Input value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} placeholder="Mobile Number" /></div>
+            {isVatShop && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>PAN No. (Optional)</Label>
+                  <Input 
+                    placeholder="९-अङ्कको PAN" 
+                    maxLength={9} 
+                    value={newSupplierPan} 
+                    onChange={(e) => setNewSupplierPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                  />
+                </div>
+                <div>
+                  <Label>Address (Optional)</Label>
+                  <Input 
+                    placeholder="Location / Address" 
+                    value={newSupplierAddress} 
+                    onChange={(e) => setNewSupplierAddress(e.target.value)} 
+                  />
+                </div>
+              </div>
+            )}
             <Button onClick={saveNewSupplier} disabled={busySupplier} className="w-full bg-gradient-primary text-primary-foreground">
               {busySupplier ? (
                 <>
