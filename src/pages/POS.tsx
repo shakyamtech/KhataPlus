@@ -964,80 +964,9 @@ const POS = () => {
           </div>
 
           <div className="my-3 border-t pt-3 space-y-2">
-            {shopInfo?.is_vat_registered && (
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs font-semibold text-primary block leading-tight">Invoice Format</Label>
-                    <div className="text-[10px] text-muted-foreground leading-tight">(बिल ढाँचा)</div>
-                  </div>
-                  <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setInvoiceType("abbreviated")}
-                      className={cn(
-                        "px-2 py-1 rounded text-xs font-medium transition-all",
-                        invoiceType === "abbreviated"
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      संक्षिप्त (Abbreviated)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInvoiceType("tax_invoice")}
-                      className={cn(
-                        "px-2 py-1 rounded text-xs font-medium transition-all",
-                        invoiceType === "tax_invoice"
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      कर बिजक (VAT 13%)
-                    </button>
-                  </div>
-                </div>
-
-                {invoiceType === "tax_invoice" && (
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-primary/10">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center gap-0.5">
-                        Buyer PAN <span className="text-destructive font-black">*</span>
-                      </Label>
-                      <Input
-                        placeholder="९-अङ्कको PAN (९ Digits)"
-                        maxLength={9}
-                        className={cn(
-                          "h-7 text-xs bg-background font-medium",
-                          !buyerPan.trim() && "border-destructive/60 focus:border-destructive"
-                        )}
-                        value={buyerPan}
-                        onChange={(e) => setBuyerPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center gap-0.5">
-                        Buyer Address <span className="text-destructive font-black">*</span>
-                      </Label>
-                      <Input
-                        placeholder="ठेगाना (Location)"
-                        className={cn(
-                          "h-7 text-xs bg-background font-medium",
-                          !buyerAddress.trim() && "border-destructive/60 focus:border-destructive"
-                        )}
-                        value={buyerAddress}
-                        onChange={(e) => setBuyerAddress(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             <div ref={customerContainerRef} className="relative">
               <div className="flex items-center justify-between mb-1">
-                <Label className="text-xs">Customer</Label>
+                <Label className="text-xs font-semibold">Customer (ग्राहक)</Label>
                 {customerId !== "walk-in" && (
                   <button
                     type="button"
@@ -1046,7 +975,7 @@ const POS = () => {
                       setCustomerQuery("");
                       setCustomerSuggestionsOpen(false);
                     }}
-                    className="text-[10px] text-primary hover:underline"
+                    className="text-[10px] text-primary hover:underline font-medium"
                   >
                     Reset to Walk-in
                   </button>
@@ -1139,11 +1068,96 @@ const POS = () => {
                   )}
                 </div>
 
-                <Button size="icon" variant="outline" onClick={() => setCustomerDialogOpen(true)} title="Add New Customer" className="shrink-0 h-9 w-9">
+                <Button 
+                  size="icon" 
+                  variant="outline" 
+                  onClick={() => {
+                    const q = customerQuery.trim();
+                    const isDigits = /^\d+$/.test(q);
+                    setNewCustomerName(isDigits ? "" : q);
+                    setNewCustomerPhone(isDigits ? q : "");
+                    setNewCustomerPan(buyerPan.trim());
+                    setNewCustomerAddress(buyerAddress.trim());
+                    setCustomerDialogOpen(true);
+                  }} 
+                  title="Add New Customer" 
+                  className="shrink-0 h-9 w-9"
+                >
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
             </div>
+
+            {shopInfo?.is_vat_registered && (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-semibold text-primary block leading-tight">Invoice Format</Label>
+                    <div className="text-[10px] text-muted-foreground leading-tight">(बिल ढाँचा)</div>
+                  </div>
+                  <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setInvoiceType("abbreviated")}
+                      className={cn(
+                        "px-2 py-1 rounded text-xs font-medium transition-all",
+                        invoiceType === "abbreviated"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      संक्षिप्त (Abbreviated)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInvoiceType("tax_invoice")}
+                      className={cn(
+                        "px-2 py-1 rounded text-xs font-medium transition-all",
+                        invoiceType === "tax_invoice"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      कर बिजक (VAT 13%)
+                    </button>
+                  </div>
+                </div>
+
+                {invoiceType === "tax_invoice" && (
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-primary/10">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center gap-0.5">
+                        Buyer PAN <span className="text-destructive font-black">*</span>
+                      </Label>
+                      <Input
+                        placeholder="९-अङ्कको PAN (९ Digits)"
+                        maxLength={9}
+                        className={cn(
+                          "h-7 text-xs bg-background font-medium",
+                          !buyerPan.trim() && "border-destructive/60 focus:border-destructive"
+                        )}
+                        value={buyerPan}
+                        onChange={(e) => setBuyerPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center gap-0.5">
+                        Buyer Address <span className="text-destructive font-black">*</span>
+                      </Label>
+                      <Input
+                        placeholder="ठेगाना (Location)"
+                        className={cn(
+                          "h-7 text-xs bg-background font-medium",
+                          !buyerAddress.trim() && "border-destructive/60 focus:border-destructive"
+                        )}
+                        value={buyerAddress}
+                        onChange={(e) => setBuyerAddress(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">Payment</Label>
