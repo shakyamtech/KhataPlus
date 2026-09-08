@@ -454,10 +454,14 @@ const POS = () => {
       if (shopInfo?.is_vat_registered && invoiceType === "tax_invoice") {
         const panClean = buyerPan.trim();
         if (!panClean) {
-          return toast.error("कर बिजक (Tax Invoice) जारी गर्न ग्राहकको ९-अङ्कको PAN नम्बर अनिवार्य छ!");
+          return toast.error("कर बिजक (Tax Invoice) जारी गर्न ग्राहकको ९-अङ्कको PAN नम्बर आवश्यक छ!");
         }
         if (!/^\d{9}$/.test(panClean)) {
           return toast.error("कृपया सही ९-अङ्कको PAN नम्बर मात्र प्रविष्ट गर्नुहोस् (PAN must be 9 digits)!");
+        }
+        const addrClean = buyerAddress.trim();
+        if (!addrClean) {
+          return toast.error("कर बिजक (Tax Invoice) जारी गर्न ग्राहकको ठेगाना (Address) आवश्यक छ!");
         }
       }
       
@@ -928,9 +932,9 @@ const POS = () => {
 
                 {invoiceType === "tax_invoice" && (
                   <div className="grid grid-cols-2 gap-2 pt-1 border-t border-primary/10">
-                    <div>
-                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center gap-1">
-                        Buyer PAN No. <span className="text-destructive">* (अनिवार्य)</span>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center gap-0.5">
+                        Buyer PAN <span className="text-destructive font-black">*</span>
                       </Label>
                       <Input
                         placeholder="९-अङ्कको PAN (९ Digits)"
@@ -943,11 +947,16 @@ const POS = () => {
                         onChange={(e) => setBuyerPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
                       />
                     </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase font-semibold">Buyer Address</Label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center gap-0.5">
+                        Buyer Address <span className="text-destructive font-black">*</span>
+                      </Label>
                       <Input
-                        placeholder="Buyer's Location"
-                        className="h-7 text-xs"
+                        placeholder="ठेगाना (Location)"
+                        className={cn(
+                          "h-7 text-xs bg-background font-medium",
+                          !buyerAddress.trim() && "border-destructive/60 focus:border-destructive"
+                        )}
                         value={buyerAddress}
                         onChange={(e) => setBuyerAddress(e.target.value)}
                       />
