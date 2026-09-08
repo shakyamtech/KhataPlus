@@ -264,6 +264,7 @@ const POS = () => {
         sell_price: Number(p.sell_price), 
         cost_price: Number(p.cost_price), 
         qty: totalAvailable < 1 && totalAvailable > 0 ? +Number(totalAvailable).toFixed(3) : 1,
+        is_taxable: (p as any).is_taxable !== false,
         hs_code: p.hs_code || null,
         selected_batch_id: "auto",
         available_batches: p.active_batches || [],
@@ -362,9 +363,25 @@ const POS = () => {
   const discountNum = Math.max(0, Math.min(typedDiscount > 0 ? typedDiscount : autoDiscount, subtotal));
   
   const isVatInvoice = Boolean(shopInfo?.is_vat_registered && invoiceType === "tax_invoice");
-  const taxableSubtotal = Math.max(0, +(subtotal - discountNum).toFixed(2));
-  const vatAmountCalc = isVatInvoice ? +(taxableSubtotal * 0.13).toFixed(2) : 0;
-  const total = isVatInvoice ? +(taxableSubtotal + vatAmountCalc).toFixed(2) : Math.round(subtotal - discountNum);
+
+  // Split non-taxable (exempt) vs taxable items
+  const exemptRaw = cart
+    .filter(i => (i as any).is_taxable === false)
+    .reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.sell_price) || 0), 0);
+  const taxableRaw = Math.max(0, +(subtotal - exemptRaw).toFixed(2));
+
+  // Distribute discount proportionally between exempt and taxable
+  const discountRatio = subtotal > 0 ? (discountNum / subtotal) : 0;
+  const exemptDiscount = +(exemptRaw * discountRatio).toFixed(2);
+  const taxableDiscount = +(discountNum - exemptDiscount).toFixed(2);
+
+  const calcNonTaxable = Math.max(0, +(exemptRaw - exemptDiscount).toFixed(2));
+  const calcTaxableNet = Math.max(0, +(taxableRaw - taxableDiscount).toFixed(2));
+
+  const vatAmountCalc = isVatInvoice ? +(calcTaxableNet * 0.13).toFixed(2) : 0;
+  const total = isVatInvoice 
+    ? +(calcNonTaxable + calcTaxableNet + vatAmountCalc).toFixed(2) 
+    : Math.round(subtotal - discountNum);
 
   useEffect(() => {
     if (paymentMode !== "credit") {
@@ -565,7 +582,8 @@ const POS = () => {
       }
 
       const isVatInvoice = Boolean(shopInfo?.is_vat_registered && invoiceType === "tax_invoice");
-      const taxableAmount = isVatInvoice ? taxableSubtotal : null;
+      const nonTaxableAmount = isVatInvoice ? calcNonTaxable : null;
+      const taxableAmount = isVatInvoice ? calcTaxableNet : null;
       const vatAmount = isVatInvoice ? vatAmountCalc : null;
 
       const batch = writeBatch(db);
@@ -583,6 +601,7 @@ const POS = () => {
         invoice_type: invoiceType,
         buyer_pan: isVatInvoice ? (buyerPan.trim() || null) : null,
         buyer_address: isVatInvoice ? (buyerAddress.trim() || null) : null,
+        non_taxable_amount: nonTaxableAmount,
         taxable_amount: taxableAmount,
         vat_amount: vatAmount,
         created_at: new Date().toISOString()
@@ -688,8 +707,9 @@ const POS = () => {
           })),
           subtotal,
           discount: discountNum,
-          taxableAmount: taxableAmount ?? taxableSubtotal,
-          vatAmount: vatAmount ?? vatAmountCalc,
+          nonTaxableAmount: calcNonTaxable,
+          taxableAmount: calcTaxableNet,
+          vatAmount: vatAmountCalc,
           total,
           paidAmount: paid,
           dueAmount,
@@ -1042,7 +1062,13 @@ const POS = () => {
             )}
             {shopInfo?.is_vat_registered && invoiceType === "tax_invoice" && (
               <div className="pt-1 border-t text-xs space-y-1 text-muted-foreground">
-                <div className="flex justify-between"><span>Taxable Amount (करयोग्य)</span><span>{fmt(taxableSubtotal)}</span></div>
+                {calcNonTaxable > 0 && (
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                    <span>Non-Taxable (कर छुट)</span>
+                    <span>{fmt(calcNonTaxable)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between"><span>Taxable Amount (करयोग्य)</span><span>{fmt(calcTaxableNet)}</span></div>
                 <div className="flex justify-between"><span>+13% VAT</span><span className="text-primary font-semibold">+ {fmt(vatAmountCalc)}</span></div>
               </div>
             )}

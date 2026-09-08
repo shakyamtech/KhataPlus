@@ -92,8 +92,9 @@ const Reports = () => {
 
     const salesList = sales.map(s => {
       const isTaxInv = s.invoice_type === "tax_invoice" || s.is_vat_invoice === true || Number(s.vat_amount) > 0;
-      const taxable = isTaxInv ? Number(s.taxable_amount ?? (s.total / 1.13)) : Number(s.total || 0);
-      const vat = isTaxInv ? Number(s.vat_amount ?? (s.total - taxable)) : 0;
+      const nonTaxable = isTaxInv ? Number(s.non_taxable_amount || 0) : Number(s.total || 0);
+      const taxable = isTaxInv ? Number(s.taxable_amount ?? ((Number(s.total || 0) - nonTaxable) / 1.13)) : 0;
+      const vat = isTaxInv ? Number(s.vat_amount ?? (Number(s.total || 0) - taxable - nonTaxable)) : 0;
       const cust = s.customer_id ? cMap.get(s.customer_id) : null;
       const customerName = s.customer_name || cust?.name || "Walk-in Customer";
       const customerPan = s.buyer_pan || cust?.pan || "—";
@@ -101,6 +102,7 @@ const Reports = () => {
       if (isTaxInv) {
         taxableSales += taxable;
         outputVat += vat;
+        nonTaxableSales += nonTaxable;
         totalSalesWithVat += Number(s.total || 0);
       } else {
         nonTaxableSales += Number(s.total || 0);

@@ -35,6 +35,7 @@ export interface SaleInvoiceData {
   items: InvoiceItem[];
   subtotal?: number;
   discount?: number;
+  nonTaxableAmount?: number;
   taxableAmount?: number;
   vatAmount?: number;
   total: number;
@@ -202,7 +203,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
                   </tr>
                   <tr>
                     <td class="label">Non-Taxable AMT</td>
-                    <td class="val">0.00</td>
+                    <td class="val">${(Number(data.nonTaxableAmount || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
                     <td class="label">Taxable Amount</td>

@@ -46,6 +46,7 @@ type Entry = {
   invoice_type?: string;
   buyer_pan?: string | null;
   buyer_address?: string | null;
+  non_taxable_amount?: number;
   taxable_amount?: number;
   vat_amount?: number;
   is_vat_bill?: boolean;
@@ -180,6 +181,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             invoice_type: s.invoice_type,
             buyer_pan: s.buyer_pan,
             buyer_address: s.buyer_address,
+            non_taxable_amount: s.non_taxable_amount,
             taxable_amount: s.taxable_amount,
             vat_amount: s.vat_amount,
             order_items: orderItems,
@@ -547,6 +549,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           total: e.amount,
           paidAmount: e.paid_amount,
           dueAmount: e.due_amount,
+          nonTaxableAmount: e.non_taxable_amount,
           taxableAmount: e.taxable_amount,
           vatAmount: e.vat_amount,
           note: e.note,

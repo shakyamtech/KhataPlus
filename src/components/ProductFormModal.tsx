@@ -19,7 +19,7 @@ import { getShopInfo, ShopInfo } from "@/lib/shop";
 
 const DEFAULT_UNITS = ["pcs", "set", "doz"];
 
-export const blankProduct = { name: "", unit: "pcs", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "", hs_code: "", batch_name: "", has_expiry: false, expiry_date: "" };
+export const blankProduct = { name: "", unit: "pcs", cost_price: 0, sell_price: 0, stock_qty: 0, low_stock_threshold: 5, barcode: "", hs_code: "", is_taxable: true, batch_name: "", has_expiry: false, expiry_date: "" };
 
 function ModalDatePicker({ value, onChange }: { value: string; onChange: (val: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -167,6 +167,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
       unit: edit.unit || "pcs",
       barcode: edit.barcode?.trim() || null,
       hs_code: edit.hs_code?.trim() || null,
+      is_taxable: edit.is_taxable !== false,
       has_expiry: !!edit.has_expiry
     };
 
@@ -285,6 +286,27 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                 </div>
               )}
             </div>
+
+            {shopInfo?.is_vat_registered && (
+              <div 
+                className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer my-2" 
+                onClick={() => setEdit({ ...edit, is_taxable: edit.is_taxable === false ? true : false })}
+              >
+                <div className="space-y-0.5 pointer-events-none">
+                  <Label htmlFor="is_taxable" className="text-sm font-semibold text-primary">
+                    {edit.is_taxable !== false ? "कर लाग्ने वस्तु (Taxable - 13% VAT)" : "कर छुट वस्तु (Non-Taxable / Exempt - 0% VAT)"}
+                  </Label>
+                  <div className="text-[11px] text-muted-foreground leading-tight">
+                    {edit.is_taxable !== false ? "यस वस्तुको बिक्रीमा १३% भ्याट लागू हुन्छ।" : "नेपाल सरकारको अनुसूची १ अनुसार कर छुट (भ्याट नलाग्ने) वस्तु।"}
+                  </div>
+                </div>
+                <Switch 
+                  id="is_taxable" 
+                  checked={edit.is_taxable !== false} 
+                  onCheckedChange={(c) => setEdit({ ...edit, is_taxable: Boolean(c) })} 
+                />
+              </div>
+            )}
 
             <div className="flex items-center justify-between p-3 rounded-xl border border-primary/20 bg-primary/5 transition-all hover:bg-primary/10 cursor-pointer my-2" onClick={() => setEdit({ ...edit, has_expiry: !edit.has_expiry })}>
               <div className="space-y-0.5 pointer-events-none">
