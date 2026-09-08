@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo } from "@/lib/shop";
+import { printSaleInvoice } from "@/lib/invoicePrinter";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,13 +26,14 @@ type OrderItem = {
   unit: string;
   price?: number;
   total?: number;
+  hs_code?: string;
 };
 
-type Party = { id: string; name: string; phone: string | null; balance: number };
+type Party = { id: string; name: string; phone: string | null; balance: number; pan?: string; address?: string };
 type Entry = { 
   id: string; 
   entry_type?: string; 
-  title: string;
+  title: string; 
   amount: number; 
   paid_amount?: number;
   due_amount?: number;
@@ -41,6 +43,11 @@ type Entry = {
   products?: string;
   order_items?: OrderItem[];
   is_order?: boolean;
+  invoice_type?: string;
+  buyer_pan?: string | null;
+  buyer_address?: string | null;
+  taxable_amount?: number;
+  vat_amount?: number;
 };
 
 export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
@@ -140,7 +147,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 qty,
                 unit: data.unit || "pcs",
                 price,
-                total: price * qty
+                total: price * qty,
+                hs_code: data.hs_code
               });
             });
           }
@@ -167,6 +175,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             due_amount: dueAmt,
             created_at: s.created_at,
             note: s.note,
+            invoice_type: s.invoice_type,
+            buyer_pan: s.buyer_pan,
+            buyer_address: s.buyer_address,
+            taxable_amount: s.taxable_amount,
+            vat_amount: s.vat_amount,
             order_items: orderItems,
             products: orderItems.map(it => `${it.product_name} ×${it.qty}`).join(", ")
           });
@@ -504,8 +517,40 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     
     if (e.is_order) {
       const isSale = type === "customer";
-      const billTitle = isSale ? "Sales Invoice" : "Purchase Bill";
-      const docTypeLabel = isSale ? "Tax Invoice / Sales Receipt" : "Purchase Invoice / Receipt";
+      if (isSale) {
+        // Universal Centralized Invoice Printer (mirrors POS exactly)
+        printSaleInvoice({
+          shop,
+          customer: {
+            name: selected.name,
+            phone: selected.phone,
+            pan: e.buyer_pan || selected.pan,
+            address: e.buyer_address || selected.address
+          },
+          billNo: e.id.slice(-6).toUpperCase(),
+          date: e.created_at,
+          paymentMode: e.payment_mode || "cash",
+          items: (e.order_items || []).map(it => ({
+            product_name: it.product_name,
+            qty: it.qty,
+            unit: it.unit,
+            price: Number(it.price || 0),
+            total: it.total ?? (Number(it.qty) * Number(it.price || 0)),
+            hs_code: it.hs_code
+          })),
+          total: e.amount,
+          paidAmount: e.paid_amount,
+          dueAmount: e.due_amount,
+          taxableAmount: e.taxable_amount,
+          vatAmount: e.vat_amount,
+          note: e.note,
+          invoiceType: e.invoice_type
+        });
+        return;
+      }
+
+      const billTitle = "Purchase Bill";
+      const docTypeLabel = "Purchase Invoice / Receipt";
 
       const rows = (e.order_items && e.order_items.length > 0)
         ? e.order_items.map((it, idx) => `
@@ -532,7 +577,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
           <div class="bill-info">
             <div class="bill-info-item">
-              <span class="bill-info-label">${isSale ? "Customer" : "Supplier"}</span>
+              <span class="bill-info-label">Supplier</span>
               <span class="bill-info-value">${escapeHtml(selected.name)}</span>
             </div>
             <div class="bill-info-item" style="text-align:right;">
