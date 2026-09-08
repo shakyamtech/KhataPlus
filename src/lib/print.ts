@@ -115,19 +115,19 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     }
 
     .a4-table-wrapper {
-      flex: 1;
-      min-height: 380px;
+      min-height: 280px;
       display: flex;
       flex-direction: column;
+      border-left: 1px solid #000;
+      border-right: 1px solid #000;
+      border-bottom: 1px solid #000;
+      background: #ffffff;
     }
 
     table.a4-table {
       width: 100%;
       border-collapse: collapse;
-      border-left: 1px solid #000;
-      border-right: 1px solid #000;
-      border-bottom: 1px solid #000;
-      flex: 1;
+      height: auto;
     }
     table.a4-table th {
       border-bottom: 1.5px solid #000;
@@ -147,6 +147,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       padding: 6px 8px;
       font-size: 12px;
       vertical-align: top;
+      height: 24px;
     }
     table.a4-table td:last-child {
       border-right: none;
