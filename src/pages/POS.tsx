@@ -199,6 +199,9 @@ const POS = () => {
 
       const shop = await getShopInfo();
       setShopInfo(shop);
+      if (shop?.is_vat_registered) {
+        setInvoiceType("tax_invoice");
+      }
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -727,7 +730,8 @@ const POS = () => {
       }
 
       setCart([]); setDiscount(""); setTendered(""); setAmountPaid(""); setCustomerId("walk-in");
-      setBuyerPan(""); setBuyerAddress(""); setInvoiceType("abbreviated");
+      setBuyerPan(""); setBuyerAddress("");
+      setInvoiceType(shopInfo?.is_vat_registered ? "tax_invoice" : "abbreviated");
       load();
     } catch (e: any) {
       toast.error(e.message);
@@ -991,6 +995,8 @@ const POS = () => {
                             value="walk-in"
                             onSelect={() => {
                               setCustomerId("walk-in");
+                              setBuyerPan("");
+                              setBuyerAddress("");
                               setCustomerComboOpen(false);
                             }}
                           >
@@ -1003,6 +1009,8 @@ const POS = () => {
                               value={c.name + " " + (c.phone || "")}
                               onSelect={() => {
                                 setCustomerId(c.id);
+                                if (c.pan) setBuyerPan(c.pan);
+                                if (c.address) setBuyerAddress(c.address);
                                 setCustomerComboOpen(false);
                               }}
                             >
