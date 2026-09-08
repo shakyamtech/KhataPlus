@@ -894,7 +894,10 @@ const POS = () => {
             {shopInfo?.is_vat_registered && (
               <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold text-primary">Invoice Format (बिल ढाँचा)</Label>
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-semibold text-primary block leading-tight">Invoice Format</Label>
+                    <div className="text-[10px] text-muted-foreground leading-tight">(बिल ढाँचा)</div>
+                  </div>
                   <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border text-xs">
                     <button
                       type="button"
