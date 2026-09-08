@@ -509,17 +509,24 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
             <table class="a4-calc-table">
               <tbody>
                 <tr>
-                  <td class="label">Basic Amount</td>
+                  <td class="label">${isVatBill ? "Basic Amount" : "Total Amount"}</td>
                   <td class="val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
-                <tr>
-                  <td class="label">Taxable Amount</td>
-                  <td class="val">${(calcTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                </tr>
-                <tr>
-                  <td class="label">VAT @13%</td>
-                  <td class="val">${(calcVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                </tr>
+                ${isVatBill ? `
+                  <tr>
+                    <td class="label">Taxable Amount</td>
+                    <td class="val">${(calcTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                  <tr>
+                    <td class="label">VAT @13%</td>
+                    <td class="val">${(calcVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                ` : `
+                  <tr>
+                    <td class="label">Tax Category</td>
+                    <td class="val">Non-VAT (गैर-भ्याट / छुट)</td>
+                  </tr>
+                `}
                 <tr class="net-row">
                   <td class="label">Net Purchase</td>
                   <td class="val">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
