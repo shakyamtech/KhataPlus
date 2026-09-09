@@ -24,7 +24,7 @@ import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "next-themes";
 
 import { SplashScreen } from "@/components/SplashScreen";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary, MaintenanceView } from "@/components/ErrorBoundary";
 import { useState, useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -53,6 +53,7 @@ const App = () => {
                   <Routes>
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/maintenance" element={<MaintenanceView />} />
                     <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/pos" element={<POS />} />
