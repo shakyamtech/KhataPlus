@@ -244,7 +244,7 @@ export const AppShell = () => {
     }, [user]);
 
     useEffect(() => {
-        if (!settingsOpen || !user) return;
+        if (!shopOpen || !user) return;
         const fetchLastBills = async () => {
             try {
                 const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(60));
@@ -265,7 +265,7 @@ export const AppShell = () => {
             }
         };
         fetchLastBills();
-    }, [settingsOpen, user]);
+    }, [shopOpen, user]);
 
     useEffect(() => {
         if (!user) return;
