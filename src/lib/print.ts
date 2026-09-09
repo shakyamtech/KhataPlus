@@ -174,6 +174,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       border-bottom: none; /* Clean continuous columns without horizontal lines */
       padding: 4px 8px;
       font-size: 12px;
+      font-weight: 600;
       vertical-align: top;
     }
     table.a4-tax-table td:last-child {
@@ -195,8 +196,10 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     .a4-summary-grid {
       display: grid;
       grid-template-columns: 1.35fr 1fr;
-      border: 2px solid #000;
-      margin-top: -2px; /* Seamlessly joins with table bottom border */
+      border-left: 2px solid #000;
+      border-right: 2px solid #000;
+      border-bottom: 2px solid #000;
+      border-top: none; /* Uses table-box bottom border: exactly 2px, no double-line */
       width: 100%;
       box-sizing: border-box;
     }
@@ -269,7 +272,6 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       border-right: 2px solid #000;
       border-bottom: 2px solid #000;
       border-top: none;
-      margin-top: -2px; /* Seamlessly joins with summary box */
       padding: 7px 12px;
       font-size: 11.5px;
       font-style: italic;
