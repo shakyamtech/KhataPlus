@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from 
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
+import { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs, writeBatch, orderBy, limit } from "firebase/firestore";
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
@@ -96,6 +96,10 @@ export const AppShell = () => {
     const [purchasePrefix, setPurchasePrefix] = useState("INW-");
     const [purchaseSuffix, setPurchaseSuffix] = useState("");
     const [purchaseNextNo, setPurchaseNextNo] = useState("1");
+    const [dbLastTax, setDbLastTax] = useState<string | null>(null);
+    const [dbLastAbb, setDbLastAbb] = useState<string | null>(null);
+    const [dbLastBill, setDbLastBill] = useState<string | null>(null);
+    const [dbLastPur, setDbLastPur] = useState<string | null>(null);
 
     const migrateToBatches = async () => {
         if (!user) return;
@@ -238,6 +242,30 @@ export const AppShell = () => {
 
         loadProfile();
     }, [user]);
+
+    useEffect(() => {
+        if (!settingsOpen || !user) return;
+        const fetchLastBills = async () => {
+            try {
+                const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(60));
+                const pQ = query(collection(db, "purchases"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(40));
+                const [sSnap, pSnap] = await Promise.all([getDocs(sQ), getDocs(pQ)]);
+
+                const lastTax = sSnap.docs.find(d => d.data().invoice_type === "tax_invoice")?.data()?.bill_no;
+                const lastAbb = sSnap.docs.find(d => d.data().invoice_type === "abbreviated")?.data()?.bill_no;
+                const lastBill = sSnap.docs.find(d => !d.data().invoice_type || d.data().invoice_type === "normal")?.data()?.bill_no;
+                const lastPur = pSnap.docs.find(d => d.data().voucher_no)?.data()?.voucher_no;
+
+                if (lastTax) setDbLastTax(lastTax);
+                if (lastAbb) setDbLastAbb(lastAbb);
+                if (lastBill) setDbLastBill(lastBill);
+                if (lastPur) setDbLastPur(lastPur);
+            } catch (e) {
+                console.warn("Could not fetch last bills", e);
+            }
+        };
+        fetchLastBills();
+    }, [settingsOpen, user]);
 
     useEffect(() => {
         if (!user) return;
@@ -915,174 +943,220 @@ export const AppShell = () => {
                                 </div>
                             </div>
 
-                            {taxType === "vat" ? (
-                                <div className="space-y-3 bg-secondary/30 rounded-xl p-3 border">
-                                    {/* 1. Tax Invoice Config */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-xs font-bold text-primary">१. कर बिजक (Tax Invoice Series)</Label>
-                                            <span className="text-[10px] font-mono font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded">
-                                                Preview: {taxInvoicePrefix.trim() || "TAX-"}{String(Math.max(1, parseInt(taxInvoiceNextNo) || 1)).padStart(4, "0")}{taxInvoiceSuffix.trim()}
-                                            </span>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <div>
-                                                <Label className="text-[10px] text-muted-foreground">Prefix</Label>
-                                                <Input 
-                                                    value={taxInvoicePrefix} 
-                                                    onChange={(e) => setTaxInvoicePrefix(e.target.value.toUpperCase())} 
-                                                    placeholder="TAX-" 
-                                                    className="h-8 text-xs font-mono"
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label className="text-[10px] text-muted-foreground">Next No.</Label>
-                                                <Input 
-                                                    type="number" 
-                                                    min={1} 
-                                                    value={taxInvoiceNextNo} 
-                                                    onChange={(e) => setTaxInvoiceNextNo(e.target.value)} 
-                                                    placeholder="1" 
-                                                    className="h-8 text-xs font-mono"
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
-                                                <Input 
-                                                    value={taxInvoiceSuffix} 
-                                                    onChange={(e) => setTaxInvoiceSuffix(e.target.value.toUpperCase())} 
-                                                    placeholder="/81-82" 
-                                                    className="h-8 text-xs font-mono"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
+                            {(() => {
+                                const taxNextNum = Math.max(1, parseInt(taxInvoiceNextNo) || 1);
+                                const taxDisplayLast = dbLastTax 
+                                    || (taxNextNum > 1 ? `${taxInvoicePrefix.trim() || "TAX-"}${String(taxNextNum - 1).padStart(4, "0")}${taxInvoiceSuffix.trim()}` : (lang === "NEP" ? "छैन (None)" : "None"));
+                                const taxPreviewNext = `${taxInvoicePrefix.trim() || "TAX-"}${String(taxNextNum).padStart(4, "0")}${taxInvoiceSuffix.trim()}`;
 
-                                    {/* 2. Abbreviated Invoice Config */}
-                                    <div className="space-y-2 pt-2 border-t">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-xs font-bold text-foreground">२. संक्षिप्त कर बिजक (Abbreviated Series)</Label>
-                                            <span className="text-[10px] font-mono font-semibold bg-secondary text-foreground px-2 py-0.5 rounded border">
-                                                Preview: {abbreviatedPrefix.trim() || "ABB-"}{String(Math.max(1, parseInt(abbreviatedNextNo) || 1)).padStart(4, "0")}{abbreviatedSuffix.trim()}
-                                            </span>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <div>
-                                                <Label className="text-[10px] text-muted-foreground">Prefix</Label>
-                                                <Input 
-                                                    value={abbreviatedPrefix} 
-                                                    onChange={(e) => setAbbreviatedPrefix(e.target.value.toUpperCase())} 
-                                                    placeholder="ABB-" 
-                                                    className="h-8 text-xs font-mono"
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label className="text-[10px] text-muted-foreground">Next No.</Label>
-                                                <Input 
-                                                    type="number" 
-                                                    min={1} 
-                                                    value={abbreviatedNextNo} 
-                                                    onChange={(e) => setAbbreviatedNextNo(e.target.value)} 
-                                                    placeholder="1" 
-                                                    className="h-8 text-xs font-mono"
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
-                                                <Input 
-                                                    value={abbreviatedSuffix} 
-                                                    onChange={(e) => setAbbreviatedSuffix(e.target.value.toUpperCase())} 
-                                                    placeholder="/81-82" 
-                                                    className="h-8 text-xs font-mono"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="space-y-2 bg-secondary/30 rounded-xl p-3 border">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-bold text-primary">बिक्री बिल सिरिज (Sales Bill Series)</Label>
-                                        <span className="text-[10px] font-mono font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded">
-                                            Preview: {billPrefix.trim() || "BILL-"}{String(Math.max(1, parseInt(billNextNo) || 1)).padStart(4, "0")}{billSuffix.trim()}
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div>
-                                            <Label className="text-[10px] text-muted-foreground">Prefix</Label>
-                                            <Input 
-                                                value={billPrefix} 
-                                                onChange={(e) => setBillPrefix(e.target.value.toUpperCase())} 
-                                                placeholder="BILL-" 
-                                                className="h-8 text-xs font-mono"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label className="text-[10px] text-muted-foreground">Next No.</Label>
-                                            <Input 
-                                                type="number" 
-                                                min={1} 
-                                                value={billNextNo} 
-                                                onChange={(e) => setBillNextNo(e.target.value)} 
-                                                placeholder="1" 
-                                                className="h-8 text-xs font-mono"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
-                                            <Input 
-                                                value={billSuffix} 
-                                                onChange={(e) => setBillSuffix(e.target.value.toUpperCase())} 
-                                                placeholder="/81-82" 
-                                                className="h-8 text-xs font-mono"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                                const abbNextNum = Math.max(1, parseInt(abbreviatedNextNo) || 1);
+                                const abbDisplayLast = dbLastAbb 
+                                    || (abbNextNum > 1 ? `${abbreviatedPrefix.trim() || "ABB-"}${String(abbNextNum - 1).padStart(4, "0")}${abbreviatedSuffix.trim()}` : (lang === "NEP" ? "छैन (None)" : "None"));
+                                const abbPreviewNext = `${abbreviatedPrefix.trim() || "ABB-"}${String(abbNextNum).padStart(4, "0")}${abbreviatedSuffix.trim()}`;
 
-                            {/* Purchase Inward Series Config */}
-                            <div className="space-y-2 bg-secondary/30 rounded-xl p-3 border">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-bold text-foreground">
-                                        {lang === "NEP" ? "३. खरिद दाखिला सिरिज (Purchase Inward Series)" : "Purchase Inward Series (खरिद दाखिला)"}
-                                    </Label>
-                                    <span className="text-[10px] font-mono font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20">
-                                        Preview: {purchasePrefix.trim() || "INW-"}{String(Math.max(1, parseInt(purchaseNextNo) || 1)).padStart(4, "0")}{purchaseSuffix.trim()}
-                                    </span>
-                                </div>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <div>
-                                        <Label className="text-[10px] text-muted-foreground">Prefix</Label>
-                                        <Input 
-                                            value={purchasePrefix} 
-                                            onChange={(e) => setPurchasePrefix(e.target.value.toUpperCase())} 
-                                            placeholder="INW-" 
-                                            className="h-8 text-xs font-mono"
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="text-[10px] text-muted-foreground">Next No.</Label>
-                                        <Input 
-                                            type="number" 
-                                            min={1} 
-                                            value={purchaseNextNo} 
-                                            onChange={(e) => setPurchaseNextNo(e.target.value)} 
-                                            placeholder="1" 
-                                            className="h-8 text-xs font-mono"
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
-                                        <Input 
-                                            value={purchaseSuffix} 
-                                            onChange={(e) => setPurchaseSuffix(e.target.value.toUpperCase())} 
-                                            placeholder="/83" 
-                                            className="h-8 text-xs font-mono"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                                const billNextNum = Math.max(1, parseInt(billNextNo) || 1);
+                                const billDisplayLast = dbLastBill 
+                                    || (billNextNum > 1 ? `${billPrefix.trim() || "BILL-"}${String(billNextNum - 1).padStart(4, "0")}${billSuffix.trim()}` : (lang === "NEP" ? "छैन (None)" : "None"));
+                                const billPreviewNext = `${billPrefix.trim() || "BILL-"}${String(billNextNum).padStart(4, "0")}${billSuffix.trim()}`;
+
+                                const purNextNum = Math.max(1, parseInt(purchaseNextNo) || 1);
+                                const purDisplayLast = dbLastPur 
+                                    || (purNextNum > 1 ? `${purchasePrefix.trim() || "INW-"}${String(purNextNum - 1).padStart(4, "0")}${purchaseSuffix.trim()}` : (lang === "NEP" ? "छैन (None)" : "None"));
+                                const purPreviewNext = `${purchasePrefix.trim() || "INW-"}${String(purNextNum).padStart(4, "0")}${purchaseSuffix.trim()}`;
+
+                                return (
+                                    <>
+                                        {taxType === "vat" ? (
+                                            <div className="space-y-3 bg-secondary/30 rounded-xl p-3 border">
+                                                {/* 1. Tax Invoice Config */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                                        <Label className="text-xs font-bold text-primary">१. कर बिजक (Tax Invoice Series)</Label>
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <span className="text-[10px] font-mono text-muted-foreground bg-background/80 px-2 py-0.5 rounded border">
+                                                                {lang === "NEP" ? "अन्तिम जारी:" : "Last Issued:"} <strong className="text-foreground">{taxDisplayLast}</strong>
+                                                            </span>
+                                                            <span className="text-[10px] font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20">
+                                                                {lang === "NEP" ? "अब काटिने:" : "Next to Issue:"} {taxPreviewNext}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <div>
+                                                            <Label className="text-[10px] text-muted-foreground">Prefix</Label>
+                                                            <Input 
+                                                                value={taxInvoicePrefix} 
+                                                                onChange={(e) => setTaxInvoicePrefix(e.target.value.toUpperCase())} 
+                                                                placeholder="TAX-" 
+                                                                className="h-8 text-xs font-mono"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label className="text-[10px] text-muted-foreground">Next No.</Label>
+                                                            <Input 
+                                                                type="number" 
+                                                                min={1} 
+                                                                value={taxInvoiceNextNo} 
+                                                                onChange={(e) => setTaxInvoiceNextNo(e.target.value)} 
+                                                                placeholder="1" 
+                                                                className="h-8 text-xs font-mono"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
+                                                            <Input 
+                                                                value={taxInvoiceSuffix} 
+                                                                onChange={(e) => setTaxInvoiceSuffix(e.target.value.toUpperCase())} 
+                                                                placeholder="/81-82" 
+                                                                className="h-8 text-xs font-mono"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* 2. Abbreviated Invoice Config */}
+                                                <div className="space-y-2 pt-2 border-t">
+                                                    <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                                        <Label className="text-xs font-bold text-foreground">२. संक्षिप्त कर बिजक (Abbreviated Series)</Label>
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <span className="text-[10px] font-mono text-muted-foreground bg-background/80 px-2 py-0.5 rounded border">
+                                                                {lang === "NEP" ? "अन्तिम जारी:" : "Last Issued:"} <strong className="text-foreground">{abbDisplayLast}</strong>
+                                                            </span>
+                                                            <span className="text-[10px] font-mono font-bold bg-secondary text-foreground px-2 py-0.5 rounded border">
+                                                                {lang === "NEP" ? "अब काटिने:" : "Next to Issue:"} {abbPreviewNext}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <div>
+                                                            <Label className="text-[10px] text-muted-foreground">Prefix</Label>
+                                                            <Input 
+                                                                value={abbreviatedPrefix} 
+                                                                onChange={(e) => setAbbreviatedPrefix(e.target.value.toUpperCase())} 
+                                                                placeholder="ABB-" 
+                                                                className="h-8 text-xs font-mono"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label className="text-[10px] text-muted-foreground">Next No.</Label>
+                                                            <Input 
+                                                                type="number" 
+                                                                min={1} 
+                                                                value={abbreviatedNextNo} 
+                                                                onChange={(e) => setAbbreviatedNextNo(e.target.value)} 
+                                                                placeholder="1" 
+                                                                className="h-8 text-xs font-mono"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
+                                                            <Input 
+                                                                value={abbreviatedSuffix} 
+                                                                onChange={(e) => setAbbreviatedSuffix(e.target.value.toUpperCase())} 
+                                                                placeholder="/81-82" 
+                                                                className="h-8 text-xs font-mono"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2 bg-secondary/30 rounded-xl p-3 border">
+                                                <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                                    <Label className="text-xs font-bold text-primary">बिक्री बिल सिरिज (Sales Bill Series)</Label>
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="text-[10px] font-mono text-muted-foreground bg-background/80 px-2 py-0.5 rounded border">
+                                                            {lang === "NEP" ? "अन्तिम जारी:" : "Last Issued:"} <strong className="text-foreground">{billDisplayLast}</strong>
+                                                        </span>
+                                                        <span className="text-[10px] font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20">
+                                                            {lang === "NEP" ? "अब काटिने:" : "Next to Issue:"} {billPreviewNext}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <div>
+                                                        <Label className="text-[10px] text-muted-foreground">Prefix</Label>
+                                                        <Input 
+                                                            value={billPrefix} 
+                                                            onChange={(e) => setBillPrefix(e.target.value.toUpperCase())} 
+                                                            placeholder="BILL-" 
+                                                            className="h-8 text-xs font-mono"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label className="text-[10px] text-muted-foreground">Next No.</Label>
+                                                        <Input 
+                                                            type="number" 
+                                                            min={1} 
+                                                            value={billNextNo} 
+                                                            onChange={(e) => setBillNextNo(e.target.value)} 
+                                                            placeholder="1" 
+                                                            className="h-8 text-xs font-mono"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
+                                                        <Input 
+                                                            value={billSuffix} 
+                                                            onChange={(e) => setBillSuffix(e.target.value.toUpperCase())} 
+                                                            placeholder="/81-82" 
+                                                            className="h-8 text-xs font-mono"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Purchase Inward Series Config */}
+                                        <div className="space-y-2 bg-secondary/30 rounded-xl p-3 border">
+                                            <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                                <Label className="text-xs font-bold text-foreground">
+                                                    {lang === "NEP" ? "३. खरिद दाखिला सिरिज (Purchase Inward Series)" : "Purchase Inward Series (खरिद दाखिला)"}
+                                                </Label>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="text-[10px] font-mono text-muted-foreground bg-background/80 px-2 py-0.5 rounded border">
+                                                        {lang === "NEP" ? "अन्तिम दाखिला:" : "Last Inward:"} <strong className="text-foreground">{purDisplayLast}</strong>
+                                                    </span>
+                                                    <span className="text-[10px] font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20">
+                                                        {lang === "NEP" ? "अब दाखिला:" : "Next Inward:"} {purPreviewNext}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <Label className="text-[10px] text-muted-foreground">Prefix</Label>
+                                                    <Input 
+                                                        value={purchasePrefix} 
+                                                        onChange={(e) => setPurchasePrefix(e.target.value.toUpperCase())} 
+                                                        placeholder="INW-" 
+                                                        className="h-8 text-xs font-mono"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label className="text-[10px] text-muted-foreground">Next No.</Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        min={1} 
+                                                        value={purchaseNextNo} 
+                                                        onChange={(e) => setPurchaseNextNo(e.target.value)} 
+                                                        placeholder="1" 
+                                                        className="h-8 text-xs font-mono"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
+                                                    <Input 
+                                                        value={purchaseSuffix} 
+                                                        onChange={(e) => setPurchaseSuffix(e.target.value.toUpperCase())} 
+                                                        placeholder="/83" 
+                                                        className="h-8 text-xs font-mono"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
 
                             <div className="flex items-center justify-between pt-1">
                                 <Button
