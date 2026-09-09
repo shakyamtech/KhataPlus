@@ -101,6 +101,8 @@ const Purchases = () => {
   const [busySupplier, setBusySupplier] = useState(false);
   const [cashBalance, setCashBalance] = useState(0);
   const [editingOriginalPaid, setEditingOriginalPaid] = useState<number>(0);
+  const [editingVoucherNo, setEditingVoucherNo] = useState<string | null>(null);
+  const [editingVoucherSeq, setEditingVoucherSeq] = useState<number | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -259,6 +261,8 @@ const Purchases = () => {
 
       setEditingId(p.id);
       setEditingOriginalPaid(Number(p.amount_paid || 0));
+      setEditingVoucherNo(p.voucher_no || null);
+      setEditingVoucherSeq(p.voucher_sequence || null);
       setSupplierId(p.supplier_id || "none");
       setPaymentMode(p.payment_mode);
       setPurchaseType(p.is_vat_bill === false ? "non_vat" : "vat_bill");
@@ -376,11 +380,27 @@ const Purchases = () => {
         await removePurchase(editingId, true);
       }
 
+      const shop = await getShopInfo();
+      let voucherNoToSave = editingVoucherNo;
+      let voucherSeqToSave: number | null = editingVoucherSeq;
+
+      if (!editingId || !voucherNoToSave) {
+        const prefix = shop.purchase_prefix ?? "INW-";
+        const suffix = shop.purchase_suffix ?? "";
+        let currentNo = Number(shop.purchase_next_no ?? 1);
+        if (isNaN(currentNo) || currentNo < 1) currentNo = 1;
+        const formattedNum = String(currentNo).padStart(4, "0");
+        voucherNoToSave = `${prefix}${formattedNum}${suffix}`;
+        voucherSeqToSave = currentNo;
+      }
+
       const batch = writeBatch(db);
       const purchaseRef = doc(collection(db, "purchases"));
       
       batch.set(purchaseRef, {
         id: purchaseRef.id,
+        voucher_no: voucherNoToSave,
+        voucher_sequence: voucherSeqToSave,
         user_id: user!.uid,
         supplier_id: supplierId === "none" ? null : supplierId,
         payment_mode: paymentMode,
@@ -393,6 +413,12 @@ const Purchases = () => {
         note: editingId ? "Updated purchase" : null,
         created_at: new Date().toISOString()
       });
+
+      if (!editingId) {
+        batch.update(doc(db, "profiles", user!.uid), {
+          purchase_next_no: increment(1)
+        });
+      }
 
       for (const item of items) {
         const itemRef = doc(collection(db, "purchase_items"));
@@ -484,6 +510,8 @@ const Purchases = () => {
       setShowForm(false); 
       setEditingId(null); 
       setEditingOriginalPaid(0); 
+      setEditingVoucherNo(null);
+      setEditingVoucherSeq(null);
       load();
     } catch (e: any) {
       toast.error(e.message);
@@ -561,7 +589,7 @@ const Purchases = () => {
           pan: (supp as any)?.pan || null,
           address: (supp as any)?.address || null
         },
-        voucherNo: h.id.slice(-6).toUpperCase(),
+        voucherNo: h.voucher_no || h.id.slice(-6).toUpperCase(),
         supplierBillNo: h.supplier_bill_no,
         date: h.created_at,
         paymentMode: h.payment_mode || "cash",
@@ -589,6 +617,8 @@ const Purchases = () => {
           if (showForm) { 
             setEditingId(null); 
             setEditingOriginalPaid(0);
+            setEditingVoucherNo(null);
+            setEditingVoucherSeq(null);
             setItems([]); 
             setSupplierId("none"); 
             setPaymentMode("cash");
@@ -604,6 +634,24 @@ const Purchases = () => {
 
       {showForm && (
         <Card className="p-4 mb-6 shadow-elegant border-0">
+          <div className="flex items-center justify-between pb-3 mb-3 border-b">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {editingId ? "खरिद सम्पादन (Edit Purchase)" : "नयाँ खरिद दाखिला (New Purchase Inward)"}
+              </span>
+              <span className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded">
+                Inward #{editingId && editingVoucherNo
+                  ? editingVoucherNo
+                  : `${shopInfo?.purchase_prefix ?? "INW-"}${String(shopInfo?.purchase_next_no ?? 1).padStart(4, "0")}${shopInfo?.purchase_suffix ?? ""}`}
+              </span>
+            </div>
+            {editingId && (
+              <span className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded font-medium">
+                सम्पादन मोड (Editing Mode)
+              </span>
+            )}
+          </div>
+
           {isVatShop && (
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-3 grid sm:grid-cols-2 gap-3 items-center">
               <div>
@@ -817,7 +865,7 @@ const Purchases = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
               className="pl-8 h-8 text-xs bg-background/80 border-border" 
-              placeholder="Search by supplier or amount..." 
+              placeholder="Search by Inward #, supplier, or bill no..." 
               value={searchHistory} 
               onChange={(e) => setSearchHistory(e.target.value)} 
             />
@@ -833,7 +881,8 @@ const Purchases = () => {
               const amt = String(h.total);
               const dateStr = h.created_at ? format(new Date(h.created_at), "dd MMM yyyy").toLowerCase() : "";
               const billNo = (h.supplier_bill_no || "").toLowerCase();
-              return supp.includes(q) || mode.includes(q) || amt.includes(q) || dateStr.includes(q) || billNo.includes(q);
+              const voucherNo = (h.voucher_no || "").toLowerCase();
+              return supp.includes(q) || mode.includes(q) || amt.includes(q) || dateStr.includes(q) || billNo.includes(q) || voucherNo.includes(q);
             });
 
             return (
@@ -842,6 +891,9 @@ const Purchases = () => {
                   <div key={h.id} className="p-3 flex items-center justify-between gap-2 hover:bg-secondary/20 transition-colors">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-xs font-mono text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded">
+                          #{h.voucher_no || h.id.slice(-6).toUpperCase()}
+                        </span>
                         <span className="font-medium truncate">{h.suppliers?.name ?? "—"}</span>
                         {h.is_vat_bill && (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">

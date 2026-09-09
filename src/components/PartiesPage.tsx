@@ -622,7 +622,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             pan: selected.pan,
             address: selected.address
           },
-          voucherNo: e.id.slice(-6).toUpperCase(),
+          voucherNo: e.voucher_no || e.id.slice(-6).toUpperCase(),
           supplierBillNo: e.supplier_bill_no,
           date: e.created_at,
           paymentMode: e.payment_mode || "cash",

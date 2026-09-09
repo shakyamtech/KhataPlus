@@ -93,6 +93,9 @@ export const AppShell = () => {
     const [billPrefix, setBillPrefix] = useState("BILL-");
     const [billSuffix, setBillSuffix] = useState("");
     const [billNextNo, setBillNextNo] = useState("1");
+    const [purchasePrefix, setPurchasePrefix] = useState("INW-");
+    const [purchaseSuffix, setPurchaseSuffix] = useState("");
+    const [purchaseNextNo, setPurchaseNextNo] = useState("1");
 
     const migrateToBatches = async () => {
         if (!user) return;
@@ -198,6 +201,9 @@ export const AppShell = () => {
                     setBillPrefix(data.bill_prefix ?? "BILL-");
                     setBillSuffix(data.bill_suffix ?? "");
                     setBillNextNo(String(data.bill_next_no ?? 1));
+                    setPurchasePrefix(data.purchase_prefix ?? "INW-");
+                    setPurchaseSuffix(data.purchase_suffix ?? "");
+                    setPurchaseNextNo(String(data.purchase_next_no ?? 1));
 
                     if (data.migrated_to_batches !== undefined) {
                         setHasMigrated(data.migrated_to_batches === true);
@@ -307,7 +313,10 @@ export const AppShell = () => {
                 abbreviated_next_no: Math.max(1, parseInt(abbreviatedNextNo) || 1),
                 bill_prefix: billPrefix.trim() || "BILL-",
                 bill_suffix: billSuffix.trim(),
-                bill_next_no: Math.max(1, parseInt(billNextNo) || 1)
+                bill_next_no: Math.max(1, parseInt(billNextNo) || 1),
+                purchase_prefix: purchasePrefix.trim() || "INW-",
+                purchase_suffix: purchaseSuffix.trim(),
+                purchase_next_no: Math.max(1, parseInt(purchaseNextNo) || 1)
             }, { merge: true });
 
             setShopName(newName);
@@ -408,11 +417,13 @@ export const AppShell = () => {
             await setDoc(doc(db, "profiles", user.uid), {
                 tax_invoice_next_no: 1,
                 abbreviated_next_no: 1,
-                bill_next_no: 1
+                bill_next_no: 1,
+                purchase_next_no: 1
             }, { merge: true });
             setTaxInvoiceNextNo("1");
             setAbbreviatedNextNo("1");
             setBillNextNo("1");
+            setPurchaseNextNo("1");
 
             toast.success(lang === "NEP" ? "सबै कारोबार र लेजर सफलतापूर्वक रिसेट गरियो!" : "All transactions and ledgers reset successfully!");
             setShopOpen(false);
@@ -1030,6 +1041,49 @@ export const AppShell = () => {
                                 </div>
                             )}
 
+                            {/* Purchase Inward Series Config */}
+                            <div className="space-y-2 bg-secondary/30 rounded-xl p-3 border">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-bold text-foreground">
+                                        {lang === "NEP" ? "३. खरिद दाखिला सिरिज (Purchase Inward Series)" : "Purchase Inward Series (खरिद दाखिला)"}
+                                    </Label>
+                                    <span className="text-[10px] font-mono font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20">
+                                        Preview: {purchasePrefix.trim() || "INW-"}{String(Math.max(1, parseInt(purchaseNextNo) || 1)).padStart(4, "0")}{purchaseSuffix.trim()}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                        <Label className="text-[10px] text-muted-foreground">Prefix</Label>
+                                        <Input 
+                                            value={purchasePrefix} 
+                                            onChange={(e) => setPurchasePrefix(e.target.value.toUpperCase())} 
+                                            placeholder="INW-" 
+                                            className="h-8 text-xs font-mono"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label className="text-[10px] text-muted-foreground">Next No.</Label>
+                                        <Input 
+                                            type="number" 
+                                            min={1} 
+                                            value={purchaseNextNo} 
+                                            onChange={(e) => setPurchaseNextNo(e.target.value)} 
+                                            placeholder="1" 
+                                            className="h-8 text-xs font-mono"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label className="text-[10px] text-muted-foreground">Suffix (Optional)</Label>
+                                        <Input 
+                                            value={purchaseSuffix} 
+                                            onChange={(e) => setPurchaseSuffix(e.target.value.toUpperCase())} 
+                                            placeholder="/83" 
+                                            className="h-8 text-xs font-mono"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="flex items-center justify-between pt-1">
                                 <Button
                                     type="button"
@@ -1040,6 +1094,7 @@ export const AppShell = () => {
                                         setTaxInvoiceNextNo("1");
                                         setAbbreviatedNextNo("1");
                                         setBillNextNo("1");
+                                        setPurchaseNextNo("1");
                                         toast.info(lang === "NEP" ? "काउन्टर १ मा सेट भयो। लागू गर्न सेभ गर्नुहोस्।" : "Counters set to 1. Click Save to apply.");
                                     }}
                                 >

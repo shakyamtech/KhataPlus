@@ -17,6 +17,9 @@ export interface ShopInfo {
   bill_prefix?: string;
   bill_suffix?: string;
   bill_next_no?: number;
+  purchase_prefix?: string;
+  purchase_suffix?: string;
+  purchase_next_no?: number;
 }
 
 export const getShopInfo = async (): Promise<ShopInfo> => {
@@ -36,7 +39,10 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
       abbreviated_next_no: 1,
       bill_prefix: "BILL-",
       bill_suffix: "",
-      bill_next_no: 1
+      bill_next_no: 1,
+      purchase_prefix: "INW-",
+      purchase_suffix: "",
+      purchase_next_no: 1
     };
   }
   
@@ -61,7 +67,10 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
         abbreviated_next_no: Number(data.abbreviated_next_no ?? 1),
         bill_prefix: data.bill_prefix ?? "BILL-",
         bill_suffix: data.bill_suffix ?? "",
-        bill_next_no: Number(data.bill_next_no ?? 1)
+        bill_next_no: Number(data.bill_next_no ?? 1),
+        purchase_prefix: data.purchase_prefix ?? "INW-",
+        purchase_suffix: data.purchase_suffix ?? "",
+        purchase_next_no: Number(data.purchase_next_no ?? 1)
       };
     }
   } catch (e) {
@@ -82,6 +91,9 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
     abbreviated_next_no: 1,
     bill_prefix: "BILL-",
     bill_suffix: "",
-    bill_next_no: 1
+    bill_next_no: 1,
+    purchase_prefix: "INW-",
+    purchase_suffix: "",
+    purchase_next_no: 1
   };
 };
