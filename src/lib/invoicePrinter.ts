@@ -111,142 +111,138 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
 
     body = `
       <div class="a4-container">
-        <div>
-          <div class="a4-header">
-            <div class="a4-company-name">${escapeHtml(shop.name)}</div>
-            ${shop.address ? `<div class="a4-company-address">${escapeHtml(shop.address)}</div>` : ""}
-            ${shop.phone ? `<div class="a4-company-phone">Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
-          </div>
+        <div class="a4-header">
+          <div class="a4-company-name">${escapeHtml(shop.name)}</div>
+          ${shop.address ? `<div class="a4-company-address">${escapeHtml(shop.address)}</div>` : ""}
+          ${shop.phone ? `<div class="a4-company-phone">Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
+        </div>
 
-          <div class="a4-top-meta">
-            <div class="a4-vat-tag">VAT No : <strong>${escapeHtml(shop.pan || "N/A")}</strong></div>
-            <div class="a4-title-center">TAX INVOICE</div>
-            <div class="a4-copy-tag">Customer Copy</div>
-          </div>
+        <div class="a4-top-meta">
+          <div class="a4-vat-tag">VAT No : <strong>${escapeHtml(shop.pan || "N/A")}</strong></div>
+          <div class="a4-title-center">TAX INVOICE</div>
+          <div class="a4-copy-tag">Customer Copy</div>
+        </div>
 
-          <div class="a4-boxes-grid">
-            <div class="a4-box">
-              <div class="a4-box-title">Customer Details</div>
-              <div class="a4-box-content">
-                <div class="a4-cust-name">${escapeHtml(customerName)}</div>
-                ${buyerAddress ? `<div class="a4-box-row"><span>Address :</span><span>${escapeHtml(buyerAddress)}</span></div>` : ""}
-                <div class="a4-box-row"><span>Phone :</span><span>${escapeHtml(customerPhone || "-")}</span></div>
-                <div class="a4-box-row"><span>VAT No :</span><span>${escapeHtml(buyerPan || "-")}</span></div>
-              </div>
-            </div>
-
-            <div class="a4-box">
-              <div class="a4-box-title">Invoice Details</div>
-              <div class="a4-box-content">
-                <div class="a4-box-row"><span>Bill No :</span><span>${escapeHtml(billNo)}</span></div>
-                <div class="a4-box-row"><span>Bill Date :</span><span>${formattedDate}</span></div>
-                <div class="a4-box-row"><span>Time :</span><span>${formattedTime}</span></div>
-                <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode || "Cash")}</span></div>
-              </div>
+        <div class="a4-boxes-grid">
+          <div class="a4-box">
+            <div class="a4-box-title">Customer Details</div>
+            <div class="a4-box-content">
+              <div class="a4-cust-name">${escapeHtml(customerName)}</div>
+              ${buyerAddress ? `<div class="a4-box-row"><span>Address :</span><span>${escapeHtml(buyerAddress)}</span></div>` : ""}
+              <div class="a4-box-row"><span>Phone :</span><span>${escapeHtml(customerPhone || "-")}</span></div>
+              <div class="a4-box-row"><span>VAT No :</span><span>${escapeHtml(buyerPan || "-")}</span></div>
             </div>
           </div>
 
-          <div class="a4-bill-type-row">
-            Bill Type: &nbsp;<strong>${paymentMode === "credit" ? "Credit Memo" : "Cash Memo"}</strong>
+          <div class="a4-box">
+            <div class="a4-box-title">Invoice Details</div>
+            <div class="a4-box-content">
+              <div class="a4-box-row"><span>Bill No :</span><span>${escapeHtml(billNo)}</span></div>
+              <div class="a4-box-row"><span>Bill Date :</span><span>${formattedDate}</span></div>
+              <div class="a4-box-row"><span>Time :</span><span>${formattedTime}</span></div>
+              <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode || "Cash")}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="a4-bill-type-row">
+          Bill Type: &nbsp;<strong>${paymentMode === "credit" ? "Credit Memo" : "Cash Memo"}</strong>
+        </div>
+
+        <div class="a4-table-box">
+          <table class="a4-tax-table">
+            <thead>
+              <tr>
+                <th style="width:45px;" class="center">S.No</th>
+                <th>Particulars</th>
+                <th style="width:70px;" class="num">Qty</th>
+                <th style="width:60px;" class="center">Unit</th>
+                <th style="width:95px;" class="num">Rate</th>
+                <th style="width:110px;" class="num">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${a4Rows}
+              <tr class="a4-filler-row">
+                <td>&nbsp;</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="a4-summary-grid">
+          <div class="a4-summary-left">
+            <div class="a4-print-date">
+              <strong>BILL PRINT DATE & TIME:</strong> &nbsp;${formattedTime}&nbsp;&nbsp;${formattedDate}
+            </div>
+            <div class="a4-total-badge-box">
+              <div class="a4-total-label">TOTAL :</div>
+              <div class="a4-total-amount">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            </div>
+            <div class="a4-remarks-line">
+              <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (discountNum > 0 ? `Discount given: Rs. ${discountNum}` : (paymentMode === "credit" ? "Credit Sale" : "Standard Sale"))}
+            </div>
           </div>
 
-          <div class="a4-table-box">
-            <table class="a4-tax-table">
-              <thead>
-                <tr>
-                  <th style="width:45px;" class="center">S.No</th>
-                  <th>Particulars</th>
-                  <th style="width:70px;" class="num">Qty</th>
-                  <th style="width:60px;" class="center">Unit</th>
-                  <th style="width:95px;" class="num">Rate</th>
-                  <th style="width:110px;" class="num">Amount</th>
-                </tr>
-              </thead>
+          <div class="a4-summary-right">
+            <table class="a4-calc-table">
               <tbody>
-                ${a4Rows}
-                <tr class="a4-filler-row">
-                  <td>&nbsp;</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
+                <tr>
+                  <td class="label">Grand Total</td>
+                  <td class="val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td class="label">P. Discount</td>
+                  <td class="val">${discountNum > 0 ? `(${discountNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : "0.00"}</td>
+                </tr>
+                <tr>
+                  <td class="label">Non-Taxable AMT</td>
+                  <td class="val">${(Number(data.nonTaxableAmount || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td class="label">Taxable Amount</td>
+                  <td class="val">${(calcTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td class="label">Vat @13%</td>
+                  <td class="val">${(calcVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td class="label">Round Off</td>
+                  <td class="val">0.00</td>
+                </tr>
+                <tr class="net-row">
+                  <td class="label">Net Total</td>
+                  <td class="val">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
               </tbody>
             </table>
           </div>
-
-          <div class="a4-summary-grid">
-            <div class="a4-summary-left">
-              <div class="a4-print-date">
-                <strong>BILL PRINT DATE & TIME:</strong> &nbsp;${formattedTime}&nbsp;&nbsp;${formattedDate}
-              </div>
-              <div class="a4-total-badge-box">
-                <div class="a4-total-label">TOTAL :</div>
-                <div class="a4-total-amount">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-              </div>
-              <div class="a4-remarks-line">
-                <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (discountNum > 0 ? `Discount given: Rs. ${discountNum}` : (paymentMode === "credit" ? "Credit Sale" : "Standard Sale"))}
-              </div>
-            </div>
-
-            <div class="a4-summary-right">
-              <table class="a4-calc-table">
-                <tbody>
-                  <tr>
-                    <td class="label">Grand Total</td>
-                    <td class="val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  </tr>
-                  <tr>
-                    <td class="label">P. Discount</td>
-                    <td class="val">${discountNum > 0 ? `(${discountNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : "0.00"}</td>
-                  </tr>
-                  <tr>
-                    <td class="label">Non-Taxable AMT</td>
-                    <td class="val">${(Number(data.nonTaxableAmount || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  </tr>
-                  <tr>
-                    <td class="label">Taxable Amount</td>
-                    <td class="val">${(calcTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  </tr>
-                  <tr>
-                    <td class="label">Vat @13%</td>
-                    <td class="val">${(calcVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  </tr>
-                  <tr>
-                    <td class="label">Round Off</td>
-                    <td class="val">0.00</td>
-                  </tr>
-                  <tr class="net-row">
-                    <td class="label">Net Total</td>
-                    <td class="val">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="a4-words-bar">
-            <strong>In Words:</strong> ${escapeHtml(numberToWords(total))}
-          </div>
-
-          <div class="a4-eoe">E. O. & E.</div>
         </div>
 
-        <div>
-          <div class="a4-sign-grid">
-            <div class="a4-sign-col">
-              <div class="a4-sign-line">Prepared By</div>
-            </div>
-            <div class="a4-sign-col">
-              <div class="a4-sign-line">Checked By</div>
-            </div>
-            <div class="a4-sign-col">
-              <div class="a4-sign-line">Received By</div>
-            </div>
-            <div class="a4-sign-col">
-              <div class="a4-sign-line">Authorized Signature</div>
-            </div>
+        <div class="a4-words-bar">
+          <strong>In Words:</strong> ${escapeHtml(numberToWords(total))}
+        </div>
+
+        <div class="a4-eoe">E. O. & E.</div>
+
+        <div class="a4-sign-grid">
+          <div class="a4-sign-col">
+            <div class="a4-sign-line">Prepared By</div>
+          </div>
+          <div class="a4-sign-col">
+            <div class="a4-sign-line">Checked By</div>
+          </div>
+          <div class="a4-sign-col">
+            <div class="a4-sign-line">Received By</div>
+          </div>
+          <div class="a4-sign-col">
+            <div class="a4-sign-line">Authorized Signature</div>
           </div>
         </div>
       </div>
@@ -427,147 +423,143 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
 
   const body = `
     <div class="a4-container">
-      <div>
-        <div class="a4-header">
-          <div class="a4-company-name">${escapeHtml(shop.name)}</div>
-          ${shop.address ? `<div class="a4-company-address">${escapeHtml(shop.address)}</div>` : ""}
-          ${shop.phone ? `<div class="a4-company-phone">Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
-        </div>
+      <div class="a4-header">
+        <div class="a4-company-name">${escapeHtml(shop.name)}</div>
+        ${shop.address ? `<div class="a4-company-address">${escapeHtml(shop.address)}</div>` : ""}
+        ${shop.phone ? `<div class="a4-company-phone">Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
+      </div>
 
-        <div class="a4-top-meta">
-          <div class="a4-vat-tag">VAT / PAN : <strong>${escapeHtml(shop.pan || "N/A")}</strong></div>
-          <div class="a4-title-center">PURCHASE VOUCHER (खरिद भौचर)</div>
-          <div class="a4-copy-tag">Store / Office Copy</div>
-        </div>
+      <div class="a4-top-meta">
+        <div class="a4-vat-tag">VAT / PAN : <strong>${escapeHtml(shop.pan || "N/A")}</strong></div>
+        <div class="a4-title-center">PURCHASE VOUCHER (खरिद भौचर)</div>
+        <div class="a4-copy-tag">Store / Office Copy</div>
+      </div>
 
-        <div class="a4-boxes-grid">
-          <div class="a4-box">
-            <div class="a4-box-title">Supplier Details</div>
-            <div class="a4-box-content">
-              <div class="a4-cust-name">${escapeHtml(supplierName)}</div>
-              ${supplierAddress ? `<div class="a4-box-row"><span>Address :</span><span>${escapeHtml(supplierAddress)}</span></div>` : ""}
-              <div class="a4-box-row"><span>Phone :</span><span>${escapeHtml(supplierPhone || "-")}</span></div>
-              <div class="a4-box-row"><span>VAT / PAN :</span><span>${escapeHtml(supplierPan || "-")}</span></div>
-            </div>
-          </div>
-
-          <div class="a4-box">
-            <div class="a4-box-title">Voucher & Bill Details</div>
-            <div class="a4-box-content">
-              <div class="a4-box-row"><span>Inward No :</span><span>#${escapeHtml(voucherNo)}</span></div>
-              <div class="a4-box-row"><span>Supplier Bill No :</span><span>${escapeHtml(supplierBillNo || "N/A")}</span></div>
-              <div class="a4-box-row"><span>Date :</span><span>${formattedDate}</span></div>
-              <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode || "Cash")}</span></div>
-            </div>
+      <div class="a4-boxes-grid">
+        <div class="a4-box">
+          <div class="a4-box-title">Supplier Details</div>
+          <div class="a4-box-content">
+            <div class="a4-cust-name">${escapeHtml(supplierName)}</div>
+            ${supplierAddress ? `<div class="a4-box-row"><span>Address :</span><span>${escapeHtml(supplierAddress)}</span></div>` : ""}
+            <div class="a4-box-row"><span>Phone :</span><span>${escapeHtml(supplierPhone || "-")}</span></div>
+            <div class="a4-box-row"><span>VAT / PAN :</span><span>${escapeHtml(supplierPan || "-")}</span></div>
           </div>
         </div>
 
-        <div class="a4-bill-type-row">
-          Purchase Type: &nbsp;<strong>${isVatBill ? "VAT Purchase (13% Inward Claim)" : "Non-VAT / General Inward"}</strong>
+        <div class="a4-box">
+          <div class="a4-box-title">Voucher & Bill Details</div>
+          <div class="a4-box-content">
+            <div class="a4-box-row"><span>Inward No :</span><span>#${escapeHtml(voucherNo)}</span></div>
+            <div class="a4-box-row"><span>Supplier Bill No :</span><span>${escapeHtml(supplierBillNo || "N/A")}</span></div>
+            <div class="a4-box-row"><span>Date :</span><span>${formattedDate}</span></div>
+            <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode || "Cash")}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="a4-bill-type-row">
+        Purchase Type: &nbsp;<strong>${isVatBill ? "VAT Purchase (13% Inward Claim)" : "Non-VAT / General Inward"}</strong>
+      </div>
+
+      <div class="a4-table-box">
+        <table class="a4-tax-table">
+          <thead>
+            <tr>
+              <th style="width:45px;" class="center">S.No</th>
+              <th>Particulars (Item Inward)</th>
+              <th style="width:70px;" class="num">Qty</th>
+              <th style="width:60px;" class="center">Unit</th>
+              <th style="width:95px;" class="num">Cost Rate</th>
+              <th style="width:110px;" class="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${a4Rows}
+            <tr class="a4-filler-row">
+              <td>&nbsp;</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="a4-summary-grid">
+        <div class="a4-summary-left">
+          <div class="a4-print-date">
+            <strong>INWARD DATE & TIME:</strong> &nbsp;${formattedTime}&nbsp;&nbsp;${formattedDate}
+          </div>
+          <div class="a4-total-badge-box">
+            <div class="a4-total-label">TOTAL :</div>
+            <div class="a4-total-amount">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          </div>
+          <div class="a4-remarks-line">
+            <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (supplierBillNo ? `Supplier Invoice #${supplierBillNo}` : "Stock Inward Entry")}
+          </div>
         </div>
 
-        <div class="a4-table-box">
-          <table class="a4-tax-table">
-            <thead>
-              <tr>
-                <th style="width:45px;" class="center">S.No</th>
-                <th>Particulars (Item Inward)</th>
-                <th style="width:70px;" class="num">Qty</th>
-                <th style="width:60px;" class="center">Unit</th>
-                <th style="width:95px;" class="num">Cost Rate</th>
-                <th style="width:110px;" class="num">Amount</th>
-              </tr>
-            </thead>
+        <div class="a4-summary-right">
+          <table class="a4-calc-table">
             <tbody>
-              ${a4Rows}
-              <tr class="a4-filler-row">
-                <td>&nbsp;</td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
+              <tr>
+                <td class="label">${isVatBill ? "Basic Amount" : "Total Amount"}</td>
+                <td class="val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
+              ${isVatBill ? `
+                <tr>
+                  <td class="label">Taxable Amount</td>
+                  <td class="val">${(calcTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td class="label">VAT @13%</td>
+                  <td class="val">${(calcVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+              ` : `
+                <tr>
+                  <td class="label">Tax Category</td>
+                  <td class="val">Non-VAT (गैर-भ्याट / छुट)</td>
+                </tr>
+              `}
+              <tr class="net-row">
+                <td class="label">Net Purchase</td>
+                <td class="val">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+              <tr>
+                <td class="label">Paid to Supplier</td>
+                <td class="val">${fmt(paidAmt)}</td>
+              </tr>
+              ${dueAmt > 0 ? `
+                <tr>
+                  <td class="label" style="color:#b91c1c; font-weight:700;">Payable (Due)</td>
+                  <td class="val" style="color:#b91c1c; font-weight:700;">${fmt(dueAmt)}</td>
+                </tr>
+              ` : ""}
             </tbody>
           </table>
         </div>
-
-        <div class="a4-summary-grid">
-          <div class="a4-summary-left">
-            <div class="a4-print-date">
-              <strong>INWARD DATE & TIME:</strong> &nbsp;${formattedTime}&nbsp;&nbsp;${formattedDate}
-            </div>
-            <div class="a4-total-badge-box">
-              <div class="a4-total-label">TOTAL :</div>
-              <div class="a4-total-amount">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-            <div class="a4-remarks-line">
-              <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (supplierBillNo ? `Supplier Invoice #${supplierBillNo}` : "Stock Inward Entry")}
-            </div>
-          </div>
-
-          <div class="a4-summary-right">
-            <table class="a4-calc-table">
-              <tbody>
-                <tr>
-                  <td class="label">${isVatBill ? "Basic Amount" : "Total Amount"}</td>
-                  <td class="val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                </tr>
-                ${isVatBill ? `
-                  <tr>
-                    <td class="label">Taxable Amount</td>
-                    <td class="val">${(calcTaxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  </tr>
-                  <tr>
-                    <td class="label">VAT @13%</td>
-                    <td class="val">${(calcVat).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  </tr>
-                ` : `
-                  <tr>
-                    <td class="label">Tax Category</td>
-                    <td class="val">Non-VAT (गैर-भ्याट / छुट)</td>
-                  </tr>
-                `}
-                <tr class="net-row">
-                  <td class="label">Net Purchase</td>
-                  <td class="val">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                </tr>
-                <tr>
-                  <td class="label">Paid to Supplier</td>
-                  <td class="val">${fmt(paidAmt)}</td>
-                </tr>
-                ${dueAmt > 0 ? `
-                  <tr>
-                    <td class="label" style="color:#b91c1c; font-weight:700;">Payable (Due)</td>
-                    <td class="val" style="color:#b91c1c; font-weight:700;">${fmt(dueAmt)}</td>
-                  </tr>
-                ` : ""}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="a4-words-bar">
-          <strong>In Words:</strong> ${escapeHtml(numberToWords(total))}
-        </div>
-
-        <div class="a4-eoe">E. O. & E. · Goods Inward Voucher</div>
       </div>
 
-      <div>
-        <div class="a4-sign-grid">
-          <div class="a4-sign-col">
-            <div class="a4-sign-line">Received By (Store)</div>
-          </div>
-          <div class="a4-sign-col">
-            <div class="a4-sign-line">Entered By</div>
-          </div>
-          <div class="a4-sign-col">
-            <div class="a4-sign-line">Verified By</div>
-          </div>
-          <div class="a4-sign-col">
-            <div class="a4-sign-line">Authorized Signature</div>
-          </div>
+      <div class="a4-words-bar">
+        <strong>In Words:</strong> ${escapeHtml(numberToWords(total))}
+      </div>
+
+      <div class="a4-eoe">E. O. & E. · Goods Inward Voucher</div>
+
+      <div class="a4-sign-grid">
+        <div class="a4-sign-col">
+          <div class="a4-sign-line">Received By (Store)</div>
+        </div>
+        <div class="a4-sign-col">
+          <div class="a4-sign-line">Entered By</div>
+        </div>
+        <div class="a4-sign-col">
+          <div class="a4-sign-line">Verified By</div>
+        </div>
+        <div class="a4-sign-col">
+          <div class="a4-sign-line">Authorized Signature</div>
         </div>
       </div>
     </div>

@@ -28,15 +28,13 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     }
     
     .a4-container {
-      max-width: 820px;
-      min-height: 1060px;
+      max-width: 800px;
       margin: 0 auto;
       background: #ffffff;
-      padding: 24px 30px;
+      padding: 24px 28px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      box-sizing: border-box;
+      width: 100%;
     }
 
     .a4-header {
@@ -91,12 +89,15 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       grid-template-columns: 1fr 1fr;
       gap: 12px;
       margin-bottom: 6px;
+      width: 100%;
+      box-sizing: border-box;
     }
     .a4-box {
-      border: 1.5px solid #000;
-      border-radius: 8px;
+      border: 2px solid #000;
+      border-radius: 6px;
       padding: 8px 12px;
       position: relative;
+      box-sizing: border-box;
     }
     .a4-box-title {
       position: absolute;
@@ -136,25 +137,29 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     .a4-bill-type-row {
       font-size: 12.5px;
       font-weight: 700;
-      margin: 6px 0 6px 0;
+      margin: 8px 0 6px 0;
     }
 
     .a4-table-box {
-      border: 1.5px solid #000;
-      min-height: 380px;
+      border: 2px solid #000;
+      min-height: 470px;
       display: flex;
       flex-direction: column;
       margin-bottom: 0px;
+      box-sizing: border-box;
+      width: 100%;
+      overflow: hidden;
     }
     table.a4-tax-table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       height: 100%;
       flex: 1;
     }
     table.a4-tax-table th {
-      border-bottom: 1.5px solid #000;
-      border-right: 1px solid #000;
+      border-bottom: 2px solid #000;
+      border-right: 1.5px solid #000;
       padding: 6px 8px;
       font-size: 12px;
       font-weight: 700;
@@ -165,7 +170,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       border-right: none;
     }
     table.a4-tax-table td {
-      border-right: 1px solid #000;
+      border-right: 1.5px solid #000;
       border-bottom: none; /* Clean continuous columns without horizontal lines */
       padding: 4px 8px;
       font-size: 12px;
@@ -190,14 +195,14 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     .a4-summary-grid {
       display: grid;
       grid-template-columns: 1.35fr 1fr;
-      border-left: 1.5px solid #000;
-      border-right: 1.5px solid #000;
-      border-bottom: 1.5px solid #000;
-      border-top: 1.5px solid #000;
+      border: 2px solid #000;
+      margin-top: -2px; /* Seamlessly joins with table bottom border */
+      width: 100%;
+      box-sizing: border-box;
     }
     .a4-summary-left {
       padding: 8px 12px;
-      border-right: 1.5px solid #000;
+      border-right: 2px solid #000;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -208,7 +213,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     }
     .a4-total-badge-box {
       background: #e5e7eb;
-      border: 1px solid #9ca3af;
+      border: 1.5px solid #000;
       padding: 8px 14px;
       margin: 10px 0;
       display: flex;
@@ -236,11 +241,12 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     table.a4-calc-table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
     }
     table.a4-calc-table td {
       padding: 4px 8px;
       font-size: 11.5px;
-      border-bottom: 1px solid #000;
+      border-bottom: 1.5px solid #000;
     }
     table.a4-calc-table td.label {
       font-weight: 600;
@@ -253,25 +259,30 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     table.a4-calc-table tr.net-row td {
       font-weight: 800;
       font-size: 13px;
-      border-top: 1.5px solid #000;
+      border-top: 2px solid #000;
       border-bottom: none;
       background: #fafafa;
     }
 
     .a4-words-bar {
-      border-left: 1.5px solid #000;
-      border-right: 1.5px solid #000;
-      border-bottom: 1.5px solid #000;
-      padding: 6px 12px;
+      border-left: 2px solid #000;
+      border-right: 2px solid #000;
+      border-bottom: 2px solid #000;
+      border-top: none;
+      margin-top: -2px; /* Seamlessly joins with summary box */
+      padding: 7px 12px;
       font-size: 11.5px;
       font-style: italic;
       font-weight: 600;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .a4-eoe {
       font-size: 11px;
       font-weight: 700;
-      margin-top: 8px;
+      margin-top: 10px;
+      margin-bottom: 2px;
     }
 
     .a4-sign-grid {
@@ -279,12 +290,14 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       grid-template-columns: 1fr 1fr 1fr 1fr;
       gap: 16px;
       text-align: center;
-      margin-top: 48px;
+      margin-top: 38px; /* Clean standard spacing right under E.O.&E. */
       font-size: 11.5px;
       font-weight: 700;
+      width: 100%;
+      box-sizing: border-box;
     }
     .a4-sign-line {
-      border-top: 1.5px solid #000;
+      border-top: 2px solid #000;
       padding-top: 6px;
     }
 
@@ -306,6 +319,8 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       body {
         padding: 0;
         background: #ffffff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
       .a4-container {
         box-shadow: none;
@@ -313,10 +328,11 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
         min-height: auto;
         max-width: 100%;
         width: 100%;
+        box-sizing: border-box;
       }
       @page {
         size: A4 portrait;
-        margin: 10mm 12mm;
+        margin: 10mm 15mm 10mm 15mm;
       }
     }
     ` : `
