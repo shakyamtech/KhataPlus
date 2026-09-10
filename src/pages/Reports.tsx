@@ -534,8 +534,8 @@ const Reports = () => {
                 </div>
                 {totals.discountAllowed > 0 && (
                   <div className="flex justify-between items-center py-1">
-                    <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Less: Discount Allowed (छुट दिइएको)</span>
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">({fmt(totals.discountAllowed)})</span>
+                    <span className="text-sm text-destructive font-medium">Less: Discount Allowed (छुट दिइएको)</span>
+                    <span className="font-medium text-destructive">({fmt(totals.discountAllowed)})</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center py-2 border-t font-bold">
