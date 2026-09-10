@@ -1443,7 +1443,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                       <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                         <div className={`font-bold text-base ${!e.is_order
                             ? "text-blue-600 dark:text-blue-400"
-                            : "text-orange-600 dark:text-orange-500"
+                            : Number(e.due_amount || 0) > 0
+                              ? "text-orange-600 dark:text-orange-500"
+                              : "text-foreground"
                           }`}>
                           {fmt(e.amount)}
                         </div>
@@ -1607,8 +1609,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                   <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                     <div className={`font-bold text-base ${!e.is_order
-                        ? "text-emerald-500 dark:text-emerald-400"
-                        : "text-orange-600 dark:text-orange-500"
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : Number(e.due_amount || 0) > 0
+                          ? "text-orange-600 dark:text-orange-500"
+                          : "text-foreground"
                       }`}>
                       {fmt(e.amount)}
                     </div>
