@@ -525,8 +525,6 @@ const POS = () => {
       }
       
       setBusy(true);
-      const ratio = subtotal > 0 ? total / subtotal : 1;
-      
       const itemsToSend = cart.map((i) => {
         const qty = Number(i.qty) || 0;
         const price = Number(i.sell_price) || 0;
@@ -540,7 +538,7 @@ const POS = () => {
         return { 
           ...i, 
           qty,
-          sell_price: +(price * ratio).toFixed(4) 
+          sell_price: price 
         };
       });
 
@@ -690,6 +688,10 @@ const POS = () => {
         payment_mode: paymentMode,
         paid_via: paymentMode === "credit" && paid > 0 ? partialMode : null,
         amount_paid: paid,
+        subtotal: subtotal,
+        discount: discountNum,
+        discount_percent: discountType === "percent" ? typedDiscount : null,
+        discount_type: discountType,
         total: total,
         cost_total: costTotal,
         note: discountNum > 0

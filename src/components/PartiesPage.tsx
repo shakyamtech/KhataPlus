@@ -51,6 +51,9 @@ type Entry = {
   non_taxable_amount?: number;
   taxable_amount?: number;
   vat_amount?: number;
+  subtotal?: number;
+  discount?: number;
+  discount_percent?: number | null;
   is_vat_bill?: boolean;
   supplier_bill_no?: string;
   bill_no?: string;
@@ -215,6 +218,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             non_taxable_amount: s.non_taxable_amount,
             taxable_amount: s.taxable_amount,
             vat_amount: s.vat_amount,
+            subtotal: Number(s.subtotal || 0),
+            discount: Number(s.discount || 0),
+            discount_percent: s.discount_percent ?? null,
             order_items: orderItems,
             products: orderItems.map(it => `${it.product_name} ×${it.qty}`).join(", ")
           });
@@ -827,6 +833,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             hs_code: it.hs_code
           })),
           total: e.amount,
+          subtotal: e.subtotal || undefined,
+          discount: e.discount || undefined,
+          discountPercent: e.discount_percent || undefined,
           paidAmount: e.paid_amount,
           dueAmount: e.due_amount,
           nonTaxableAmount: e.non_taxable_amount,

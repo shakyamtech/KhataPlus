@@ -73,8 +73,24 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
 
   // Calculate items subtotal if not provided
   const rawSubtotal = items.reduce((sum, it) => sum + (it.total ?? (Number(it.qty) * Number(it.price))), 0);
-  const subtotal = data.subtotal ?? rawSubtotal;
-  const discountNum = Number(data.discount || 0);
+  let discountNum = Number(data.discount || 0);
+  let discountPercent = data.discountPercent;
+
+  // Auto-detect discount from note if not explicitly provided (e.g. historical sales)
+  if (discountNum === 0 && data.note) {
+    const matchPercent = data.note.match(/Discount given:\s*(\d+(?:\.\d+)?)%\s*\(\s*Rs\.\s*(\d+(?:\.\d+)?)\s*\)/i);
+    if (matchPercent) {
+      discountPercent = Number(matchPercent[1]);
+      discountNum = Number(matchPercent[2]);
+    } else {
+      const matchRs = data.note.match(/Discount given:\s*Rs\.\s*(\d+(?:\.\d+)?)/i);
+      if (matchRs) {
+        discountNum = Number(matchRs[1]);
+      }
+    }
+  }
+
+  let subtotal = data.subtotal ?? rawSubtotal;
 
   // Determine if this is an official A4 Tax Invoice (कर बिजक)
   const isTaxInvoice = (shop.is_vat_registered && invoiceType === "tax_invoice")
@@ -98,12 +114,32 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
       ? Number(data.vatAmount)
       : (subtotal - discountNum > 0 ? (subtotal - discountNum) - calcTaxable : 0);
 
+    // If discount was given, in IRD Tax Invoice the pre-discount items gross total:
+    let displaySubtotal = subtotal;
+    let adjustedItems = items;
+    if (discountNum > 0) {
+      const expectedGross = +(Number(data.nonTaxableAmount || 0) + calcTaxable + discountNum).toFixed(2);
+      if (Math.abs(subtotal - total) < 0.05 || subtotal < expectedGross - 0.05) {
+        displaySubtotal = expectedGross;
+        // Fix historical items whose price was recorded after ratio
+        adjustedItems = items.map(it => {
+          const itemTotal = it.total ?? (Number(it.qty) * Number(it.price));
+          const adjustedRate = rawSubtotal > 0 ? (itemTotal / rawSubtotal) * (expectedGross / (Number(it.qty) || 1)) : Number(it.price);
+          return {
+            ...it,
+            price: +adjustedRate.toFixed(2),
+            total: +(Number(it.qty) * adjustedRate).toFixed(2)
+          };
+        });
+      }
+    }
+
     const paidAmt = data.paidAmount !== undefined ? Number(data.paidAmount) : (paymentMode === "credit" ? 0 : total);
     const dueAmt = data.dueAmount !== undefined ? Number(data.dueAmount) : (paymentMode === "credit" ? Math.max(0, total - paidAmt) : 0);
     const hasDue = dueAmt > 0;
 
-    const a4Rows = items.length > 0
-      ? items.map((i, idx) => `
+    const a4Rows = adjustedItems.length > 0
+      ? adjustedItems.map((i, idx) => `
         <tr class="a4-item-row">
           <td class="center" style="width:45px;">${idx + 1}</td>
           <td><strong>${escapeHtml(i.product_name)}</strong></td>
@@ -197,7 +233,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
             </div>
             ` : ""}
             <div class="a4-remarks-line">
-              <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (discountNum > 0 ? `Discount given: Rs. ${discountNum}` : (hasDue ? (paidAmt > 0 ? "Credit Sale (Partial Payment)" : "Credit Sale") : (paymentMode === "credit" ? "Credit Sale" : "Standard Sale")))}
+              <strong>Remarks:</strong> &nbsp;${data.note && !data.note.toLowerCase().startsWith("discount given:") ? escapeHtml(data.note) : (hasDue ? (paidAmt > 0 ? "Credit Sale (Partial Payment)" : "Credit Sale") : (paymentMode === "credit" ? "Credit Sale" : "Standard Sale"))}
             </div>
           </div>
 
@@ -206,10 +242,10 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
               <tbody>
                 <tr>
                   <td class="label">Grand Total</td>
-                  <td class="val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td class="val">${(displaySubtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
                 <tr>
-                  <td class="label">P. Discount ${data.discountPercent && data.discountPercent > 0 ? `(${data.discountPercent}%)` : ""}</td>
+                  <td class="label">P. Discount ${discountPercent && discountPercent > 0 ? `(${discountPercent}%)` : ""}</td>
                   <td class="val">${discountNum > 0 ? `(${discountNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : "0.00"}</td>
                 </tr>
                 <tr>
@@ -343,7 +379,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
 
         <div class="summary-section">
           <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
-          ${discountNum > 0 ? `<div class="summary-row discount"><span>Discount ${data.discountPercent && data.discountPercent > 0 ? `(${data.discountPercent}%)` : ""}</span><span>-${fmt(discountNum)}</span></div>` : ""}
+          ${discountNum > 0 ? `<div class="summary-row discount"><span>Discount ${discountPercent && discountPercent > 0 ? `(${discountPercent}%)` : ""}</span><span>-${fmt(discountNum)}</span></div>` : ""}
           <div class="summary-row grand-total"><span>Grand Total</span><span>${fmt(total)}</span></div>
           ${paidAmt > 0 ? `<div class="summary-row paid"><span>Paid (${(data.paidVia || paymentMode).toUpperCase()})</span><span>${fmt(paidAmt)}</span></div>` : (paymentMode === "credit" ? `<div class="summary-row paid"><span>Paid</span><span>${fmt(0)}</span></div>` : `<div class="summary-row paid"><span>Paid (${paymentMode.toUpperCase()})</span><span>${fmt(paidAmt)}</span></div>`)}
           ${dueAmt > 0 ? `<div class="summary-row due"><span>Outstanding Due</span><span>${fmt(dueAmt)}</span></div>` : ""}
@@ -352,7 +388,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
           ` : ""}
         </div>
 
-        ${data.note ? `<div style="font-size:11.5px; color:#4b5563; margin-bottom:12px; font-style:italic;">Note: ${escapeHtml(data.note)}</div>` : ""}
+        ${data.note && !data.note.toLowerCase().startsWith("discount given:") ? `<div style="font-size:11.5px; color:#4b5563; margin-bottom:12px; font-style:italic;">Note: ${escapeHtml(data.note)}</div>` : ""}
 
         <div class="receipt-footer">
           <div class="footer-highlight">Thank you for shopping with us!</div>
