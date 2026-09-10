@@ -18,6 +18,7 @@ import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo } from "@/lib/shop";
 import { format, subDays } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { CustomDatePicker } from "@/components/CustomDatePicker";
 
 const inCategories = [
   "sale", 
@@ -632,20 +633,18 @@ const Cashbook = () => {
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1 flex-1 min-w-[140px]">
             <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{lang === "NEP" ? "मिति देखि (From)" : "From Date"}</Label>
-            <Input 
-              type="date" 
+            <CustomDatePicker 
               value={startDate} 
-              onChange={(e) => setStartDate(e.target.value)} 
-              className="h-9 bg-background"
+              onChange={setStartDate} 
+              placeholder="DD/MM/YYYY"
             />
           </div>
           <div className="space-y-1 flex-1 min-w-[140px]">
             <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{lang === "NEP" ? "मिति सम्म (To)" : "To Date"}</Label>
-            <Input 
-              type="date" 
+            <CustomDatePicker 
               value={endDate} 
-              onChange={(e) => setEndDate(e.target.value)} 
-              className="h-9 bg-background"
+              onChange={setEndDate} 
+              placeholder="DD/MM/YYYY"
             />
           </div>
           {(startDate || endDate) && (
