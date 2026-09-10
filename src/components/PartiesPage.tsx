@@ -1422,7 +1422,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                         {e.is_order && (
                           <div className="text-xs flex items-center gap-3 pt-0.5">
-                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
                               Paid: {fmt(e.paid_amount ?? e.amount)}
                             </span>
                             {Number(e.due_amount || 0) > 0 ? (
@@ -1442,7 +1442,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                       <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                         <div className={`font-bold text-base ${!e.is_order
-                            ? "text-emerald-500 dark:text-emerald-400"
+                            ? "text-blue-600 dark:text-blue-400"
                             : "text-orange-600 dark:text-orange-500"
                           }`}>
                           {fmt(e.amount)}
@@ -1451,14 +1451,14 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                           {e.is_order && Number(e.due_amount || 0) > 0 && (
                             <Button
                               size="sm"
-                              className="h-7 px-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-xs"
+                              className="h-7 px-2.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 shadow-xs"
                               onClick={(evt) => {
                                 evt.stopPropagation();
                                 handlePaySingleBill(e);
                               }}
                             >
                               <Wallet className="h-3.5 w-3.5" />
-                              <span>Receive</span>
+                              <span>Pay Bill</span>
                             </Button>
                           )}
                           <Button
@@ -1469,10 +1469,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                               evt.stopPropagation();
                               printSingleEntry(e);
                             }}
-                            title={e.is_order ? "Print Bill" : "Print Payment Receipt"}
+                            title={e.is_order ? "Print Bill" : "Print Payment Voucher"}
                           >
                             <Printer className="h-3.5 w-3.5" />
-                            <span>{e.is_order ? "Bill" : "Receipt"}</span>
+                            <span>{e.is_order ? "Bill" : "Voucher"}</span>
                           </Button>
                         </div>
                       </div>
