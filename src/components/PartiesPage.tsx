@@ -898,15 +898,15 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             ` : `<div></div>`}
             <div class="bill-info-item" style="text-align:right; margin-top:4px;">
               <span class="bill-info-label">Entry Type</span>
-              <span class="bill-info-value" style="text-transform:capitalize; color:${isReceived ? '#059669' : '#dc2626'}; font-weight:700;">${escapeHtml(e.title)}</span>
+              <span class="bill-info-value" style="text-transform:capitalize; color:${isReceived ? '#059669' : '#1d4ed8'}; font-weight:700;">${escapeHtml(e.title)}</span>
             </div>
           </div>
 
-          <div style="background:${isReceived ? '#f0fdf4' : '#fef2f2'}; border:1.5px solid ${isReceived ? '#86efac' : '#fca5a5'}; border-radius:10px; padding:16px; text-align:center; margin:16px 0;">
-            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:${isReceived ? '#166534' : '#991b1b'}; letter-spacing:0.06em; margin-bottom:4px;">
+          <div style="background:${isReceived ? '#f0fdf4' : '#eff6ff'}; border:1.5px solid ${isReceived ? '#86efac' : '#93c5fd'}; border-radius:10px; padding:16px; text-align:center; margin:16px 0;">
+            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:${isReceived ? '#166534' : '#1e40af'}; letter-spacing:0.06em; margin-bottom:4px;">
               ${isReceived ? "Amount Received (प्राप्त रकम)" : "Amount Paid (भुक्तानी रकम)"}
             </div>
-            <div style="font-size:26px; font-weight:800; color:${isReceived ? '#15803d' : '#b91c1c'}; letter-spacing:-0.02em;">
+            <div style="font-size:26px; font-weight:800; color:${isReceived ? '#15803d' : '#1e3a8a'}; letter-spacing:-0.02em;">
               ${fmt(e.amount)}
             </div>
           </div>
@@ -1453,14 +1453,14 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                           {e.is_order && Number(e.due_amount || 0) > 0 && (
                             <Button
                               size="sm"
-                              className="h-7 px-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-xs"
+                              className="h-7 px-2.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 shadow-xs"
                               onClick={(evt) => {
                                 evt.stopPropagation();
                                 handlePaySingleBill(e);
                               }}
                             >
                               <Wallet className="h-3.5 w-3.5" />
-                              <span>Receive</span>
+                              <span>Pay Bill</span>
                             </Button>
                           )}
                           <Button 
@@ -1531,12 +1531,32 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               {entries.map((e) => (
                 <div key={e.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-secondary/20 transition-colors">
                   <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold capitalize text-foreground">{e.title}</span>
+                      {e.bill_no && (
+                        <span className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded">
+                          #{e.bill_no}
+                        </span>
+                      )}
                       {e.is_order && (
                         <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground uppercase font-medium">
                           {e.payment_mode || "Bill"}
                         </span>
+                      )}
+                      {e.is_order && (
+                        Number(e.due_amount || 0) === 0 ? (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold px-1.5 py-0.5 rounded">
+                            Fully Paid
+                          </span>
+                        ) : Number(e.paid_amount || 0) > 0 ? (
+                          <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded">
+                            Partial
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-bold px-1.5 py-0.5 rounded">
+                            Unpaid
+                          </span>
+                        )
                       )}
                     </div>
                     
@@ -1595,9 +1615,19 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                     }`}>
                       {fmt(e.amount)}
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      {e.is_order && (
-                        <span className="text-[10px] text-muted-foreground font-medium uppercase">Total Bill</span>
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {e.is_order && Number(e.due_amount || 0) > 0 && (
+                        <Button
+                          size="sm"
+                          className="h-7 px-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-xs"
+                          onClick={(evt) => {
+                            evt.stopPropagation();
+                            handlePaySingleBill(e);
+                          }}
+                        >
+                          <Wallet className="h-3.5 w-3.5" />
+                          <span>Receive</span>
+                        </Button>
                       )}
                       <Button 
                         size="sm" 
