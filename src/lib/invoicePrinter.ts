@@ -419,6 +419,8 @@ export interface PurchaseVoucherData {
   paidVia?: string | null;
   items: InvoiceItem[];
   subtotal?: number;
+  discount?: number;
+  discountPercent?: number | null;
   taxableAmount?: number;
   vatAmount?: number;
   total: number;
@@ -448,6 +450,22 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
   const dateObj = typeof date === "string" ? new Date(date) : date;
   const formattedDate = format(dateObj, "dd/MM/yyyy");
   const formattedTime = format(dateObj, "hh:mm:ss a");
+
+  let discountNum = Number(data.discount || 0);
+  let discountPercent = data.discountPercent;
+
+  if (discountNum === 0 && data.note) {
+    const matchPercent = data.note.match(/Discount received:\s*(\d+(?:\.\d+)?)%\s*\(\s*Rs\.\s*(\d+(?:\.\d+)?)\s*\)/i);
+    if (matchPercent) {
+      discountPercent = Number(matchPercent[1]);
+      discountNum = Number(matchPercent[2]);
+    } else {
+      const matchRs = data.note.match(/Discount received:\s*Rs\.\s*(\d+(?:\.\d+)?)/i);
+      if (matchRs) {
+        discountNum = Number(matchRs[1]);
+      }
+    }
+  }
 
   const rawSubtotal = items.reduce((sum, it) => sum + (it.total ?? (Number(it.qty) * Number(it.price))), 0);
   const subtotal = data.subtotal ?? rawSubtotal;
@@ -562,7 +580,7 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
           </div>
           ` : ""}
           <div class="a4-remarks-line">
-            <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (supplierBillNo ? `Supplier Invoice #${supplierBillNo}` : "Stock Inward Entry")}
+            <strong>Remarks:</strong> &nbsp;${data.note && !data.note.toLowerCase().startsWith("discount received:") ? escapeHtml(data.note) : (supplierBillNo ? `Supplier Invoice #${supplierBillNo}` : "Stock Inward Entry")}
           </div>
         </div>
 
@@ -573,6 +591,12 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
                 <td class="label">${isVatBill ? "Basic Amount" : "Total Amount"}</td>
                 <td class="val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
+              ${discountNum > 0 ? `
+              <tr>
+                <td class="label">P. Discount ${discountPercent && discountPercent > 0 ? `(${discountPercent}%)` : ""}</td>
+                <td class="val">(${discountNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
+              </tr>
+              ` : ""}
               ${isVatBill ? `
                 <tr>
                   <td class="label">Taxable Amount</td>

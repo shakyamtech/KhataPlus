@@ -386,6 +386,8 @@ const Purchases = () => {
   const [supplierId, setSupplierId] = useState<string>("none");
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [partialMode, setPartialMode] = useState<string>("cash");
+  const [discount, setDiscount] = useState<string>("");
+  const [discountType, setDiscountType] = useState<"flat" | "percent">("flat");
   const [amountPaid, setAmountPaid] = useState("0");
   const [productPick, setProductPick] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -459,7 +461,18 @@ const Purchases = () => {
 
   const isVatShop = shopInfo?.is_vat_registered === true;
   const isVatBill = isVatShop && purchaseType === "vat_bill";
-  const taxableTotal = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.cost_price) || 0), 0);
+  const subtotal = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.cost_price) || 0), 0);
+  const typedDiscount = Number(discount || 0);
+  const discountNum = Math.max(
+    0,
+    Math.min(
+      discountType === "percent"
+        ? Number(((subtotal * typedDiscount) / 100).toFixed(2))
+        : typedDiscount,
+      subtotal
+    )
+  );
+  const taxableTotal = Math.max(0, Number((subtotal - discountNum).toFixed(2)));
   const vatAmount = isVatBill ? Number((taxableTotal * 0.13).toFixed(2)) : 0;
   const grandTotal = isVatBill ? Number((taxableTotal + vatAmount).toFixed(2)) : taxableTotal;
 
@@ -564,6 +577,8 @@ const Purchases = () => {
       setSupplierId(p.supplier_id || "none");
       setPaymentMode(p.payment_mode || "cash");
       setPartialMode(p.paid_via || "cash");
+      setDiscount((p.discount || "").toString());
+      setDiscountType(p.discount_type || "flat");
       setPurchaseType(p.is_vat_bill === false ? "non_vat" : "vat_bill");
       setSupplierBillNo(p.supplier_bill_no || "");
       setAmountPaid((p.amount_paid || 0).toString());
@@ -707,12 +722,18 @@ const Purchases = () => {
         payment_mode: paymentMode,
         paid_via: paymentMode === "credit" && paid > 0 ? partialMode : null,
         amount_paid: paid,
+        subtotal: subtotal,
+        discount: discountNum,
+        discount_percent: discountType === "percent" ? typedDiscount : null,
+        discount_type: discountType,
         total: purchaseTotal,
         is_vat_bill: isVatBill,
         taxable_amount: taxableTotal,
         vat_amount: vatAmount,
         supplier_bill_no: supplierBillNo?.trim() || null,
-        note: editingId ? "Updated purchase" : null,
+        note: discountNum > 0
+          ? (discountType === "percent" ? `Discount received: ${typedDiscount}% (Rs. ${discountNum})` : `Discount received: Rs. ${discountNum}`)
+          : (editingId ? "Updated purchase" : null),
         created_at: new Date().toISOString()
       });
 
@@ -813,6 +834,8 @@ const Purchases = () => {
       setSupplierId("none"); 
       setPaymentMode("cash"); 
       setPartialMode("cash");
+      setDiscount("");
+      setDiscountType("flat");
       setPurchaseType("vat_bill");
       setSupplierBillNo("");
       setShowForm(false); 
@@ -903,6 +926,9 @@ const Purchases = () => {
         paymentMode: h.payment_mode || "cash",
         paidVia: h.paid_via || null,
         items: itemsList,
+        subtotal: Number(h.subtotal || 0) || undefined,
+        discount: Number(h.discount || 0) || undefined,
+        discountPercent: h.discount_percent ?? undefined,
         total: Number(h.total || 0),
         paidAmount: Number(h.amount_paid || 0),
         taxableAmount: h.taxable_amount,
@@ -1102,9 +1128,50 @@ const Purchases = () => {
             {items.length === 0 && <div className="text-center text-sm text-muted-foreground py-6 border-2 border-dashed border-border/60 rounded-xl">Pick a product to start</div>}
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-3 mt-4 items-end">
-            <div>
-              <Label>Payment</Label>
+          <div className="grid sm:grid-cols-12 gap-3 mt-4 items-end">
+            <div className="sm:col-span-3">
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs font-semibold">Discount (छुट)</Label>
+                <div className="flex items-center rounded-lg border border-border bg-muted/60 p-0.5 text-[11px] font-medium">
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType("flat")}
+                    className={cn(
+                      "px-2 py-0.5 rounded-md transition-all cursor-pointer",
+                      discountType === "flat"
+                        ? "bg-background text-foreground font-bold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    रु Flat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType("percent")}
+                    className={cn(
+                      "px-2 py-0.5 rounded-md transition-all cursor-pointer",
+                      discountType === "percent"
+                        ? "bg-background text-foreground font-bold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    % Percent
+                  </button>
+                </div>
+              </div>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder={discountType === "percent" ? "e.g. 5" : "e.g. 500"}
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                onWheel={(e) => e.currentTarget.blur()}
+                className="h-9 font-medium"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <Label className="text-xs">Payment</Label>
               <Select 
                 value={paymentMode} 
                 onValueChange={(v: string) => {
@@ -1118,7 +1185,7 @@ const Purchases = () => {
                   }
                 }}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="credit">Credit</SelectItem>
@@ -1128,31 +1195,39 @@ const Purchases = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Amount Paid</Label>
-              <Input type="number" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
+
+            <div className="sm:col-span-3">
+              <Label className="text-xs">Amount Paid</Label>
+              <Input className="h-9 font-medium" type="number" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
               {grandTotal > 0 && Number(amountPaid || 0) < grandTotal && (
                 <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-1">
                   Due to Supplier: {fmt(grandTotal - Number(amountPaid || 0))}
                 </div>
               )}
             </div>
-            {isVatBill ? (
-              <div className="bg-gradient-primary text-primary-foreground rounded-lg p-2.5 flex flex-col justify-between shadow-soft">
-                <div className="flex justify-between text-[11px] opacity-90 pb-1 border-b border-white/20">
-                  <span>Taxable: {fmt(taxableTotal)}</span>
-                  <span>+13% VAT: {fmt(vatAmount)}</span>
+
+            <div className="sm:col-span-4">
+              {isVatBill ? (
+                <div className="bg-gradient-primary text-primary-foreground rounded-lg p-2.5 flex flex-col justify-between shadow-soft">
+                  <div className="flex justify-between text-[11px] opacity-90 pb-1 border-b border-white/20">
+                    <span>Taxable: {fmt(taxableTotal)} {discountNum > 0 && `(छुट -${fmt(discountNum)})`}</span>
+                    <span>+13% VAT: {fmt(vatAmount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs font-bold uppercase tracking-wider">Total (VAT Incl.)</span>
+                    <span className="font-display text-xl font-bold">{fmt(grandTotal)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-xs font-bold uppercase tracking-wider">Total (VAT Incl.)</span>
-                  <span className="font-display text-xl font-bold">{fmt(grandTotal)}</span>
+              ) : (
+                <div className="flex items-center justify-between bg-gradient-primary text-primary-foreground rounded-lg px-3 py-2">
+                  <div className="flex flex-col">
+                    <span className="text-xs">Total</span>
+                    {discountNum > 0 && <span className="text-[10px] opacity-80">छुट: -{fmt(discountNum)}</span>}
+                  </div>
+                  <span className="font-display text-xl">{fmt(grandTotal)}</span>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between bg-gradient-primary text-primary-foreground rounded-lg px-3 py-2">
-                <span>Total</span><span className="font-display text-xl">{fmt(grandTotal)}</span>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {paymentMode === "credit" && Number(amountPaid || 0) > 0 && (
