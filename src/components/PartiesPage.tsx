@@ -31,15 +31,15 @@ type OrderItem = {
 };
 
 type Party = { id: string; name: string; phone: string | null; balance: number; pan?: string; address?: string };
-type Entry = { 
-  id: string; 
-  entry_type?: string; 
-  title: string; 
-  amount: number; 
+type Entry = {
+  id: string;
+  entry_type?: string;
+  title: string;
+  amount: number;
   paid_amount?: number;
   due_amount?: number;
   payment_mode?: string;
-  note?: string | null; 
+  note?: string | null;
   created_at: string;
   products?: string;
   order_items?: OrderItem[];
@@ -114,7 +114,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid), where("party_type", "==", type));
       const lSnap = await getDocs(lQ);
       const l = lSnap.docs.map(d => d.data());
-      
+
       const parties = p.map((party: any) => {
         const partyEntries = l.filter((e: any) => e.party_id === party.id);
         const balance = partyEntries.reduce((acc: number, e: any) => {
@@ -155,7 +155,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       if (type === "customer") {
         const sQ = query(collection(db, "sales"), where("customer_id", "==", p.id));
         const lQ = query(collection(db, "ledger_entries"), where("party_type", "==", type), where("party_id", "==", p.id));
-        
+
         const [sSnap, lSnap] = await Promise.all([getDocs(sQ), getDocs(lQ)]);
         const salesData = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const ledgerData = lSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -255,7 +255,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       } else {
         const pQ = query(collection(db, "purchases"), where("supplier_id", "==", p.id));
         const lQ = query(collection(db, "ledger_entries"), where("party_type", "==", type), where("party_id", "==", p.id));
-        
+
         const [pSnap, lSnap] = await Promise.all([getDocs(pQ), getDocs(lQ)]);
         const purData = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const ledgerData = lSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -405,7 +405,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const name = pi.product_name;
         const currentPrice = Number(pi.cost_price || 0);
         const stats = itemMap[name] || { min: currentPrice, max: currentPrice, prices: [currentPrice] };
-        
+
         let status: "cheapest" | "expensive" | "average" | "only" = "only";
         if (stats.prices.length > 1) {
           if (currentPrice === stats.min && currentPrice < stats.max) status = "cheapest";
@@ -573,15 +573,15 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     try {
       const q = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid), where("party_id", "==", selected.id));
       const snap = await getDocs(q);
-      
+
       const batch = writeBatch(db);
       snap.docs.forEach((d) => batch.delete(d.ref));
-      
+
       const pRef = doc(db, table, selected.id);
       batch.update(pRef, { balance: 0 });
 
       await batch.commit();
-      
+
       toast.success("Ledger history cleared successfully");
       openLedger({ ...selected, balance: 0 });
       load();
@@ -649,7 +649,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
         const lRef = doc(collection(db, "ledger_entries"));
         const billLabel = targetBill.bill_no;
-        const noteDetail = (payNote ? payNote.trim() + " · " : "") + 
+        const noteDetail = (payNote ? payNote.trim() + " · " : "") +
           (isReceived ? `Payment for Bill #${billLabel}` : `Payment for Bill #${billLabel}` + (targetBill.supplier_bill_no ? ` (Supplier Bill: #${targetBill.supplier_bill_no})` : ""));
 
         batch.set(lRef, {
@@ -686,7 +686,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       } else if (settlementMode === "fifo") {
         let remaining = amt;
         const sorted = [...unpaidBills].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        
+
         for (const bill of sorted) {
           if (remaining <= 0) break;
           const alloc = Math.min(remaining, bill.due_amount);
@@ -694,7 +694,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
           const lRef = doc(collection(db, "ledger_entries"));
           const billLabel = bill.bill_no;
-          const noteDetail = (payNote ? payNote.trim() + " · " : "") + 
+          const noteDetail = (payNote ? payNote.trim() + " · " : "") +
             `Settlement for Bill #${billLabel}` + (bill.supplier_bill_no ? ` (Supplier Bill: #${bill.supplier_bill_no})` : "");
 
           batch.set(lRef, {
@@ -798,7 +798,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const printSingleEntry = async (e: Entry) => {
     if (!selected) return;
     const shop = await getShopInfo();
-    
+
     if (e.is_order) {
       const isSale = type === "customer";
       if (isSale) {
@@ -898,15 +898,15 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             ` : `<div></div>`}
             <div class="bill-info-item" style="text-align:right; margin-top:4px;">
               <span class="bill-info-label">Entry Type</span>
-              <span class="bill-info-value" style="text-transform:capitalize; color:${isReceived ? '#059669' : '#1d4ed8'}; font-weight:700;">${escapeHtml(e.title)}</span>
+              <span class="bill-info-value" style="text-transform:capitalize; color:${isReceived ? '#059669' : '#dc2626'}; font-weight:700;">${escapeHtml(e.title)}</span>
             </div>
           </div>
 
-          <div style="background:${isReceived ? '#f0fdf4' : '#eff6ff'}; border:1.5px solid ${isReceived ? '#86efac' : '#93c5fd'}; border-radius:10px; padding:16px; text-align:center; margin:16px 0;">
-            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:${isReceived ? '#166534' : '#1e40af'}; letter-spacing:0.06em; margin-bottom:4px;">
+          <div style="background:${isReceived ? '#f0fdf4' : '#fef2f2'}; border:1.5px solid ${isReceived ? '#86efac' : '#fca5a5'}; border-radius:10px; padding:16px; text-align:center; margin:16px 0;">
+            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:${isReceived ? '#166534' : '#991b1b'}; letter-spacing:0.06em; margin-bottom:4px;">
               ${isReceived ? "Amount Received (प्राप्त रकम)" : "Amount Paid (भुक्तानी रकम)"}
             </div>
-            <div style="font-size:26px; font-weight:800; color:${isReceived ? '#15803d' : '#1e3a8a'}; letter-spacing:-0.02em;">
+            <div style="font-size:26px; font-weight:800; color:${isReceived ? '#15803d' : '#b91c1c'}; letter-spacing:-0.02em;">
               ${fmt(e.amount)}
             </div>
           </div>
@@ -1140,29 +1140,29 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   if (selected) {
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto">
-        <PageHeader 
-          title={selected.name} 
-          subtitle={`${selected.phone || "No phone"}${selected.pan ? ` • PAN: ${selected.pan}` : ""}${selected.address ? ` • 📍 ${selected.address}` : ""}`} 
+        <PageHeader
+          title={selected.name}
+          subtitle={`${selected.phone || "No phone"}${selected.pan ? ` • PAN: ${selected.pan}` : ""}${selected.address ? ` • 📍 ${selected.address}` : ""}`}
           actions={
-          <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              setEditName(selected.name || "");
-              setEditPhone(selected.phone || "");
-              setEditPan(selected.pan || "");
-              setEditAddress(selected.address || "");
-              setEditOpen(true);
-            }}
-          >
-            <Pencil className="h-4 w-4 mr-1" /> Edit Profile
-          </Button>
-          <Button variant="outline" onClick={async () => {
-            const shop = await getShopInfo();
-            const isDebt = Number(selected.balance) > 0;
-            const isAdvance = Number(selected.balance) < 0;
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditName(selected.name || "");
+                  setEditPhone(selected.phone || "");
+                  setEditPan(selected.pan || "");
+                  setEditAddress(selected.address || "");
+                  setEditOpen(true);
+                }}
+              >
+                <Pencil className="h-4 w-4 mr-1" /> Edit Profile
+              </Button>
+              <Button variant="outline" onClick={async () => {
+                const shop = await getShopInfo();
+                const isDebt = Number(selected.balance) > 0;
+                const isAdvance = Number(selected.balance) < 0;
 
-            const body = `
+                const body = `
               <div class="receipt-card">
                 <div class="shop-header">
                   <div class="shop-title">${escapeHtml(shop.name)}</div>
@@ -1267,40 +1267,40 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                   <div class="brand-tag">KhataPlus Store Management System</div>
                 </div>
               </div>`;
-            printHTML(`${selected.name} — Ledger`, body);
-          }}><Printer className="h-4 w-4 mr-1" />Print Ledger</Button>
+                printHTML(`${selected.name} — Ledger`, body);
+              }}><Printer className="h-4 w-4 mr-1" />Print Ledger</Button>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="text-destructive border-destructive/20 hover:bg-destructive/10">
-                <Trash2 className="h-4 w-4 mr-1" /> Clear History
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="text-destructive border-destructive/20 hover:bg-destructive/10">
+                    <Trash2 className="h-4 w-4 mr-1" /> Clear History
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear Ledger History?</AlertDialogTitle>
+                    <AlertDialogDescription>This will permanently delete all transaction history for {selected.name}. Only use this if the account is settled.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearLedgerHistory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Yes, Clear History</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <Button onClick={openPaymentModal}>
+                <Wallet className="h-4 w-4 mr-1" /> Record Payment
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear Ledger History?</AlertDialogTitle>
-                <AlertDialogDescription>This will permanently delete all transaction history for {selected.name}. Only use this if the account is settled.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={clearLedgerHistory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Yes, Clear History</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <Button onClick={openPaymentModal}>
-            <Wallet className="h-4 w-4 mr-1" /> Record Payment
-          </Button>
-          </div>
-        } />
+            </div>
+          } />
 
         <Card className="p-6 mb-6 shadow-card border-0">
           <div className="flex items-center justify-between">
             <div className="text-xs uppercase font-bold tracking-wider text-muted-foreground">
-              {Number(selected.balance) > 0 
-                ? `Outstanding ${dueLabel}` 
-                : Number(selected.balance) < 0 
-                  ? (type === "customer" ? "Customer Advance (अग्रिम/जम्मा रकम)" : "Supplier Advance (अग्रिम भुक्तानी)") 
+              {Number(selected.balance) > 0
+                ? `Outstanding ${dueLabel}`
+                : Number(selected.balance) < 0
+                  ? (type === "customer" ? "Customer Advance (अग्रिम/जम्मा रकम)" : "Supplier Advance (अग्रिम भुक्तानी)")
                   : "Account Status"}
             </div>
             {Number(selected.balance) < 0 && (
@@ -1320,27 +1320,26 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             )}
           </div>
 
-          <div className={`font-display text-3xl mt-1.5 font-extrabold ${
-            Number(selected.balance) > 0 
-              ? "text-orange-600 dark:text-orange-400" 
-              : Number(selected.balance) < 0 
-                ? "text-emerald-600 dark:text-emerald-400" 
+          <div className={`font-display text-3xl mt-1.5 font-extrabold ${Number(selected.balance) > 0
+              ? "text-orange-600 dark:text-orange-400"
+              : Number(selected.balance) < 0
+                ? "text-emerald-600 dark:text-emerald-400"
                 : "text-muted-foreground"
-          }`}>
+            }`}>
             {Number(selected.balance) === 0 ? "Rs. 0" : fmt(Math.abs(Number(selected.balance)))}
           </div>
 
           {Number(selected.balance) < 0 && (
             <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1.5 font-medium">
-              💡 {type === "customer" 
-                ? "यो ग्राहकको कुनै बिल बाँकी छैन, उहाँको खातामा " + fmt(Math.abs(Number(selected.balance))) + " अग्रिम (Advance) जम्मा छ।" 
+              💡 {type === "customer"
+                ? "यो ग्राहकको कुनै बिल बाँकी छैन, उहाँको खातामा " + fmt(Math.abs(Number(selected.balance))) + " अग्रिम (Advance) जम्मा छ।"
                 : "हामीले यो सप्लायरलाई " + fmt(Math.abs(Number(selected.balance))) + " अग्रिम (Advance) भुक्तानी दिएका छौँ।"}
             </p>
           )}
           {Number(selected.balance) > 0 && (
             <p className="text-xs text-orange-700 dark:text-orange-400 mt-1.5 font-medium">
-              💡 {type === "customer" 
-                ? "यो ग्राहकबाट हामीले " + fmt(Number(selected.balance)) + " उधारो रकम उठाउन बाँकी छ।" 
+              💡 {type === "customer"
+                ? "यो ग्राहकबाट हामीले " + fmt(Number(selected.balance)) + " उधारो रकम उठाउन बाँकी छ।"
                 : "हामीले यो सप्लायरलाई " + fmt(Number(selected.balance)) + " भुक्तानी गर्न बाँकी छ।"}
             </p>
           )}
@@ -1352,7 +1351,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               <TabsTrigger value="ledger">Ledger</TabsTrigger>
               <TabsTrigger value="analysis">Price Analysis</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="ledger">
               <Card className="shadow-card border-0">
                 <div className="p-4 border-b font-display text-lg flex items-center gap-2"><BookOpen className="h-4 w-4" /> Ledger</div>
@@ -1393,7 +1392,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                             )
                           )}
                         </div>
-                        
+
                         <div className="text-xs text-muted-foreground">
                           {format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}
                         </div>
@@ -1440,32 +1439,31 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                         {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
                       </div>
-                      
+
                       <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-                        <div className={`font-bold text-base ${
-                          !e.is_order
-                            ? "text-emerald-500 dark:text-emerald-400" 
+                        <div className={`font-bold text-base ${!e.is_order
+                            ? "text-emerald-500 dark:text-emerald-400"
                             : "text-orange-600 dark:text-orange-500"
-                        }`}>
+                          }`}>
                           {fmt(e.amount)}
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
                           {e.is_order && Number(e.due_amount || 0) > 0 && (
                             <Button
                               size="sm"
-                              className="h-7 px-2.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 shadow-xs"
+                              className="h-7 px-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-xs"
                               onClick={(evt) => {
                                 evt.stopPropagation();
                                 handlePaySingleBill(e);
                               }}
                             >
                               <Wallet className="h-3.5 w-3.5" />
-                              <span>Pay Bill</span>
+                              <span>Receive</span>
                             </Button>
                           )}
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="h-7 px-2 text-xs flex items-center gap-1 hover:bg-primary/10 hover:text-primary transition-colors"
                             onClick={(evt) => {
                               evt.stopPropagation();
@@ -1510,7 +1508,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                           {item.status === "cheapest" && <span className="px-2 py-1 bg-green-100 text-green-700 text-[11px] font-bold uppercase rounded tracking-wide border border-green-200">Cheapest</span>}
                           {item.status === "expensive" && <span className="px-2 py-1 bg-red-100 text-red-700 text-[11px] font-bold uppercase rounded tracking-wide border border-red-200">Expensive</span>}
                           {item.status === "average" && <span className="px-2 py-1 bg-gray-100 text-gray-700 text-[11px] font-bold uppercase rounded tracking-wide border border-gray-200">Average</span>}
-                          
+
                           <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(item.name)}&tbm=shop`, "_blank")}>
                             Web Search
                           </Button>
@@ -1559,7 +1557,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                         )
                       )}
                     </div>
-                    
+
                     <div className="text-xs text-muted-foreground">
                       {format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}
                     </div>
@@ -1606,13 +1604,12 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                     {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
                   </div>
-                  
+
                   <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-                    <div className={`font-bold text-base ${
-                      !e.is_order
-                        ? "text-emerald-500 dark:text-emerald-400" 
+                    <div className={`font-bold text-base ${!e.is_order
+                        ? "text-emerald-500 dark:text-emerald-400"
                         : "text-orange-600 dark:text-orange-500"
-                    }`}>
+                      }`}>
                       {fmt(e.amount)}
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
@@ -1629,9 +1626,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                           <span>Receive</span>
                         </Button>
                       )}
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
+                      <Button
+                        size="sm"
+                        variant="outline"
                         className="h-7 px-2 text-xs flex items-center gap-1 hover:bg-primary/10 hover:text-primary transition-colors"
                         onClick={(evt) => {
                           evt.stopPropagation();
@@ -1675,20 +1672,20 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 {(type === "supplier" || shopInfo?.is_vat_registered) && (
                   <div>
                     <Label>PAN No. (Optional{type === "customer" ? " · B2B" : ""})</Label>
-                    <Input 
-                      placeholder="९-अङ्कको PAN" 
-                      maxLength={9} 
-                      value={pan} 
-                      onChange={(e) => setPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                    <Input
+                      placeholder="९-अङ्कको PAN"
+                      maxLength={9}
+                      value={pan}
+                      onChange={(e) => setPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
                     />
                   </div>
                 )}
                 <div className={(type === "customer" && !shopInfo?.is_vat_registered) ? "col-span-2" : ""}>
                   <Label>Address (Optional)</Label>
-                  <Input 
-                    placeholder="Location / City" 
-                    value={address} 
-                    onChange={(e) => setAddress(e.target.value)} 
+                  <Input
+                    placeholder="Location / City"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
                   />
                 </div>
               </div>
@@ -1734,11 +1731,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
       <div className="relative max-w-sm mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input 
-          className="pl-9 bg-card border-border text-sm" 
-          placeholder={`Search ${type === "customer" ? "customers" : "suppliers"} by name or phone...`} 
-          value={search} 
-          onChange={(e) => setSearch(e.target.value)} 
+        <Input
+          className="pl-9 bg-card border-border text-sm"
+          placeholder={`Search ${type === "customer" ? "customers" : "suppliers"} by name or phone...`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
@@ -1751,8 +1748,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 {p.phone && <div className="text-xs text-muted-foreground">{p.phone}</div>}
               </div>
               <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={(e) => { 
-                  e.stopPropagation(); 
+                <Button size="icon" variant="ghost" onClick={(e) => {
+                  e.stopPropagation();
                   openLedger(p).then(() => {
                     openPaymentModal();
                   });
@@ -1793,20 +1790,20 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 {(type === "supplier" || shopInfo?.is_vat_registered) && (
                   <div>
                     <Label>PAN No. (Optional{type === "customer" ? " · B2B" : ""})</Label>
-                    <Input 
-                      placeholder="९-अङ्कको PAN" 
-                      maxLength={9} 
-                      value={editPan} 
-                      onChange={(e) => setEditPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                    <Input
+                      placeholder="९-अङ्कको PAN"
+                      maxLength={9}
+                      value={editPan}
+                      onChange={(e) => setEditPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
                     />
                   </div>
                 )}
                 <div className={(type === "customer" && !shopInfo?.is_vat_registered) ? "col-span-2" : ""}>
                   <Label>Address (Optional)</Label>
-                  <Input 
-                    placeholder="Location / City" 
-                    value={editAddress} 
-                    onChange={(e) => setEditAddress(e.target.value)} 
+                  <Input
+                    placeholder="Location / City"
+                    value={editAddress}
+                    onChange={(e) => setEditAddress(e.target.value)}
                   />
                 </div>
               </div>
