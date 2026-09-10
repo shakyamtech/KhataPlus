@@ -65,8 +65,8 @@ const Reports = () => {
       setAllSales(sSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setAllPurchases(purSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      const expenseCategories = ["expense", "salary", "rent", "electricity", "maintenance"];
-      const allExp = eSnap.docs.map(d => d.data()).filter(tx => tx.direction === "out" && expenseCategories.includes(tx.category));
+      const nonExpenseCategories = ["purchase", "purchases", "supplier_payment", "payment", "personal"];
+      const allExp = eSnap.docs.map(d => d.data()).filter(tx => tx.direction === "out" && !nonExpenseCategories.includes(tx.category));
       const allLoss = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
 
       setAllExpenses(allExp);

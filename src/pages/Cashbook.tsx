@@ -71,6 +71,18 @@ const Cashbook = () => {
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Custom Categories
+  interface CustomCategory {
+    id: string;
+    name: string;
+    type: "in" | "out" | "both";
+  }
+  const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatType, setNewCatType] = useState<"in" | "out" | "both">("out");
+  const [savingCat, setSavingCat] = useState(false);
+
   const load = async () => {
     if (!user) return;
     try {
@@ -80,9 +92,10 @@ const Cashbook = () => {
       const salesQ = query(collection(db, "sales"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(200));
       const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(200));
       const ledgerQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
+      const catQ = query(collection(db, "cash_categories"), where("user_id", "==", user.uid));
       
-      const [txSnap, cSnap, sSnap, salesSnap, purSnap, lSnap] = await Promise.all([
-        getDocs(txQ), getDocs(custQ), getDocs(suppQ), getDocs(salesQ), getDocs(purQ), getDocs(ledgerQ)
+      const [txSnap, cSnap, sSnap, salesSnap, purSnap, lSnap, catSnap] = await Promise.all([
+        getDocs(txQ), getDocs(custQ), getDocs(suppQ), getDocs(salesQ), getDocs(purQ), getDocs(ledgerQ), getDocs(catQ)
       ]);
 
       const tx = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -91,8 +104,10 @@ const Cashbook = () => {
       const salesData = salesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const purchasesData = purSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const ledger = lSnap.docs.map(d => d.data());
+      const loadedCats = catSnap.docs.map(d => ({ id: d.id, ...d.data() } as CustomCategory));
 
       setRows(tx);
+      setCustomCategories(loadedCats);
 
       const calcBalance = (partyId: string) => {
         const partyEntries = ledger.filter((e: any) => e.party_id === partyId);
@@ -245,14 +260,85 @@ const Cashbook = () => {
 
   const resetForm = () => { 
     setEditId(null); setAmount(""); setNote(""); setCategory(""); setDirection("in"); setPartyId(null); setPaymentMode("cash");
+    setShowAddCat(false); setNewCatName("");
     setEntryDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   };
 
   const openEdit = (r: any) => {
     setEditId(r.id); setDirection(r.direction); setAmount(String(r.amount));
     setCategory(r.category || ""); setNote(r.note ?? ""); setPartyId(r.party_id); setPaymentMode(r.payment_mode || "cash");
+    setShowAddCat(false); setNewCatName("");
     setEntryDate(r.created_at ? format(new Date(r.created_at), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"));
     setOpen(true);
+  };
+
+  const handleCreateCategory = async () => {
+    const trimmed = newCatName.trim();
+    if (!trimmed) {
+      toast.error(lang === "NEP" ? "कृपया क्याटेगोरीको नाम लेख्नुहोस्" : "Please enter category name");
+      return;
+    }
+    if (!user) return;
+
+    const lower = trimmed.toLowerCase();
+    const existingCustom = customCategories.find(c => c.name.toLowerCase() === lower);
+    if (existingCustom) {
+      setCategory(existingCustom.name);
+      setShowAddCat(false);
+      setNewCatName("");
+      toast.info(lang === "NEP" ? "यो क्याटेगोरी पहिले नै छ, छनोट गरियो" : "Category already exists, selected");
+      return;
+    }
+
+    const existingDefault = (direction === "in" ? inCategories : outCategories).find(c => c.toLowerCase() === lower);
+    if (existingDefault) {
+      setCategory(existingDefault);
+      setShowAddCat(false);
+      setNewCatName("");
+      toast.info(lang === "NEP" ? "यो क्याटेगोरी पहिले नै छ, छनोट गरियो" : "Category already exists, selected");
+      return;
+    }
+
+    setSavingCat(true);
+    try {
+      const catRef = doc(collection(db, "cash_categories"));
+      const newCat: CustomCategory = {
+        id: catRef.id,
+        name: trimmed,
+        type: newCatType,
+      };
+      await setDoc(catRef, {
+        ...newCat,
+        user_id: user.uid,
+        created_at: new Date().toISOString()
+      });
+
+      setCustomCategories(prev => [...prev, newCat]);
+      setCategory(trimmed);
+      setNewCatName("");
+      setShowAddCat(false);
+      toast.success(lang === "NEP" ? "नयाँ क्याटेगोरी सफलतापूर्वक थपियो" : "New category added successfully");
+    } catch (err: any) {
+      console.error("Error creating category:", err);
+      toast.error(err.message || "Failed to add category");
+    } finally {
+      setSavingCat(false);
+    }
+  };
+
+  const handleDeleteCategory = async (catId: string, catName: string) => {
+    if (!confirm(lang === "NEP" ? `के तपाईं "${catName}" क्याटेगोरी हटाउन चाहनुहुन्छ?` : `Delete category "${catName}"?`)) return;
+    try {
+      await deleteDoc(doc(db, "cash_categories", catId));
+      setCustomCategories(prev => prev.filter(c => c.id !== catId));
+      if (category === catName) {
+        setCategory("");
+      }
+      toast.success(lang === "NEP" ? "क्याटेगोरी हटाइयो" : "Category deleted");
+    } catch (err: any) {
+      console.error("Error deleting category:", err);
+      toast.error(err.message || "Failed to delete");
+    }
   };
 
   const save = async () => {
@@ -544,18 +630,54 @@ const Cashbook = () => {
               {/* Row 2: Category + Payment Mode */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Category</Label>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label className="text-xs">{lang === "NEP" ? "वर्ग / शीर्षक" : "Category"}</Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewCatType(direction);
+                        setShowAddCat(prev => !prev);
+                      }}
+                      className="text-[11px] font-semibold text-primary hover:text-primary/80 flex items-center gap-0.5 px-1 py-0.5 rounded hover:bg-primary/10 transition-colors"
+                      title={lang === "NEP" ? "नयाँ क्याटेगोरी थप्नुहोस्" : "Add custom category"}
+                    >
+                      <Plus className="h-3 w-3" /> {lang === "NEP" ? "नयाँ" : "New"}
+                    </button>
+                  </div>
                   <Select value={category} onValueChange={(v) => { setCategory(v); setPartyId(null); }}>
                     <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-60">
+                      <div className="text-[10px] uppercase font-bold text-muted-foreground px-2 py-1">
+                        {lang === "NEP" ? "साधारण क्याटेगोरी" : "Standard Categories"}
+                      </div>
                       {(direction === "in" ? inCategories : outCategories).map((c) => (
                         <SelectItem key={c} value={c}>{getCategoryLabel(c)}</SelectItem>
                       ))}
+
+                      {customCategories.filter(c => c.type === "both" || c.type === direction).length > 0 && (
+                        <>
+                          <div className="text-[10px] uppercase font-bold text-primary px-2 py-1 mt-1 border-t border-border/50">
+                            {lang === "NEP" ? "तपाईंका क्याटेगोरीहरू" : "Custom Categories"}
+                          </div>
+                          {customCategories
+                            .filter(c => c.type === "both" || c.type === direction)
+                            .map((c) => (
+                              <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                            ))}
+                        </>
+                      )}
+
+                      {/* If active category is a custom one and not in either list */}
+                      {category &&
+                        !(direction === "in" ? inCategories : outCategories).includes(category) &&
+                        !customCategories.some(c => c.name === category) && (
+                          <SelectItem value={category}>{category}</SelectItem>
+                        )}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Payment Mode</Label>
+                  <Label>{lang === "NEP" ? "भुक्तानी माध्यम" : "Payment Mode"}</Label>
                   <Select value={paymentMode} onValueChange={setPaymentMode}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -568,6 +690,105 @@ const Cashbook = () => {
                   </Select>
                 </div>
               </div>
+
+              {/* Quick Add Custom Category Panel */}
+              {showAddCat && (
+                <div className="p-3 rounded-lg border border-primary/30 bg-primary/5 space-y-2 animate-in fade-in-50 duration-200">
+                  <div className="flex items-center justify-between text-xs font-bold text-primary">
+                    <span className="flex items-center gap-1.5">
+                      <Plus className="h-3.5 w-3.5" />
+                      {lang === "NEP" ? "नयाँ क्याटेगोरी सिर्जना गर्नुहोस्" : "Create New Custom Category"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setShowAddCat(false); setNewCatName(""); }}
+                      className="text-muted-foreground hover:text-foreground h-5 w-5 flex items-center justify-center rounded hover:bg-muted text-xs"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      placeholder={lang === "NEP" ? "जस्तै: इन्टरनेट, पेट्रोल, चिया खाजा, ढुवानी..." : "e.g. Internet, Fuel, Tea/Snacks..."}
+                      className="h-8 text-xs bg-background"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleCreateCategory();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleCreateCategory}
+                      disabled={!newCatName.trim() || savingCat}
+                      className="h-8 px-3 text-xs font-semibold shrink-0"
+                    >
+                      {savingCat ? <Loader2 className="h-3 w-3 animate-spin" /> : (lang === "NEP" ? "थप्नुहोस्" : "Add")}
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-muted-foreground border-t border-border/40">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{lang === "NEP" ? "लागू हुने:" : "Applies to:"}</span>
+                      <label className="inline-flex items-center gap-1 cursor-pointer hover:text-foreground">
+                        <input
+                          type="radio"
+                          name="catType"
+                          checked={newCatType === direction}
+                          onChange={() => setNewCatType(direction)}
+                          className="text-primary accent-primary h-3 w-3"
+                        />
+                        {direction === "in" ? (lang === "NEP" ? "आम्दानी (Cash In)" : "Cash In") : (lang === "NEP" ? "खर्च (Cash Out)" : "Cash Out")}
+                      </label>
+                      <label className="inline-flex items-center gap-1 cursor-pointer hover:text-foreground">
+                        <input
+                          type="radio"
+                          name="catType"
+                          checked={newCatType === "both"}
+                          onChange={() => setNewCatType("both")}
+                          className="text-primary accent-primary h-3 w-3"
+                        />
+                        {lang === "NEP" ? "दुवै (Both)" : "Both"}
+                      </label>
+                    </div>
+                  </div>
+
+                  {customCategories.length > 0 && (
+                    <div className="pt-1.5 border-t border-border/40">
+                      <div className="text-[10px] text-muted-foreground mb-1 font-medium">
+                        {lang === "NEP" ? "तपाईंले थप्नुभएका क्याटेगोरीहरू:" : "Your Custom Categories:"}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                        {customCategories.map(c => (
+                          <span key={c.id} className="inline-flex items-center gap-1 text-[11px] bg-background border border-border px-2 py-0.5 rounded shadow-sm">
+                            <span 
+                              className="cursor-pointer hover:underline text-foreground font-medium" 
+                              onClick={() => { setCategory(c.name); setShowAddCat(false); }}
+                              title={lang === "NEP" ? "यो क्याटेगोरी छान्नुहोस्" : "Select this category"}
+                            >
+                              {c.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCategory(c.id, c.name)}
+                              className="text-muted-foreground hover:text-destructive font-bold text-xs ml-0.5"
+                              title={lang === "NEP" ? "हटाउनुहोस्" : "Delete"}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Customer / Supplier (conditional) */}
               {(category === "customer_payment" || category === "supplier_payment" || category === "payment" || category === "salary") && (

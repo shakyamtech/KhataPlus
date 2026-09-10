@@ -58,8 +58,8 @@ const BalanceSheet = () => {
         const revenue = sales.reduce((s, r: any) => s + +r.total, 0);
         const cogs = sales.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
-        const expenseCats = ["expense", "salary", "rent", "electricity", "maintenance", "personal", "other"];
-        const cashExpenses = cash.filter((c: any) => c.direction === "out" && expenseCats.includes(c.category)).reduce((s, r: any) => s + +r.amount, 0);
+        const nonExpenseCats = ["purchase", "purchases", "supplier_payment", "payment"];
+        const cashExpenses = cash.filter((c: any) => c.direction === "out" && !nonExpenseCats.includes(c.category)).reduce((s, r: any) => s + +r.amount, 0);
         const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
         const expenses = cashExpenses + wastageExpenses;
 
