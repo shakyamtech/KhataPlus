@@ -413,81 +413,104 @@ const Cashbook = () => {
     const printOut = Math.round(filtered.filter((r) => r.direction === "out").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
     const printBalance = Math.round(filtered.reduce((s, r) => s + (r.direction === "in" ? Number(r.amount) : -Number(r.amount)), 0) * 100) / 100;
     
-    const rowsHtml = sortedPrintRows.map((r) => {
+    const rowsHtml = sortedPrintRows.map((r, idx) => {
       const mode = getRowPaymentMode(r);
       const sDetail = (r.category === "sale" || r.category === "sales") && r.reference_id ? salesDetails[r.reference_id] : null;
       const pDetail = (r.category === "purchase" || r.category === "purchases") && r.reference_id ? purchaseDetails[r.reference_id] : null;
       const title = sDetail ? `${sDetail.customer} (Sale)` : pDetail ? `${pDetail.supplier} (Purchase)` : r.party_name ? `${r.party_name} (${(r.category || "other").replace("_", " ")})` : (r.category || "other").replace("_", " ");
 
       return `<tr>
-        <td style="font-size:11px; color:#4b5563; vertical-align:top;">${r.created_at ? format(new Date(r.created_at), "dd MMM, hh:mm a") : "-"}</td>
-        <td style="text-transform:capitalize; vertical-align:top;">
-          <strong>${escapeHtml(title)}</strong>
-          <span style="font-size:10px; margin-left:6px; background:#f3f4f6; border:1px solid #e5e7eb; padding:1px 5px; border-radius:4px; font-weight:600; color:#4b5563; text-transform:uppercase;">${escapeHtml(mode)}</span>
-          ${sDetail?.products ? `<br/><span style="font-size:11px;color:#4b5563;">📦 ${escapeHtml(sDetail.products)}</span>` : ""}
-          ${pDetail?.products ? `<br/><span style="font-size:11px;color:#4b5563;">📦 ${escapeHtml(pDetail.products)}</span>` : ""}
-          ${r.note ? `<br/><span style="font-size:11px;color:#6b7280;">💬 ${escapeHtml(r.note)}</span>` : ""}
+        <td style="text-align:center; width:35px; border:1px solid #111; padding:6px 5px;">${idx + 1}</td>
+        <td style="white-space:nowrap; border:1px solid #111; padding:6px 8px; font-size:11px; color:#374151;">${r.created_at ? format(new Date(r.created_at), "dd/MM/yyyy, hh:mm a") : "—"}</td>
+        <td style="border:1px solid #111; padding:6px 8px;">
+          <strong style="text-transform:capitalize;">${escapeHtml(title)}</strong>
+          ${sDetail?.products ? `<div style="font-size:11px; color:#4b5563; margin-top:2px;">📦 ${escapeHtml(sDetail.products)}</div>` : ""}
+          ${pDetail?.products ? `<div style="font-size:11px; color:#4b5563; margin-top:2px;">📦 ${escapeHtml(pDetail.products)}</div>` : ""}
+          ${r.note ? `<div style="font-size:11px; color:#6b7280; margin-top:2px;">💬 ${escapeHtml(r.note)}</div>` : ""}
         </td>
-        <td class="num" style="color:${r.direction === "in" ? "#059669" : "#dc2626"}; font-weight:700; vertical-align:top; font-size:13px;">${r.direction === "in" ? "+" : "−"}${fmt(r.amount)}</td>
+        <td style="text-align:center; border:1px solid #111; padding:6px 8px; font-size:11px; font-weight:600; text-transform:uppercase;">${escapeHtml(mode)}</td>
+        <td style="text-align:right; border:1px solid #111; padding:6px 8px; font-weight:600; color:#059669;">
+          ${r.direction === "in" ? fmt(r.amount) : "—"}
+        </td>
+        <td style="text-align:right; border:1px solid #111; padding:6px 8px; font-weight:600; color:#dc2626;">
+          ${r.direction === "out" ? fmt(r.amount) : "—"}
+        </td>
       </tr>`;
     }).join("");
 
     const body = `
-      <div class="receipt-card">
-        <div class="shop-header">
-          <div class="shop-title">${escapeHtml(shop.name)}</div>
-          <div class="shop-meta">
-            ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
-            ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
-            <div style="margin-top:2px; font-weight:600; color:#374151;">Cashbook Financial Statement</div>
+      <div class="a4-container" style="background:#ffffff; color:#000000; padding:28px 32px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
+        
+        <!-- Header -->
+        <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:16px;">
+          <h1 style="font-size:20px; font-weight:800; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.02em;">${escapeHtml(shop.name)}</h1>
+          ${shop.address ? `<div style="font-size:12px; font-weight:500;">${escapeHtml(shop.address)}</div>` : ''}
+          <div style="font-size:12px; font-weight:600; margin-top:2px;">
+            VAT / PAN: <strong>${escapeHtml(shop.pan || 'N/A')}</strong> ${shop.phone ? `· Ph: <strong>${escapeHtml(shop.phone)}</strong>` : ''}
+          </div>
+          <div style="display:inline-block; margin-top:10px; padding:4px 18px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
+            रोकड तथा कारोबार खाता विवरण (Cashbook Financial Statement)
+          </div>
+          <div style="font-size:11px; color:#333; margin-top:6px;">
+            कारोबार प्रकार: <strong>${paymentFilter === "all" ? "सबै माध्यम (All Payment Modes)" : paymentFilter.toUpperCase() + " Transactions"}</strong> · तयार मिति: <strong>${format(new Date(), "dd/MM/yyyy, hh:mm a")}</strong>
           </div>
         </div>
 
-        <div class="bill-info">
-          <div class="bill-info-item">
-            <span class="bill-info-label">Statement Type</span>
-            <span class="bill-info-value">${paymentFilter === "all" ? "All Payment Modes" : paymentFilter.toUpperCase() + " Transactions"}</span>
+        <!-- Summary Cards Box -->
+        <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:16px;">
+          <div style="flex:1; background:#f0fdf4; border:1.5px solid #059669; border-radius:6px; padding:8px 12px;">
+            <div style="font-size:11px; color:#166534; font-weight:600; text-transform:uppercase;">जम्मा आम्दानी (Total Cash In)</div>
+            <div style="font-size:16px; font-weight:800; color:#059669; margin-top:2px;">+${fmt(printIn)}</div>
           </div>
-          <div class="bill-info-item" style="text-align:right;">
-            <span class="bill-info-label">Generated On</span>
-            <span class="bill-info-value">${format(new Date(), "dd MMM yyyy, hh:mm a")}</span>
+          <div style="flex:1; background:#fef2f2; border:1.5px solid #dc2626; border-radius:6px; padding:8px 12px;">
+            <div style="font-size:11px; color:#991b1b; font-weight:600; text-transform:uppercase;">जम्मा खर्च (Total Cash Out)</div>
+            <div style="font-size:16px; font-weight:800; color:#dc2626; margin-top:2px;">−${fmt(printOut)}</div>
           </div>
-        </div>
-
-        <div class="summary-section" style="margin-bottom:14px; background:#f9fafb; padding:10px 12px; border-radius:8px; border:1px solid #f3f4f6;">
-          <div class="summary-row">
-            <span>Total In (+)</span>
-            <span style="color:#059669; font-weight:700;">+${fmt(printIn)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Total Out (−)</span>
-            <span style="color:#dc2626; font-weight:700;">−${fmt(printOut)}</span>
-          </div>
-          <div class="summary-row grand-total" style="margin:4px 0 0 0; padding:6px 0 0 0; border-bottom:none;">
-            <span>Net Balance</span>
-            <span style="color:${printBalance >= 0 ? '#059669' : '#dc2626'};">${fmt(printBalance)}</span>
+          <div style="flex:1; background:#f8fafc; border:1.5px solid #111; border-radius:6px; padding:8px 12px;">
+            <div style="font-size:11px; color:#334155; font-weight:600; text-transform:uppercase;">खुद बाँकी (Net Balance)</div>
+            <div style="font-size:16px; font-weight:800; color:${printBalance >= 0 ? '#059669' : '#dc2626'}; margin-top:2px;">${fmt(printBalance)}</div>
           </div>
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th style="width:28%;">Date</th>
-              <th>Category & Detail</th>
-              <th class="num" style="width:26%;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml.length > 0 ? rowsHtml : `<tr><td colspan="3" style="text-align:center; padding:12px; color:#9ca3af;">No transaction records found</td></tr>`}
-          </tbody>
-        </table>
-
-        <div class="receipt-footer">
-          <div class="brand-tag">KhataPlus Cashbook Statement</div>
+        <!-- Ledger Table -->
+        <div style="margin-bottom:20px;">
+          <table style="width:100%; border-collapse:collapse; font-size:11.5px; border:1px solid #111;">
+            <thead>
+              <tr style="background:#e5e7eb; font-weight:700;">
+                <th style="border:1px solid #111; padding:6px 5px; text-align:center; width:35px;">क्र.सं.</th>
+                <th style="border:1px solid #111; padding:6px 8px; text-align:left; width:135px;">मिति तथा समय</th>
+                <th style="border:1px solid #111; padding:6px 8px; text-align:left;">विवरण तथा पार्टी (Particulars)</th>
+                <th style="border:1px solid #111; padding:6px 8px; text-align:center; width:90px;">माध्यम</th>
+                <th style="border:1px solid #111; padding:6px 8px; text-align:right; width:105px;">आम्दानी (In +)</th>
+                <th style="border:1px solid #111; padding:6px 8px; text-align:right; width:105px;">खर्च (Out −)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml.length > 0 ? rowsHtml : `<tr><td colspan="6" style="text-align:center; padding:16px; color:#6b7280; border:1px solid #111;">कुनै कारोबार फेला परेन।</td></tr>`}
+            </tbody>
+            <tfoot>
+              <tr style="background:#f3f4f6; font-weight:bold; border-top:2px solid #111;">
+                <td colspan="4" style="border:1px solid #111; padding:7px 8px; text-align:right;">कुल जम्मा (Total):</td>
+                <td style="border:1px solid #111; padding:7px 8px; text-align:right; color:#059669; font-weight:700;">+${fmt(printIn)}</td>
+                <td style="border:1px solid #111; padding:7px 8px; text-align:right; color:#dc2626; font-weight:700;">−${fmt(printOut)}</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
+
+        <!-- Official Signatures -->
+        <div style="display:flex; justify-content:space-between; margin-top:35px; padding-top:10px; page-break-inside:avoid;">
+          <div style="border-top:1px dashed #444; width:180px; text-align:center; padding-top:4px; font-weight:600;">
+            तयार गर्ने (Prepared By)
+          </div>
+          <div style="border-top:1px dashed #444; width:180px; text-align:center; padding-top:4px; font-weight:700;">
+            आधिकारिक हस्ताक्षर (Authorized Signature)
+          </div>
+        </div>
+
       </div>
     `;
-    printHTML("Cashbook", body);
+    printHTML(`Cashbook_Statement_${format(new Date(), "yyyyMMdd")}`, body, { paperSize: "a4" });
   };
 
   return (
