@@ -406,12 +406,6 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
 
         ${data.note && !data.note.toLowerCase().startsWith("discount given:") ? `<div style="font-size:11.5px; color:#4b5563; margin-bottom:12px; font-style:italic;">Note: ${escapeHtml(data.note)}</div>` : ""}
 
-        <div style="margin: 22px 0 14px 0; display: flex; justify-content: flex-end;">
-          <div style="min-width: 140px; text-align: center; border-top: 1.5px solid #111827; padding-top: 5px; font-size: 11px; font-weight: 700; color: #111827;">
-            Prepared By${preparedByName ? `: ${escapeHtml(preparedByName)}` : ""}
-          </div>
-        </div>
-
         <div class="receipt-footer">
           <div class="footer-highlight">Thank you for shopping with us!</div>
           <div>Please visit again</div>
