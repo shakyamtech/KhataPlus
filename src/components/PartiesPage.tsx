@@ -845,7 +845,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           taxableAmount: e.taxable_amount,
           vatAmount: e.vat_amount,
           note: e.note,
-          invoiceType: e.invoice_type
+          invoiceType: e.invoice_type,
+          preparedBy: (e as any).prepared_by || (user?.displayName) || shop.owner_name || null
         });
         return;
       } else {
@@ -880,7 +881,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           taxableAmount: e.taxable_amount,
           vatAmount: e.vat_amount,
           note: e.note,
-          isVatBill: e.is_vat_bill
+          isVatBill: e.is_vat_bill,
+          preparedBy: (e as any).prepared_by || (e as any).entered_by || (user?.displayName) || shop.owner_name || null
         });
         return;
       }

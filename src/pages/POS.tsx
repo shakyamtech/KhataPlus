@@ -703,6 +703,7 @@ const POS = () => {
         non_taxable_amount: nonTaxableAmount,
         taxable_amount: taxableAmount,
         vat_amount: vatAmount,
+        prepared_by: shop.owner_name || user?.displayName || null,
         created_at: new Date().toISOString()
       });
 
@@ -826,7 +827,8 @@ const POS = () => {
           tenderedAmount: Number(tendered || 0),
           changeAmount,
           isVatInvoice,
-          invoiceType
+          invoiceType,
+          preparedBy: shop.owner_name || user?.displayName || null
         });
       } catch (err: any) {
         console.error("Print receipt error:", err);

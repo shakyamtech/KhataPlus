@@ -6,6 +6,7 @@ export interface ShopInfo {
   pan: string;
   phone: string;
   address?: string;
+  owner_name?: string;
   tax_type?: "pan" | "vat";
   is_vat_registered?: boolean;
   tax_invoice_prefix?: string;
@@ -29,6 +30,7 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
       name: "My Shop",
       pan: "",
       phone: "",
+      owner_name: "",
       tax_type: "pan",
       is_vat_registered: false,
       tax_invoice_prefix: "TAX-",
@@ -52,11 +54,13 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
     if (docSnap.exists()) {
       const data = docSnap.data();
       const isVat = data.tax_type === "vat" || data.is_vat_registered === true;
+      const ownerName = data.full_name || data.name || data.owner_name || user.displayName || "";
       return {
         name: data.shop_name || "My Shop",
         pan: data.pan_no || "",
         phone: data.shop_phone || data.phone || "",
         address: data.shop_address || data.address || "",
+        owner_name: ownerName,
         tax_type: isVat ? "vat" : "pan",
         is_vat_registered: isVat,
         tax_invoice_prefix: data.tax_invoice_prefix ?? "TAX-",

@@ -16,6 +16,7 @@ export interface InvoiceShopInfo {
   address?: string | null;
   phone?: string | null;
   pan?: string | null;
+  owner_name?: string | null;
   is_vat_registered?: boolean;
 }
 
@@ -48,6 +49,7 @@ export interface SaleInvoiceData {
   note?: string | null;
   isVatInvoice?: boolean;
   invoiceType?: "tax_invoice" | "abbreviated" | string;
+  preparedBy?: string | null;
 }
 
 /**
@@ -102,6 +104,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
   const buyerAddress = (customer.address || "").trim();
   const customerName = customer.name || "Walk-in";
   const customerPhone = customer.phone || "";
+  const preparedByName = (data.preparedBy || shop.owner_name || "").trim();
 
   let body = "";
 
@@ -291,7 +294,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
 
         <div class="a4-sign-grid">
           <div class="a4-sign-col">
-            <div class="a4-sign-line">Prepared By</div>
+            <div class="a4-sign-line">Prepared By${preparedByName ? `: ${escapeHtml(preparedByName)}` : ""}</div>
           </div>
           <div class="a4-sign-col">
             <div class="a4-sign-line">Checked By</div>
@@ -428,6 +431,7 @@ export interface PurchaseVoucherData {
   dueAmount?: number;
   note?: string | null;
   isVatBill?: boolean;
+  preparedBy?: string | null;
 }
 
 /**
@@ -484,6 +488,7 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
   const supplierPhone = supplier.phone || "";
   const supplierPan = (supplier.pan || "").trim();
   const supplierAddress = (supplier.address || "").trim();
+  const preparedByName = (data.preparedBy || shop.owner_name || "").trim();
 
   const a4Rows = items.length > 0
     ? items.map((i, idx) => `
@@ -644,7 +649,7 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
           <div class="a4-sign-line">Received By (Store)</div>
         </div>
         <div class="a4-sign-col">
-          <div class="a4-sign-line">Entered By</div>
+          <div class="a4-sign-line">Entered By${preparedByName ? `: ${escapeHtml(preparedByName)}` : ""}</div>
         </div>
         <div class="a4-sign-col">
           <div class="a4-sign-line">Verified By</div>

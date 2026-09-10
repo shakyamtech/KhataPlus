@@ -189,6 +189,7 @@ export const AppShell = () => {
                     const sName = data.shop_name || "KhataPlus Shop";
                     setShopName(sName);
                     setNewName(sName);
+                    setFullName(data.full_name || data.name || user.displayName || "");
                     localStorage.setItem("khataplus_shop_name", sName);
                     setShopPhone(data.shop_phone || data.phone || "");
                     setShopAddress(data.shop_address || data.address || "");

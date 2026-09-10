@@ -734,6 +734,7 @@ const Purchases = () => {
         note: discountNum > 0
           ? (discountType === "percent" ? `Discount received: ${typedDiscount}% (Rs. ${discountNum})` : `Discount received: Rs. ${discountNum}`)
           : (editingId ? "Updated purchase" : null),
+        prepared_by: shop.owner_name || user?.displayName || null,
         created_at: new Date().toISOString()
       });
 
@@ -934,7 +935,8 @@ const Purchases = () => {
         taxableAmount: h.taxable_amount,
         vatAmount: h.vat_amount,
         note: h.note,
-        isVatBill: Boolean(h.is_vat_bill)
+        isVatBill: Boolean(h.is_vat_bill),
+        preparedBy: h.prepared_by || h.entered_by || shop.owner_name || null
       });
     } catch (e: any) {
       toast.error("Failed to print purchase voucher: " + e.message);
