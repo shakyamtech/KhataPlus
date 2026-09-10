@@ -1163,6 +1163,54 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     </Dialog>
   );
 
+  const renderEditDialog = () => (
+    <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {type === "customer" ? "Customer" : "Supplier"} Profile</DialogTitle>
+          <DialogDescription>
+            Update contact, PAN and address details for {selected?.name || "this party"}.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Name *</Label><Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full Name" /></div>
+          <div><Label>Phone (Optional)</Label><Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Mobile Number" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            {(type === "supplier" || shopInfo?.is_vat_registered) && (
+              <div>
+                <Label>PAN No. (Optional{type === "customer" ? " · B2B" : ""})</Label>
+                <Input
+                  placeholder="९-अङ्कको PAN"
+                  maxLength={9}
+                  value={editPan}
+                  onChange={(e) => setEditPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                />
+              </div>
+            )}
+            <div className={(type === "customer" && !shopInfo?.is_vat_registered) ? "col-span-2" : ""}>
+              <Label>Address (Optional)</Label>
+              <Input
+                placeholder="Location / City"
+                value={editAddress}
+                onChange={(e) => setEditAddress(e.target.value)}
+              />
+            </div>
+          </div>
+          <Button onClick={saveEditParty} disabled={busyEdit} className="w-full bg-gradient-primary text-primary-foreground">
+            {busyEdit ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Saving Changes...
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   if (selected) {
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto">
@@ -1731,6 +1779,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         )}
 
         {renderPaymentDialog()}
+        {renderEditDialog()}
       </div>
     );
   }
@@ -1855,53 +1904,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         ))}
 
         {renderPaymentDialog()}
-
-        {/* Edit Party Dialog */}
-        <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit {type === "customer" ? "Customer" : "Supplier"} Profile</DialogTitle>
-              <DialogDescription>
-                Update contact, PAN and address details for {selected?.name || "this party"}.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div><Label>Name *</Label><Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full Name" /></div>
-              <div><Label>Phone (Optional)</Label><Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Mobile Number" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                {(type === "supplier" || shopInfo?.is_vat_registered) && (
-                  <div>
-                    <Label>PAN No. (Optional{type === "customer" ? " · B2B" : ""})</Label>
-                    <Input
-                      placeholder="९-अङ्कको PAN"
-                      maxLength={9}
-                      value={editPan}
-                      onChange={(e) => setEditPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                    />
-                  </div>
-                )}
-                <div className={(type === "customer" && !shopInfo?.is_vat_registered) ? "col-span-2" : ""}>
-                  <Label>Address (Optional)</Label>
-                  <Input
-                    placeholder="Location / City"
-                    value={editAddress}
-                    onChange={(e) => setEditAddress(e.target.value)}
-                  />
-                </div>
-              </div>
-              <Button onClick={saveEditParty} disabled={busyEdit} className="w-full bg-gradient-primary text-primary-foreground">
-                {busyEdit ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Saving Changes...
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {renderEditDialog()}
 
         {items.length === 0 ? (
           <div className="col-span-full text-center text-muted-foreground py-12">No {type}s yet. Click + Add to add one.</div>
