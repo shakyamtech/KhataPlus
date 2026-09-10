@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
@@ -104,8 +104,22 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [analysisItems, setAnalysisItems] = useState<any[]>([]);
   const [busyAnalysis, setBusyAnalysis] = useState(false);
   const [activeTab, setActiveTab] = useState("ledger");
+  const [ledgerFilter, setLedgerFilter] = useState<"all" | "pending" | "settled">("all");
   const [search, setSearch] = useState("");
   const [shopInfo, setShopInfo] = useState<any>(null);
+
+  const pendingCount = useMemo(() => entries.filter(e => e.is_order && Number(e.due_amount || 0) > 0).length, [entries]);
+  const settledCount = useMemo(() => entries.filter(e => e.is_order && Number(e.due_amount || 0) === 0).length, [entries]);
+
+  const displayedEntries = useMemo(() => {
+    if (ledgerFilter === "pending") {
+      return entries.filter(e => e.is_order ? Number(e.due_amount || 0) > 0 : false);
+    }
+    if (ledgerFilter === "settled") {
+      return entries.filter(e => e.is_order ? Number(e.due_amount || 0) === 0 : false);
+    }
+    return entries;
+  }, [entries, ledgerFilter]);
 
   const load = async () => {
     if (!user) return;
@@ -155,6 +169,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const openLedger = async (p: Party) => {
     setSelected(p);
     setActiveTab("ledger");
+    setLedgerFilter("all");
     try {
       if (type === "customer") {
         const sQ = query(collection(db, "sales"), where("customer_id", "==", p.id));
@@ -575,28 +590,6 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       setSelected(null);
       load();
       toast.success("Deleted");
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
-
-  const clearLedgerHistory = async () => {
-    if (!selected || !user) return;
-    try {
-      const q = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid), where("party_id", "==", selected.id));
-      const snap = await getDocs(q);
-
-      const batch = writeBatch(db);
-      snap.docs.forEach((d) => batch.delete(d.ref));
-
-      const pRef = doc(db, table, selected.id);
-      batch.update(pRef, { balance: 0 });
-
-      await batch.commit();
-
-      toast.success("Ledger history cleared successfully");
-      openLedger({ ...selected, balance: 0 });
-      load();
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -1211,6 +1204,69 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     </Dialog>
   );
 
+  const renderLedgerHeader = () => (
+    <div className="p-3 sm:p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="font-display text-lg flex items-center gap-2">
+        <BookOpen className="h-4 w-4 text-primary" />
+        <span>Ledger</span>
+      </div>
+      <div className="flex items-center gap-1 bg-secondary/80 p-1 rounded-lg border border-border/50 text-xs self-start sm:self-auto">
+        <button
+          type="button"
+          onClick={() => setLedgerFilter("all")}
+          className={cn(
+            "px-2.5 py-1 rounded-md transition-all font-medium",
+            ledgerFilter === "all"
+              ? "bg-background text-foreground shadow-xs font-semibold"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          सबै (All) ({entries.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setLedgerFilter("pending")}
+          className={cn(
+            "px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 font-medium",
+            ledgerFilter === "pending"
+              ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 shadow-xs font-semibold"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <span>बाँकी (Pending)</span>
+          {pendingCount > 0 && (
+            <span className={cn(
+              "px-1.5 py-0.2 rounded-full text-[10px] font-bold",
+              ledgerFilter === "pending" ? "bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100" : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300"
+            )}>
+              {pendingCount}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setLedgerFilter("settled")}
+          className={cn(
+            "px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5 font-medium",
+            ledgerFilter === "settled"
+              ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 shadow-xs font-semibold"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <span>चुक्ता (Settled)</span>
+          {settledCount > 0 && (
+            <span className={cn(
+              "px-1.5 py-0.2 rounded-full text-[10px] font-bold",
+              ledgerFilter === "settled" ? "bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100" : "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300"
+            )}>
+              {settledCount}
+            </span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
   if (selected) {
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto">
@@ -1396,24 +1452,6 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 printHTML(`${selected.name} — Ledger Statement`, body, { paperSize: "a4" });
               }}><Printer className="h-4 w-4 mr-1" />Print Ledger</Button>
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="text-destructive border-destructive/20 hover:bg-destructive/10">
-                    <Trash2 className="h-4 w-4 mr-1" /> Clear History
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Clear Ledger History?</AlertDialogTitle>
-                    <AlertDialogDescription>This will permanently delete all transaction history for {selected.name}. Only use this if the account is settled.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={clearLedgerHistory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Yes, Clear History</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
               <Button onClick={openPaymentModal}>
                 <Wallet className="h-4 w-4 mr-1" /> Record Payment
               </Button>
@@ -1480,9 +1518,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
             <TabsContent value="ledger">
               <Card className="shadow-card border-0">
-                <div className="p-4 border-b font-display text-lg flex items-center gap-2"><BookOpen className="h-4 w-4" /> Ledger</div>
+                {renderLedgerHeader()}
                 <div className="divide-y">
-                  {entries.map((e) => (
+                  {displayedEntries.map((e) => (
                     <div key={e.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-secondary/20 transition-colors">
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1606,7 +1644,23 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                       </div>
                     </div>
                   ))}
-                  {entries.length === 0 && <div className="p-6 text-center text-muted-foreground text-sm">No entries yet</div>}
+                  {displayedEntries.length === 0 && (
+                    <div className="p-8 text-center text-muted-foreground text-sm">
+                      {ledgerFilter === "pending" ? (
+                        <div className="space-y-1">
+                          <div className="text-base font-semibold text-foreground">🎉 कुनै बाँकी (Pending) बिल छैन!</div>
+                          <p className="text-xs text-muted-foreground">सबै बिलहरूको हिसाब चुक्ता भइसकेको छ।</p>
+                        </div>
+                      ) : ledgerFilter === "settled" ? (
+                        <div className="space-y-1">
+                          <div className="text-base font-semibold text-foreground">कुनै चुक्ता (Settled) बिल फेला परेन</div>
+                          <p className="text-xs text-muted-foreground">अहिलेसम्म कुनै पनि बिल पूर्ण चुक्ता भएको छैन।</p>
+                        </div>
+                      ) : (
+                        "No entries yet"
+                      )}
+                    </div>
+                  )}
                 </div>
               </Card>
             </TabsContent>
@@ -1652,9 +1706,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           </Tabs>
         ) : (
           <Card className="shadow-card border-0">
-            <div className="p-4 border-b font-display text-lg flex items-center gap-2"><BookOpen className="h-4 w-4" /> Ledger</div>
+            {renderLedgerHeader()}
             <div className="divide-y">
-              {entries.map((e) => (
+              {displayedEntries.map((e) => (
                 <div key={e.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-secondary/20 transition-colors">
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -1773,7 +1827,23 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                   </div>
                 </div>
               ))}
-              {entries.length === 0 && <div className="p-6 text-center text-muted-foreground text-sm">No entries yet</div>}
+              {displayedEntries.length === 0 && (
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  {ledgerFilter === "pending" ? (
+                    <div className="space-y-1">
+                      <div className="text-base font-semibold text-foreground">🎉 कुनै बाँकी (Pending) बिल छैन!</div>
+                      <p className="text-xs text-muted-foreground">सबै बिलहरूको हिसाब चुक्ता भइसकेको छ।</p>
+                    </div>
+                  ) : ledgerFilter === "settled" ? (
+                    <div className="space-y-1">
+                      <div className="text-base font-semibold text-foreground">कुनै चुक्ता (Settled) बिल फेला परेन</div>
+                      <p className="text-xs text-muted-foreground">अहिलेसम्म कुनै पनि बिल पूर्ण चुक्ता भएको छैन।</p>
+                    </div>
+                  ) : (
+                    "No entries yet"
+                  )}
+                </div>
+              )}
             </div>
           </Card>
         )}
