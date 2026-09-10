@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo } from "@/lib/shop";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const inCategories = [
@@ -165,14 +165,14 @@ const Cashbook = () => {
 
   const dateFilteredRows = rows.filter((r) => {
     if (startDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
+      const [y, m, d] = startDate.split("-").map(Number);
+      const start = new Date(y, m - 1, d, 0, 0, 0, 0);
       const rowDate = r.created_at ? new Date(r.created_at) : new Date();
       if (rowDate < start) return false;
     }
     if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+      const [y, m, d] = endDate.split("-").map(Number);
+      const end = new Date(y, m - 1, d, 23, 59, 59, 999);
       const rowDate = r.created_at ? new Date(r.created_at) : new Date();
       if (rowDate > end) return false;
     }
@@ -628,35 +628,89 @@ const Cashbook = () => {
       </div>
       
       {/* Date Range Filter Panel */}
-      <Card className="p-3 mb-4 shadow-card border-0 bg-card flex flex-wrap items-end gap-3">
-        <div className="space-y-1 flex-1 min-w-[140px]">
-          <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{lang === "NEP" ? "मिति देखि (From)" : "From Date"}</Label>
-          <Input 
-            type="date" 
-            value={startDate} 
-            onChange={(e) => setStartDate(e.target.value)} 
-            className="h-9 bg-background"
-          />
+      <Card className="p-3 mb-4 shadow-card border-0 bg-card space-y-2.5">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1 flex-1 min-w-[140px]">
+            <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{lang === "NEP" ? "मिति देखि (From)" : "From Date"}</Label>
+            <Input 
+              type="date" 
+              value={startDate} 
+              onChange={(e) => setStartDate(e.target.value)} 
+              className="h-9 bg-background"
+            />
+          </div>
+          <div className="space-y-1 flex-1 min-w-[140px]">
+            <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{lang === "NEP" ? "मिति सम्म (To)" : "To Date"}</Label>
+            <Input 
+              type="date" 
+              value={endDate} 
+              onChange={(e) => setEndDate(e.target.value)} 
+              className="h-9 bg-background"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => { setStartDate(""); setEndDate(""); }}
+              className="h-9 px-3 text-xs font-bold text-destructive hover:bg-destructive/10 shrink-0"
+            >
+              {lang === "NEP" ? "रिसेट गर्नुहोस्" : "Clear Filters"}
+            </Button>
+          )}
         </div>
-        <div className="space-y-1 flex-1 min-w-[140px]">
-          <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{lang === "NEP" ? "मिति सम्म (To)" : "To Date"}</Label>
-          <Input 
-            type="date" 
-            value={endDate} 
-            onChange={(e) => setEndDate(e.target.value)} 
-            className="h-9 bg-background"
-          />
-        </div>
-        {(startDate || endDate) && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => { setStartDate(""); setEndDate(""); }}
-            className="h-9 px-3 text-xs font-bold text-destructive hover:bg-destructive/10 shrink-0"
+
+        {/* Quick Date Presets */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-border/40 text-xs">
+          <span className="text-[11px] text-muted-foreground mr-1 font-medium">{lang === "NEP" ? "द्रुत छनौट:" : "Quick Filter:"}</span>
+          <button
+            type="button"
+            onClick={() => {
+              const todayStr = format(new Date(), "yyyy-MM-dd");
+              setStartDate(todayStr);
+              setEndDate(todayStr);
+            }}
+            className="px-2 py-0.5 rounded text-[11px] font-medium bg-secondary/80 hover:bg-secondary text-foreground border border-border/60 transition-colors"
           >
-            {lang === "NEP" ? "रिसेट गर्नुहोस्" : "Clear Filters"}
-          </Button>
-        )}
+            {lang === "NEP" ? "आज (Today)" : "Today"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const now = new Date();
+              const firstDay = format(new Date(now.getFullYear(), now.getMonth(), 1), "yyyy-MM-dd");
+              const todayStr = format(now, "yyyy-MM-dd");
+              setStartDate(firstDay);
+              setEndDate(todayStr);
+            }}
+            className="px-2 py-0.5 rounded text-[11px] font-medium bg-secondary/80 hover:bg-secondary text-foreground border border-border/60 transition-colors"
+          >
+            {lang === "NEP" ? "यस महिना (This Month)" : "This Month"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const now = new Date();
+              const past30 = format(subDays(now, 30), "yyyy-MM-dd");
+              const todayStr = format(now, "yyyy-MM-dd");
+              setStartDate(past30);
+              setEndDate(todayStr);
+            }}
+            className="px-2 py-0.5 rounded text-[11px] font-medium bg-secondary/80 hover:bg-secondary text-foreground border border-border/60 transition-colors"
+          >
+            {lang === "NEP" ? "अघिल्लो ३० दिन (Last 30 Days)" : "Last 30 Days"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+            }}
+            className="px-2 py-0.5 rounded text-[11px] font-medium bg-secondary/80 hover:bg-secondary text-foreground border border-border/60 transition-colors"
+          >
+            {lang === "NEP" ? "सबै (All)" : "All Time"}
+          </button>
+        </div>
       </Card>
 
       {/* Payment Mode Breakdown */}
