@@ -324,6 +324,13 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
     const tenderedAmt = Number(data.tenderedAmount || 0);
     const changeAmt = data.changeAmount ?? (tenderedAmt > paidAmt ? tenderedAmt - paidAmt : 0);
 
+    let displaySubtotal = subtotal;
+    if (discountNum > 0) {
+      if (Math.abs(subtotal - total) < 0.05 || subtotal <= total) {
+        displaySubtotal = +(total + discountNum).toFixed(2);
+      }
+    }
+
     const rows = items.length > 0
       ? items.map((i, idx) => `
         <tr>
@@ -365,6 +372,12 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
             <span class="bill-info-label">Payment</span>
             <span class="bill-info-value" style="text-transform:uppercase;">${escapeHtml(paymentMode === "credit" ? (paidAmt > 0 && dueAmt > 0 ? `CREDIT (${(data.paidVia || "CASH").toUpperCase()})` : "CREDIT") : (paymentMode || "Cash"))}</span>
           </div>
+          ${preparedByName ? `
+          <div class="bill-info-item" style="grid-column: span 2; margin-top: 2px; padding-top: 4px; border-top: 1px dashed #e5e7eb; display:flex; flex-direction:row; justify-content:space-between; align-items:center;">
+            <span class="bill-info-label" style="margin-bottom:0;">Prepared By</span>
+            <span class="bill-info-value">${escapeHtml(preparedByName)}</span>
+          </div>
+          ` : ""}
         </div>
 
         <table>
@@ -381,7 +394,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
         </table>
 
         <div class="summary-section">
-          <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+          <div class="summary-row"><span>Subtotal</span><span>${fmt(displaySubtotal)}</span></div>
           ${discountNum > 0 ? `<div class="summary-row discount"><span>Discount ${discountPercent && discountPercent > 0 ? `(${discountPercent}%)` : ""}</span><span>-${fmt(discountNum)}</span></div>` : ""}
           <div class="summary-row grand-total"><span>Grand Total</span><span>${fmt(total)}</span></div>
           ${paidAmt > 0 ? `<div class="summary-row paid"><span>Paid (${(data.paidVia || paymentMode).toUpperCase()})</span><span>${fmt(paidAmt)}</span></div>` : (paymentMode === "credit" ? `<div class="summary-row paid"><span>Paid</span><span>${fmt(0)}</span></div>` : `<div class="summary-row paid"><span>Paid (${paymentMode.toUpperCase()})</span><span>${fmt(paidAmt)}</span></div>`)}
@@ -392,6 +405,12 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
         </div>
 
         ${data.note && !data.note.toLowerCase().startsWith("discount given:") ? `<div style="font-size:11.5px; color:#4b5563; margin-bottom:12px; font-style:italic;">Note: ${escapeHtml(data.note)}</div>` : ""}
+
+        <div style="margin: 22px 0 14px 0; display: flex; justify-content: flex-end;">
+          <div style="min-width: 140px; text-align: center; border-top: 1.5px solid #111827; padding-top: 5px; font-size: 11px; font-weight: 700; color: #111827;">
+            Prepared By${preparedByName ? `: ${escapeHtml(preparedByName)}` : ""}
+          </div>
+        </div>
 
         <div class="receipt-footer">
           <div class="footer-highlight">Thank you for shopping with us!</div>
