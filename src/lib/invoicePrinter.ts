@@ -97,6 +97,10 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
       ? Number(data.vatAmount)
       : (subtotal - discountNum > 0 ? (subtotal - discountNum) - calcTaxable : 0);
 
+    const paidAmt = data.paidAmount !== undefined ? Number(data.paidAmount) : (paymentMode === "credit" ? 0 : total);
+    const dueAmt = data.dueAmount !== undefined ? Number(data.dueAmount) : (paymentMode === "credit" ? Math.max(0, total - paidAmt) : 0);
+    const hasDue = dueAmt > 0;
+
     const a4Rows = items.length > 0
       ? items.map((i, idx) => `
         <tr class="a4-item-row">
@@ -147,7 +151,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
         </div>
 
         <div class="a4-bill-type-row">
-          Bill Type: &nbsp;<strong>${paymentMode === "credit" ? "Credit Memo" : "Cash Memo"}</strong>
+          Bill Type: &nbsp;<strong>${paymentMode === "credit" ? (paidAmt > 0 && hasDue ? "Credit Memo (Partially Paid)" : hasDue ? "Credit Memo" : "Credit Memo (Fully Paid)") : (hasDue ? "Credit Memo (Partially Paid)" : "Cash Memo")}</strong>
         </div>
 
         <div class="a4-table-box">
@@ -185,8 +189,14 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
               <div class="a4-total-label">TOTAL :</div>
               <div class="a4-total-amount">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             </div>
+            ${hasDue ? `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#fef2f2; border:1px solid #f87171; border-radius:4px; padding:4px 8px; margin:4px 0 6px 0; font-size:11px; font-weight:700; color:#b91c1c;">
+              <span>Paid: Rs. ${(paidAmt).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span>Balance Due: Rs. ${(dueAmt).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            ` : ""}
             <div class="a4-remarks-line">
-              <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (discountNum > 0 ? `Discount given: Rs. ${discountNum}` : (paymentMode === "credit" ? "Credit Sale" : "Standard Sale"))}
+              <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (discountNum > 0 ? `Discount given: Rs. ${discountNum}` : (hasDue ? (paidAmt > 0 ? "Credit Sale (Partial Payment)" : "Credit Sale") : (paymentMode === "credit" ? "Credit Sale" : "Standard Sale")))}
             </div>
           </div>
 
@@ -217,10 +227,20 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
                   <td class="label">Round Off</td>
                   <td class="val">0.00</td>
                 </tr>
-                <tr class="net-row">
+                <tr class="net-row" style="${hasDue ? 'border-bottom: 1.5px solid #000;' : ''}">
                   <td class="label">Net Total</td>
                   <td class="val">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
+                ${hasDue ? `
+                <tr>
+                  <td class="label" style="color:#15803d; font-size:11px;">Paid Amount</td>
+                  <td class="val" style="color:#15803d; font-weight:700;">Rs. ${(paidAmt).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                <tr style="border-top:1.5px solid #b91c1c; background:#fef2f2;">
+                  <td class="label" style="color:#b91c1c; font-size:11.5px; font-weight:800; border-bottom:none;">Balance Due</td>
+                  <td class="val" style="color:#b91c1c; font-weight:800; border-bottom:none;">Rs. ${(dueAmt).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+                ` : ""}
               </tbody>
             </table>
           </div>
