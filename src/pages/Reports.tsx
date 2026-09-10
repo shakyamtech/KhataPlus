@@ -527,79 +527,115 @@ const Reports = () => {
               <div className="text-sm opacity-80 uppercase tracking-widest font-bold">Profit & Loss Statement</div>
               <div className="text-xs opacity-60 mt-1">Period: Last {range} days</div>
             </div>
-            <div className="p-6 space-y-8 bg-card text-card-foreground">
-              {/* Income Section */}
-              <section className="space-y-3">
-                <h3 className="text-xs font-bold text-primary uppercase tracking-wider border-b pb-1">Operating Income</h3>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-sm">Gross Sales (कुल बिक्री)</span>
-                  <span className="font-medium">{fmt(totals.grossRevenue)}</span>
-                </div>
-                {totals.discountAllowed > 0 && (
-                  <div className="flex justify-between items-center py-1">
-                    <span className="text-sm text-destructive font-medium">Less: Discount Allowed (छुट दिइएको)</span>
-                    <span className="font-medium text-destructive">({fmt(totals.discountAllowed)})</span>
+            <div className="p-6 space-y-6 bg-card text-card-foreground">
+              {/* 2-Column Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left Column: Operating Income & COGS (Gross Profit) */}
+                <div className="p-5 rounded-2xl border border-border/60 bg-muted/20 flex flex-col justify-between space-y-6">
+                  <div className="space-y-6">
+                    {/* Income Section */}
+                    <section className="space-y-3">
+                      <h3 className="text-xs font-bold text-primary uppercase tracking-wider border-b pb-1.5 flex items-center justify-between">
+                        <span>Operating Income (बिक्री आम्दानी)</span>
+                      </h3>
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-sm">Gross Sales (कुल बिक्री)</span>
+                        <span className="font-medium">{fmt(totals.grossRevenue)}</span>
+                      </div>
+                      {totals.discountAllowed > 0 && (
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-sm text-destructive font-medium">Less: Discount Allowed (छुट दिइएको)</span>
+                          <span className="font-medium text-destructive">({fmt(totals.discountAllowed)})</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center py-2 border-t font-semibold">
+                        <span>Net Sales Revenue (खुद बिक्री)</span>
+                        <span className="text-primary">{fmt(totals.revenue)}</span>
+                      </div>
+                    </section>
+
+                    {/* COGS Section */}
+                    <section className="space-y-3">
+                      <h3 className="text-xs font-bold text-accent uppercase tracking-wider border-b pb-1.5">
+                        Cost of Sales (सामानको लागत)
+                      </h3>
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-sm">Cost of Goods Sold (COGS)</span>
+                        <span className="font-medium text-destructive">({fmt(totals.cogs)})</span>
+                      </div>
+                    </section>
                   </div>
-                )}
-                <div className="flex justify-between items-center py-2 border-t font-bold">
-                  <span>Net Sales Revenue (खुद बिक्री)</span>
-                  <span className="text-primary underline underline-offset-4 decoration-2">{fmt(totals.revenue)}</span>
-                </div>
-              </section>
 
-              {/* COGS Section */}
-              <section className="space-y-3">
-                <h3 className="text-xs font-bold text-accent uppercase tracking-wider border-b pb-1">Cost of Sales</h3>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-sm">Cost of Goods Sold (COGS)</span>
-                  <span className="font-medium text-destructive">({fmt(totals.cogs)})</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-t font-bold bg-secondary/30 px-3 -mx-3 rounded-md">
-                  <span>GROSS PROFIT</span>
-                  <span className="text-primary">{fmt(totals.gross)}</span>
-                </div>
-              </section>
-
-              {/* Other Income & Savings Section (Purchase Discount) */}
-              {totals.discountReceived > 0 && (
-                <section className="space-y-3">
-                  <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b pb-1">Other Income & Savings</h3>
-                  <div className="flex justify-between items-center py-1">
-                    <span className="text-sm">Discount Received on Purchases (खरिद छुट पाएको)</span>
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">+{fmt(totals.discountReceived)}</span>
+                  {/* Gross Profit Highlight Box */}
+                  <div className="flex justify-between items-center py-3 px-4 bg-secondary/50 rounded-xl font-bold border border-border/40">
+                    <span className="text-sm">GROSS PROFIT (कुल नाफा)</span>
+                    <span className="text-primary text-lg">{fmt(totals.gross)}</span>
                   </div>
-                </section>
-              )}
-
-              {/* Expenses Section */}
-              <section className="space-y-3">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b pb-1">Operating Expenses</h3>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-sm">Store Expenses & Bills</span>
-                  <span className="font-medium text-destructive">({fmt(totals.storeExp)})</span>
                 </div>
-                {totals.wastage > 0 && (
-                  <div className="flex justify-between items-center py-1">
-                    <span className="text-sm">Wastage & Damage Loss</span>
-                    <span className="font-medium text-destructive">({fmt(totals.wastage)})</span>
+
+                {/* Right Column: Other Income & Operating Expenses */}
+                <div className="p-5 rounded-2xl border border-border/60 bg-muted/20 flex flex-col justify-between space-y-6">
+                  <div className="space-y-6">
+                    {/* Other Income & Savings Section */}
+                    <section className="space-y-3">
+                      <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b pb-1.5">
+                        Other Income & Savings (थप आम्दानी/बचत)
+                      </h3>
+                      {totals.discountReceived > 0 ? (
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-sm">Discount Received on Purchases (खरिद छुट पाएको)</span>
+                          <span className="font-medium text-emerald-600 dark:text-emerald-400">+{fmt(totals.discountReceived)}</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center py-1 text-sm text-muted-foreground">
+                          <span>Discount Received on Purchases</span>
+                          <span>Rs. 0</span>
+                        </div>
+                      )}
+                    </section>
+
+                    {/* Operating Expenses Section */}
+                    <section className="space-y-3">
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b pb-1.5">
+                        Operating Expenses (सञ्चालन खर्च)
+                      </h3>
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-sm">Store Expenses & Bills</span>
+                        <span className="font-medium text-destructive">({fmt(totals.storeExp)})</span>
+                      </div>
+                      {totals.wastage > 0 && (
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-sm">Wastage & Damage Loss</span>
+                          <span className="font-medium text-destructive">({fmt(totals.wastage)})</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center py-2 border-t font-semibold">
+                        <span>Total Expenses</span>
+                        <span className="text-destructive">({fmt(totals.exp)})</span>
+                      </div>
+                    </section>
                   </div>
-                )}
-                <div className="flex justify-between items-center py-2 border-t font-bold">
-                  <span>Total Expenses</span>
-                  <span className="text-destructive">({fmt(totals.exp)})</span>
-                </div>
-              </section>
 
-              {/* Net Profit Section */}
-              <section className="pt-4 border-t-2 border-dashed">
-                <div className="flex justify-between items-center p-4 bg-primary/5 border border-primary/20 rounded-xl">
+                  {/* Expenses & Savings Summary Note */}
+                  <div className="flex justify-between items-center py-3 px-4 bg-secondary/50 rounded-xl font-semibold border border-border/40 text-sm">
+                    <span>Net Indirect Impact (बचत - खर्च)</span>
+                    <span className={totals.discountReceived - totals.exp >= 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-destructive font-bold"}>
+                      {totals.discountReceived - totals.exp >= 0 ? `+${fmt(totals.discountReceived - totals.exp)}` : fmt(totals.discountReceived - totals.exp)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Net Business Profit Section (Full Width Banner) */}
+              <section className="pt-2">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 p-5 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/25 rounded-2xl shadow-sm">
                   <div>
-                    <div className="text-sm font-bold text-primary uppercase tracking-widest">Net Business Profit</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">
-                      Calculated as: Gross Profit {totals.discountReceived > 0 ? "+ Other Income " : ""}- Expenses
+                    <div className="text-xs font-bold text-primary uppercase tracking-widest">Net Business Profit (अन्तिम खुद नाफा)</div>
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      Calculated as: Gross Profit {totals.discountReceived > 0 ? "+ Other Income " : ""}- Total Expenses
                     </div>
                   </div>
-                  <div className={`text-3xl font-display ${totals.net >= 0 ? "text-primary" : "text-destructive"}`}>
+                  <div className={`text-3xl md:text-4xl font-display ${totals.net >= 0 ? "text-primary" : "text-destructive"}`}>
                     {fmt(totals.net)}
                   </div>
                 </div>
