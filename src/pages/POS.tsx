@@ -79,6 +79,7 @@ const POS = () => {
   const [amountPaid, setAmountPaid] = useState<string>("");
   const [tendered, setTendered] = useState<string>("");
   const [discount, setDiscount] = useState<string>("");
+  const [discountType, setDiscountType] = useState<"flat" | "percent">("flat");
   const [busy, setBusy] = useState(false);
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerSuggestionsOpen, setCustomerSuggestionsOpen] = useState(false);
@@ -406,7 +407,15 @@ const POS = () => {
 
   const subtotal = cart.reduce((s, i) => s + +((Number(i.qty) || 0) * (Number(i.sell_price) || 0)).toFixed(2), 0);
   const typedDiscount = Number(discount || 0);
-  const discountNum = Math.max(0, Math.min(typedDiscount, subtotal));
+  const discountNum = Math.max(
+    0,
+    Math.min(
+      discountType === "percent"
+        ? +((subtotal * typedDiscount) / 100).toFixed(2)
+        : typedDiscount,
+      subtotal
+    )
+  );
   
   const isVatInvoice = Boolean(shopInfo?.is_vat_registered && invoiceType === "tax_invoice");
 
@@ -680,7 +689,9 @@ const POS = () => {
         amount_paid: paid,
         total: total,
         cost_total: costTotal,
-        note: Number(discount) > 0 ? `Discount given: Rs. ${discount}` : null,
+        note: discountNum > 0
+          ? (discountType === "percent" ? `Discount given: ${typedDiscount}% (Rs. ${discountNum})` : `Discount given: Rs. ${discountNum}`)
+          : null,
         invoice_type: invoiceType,
         buyer_pan: isVatInvoice ? (buyerPan.trim() || null) : null,
         buyer_address: isVatInvoice ? (buyerAddress.trim() || null) : null,
@@ -794,6 +805,7 @@ const POS = () => {
           })),
           subtotal,
           discount: discountNum,
+          discountPercent: discountType === "percent" ? typedDiscount : null,
           nonTaxableAmount: calcNonTaxable,
           taxableAmount: calcTaxableNet,
           vatAmount: vatAmountCalc,
@@ -809,7 +821,7 @@ const POS = () => {
         console.error("Print receipt error:", err);
       }
 
-      setCart([]); setDiscount(""); setTendered(""); setAmountPaid(""); setCustomerId("walk-in");
+      setCart([]); setDiscount(""); setDiscountType("flat"); setTendered(""); setAmountPaid(""); setCustomerId("walk-in");
       setCustomerQuery(""); setCustomerSuggestionsOpen(false);
       setBuyerPan(""); setBuyerAddress("");
       setInvoiceType(shopInfo?.is_vat_registered ? "tax_invoice" : "abbreviated");
@@ -1203,15 +1215,64 @@ const POS = () => {
               </div>
             )}
             <div>
-              <Label className="text-xs">Discount</Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="0"
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-                onWheel={(e) => e.currentTarget.blur()}
-              />
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs font-semibold">Discount (छुट)</Label>
+                <div className="flex items-center rounded-lg border border-border bg-muted/60 p-0.5 text-[11px] font-medium">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDiscountType("flat");
+                    }}
+                    className={cn(
+                      "px-2 py-0.5 rounded-md transition-all cursor-pointer",
+                      discountType === "flat"
+                        ? "bg-background text-foreground font-bold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    रु Flat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDiscountType("percent");
+                    }}
+                    className={cn(
+                      "px-2 py-0.5 rounded-md transition-all cursor-pointer",
+                      discountType === "percent"
+                        ? "bg-background text-foreground font-bold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    % Percent
+                  </button>
+                </div>
+              </div>
+              <div className="relative">
+                <Input
+                  type="number"
+                  step={discountType === "percent" ? "0.1" : "0.01"}
+                  min="0"
+                  max={discountType === "percent" ? 100 : undefined}
+                  placeholder={discountType === "percent" ? "0 %" : "0"}
+                  value={discount}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (discountType === "percent" && Number(val) > 100) return;
+                    setDiscount(val);
+                  }}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  className={cn(
+                    "text-xs transition-all",
+                    discountType === "percent" && typedDiscount > 0 && "pr-24"
+                  )}
+                />
+                {discountType === "percent" && typedDiscount > 0 && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/40 px-1.5 py-0.5 rounded pointer-events-none">
+                    = {fmt(discountNum)}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1219,7 +1280,10 @@ const POS = () => {
             {discountNum > 0 && (
               <>
                 <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-                <div className="flex justify-between text-muted-foreground"><span>Discount</span><span>− {fmt(discountNum)}</span></div>
+                <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                  <span>Discount {discountType === "percent" && typedDiscount > 0 ? `(${typedDiscount}%)` : ""}</span>
+                  <span>− {fmt(discountNum)}</span>
+                </div>
               </>
             )}
             {shopInfo?.is_vat_registered && invoiceType === "tax_invoice" && (

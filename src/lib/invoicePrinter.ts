@@ -35,6 +35,7 @@ export interface SaleInvoiceData {
   items: InvoiceItem[];
   subtotal?: number;
   discount?: number;
+  discountPercent?: number | null;
   nonTaxableAmount?: number;
   taxableAmount?: number;
   vatAmount?: number;
@@ -197,7 +198,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
                   <td class="val">${(subtotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
                 <tr>
-                  <td class="label">P. Discount</td>
+                  <td class="label">P. Discount ${data.discountPercent && data.discountPercent > 0 ? `(${data.discountPercent}%)` : ""}</td>
                   <td class="val">${discountNum > 0 ? `(${discountNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : "0.00"}</td>
                 </tr>
                 <tr>
@@ -321,7 +322,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
 
         <div class="summary-section">
           <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
-          ${discountNum > 0 ? `<div class="summary-row discount"><span>Discount</span><span>-${fmt(discountNum)}</span></div>` : ""}
+          ${discountNum > 0 ? `<div class="summary-row discount"><span>Discount ${data.discountPercent && data.discountPercent > 0 ? `(${data.discountPercent}%)` : ""}</span><span>-${fmt(discountNum)}</span></div>` : ""}
           <div class="summary-row grand-total"><span>Grand Total</span><span>${fmt(total)}</span></div>
           <div class="summary-row paid"><span>Paid (${(paymentMode || "Cash").toUpperCase()})</span><span>${fmt(paidAmt)}</span></div>
           ${dueAmt > 0 ? `<div class="summary-row due"><span>Outstanding Due</span><span>${fmt(dueAmt)}</span></div>` : ""}
