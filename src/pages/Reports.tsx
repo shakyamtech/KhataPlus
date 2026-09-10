@@ -25,6 +25,13 @@ const Reports = () => {
   const [wastage, setWastage] = useState(0);
   const [allSales, setAllSales] = useState<any[]>([]);
   const [allPurchases, setAllPurchases] = useState<any[]>([]);
+  const [allExpenses, setAllExpenses] = useState<any[]>([]);
+  const [allWastage, setAllWastage] = useState<any[]>([]);
+  const [plPeriodMode, setPlPeriodMode] = useState<"month" | "days">("month");
+  const [plMonth, setPlMonth] = useState<{ year: number; month: number }>(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
   const [vatMonth, setVatMonth] = useState<{ year: number; month: number }>(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
@@ -54,17 +61,21 @@ const Reports = () => {
       setShopInfo(sInfo);
       setSuppliers(suppSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setCustomers(custSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      // Store unfiltered data for monthly VAT calculations
+      // Store unfiltered data for monthly VAT and P&L calculations
       setAllSales(sSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setAllPurchases(purSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
+      const expenseCategories = ["expense", "salary", "rent", "electricity", "maintenance"];
+      const allExp = eSnap.docs.map(d => d.data()).filter(tx => tx.direction === "out" && expenseCategories.includes(tx.category));
+      const allLoss = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
+
+      setAllExpenses(allExp);
+      setAllWastage(allLoss);
+
       const s = sSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => d.created_at >= since);
       const pur = purSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => d.created_at >= since);
-      const eAll = eSnap.docs.map(d => d.data()).filter(d => d.created_at >= since);
-      const wAll = wSnap.docs.map(d => d.data()).filter(d => d.created_at >= since && d.responsibility === "loss");
-
-      const expenseCategories = ["expense", "salary", "rent", "electricity", "maintenance"];
-      const e = eAll.filter(tx => tx.direction === "out" && expenseCategories.includes(tx.category));
+      const e = allExp.filter(tx => tx.created_at >= since);
+      const wAll = allLoss.filter(d => d.created_at >= since);
 
       setSales(s);
       setPurchases(pur);
@@ -268,6 +279,175 @@ const Reports = () => {
     setVatMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { ...prev, month: prev.month + 1 });
   };
   const vatMonthLabel = `${MONTHS_EN[vatMonth.month]} ${vatMonth.year}`;
+
+  const goToPrevPlMonth = () => setPlMonth(prev =>
+    prev.month === 0 ? { year: prev.year - 1, month: 11 } : { ...prev, month: prev.month - 1 }
+  );
+  const goToNextPlMonth = () => {
+    const now = new Date();
+    if (plMonth.year === now.getFullYear() && plMonth.month === now.getMonth()) return;
+    setPlMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { ...prev, month: prev.month + 1 });
+  };
+  const plMonthLabel = `${MONTHS_EN[plMonth.month]} ${plMonth.year}`;
+
+  const plTotals = useMemo(() => {
+    let targetSales = sales;
+    let targetPurchases = purchases;
+    let targetExpenses = expenses;
+    let targetWastageVal = wastage;
+
+    if (plPeriodMode === "month") {
+      const isInMonth = (dateStr: string) => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
+        return d.getFullYear() === plMonth.year && d.getMonth() === plMonth.month;
+      };
+
+      targetSales = allSales.filter(s => isInMonth(s.created_at));
+      targetPurchases = allPurchases.filter(p => isInMonth(p.created_at));
+      targetExpenses = allExpenses.filter(e => isInMonth(e.created_at));
+      const wLoss = allWastage.filter(w => isInMonth(w.created_at));
+      targetWastageVal = wLoss.reduce((sum, r) => sum + Number(r.total_value || 0), 0);
+    }
+
+    const grossRevenue = targetSales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
+    const discountAllowed = targetSales.reduce((s, r) => s + Number(r.discount || 0), 0);
+    const discountReceived = targetPurchases.reduce((s, r) => s + Number(r.discount || 0), 0);
+    const revenue = targetSales.reduce((s, r) => s + Number(r.total), 0);
+    const cogs = targetSales.reduce((s, r) => s + Number(r.cost_total), 0);
+    const exp = targetExpenses.reduce((s, r) => s + Number(r.amount), 0);
+    const totalExp = exp + targetWastageVal;
+    const gross = revenue - cogs;
+    const net = gross + discountReceived - totalExp;
+
+    return {
+      grossRevenue,
+      discountAllowed,
+      discountReceived,
+      revenue,
+      cogs,
+      gross,
+      exp: totalExp,
+      storeExp: exp,
+      wastage: targetWastageVal,
+      net,
+      salesCount: targetSales.length
+    };
+  }, [plPeriodMode, plMonth, allSales, allPurchases, allExpenses, allWastage, sales, purchases, expenses, wastage]);
+
+  const handlePrintPlReport = () => {
+    if (!shopInfo) return;
+    const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
+    const periodLabel = plPeriodMode === "month" ? plMonthLabel : `अघिल्लो ${range} दिन (Last ${range} Days)`;
+
+    const body = `
+      <div class="a4-container" style="background:#ffffff; color:#000000; padding:28px 32px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.5;">
+        
+        <!-- Header -->
+        <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:16px;">
+          <h1 style="font-size:20px; font-weight:800; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.02em;">${escapeHtml(shopInfo.name)}</h1>
+          ${shopInfo.address ? `<div style="font-size:12px; font-weight:500;">${escapeHtml(shopInfo.address)}</div>` : ''}
+          <div style="font-size:12px; font-weight:600; margin-top:2px;">
+            VAT / PAN No: <strong>${escapeHtml(shopInfo.pan || 'N/A')}</strong> ${shopInfo.phone ? `· Ph: <strong>${escapeHtml(shopInfo.phone)}</strong>` : ''}
+          </div>
+          <div style="display:inline-block; margin-top:10px; padding:4px 18px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
+            नाफा-नोक्सान हिसाब विवरण (Profit & Loss Statement)
+          </div>
+          <div style="font-size:11px; color:#333; margin-top:6px;">
+            अवधि (Period): <strong>${escapeHtml(periodLabel)}</strong> · तयार मिति (Report Date): <strong>${dateFormatted}</strong>
+          </div>
+        </div>
+
+        <!-- Table 1: Operating Income & Gross Profit -->
+        <div style="margin-bottom:16px; page-break-inside:avoid;">
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:5px 10px; border:1px solid #111; border-bottom:none;">
+            १. व्यापार तथा बिक्री आम्दानी (Trading & Operating Income)
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:12px; border:1px solid #111;">
+            <tbody>
+              <tr>
+                <td style="padding:7px 10px; border:1px solid #111;">Gross Sales (कुल बिक्री)</td>
+                <td style="padding:7px 10px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${(plTotals.grossRevenue).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+              ${plTotals.discountAllowed > 0 ? `
+              <tr>
+                <td style="padding:7px 10px; border:1px solid #111; color:#c00;">Less: Discount Allowed (ग्राहकलाई दिएको छुट)</td>
+                <td style="padding:7px 10px; text-align:right; font-weight:600; color:#c00; border:1px solid #111;">(Rs. ${(plTotals.discountAllowed).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
+              </tr>
+              ` : ''}
+              <tr style="background:#f9fafb; font-weight:700;">
+                <td style="padding:7px 10px; border:1px solid #111;">Net Sales Revenue (खुद बिक्री)</td>
+                <td style="padding:7px 10px; text-align:right; border:1px solid #111;">Rs. ${(plTotals.revenue).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+              <tr>
+                <td style="padding:7px 10px; border:1px solid #111; color:#555;">Less: Cost of Goods Sold - COGS (सामानको लागत)</td>
+                <td style="padding:7px 10px; text-align:right; font-weight:600; color:#555; border:1px solid #111;">(Rs. ${(plTotals.cogs).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
+              </tr>
+              <tr style="background:#edf2f7; font-weight:800; font-size:13px;">
+                <td style="padding:8px 10px; border:1.5px solid #111;">GROSS PROFIT (कुल नाफा)</td>
+                <td style="padding:8px 10px; text-align:right; border:1.5px solid #111;">Rs. ${(plTotals.gross).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Table 2: Other Income & Operating Expenses -->
+        <div style="margin-bottom:16px; page-break-inside:avoid;">
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:5px 10px; border:1px solid #111; border-bottom:none;">
+            २. थप आम्दानी तथा सञ्चालन खर्च (Other Income & Expenses)
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:12px; border:1px solid #111;">
+            <tbody>
+              ${plTotals.discountReceived > 0 ? `
+              <tr style="color:#007a3d;">
+                <td style="padding:7px 10px; border:1px solid #111;">Add: Discount Received on Purchases (खरिदमा पाएको छुट)</td>
+                <td style="padding:7px 10px; text-align:right; font-weight:600; border:1px solid #111;">+Rs. ${(plTotals.discountReceived).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+              ` : ''}
+              <tr>
+                <td style="padding:7px 10px; border:1px solid #111;">Store Expenses & Bills (पसल खर्च तथा बिलहरू)</td>
+                <td style="padding:7px 10px; text-align:right; font-weight:600; border:1px solid #111;">(Rs. ${(plTotals.storeExp).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
+              </tr>
+              ${plTotals.wastage > 0 ? `
+              <tr>
+                <td style="padding:7px 10px; border:1px solid #111;">Wastage & Damage Loss (टुटफुट तथा म्याद नाघेको नोक्सान)</td>
+                <td style="padding:7px 10px; text-align:right; font-weight:600; border:1px solid #111;">(Rs. ${(plTotals.wastage).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
+              </tr>
+              ` : ''}
+              <tr style="background:#f9fafb; font-weight:700;">
+                <td style="padding:7px 10px; border:1px solid #111;">Total Operating Expenses (जम्मा सञ्चालन खर्च)</td>
+                <td style="padding:7px 10px; text-align:right; border:1px solid #111; color:#c00;">(Rs. ${(plTotals.exp).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Net Business Profit Banner -->
+        <div style="border:2px solid #111; background:#f8fafc; padding:14px 16px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; page-break-inside:avoid;">
+          <div>
+            <div style="font-size:14px; font-weight:800; text-transform:uppercase;">NET BUSINESS PROFIT (खुद व्यापारिक नाफा)</div>
+            <div style="font-size:11px; color:#555; margin-top:2px;">Gross Profit ${plTotals.discountReceived > 0 ? '+ Other Income ' : ''}- Total Expenses</div>
+          </div>
+          <div style="font-size:22px; font-weight:900; ${plTotals.net >= 0 ? 'color:#007a3d;' : 'color:#c00;'}">
+            Rs. ${(plTotals.net).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+        </div>
+
+        <!-- Signatures -->
+        <div style="display:flex; justify-content:space-between; margin-top:40px; padding-top:12px; page-break-inside:avoid;">
+          <div style="text-align:center; width:200px;">
+            <div style="border-top:1px dashed #333; padding-top:5px; font-weight:600;">तयार गर्ने (Prepared By)</div>
+          </div>
+          <div style="text-align:center; width:200px;">
+            <div style="border-top:1px dashed #333; padding-top:5px; font-weight:700;">आधिकारिक हस्ताक्षर (Authorized Signature)</div>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    printHTML(`Profit_Loss_Statement_${periodLabel.replace(/[\s\/]+/g, '_')}`, body);
+  };
 
   const chartData = useMemo(() => {
     const days = Number(range);
@@ -523,10 +703,84 @@ const Reports = () => {
 
         <TabsContent value="pl">
           <Card className="shadow-elegant border-0 overflow-hidden">
-            <div className="p-6 bg-gradient-primary text-primary-foreground">
-              <div className="text-sm opacity-80 uppercase tracking-widest font-bold">Profit & Loss Statement</div>
-              <div className="text-xs opacity-60 mt-1">Period: Last {range} days</div>
+            <div className="p-5 md:p-6 bg-gradient-primary text-primary-foreground flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div className="text-sm opacity-90 uppercase tracking-widest font-bold">Profit & Loss Statement (नाफा-नोक्सान विवरण)</div>
+                <div className="text-xs opacity-75 mt-0.5">
+                  अवधि: <strong>{plPeriodMode === "month" ? plMonthLabel : `अघिल्लो ${range} दिन (Last ${range} Days)`}</strong>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Period Mode Selector: Monthly vs Days */}
+                <div className="flex bg-black/20 backdrop-blur-sm p-1 rounded-lg border border-white/10 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPlPeriodMode("month")}
+                    className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                      plPeriodMode === "month"
+                        ? "bg-white text-primary shadow-sm"
+                        : "text-white/80 hover:text-white"
+                    }`}
+                  >
+                    मासिक (Monthly)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlPeriodMode("days")}
+                    className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                      plPeriodMode === "days"
+                        ? "bg-white text-primary shadow-sm"
+                        : "text-white/80 hover:text-white"
+                    }`}
+                  >
+                    अघिल्लो {range} दिन
+                  </button>
+                </div>
+
+                {/* If Month mode: show Month Navigation */}
+                {plPeriodMode === "month" && (
+                  <div className="flex items-center bg-black/20 backdrop-blur-sm border border-white/10 rounded-lg p-0.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-white hover:bg-white/20"
+                      onClick={goToPrevPlMonth}
+                      title="अघिल्लो महिना"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="font-semibold text-xs px-2.5 min-w-[115px] text-center select-none text-white">
+                      {plMonthLabel}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-white hover:bg-white/20"
+                      onClick={goToNextPlMonth}
+                      disabled={plMonth.year === new Date().getFullYear() && plMonth.month === new Date().getMonth()}
+                      title="पछिल्लो महिना"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Print Button */}
+                <Button
+                  onClick={handlePrintPlReport}
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/95 text-primary hover:bg-white border-0 text-xs font-semibold h-8 gap-1.5 shadow-sm"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  प्रिन्ट / PDF
+                </Button>
+              </div>
             </div>
+
             <div className="p-6 space-y-6 bg-card text-card-foreground">
               {/* 2-Column Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -540,17 +794,17 @@ const Reports = () => {
                       </h3>
                       <div className="flex justify-between items-center py-1">
                         <span className="text-sm">Gross Sales (कुल बिक्री)</span>
-                        <span className="font-medium">{fmt(totals.grossRevenue)}</span>
+                        <span className="font-medium">{fmt(plTotals.grossRevenue)}</span>
                       </div>
-                      {totals.discountAllowed > 0 && (
+                      {plTotals.discountAllowed > 0 && (
                         <div className="flex justify-between items-center py-1">
                           <span className="text-sm text-destructive font-medium">Less: Discount Allowed (छुट दिइएको)</span>
-                          <span className="font-medium text-destructive">({fmt(totals.discountAllowed)})</span>
+                          <span className="font-medium text-destructive">({fmt(plTotals.discountAllowed)})</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center py-2 border-t font-semibold">
                         <span>Net Sales Revenue (खुद बिक्री)</span>
-                        <span className="text-primary">{fmt(totals.revenue)}</span>
+                        <span className="text-primary">{fmt(plTotals.revenue)}</span>
                       </div>
                     </section>
 
@@ -561,7 +815,7 @@ const Reports = () => {
                       </h3>
                       <div className="flex justify-between items-center py-1">
                         <span className="text-sm">Cost of Goods Sold (COGS)</span>
-                        <span className="font-medium text-destructive">({fmt(totals.cogs)})</span>
+                        <span className="font-medium text-destructive">({fmt(plTotals.cogs)})</span>
                       </div>
                     </section>
                   </div>
@@ -569,7 +823,7 @@ const Reports = () => {
                   {/* Gross Profit Highlight Box */}
                   <div className="flex justify-between items-center py-3 px-4 bg-secondary/50 rounded-xl font-bold border border-border/40">
                     <span className="text-sm">GROSS PROFIT (कुल नाफा)</span>
-                    <span className="text-primary text-lg">{fmt(totals.gross)}</span>
+                    <span className="text-primary text-lg">{fmt(plTotals.gross)}</span>
                   </div>
                 </div>
 
@@ -581,10 +835,10 @@ const Reports = () => {
                       <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b pb-1.5">
                         Other Income & Savings (थप आम्दानी/बचत)
                       </h3>
-                      {totals.discountReceived > 0 ? (
+                      {plTotals.discountReceived > 0 ? (
                         <div className="flex justify-between items-center py-1">
                           <span className="text-sm">Discount Received on Purchases (खरिद छुट पाएको)</span>
-                          <span className="font-medium text-emerald-600 dark:text-emerald-400">+{fmt(totals.discountReceived)}</span>
+                          <span className="font-medium text-emerald-600 dark:text-emerald-400">+{fmt(plTotals.discountReceived)}</span>
                         </div>
                       ) : (
                         <div className="flex justify-between items-center py-1 text-sm text-muted-foreground">
@@ -601,17 +855,17 @@ const Reports = () => {
                       </h3>
                       <div className="flex justify-between items-center py-1">
                         <span className="text-sm">Store Expenses & Bills</span>
-                        <span className="font-medium text-destructive">({fmt(totals.storeExp)})</span>
+                        <span className="font-medium text-destructive">({fmt(plTotals.storeExp)})</span>
                       </div>
-                      {totals.wastage > 0 && (
+                      {plTotals.wastage > 0 && (
                         <div className="flex justify-between items-center py-1">
                           <span className="text-sm">Wastage & Damage Loss</span>
-                          <span className="font-medium text-destructive">({fmt(totals.wastage)})</span>
+                          <span className="font-medium text-destructive">({fmt(plTotals.wastage)})</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center py-2 border-t font-semibold">
                         <span>Total Expenses</span>
-                        <span className="text-destructive">({fmt(totals.exp)})</span>
+                        <span className="text-destructive">({fmt(plTotals.exp)})</span>
                       </div>
                     </section>
                   </div>
@@ -619,8 +873,8 @@ const Reports = () => {
                   {/* Expenses & Savings Summary Note */}
                   <div className="flex justify-between items-center py-3 px-4 bg-secondary/50 rounded-xl font-semibold border border-border/40 text-sm">
                     <span>Net Indirect Impact (बचत - खर्च)</span>
-                    <span className={totals.discountReceived - totals.exp >= 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-destructive font-bold"}>
-                      {totals.discountReceived - totals.exp >= 0 ? `+${fmt(totals.discountReceived - totals.exp)}` : fmt(totals.discountReceived - totals.exp)}
+                    <span className={plTotals.discountReceived - plTotals.exp >= 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-destructive font-bold"}>
+                      {plTotals.discountReceived - plTotals.exp >= 0 ? `+${fmt(plTotals.discountReceived - plTotals.exp)}` : fmt(plTotals.discountReceived - plTotals.exp)}
                     </span>
                   </div>
                 </div>
@@ -632,11 +886,11 @@ const Reports = () => {
                   <div>
                     <div className="text-xs font-bold text-primary uppercase tracking-widest">Net Business Profit (अन्तिम खुद नाफा)</div>
                     <div className="text-[11px] text-muted-foreground mt-1">
-                      Calculated as: Gross Profit {totals.discountReceived > 0 ? "+ Other Income " : ""}- Total Expenses
+                      Calculated as: Gross Profit {plTotals.discountReceived > 0 ? "+ Other Income " : ""}- Total Expenses
                     </div>
                   </div>
-                  <div className={`text-3xl md:text-4xl font-display ${totals.net >= 0 ? "text-primary" : "text-destructive"}`}>
-                    {fmt(totals.net)}
+                  <div className={`text-3xl md:text-4xl font-display ${plTotals.net >= 0 ? "text-primary" : "text-destructive"}`}>
+                    {fmt(plTotals.net)}
                   </div>
                 </div>
               </section>
