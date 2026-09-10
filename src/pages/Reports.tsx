@@ -40,7 +40,7 @@ const Reports = () => {
       const custQ = query(collection(db, "customers"), where("user_id", "==", user.uid));
       const expQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
       const wQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
-      
+
       const [sSnap, purSnap, suppSnap, custSnap, eSnap, wSnap, sInfo] = await Promise.all([
         getDocs(sQ),
         getDocs(purQ),
@@ -50,7 +50,7 @@ const Reports = () => {
         getDocs(wQ),
         getShopInfo()
       ]);
-      
+
       setShopInfo(sInfo);
       setSuppliers(suppSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setCustomers(custSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -62,10 +62,10 @@ const Reports = () => {
       const pur = purSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => d.created_at >= since);
       const eAll = eSnap.docs.map(d => d.data()).filter(d => d.created_at >= since);
       const wAll = wSnap.docs.map(d => d.data()).filter(d => d.created_at >= since && d.responsibility === "loss");
-      
+
       const expenseCategories = ["expense", "salary", "rent", "electricity", "maintenance"];
       const e = eAll.filter(tx => tx.direction === "out" && expenseCategories.includes(tx.category));
-      
+
       setSales(s);
       setPurchases(pur);
       setExpenses(e);
@@ -179,7 +179,7 @@ const Reports = () => {
   }, [sales, purchases, suppliers, customers]);
 
   const MONTHS_EN = ["January", "February", "March", "April", "May", "June",
-                     "July", "August", "September", "October", "November", "December"];
+    "July", "August", "September", "October", "November", "December"];
 
   const vatMonthlyTotals = useMemo(() => {
     const sMap = new Map(suppliers.map(s => [s.id, s]));
@@ -283,9 +283,9 @@ const Reports = () => {
     if (!shopInfo) return;
     const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
     const isPayable = vatMonthlyTotals.netPayable > 0;
-    const netStatusText = isPayable 
-      ? "सरकारलाई तिर्नुपर्ने खुद भ्याट (Net VAT Payable to IRD)" 
-      : vatMonthlyTotals.closingCredit > 0 
+    const netStatusText = isPayable
+      ? "सरकारलाई तिर्नुपर्ने खुद भ्याट (Net VAT Payable to IRD)"
+      : vatMonthlyTotals.closingCredit > 0
         ? "अर्को महिना सर्ने भ्याट क्रेडिट (Closing VAT Credit Carried Forward)"
         : "खुद भ्याट दायित्व (Net VAT: Nil / Balanced)";
     const netFinalAmount = isPayable ? vatMonthlyTotals.netPayable : vatMonthlyTotals.closingCredit;
@@ -505,7 +505,7 @@ const Reports = () => {
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: "hsl(var(--border))" }} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
                     <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} cursor={{ fill: "hsl(var(--muted)/0.4)" }} />
                     <Bar dataKey="sales" name="Sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={28} />
                     <Bar dataKey="profit" name="Profit" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={28} />
@@ -698,21 +698,20 @@ const Reports = () => {
 
                 {/* Net VAT Payable / Credit Card */}
                 <Card
-                  className={`p-4 shadow-elegant border-0 text-white ${
-                    vatMonthlyTotals.netPayable > 0
+                  className={`p-4 shadow-elegant border-0 text-white ${vatMonthlyTotals.netPayable > 0
                       ? "bg-gradient-to-br from-emerald-600 to-teal-700"
                       : vatMonthlyTotals.closingCredit > 0
-                      ? "bg-gradient-to-br from-blue-600 to-indigo-700"
-                      : "bg-gradient-to-br from-slate-600 to-gray-700"
-                  }`}
+                        ? "bg-gradient-to-br from-blue-600 to-indigo-700"
+                        : "bg-gradient-to-br from-slate-600 to-gray-700"
+                    }`}
                 >
                   <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider opacity-90">
                     <span>
                       {vatMonthlyTotals.netPayable > 0
                         ? "सरकारलाई तिर्नुपर्ने खुद भ्याट"
                         : vatMonthlyTotals.closingCredit > 0
-                        ? "अर्को महिना सर्ने भ्याट क्रेडिट"
-                        : "भ्याट हिसाब बराबर (Nil)"}
+                          ? "अर्को महिना सर्ने भ्याट क्रेडिट"
+                          : "भ्याट हिसाब बराबर (Nil)"}
                     </span>
                     <Receipt className="h-4 w-4 opacity-80" />
                   </div>
@@ -723,8 +722,8 @@ const Reports = () => {
                     {vatMonthlyTotals.netPayable > 0
                       ? `Net Payable to IRD (बिक्री भ्याट - खरिद भ्याट${vatMonthlyTotals.openingCredit > 0 ? " - अघिल्लो क्रेडिट" : ""})`
                       : vatMonthlyTotals.closingCredit > 0
-                      ? "VAT Credit Carried Forward to Next Month"
-                      : "No tax payable or excess credit for this period"}
+                        ? "VAT Credit Carried Forward to Next Month"
+                        : "No tax payable or excess credit for this period"}
                   </div>
                 </Card>
               </div>

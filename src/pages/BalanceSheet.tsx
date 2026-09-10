@@ -26,7 +26,7 @@ const BalanceSheet = () => {
         const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
         const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid));
         const wQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
-        
+
         const [cSnap, pSnap, lSnap, sSnap, wSnap] = await Promise.all([
           getDocs(cQ), getDocs(pQ), getDocs(lQ), getDocs(sQ), getDocs(wQ)
         ]);
@@ -39,7 +39,7 @@ const BalanceSheet = () => {
 
         const cashBal = cash.reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
         const stock = products.reduce((s, r: any) => s + +r.stock_qty * +r.cost_price, 0);
-        
+
         const partyBalances: Record<string, number> = {};
         ledger.forEach((e: any) => {
           const key = `${e.party_type}_${e.party_id}`;
@@ -57,7 +57,7 @@ const BalanceSheet = () => {
 
         const revenue = sales.reduce((s, r: any) => s + +r.total, 0);
         const cogs = sales.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
-        
+
         const expenseCats = ["expense", "salary", "rent", "electricity", "maintenance", "personal", "other"];
         const cashExpenses = cash.filter((c: any) => c.direction === "out" && expenseCats.includes(c.category)).reduce((s, r: any) => s + +r.amount, 0);
         const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
