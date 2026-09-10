@@ -595,8 +595,8 @@ const Purchases = () => {
       return toast.error(`Supplier '${existing.name}' already exists`);
     }
 
-    const panTrim = isVatShop ? newSupplierPan.trim() : "";
-    const addressTrim = isVatShop ? newSupplierAddress.trim() : "";
+    const panTrim = newSupplierPan.trim();
+    const addressTrim = newSupplierAddress.trim();
 
     if (panTrim && !/^\d{9}$/.test(panTrim)) {
       return toast.error("PAN नम्बर ९ अङ्कको हुनुपर्छ (PAN must be 9 digits)");
@@ -1259,27 +1259,25 @@ const Purchases = () => {
           <div className="space-y-3">
             <div><Label>Name *</Label><Input value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} placeholder="Supplier Name" /></div>
             <div><Label>Phone (Optional)</Label><Input value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} placeholder="Mobile Number" /></div>
-            {isVatShop && (
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>PAN No. (Optional)</Label>
-                  <Input 
-                    placeholder="९-अङ्कको PAN" 
-                    maxLength={9} 
-                    value={newSupplierPan} 
-                    onChange={(e) => setNewSupplierPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
-                  />
-                </div>
-                <div>
-                  <Label>Address (Optional)</Label>
-                  <Input 
-                    placeholder="Location / Address" 
-                    value={newSupplierAddress} 
-                    onChange={(e) => setNewSupplierAddress(e.target.value)} 
-                  />
-                </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>PAN No. (Optional)</Label>
+                <Input 
+                  placeholder="९-अङ्कको PAN" 
+                  maxLength={9} 
+                  value={newSupplierPan} 
+                  onChange={(e) => setNewSupplierPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                />
               </div>
-            )}
+              <div>
+                <Label>Address (Optional)</Label>
+                <Input 
+                  placeholder="Location / Address" 
+                  value={newSupplierAddress} 
+                  onChange={(e) => setNewSupplierAddress(e.target.value)} 
+                />
+              </div>
+            </div>
             <Button onClick={saveNewSupplier} disabled={busySupplier} className="w-full bg-gradient-primary text-primary-foreground">
               {busySupplier ? (
                 <>
