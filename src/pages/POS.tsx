@@ -406,18 +406,7 @@ const POS = () => {
 
   const subtotal = cart.reduce((s, i) => s + +((Number(i.qty) || 0) * (Number(i.sell_price) || 0)).toFixed(2), 0);
   const typedDiscount = Number(discount || 0);
-  const paidVal = Number(amountPaid || 0);
-  const tenderedVal = Number(tendered || 0);
-  
-  let autoDiscount = 0;
-  if (typedDiscount === 0) {
-    if (paymentMode === "cash" && tenderedVal > 0 && tenderedVal < subtotal) {
-      autoDiscount = +(subtotal - tenderedVal).toFixed(2);
-    } else if (paymentMode === "credit" && paidVal > 0 && paidVal < subtotal) {
-      autoDiscount = +(subtotal - paidVal).toFixed(2);
-    }
-  }
-  const discountNum = Math.max(0, Math.min(typedDiscount > 0 ? typedDiscount : autoDiscount, subtotal));
+  const discountNum = Math.max(0, Math.min(typedDiscount, subtotal));
   
   const isVatInvoice = Boolean(shopInfo?.is_vat_registered && invoiceType === "tax_invoice");
 
@@ -450,7 +439,7 @@ const POS = () => {
     if (paymentMode === "credit") {
       setAmountPaid("0");
     }
-  }, [paymentMode, subtotal, isVatInvoice]);
+  }, [paymentMode]);
 
   const saveNewCustomer = async () => {
     const nameTrim = newCustomerName.trim();
@@ -834,7 +823,7 @@ const POS = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      <PageHeader title="Point of Sale (POS)" subtitle="Fast billing with auto-discount & stock sync" />
+      <PageHeader title="Point of Sale (POS)" subtitle="Fast billing, instant credit ledger sync & stock management" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
