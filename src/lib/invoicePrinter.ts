@@ -380,6 +380,7 @@ export interface PurchaseVoucherData {
   supplierBillNo?: string | null;
   date: Date | string;
   paymentMode: string;
+  paidVia?: string | null;
   items: InvoiceItem[];
   subtotal?: number;
   taxableAmount?: number;
@@ -474,7 +475,7 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
             <div class="a4-box-row"><span>Inward No :</span><span>#${escapeHtml(voucherNo)}</span></div>
             <div class="a4-box-row"><span>Supplier Bill No :</span><span>${escapeHtml(supplierBillNo || "N/A")}</span></div>
             <div class="a4-box-row"><span>Date :</span><span>${formattedDate}</span></div>
-            <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode || "Cash")}</span></div>
+            <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode === "credit" ? (paidAmt > 0 && dueAmt > 0 ? `CREDIT (${(data.paidVia || "CASH").toUpperCase()})` : "CREDIT") : (paymentMode || "Cash"))}</span></div>
           </div>
         </div>
       </div>
@@ -518,6 +519,12 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
             <div class="a4-total-label">TOTAL :</div>
             <div class="a4-total-amount">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           </div>
+          ${dueAmt > 0 ? `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#eff6ff; border:1px solid #93c5fd; border-radius:4px; padding:4px 8px; margin:4px 0 6px 0; font-size:11px; font-weight:700; color:#1e40af;">
+            <span>Paid${data.paidVia ? ` (${(data.paidVia).toUpperCase()})` : (paidAmt > 0 && paymentMode === "credit" ? " (CASH)" : "")}: Rs. ${(paidAmt).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span style="color:#b91c1c;">Payable (Due): Rs. ${(dueAmt).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          ` : ""}
           <div class="a4-remarks-line">
             <strong>Remarks:</strong> &nbsp;${data.note ? escapeHtml(data.note) : (supplierBillNo ? `Supplier Invoice #${supplierBillNo}` : "Stock Inward Entry")}
           </div>
@@ -545,18 +552,20 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
                   <td class="val">Non-VAT (गैर-भ्याट / छुट)</td>
                 </tr>
               `}
-              <tr class="net-row">
+              <tr class="net-row" style="${dueAmt > 0 ? 'border-bottom: 1.5px solid #000;' : ''}">
                 <td class="label">Net Purchase</td>
                 <td class="val">Rs. ${(total).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
+              ${(dueAmt > 0 || paidAmt > 0) ? `
               <tr>
-                <td class="label">Paid to Supplier</td>
-                <td class="val">${fmt(paidAmt)}</td>
+                <td class="label" style="color:#1e40af; font-size:11px;">Paid to Supplier ${data.paidVia ? `(${(data.paidVia).toUpperCase()})` : (paidAmt > 0 && paymentMode === "credit" ? "(CASH)" : "")}</td>
+                <td class="val" style="color:#1e40af; font-weight:700;">${fmt(paidAmt)}</td>
               </tr>
+              ` : ""}
               ${dueAmt > 0 ? `
-                <tr>
-                  <td class="label" style="color:#b91c1c; font-weight:700;">Payable (Due)</td>
-                  <td class="val" style="color:#b91c1c; font-weight:700;">${fmt(dueAmt)}</td>
+                <tr style="border-top:1.5px solid #b91c1c; background:#fef2f2;">
+                  <td class="label" style="color:#b91c1c; font-size:11.5px; font-weight:800; border-bottom:none;">Payable (Due)</td>
+                  <td class="val" style="color:#b91c1c; font-weight:800; border-bottom:none;">${fmt(dueAmt)}</td>
                 </tr>
               ` : ""}
             </tbody>

@@ -304,6 +304,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             voucher_no: pu.voucher_no || pu.id.slice(-6).toUpperCase(),
             supplier_bill_no: pu.supplier_bill_no,
             payment_mode: pu.payment_mode || "cash",
+            paid_via: pu.paid_via || null,
             amount: totalAmt,
             paid_amount: paidAmt,
             due_amount: dueAmt,
@@ -849,6 +850,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           supplierBillNo: e.supplier_bill_no,
           date: e.created_at,
           paymentMode: e.payment_mode || "cash",
+          paidVia: e.paid_via || null,
           items: (e.order_items || []).map(it => ({
             product_name: it.product_name,
             qty: it.qty,

@@ -385,6 +385,7 @@ const Purchases = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [supplierId, setSupplierId] = useState<string>("none");
   const [paymentMode, setPaymentMode] = useState<string>("cash");
+  const [partialMode, setPartialMode] = useState<string>("cash");
   const [amountPaid, setAmountPaid] = useState("0");
   const [productPick, setProductPick] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -561,7 +562,8 @@ const Purchases = () => {
       setEditingVoucherNo(p.voucher_no || null);
       setEditingVoucherSeq(p.voucher_sequence || null);
       setSupplierId(p.supplier_id || "none");
-      setPaymentMode(p.payment_mode);
+      setPaymentMode(p.payment_mode || "cash");
+      setPartialMode(p.paid_via || "cash");
       setPurchaseType(p.is_vat_bill === false ? "non_vat" : "vat_bill");
       setSupplierBillNo(p.supplier_bill_no || "");
       setAmountPaid((p.amount_paid || 0).toString());
@@ -663,8 +665,10 @@ const Purchases = () => {
       return toast.error("Please pick a supplier for credit / unpaid balance");
     }
 
-    // Check cash in hand balance if paying immediately
-    if (paid > 0) {
+    const effectivePaidMode = paymentMode === "credit" ? (paid > 0 ? partialMode : "credit") : paymentMode;
+
+    // Check cash in hand balance if paying immediately in cash
+    if (paid > 0 && effectivePaidMode === "cash") {
       const availableCash = cashBalance + (editingId ? editingOriginalPaid : 0);
       if (paid > availableCash) {
         return toast.error(`Insufficient Cash in Hand! Available: ${fmt(availableCash)}, Required: ${fmt(paid)}. Please choose Credit or reduce Amount Paid.`);
@@ -701,6 +705,7 @@ const Purchases = () => {
         user_id: user!.uid,
         supplier_id: supplierId === "none" ? null : supplierId,
         payment_mode: paymentMode,
+        paid_via: paymentMode === "credit" && paid > 0 ? partialMode : null,
         amount_paid: paid,
         total: purchaseTotal,
         is_vat_bill: isVatBill,
@@ -759,8 +764,10 @@ const Purchases = () => {
           direction: "out",
           amount: paid,
           category: "purchase",
-          payment_mode: paymentMode,
-          note: `Purchase ${purchaseRef.id}`,
+          payment_mode: effectivePaidMode,
+          note: paymentMode === "credit"
+            ? `Partial payment (${partialMode.toUpperCase()}) for Purchase ${voucherNoToSave || purchaseRef.id}`
+            : `Purchase ${voucherNoToSave || purchaseRef.id}`,
           reference_id: purchaseRef.id,
           created_at: new Date().toISOString()
         });
@@ -788,8 +795,11 @@ const Purchases = () => {
             party_id: supplierId,
             party_type: "supplier",
             entry_type: "payment_out",
+            payment_mode: effectivePaidMode,
             amount: paid,
-            note: `Payment for purchase ${purchaseRef.id}`,
+            note: paymentMode === "credit"
+              ? `Partial payment via ${partialMode.toUpperCase()} for purchase ${voucherNoToSave || purchaseRef.id}`
+              : `Payment for purchase ${voucherNoToSave || purchaseRef.id}`,
             reference_id: purchaseRef.id,
             created_at: new Date().toISOString()
           });
@@ -802,6 +812,7 @@ const Purchases = () => {
       setItems([]); 
       setSupplierId("none"); 
       setPaymentMode("cash"); 
+      setPartialMode("cash");
       setPurchaseType("vat_bill");
       setSupplierBillNo("");
       setShowForm(false); 
@@ -890,6 +901,7 @@ const Purchases = () => {
         supplierBillNo: h.supplier_bill_no,
         date: h.created_at,
         paymentMode: h.payment_mode || "cash",
+        paidVia: h.paid_via || null,
         items: itemsList,
         total: Number(h.total || 0),
         paidAmount: Number(h.amount_paid || 0),
@@ -1142,6 +1154,29 @@ const Purchases = () => {
               </div>
             )}
           </div>
+
+          {paymentMode === "credit" && Number(amountPaid || 0) > 0 && (
+            <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/90 dark:border-blue-800/50 rounded-lg p-3 mt-3 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+              <Label className="text-xs font-bold text-blue-900 dark:text-blue-300 flex items-center justify-between">
+                <span>Paid Via (सप्लायरलाई भुक्तानी गरिएको माध्यम)</span>
+                <span className="text-[10px] uppercase font-semibold text-blue-600 dark:text-blue-400">{partialMode}</span>
+              </Label>
+              <Select value={partialMode} onValueChange={(v) => setPartialMode(v)}>
+                <SelectTrigger className="h-9 text-xs font-medium bg-background border-blue-300 dark:border-blue-700">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash (नगद)</SelectItem>
+                  <SelectItem value="esewa">eSewa</SelectItem>
+                  <SelectItem value="khalti">Khalti</SelectItem>
+                  <SelectItem value="bank">Bank / QR</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-blue-700/90 dark:text-blue-400/90 font-medium">
+                सप्लायरलाई बाँकी रकम (रु. {Math.max(0, grandTotal - Number(amountPaid || 0)).toFixed(2)}) उधारो (Payable Due) मा रहनेछ।
+              </p>
+            </div>
+          )}
           <Button onClick={save} disabled={busy} className="w-full mt-4 bg-accent text-accent-foreground h-11 font-semibold">
             {busy ? (
               <>
