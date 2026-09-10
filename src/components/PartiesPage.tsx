@@ -890,23 +890,27 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               <span class="bill-info-label">Voucher Date</span>
               <span class="bill-info-value">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}</span>
             </div>
-            ${(e.bill_no || e.voucher_no) ? `
             <div class="bill-info-item" style="margin-top:4px;">
+              <span class="bill-info-label">Payment Mode</span>
+              <span class="bill-info-value" style="font-weight:700; text-transform:uppercase; color:${isReceived ? '#059669' : '#1e40af'};">${escapeHtml(e.payment_mode || "Cash")}</span>
+            </div>
+            <div class="bill-info-item" style="text-align:right; margin-top:4px;">
+              <span class="bill-info-label">Entry Type</span>
+              <span class="bill-info-value" style="text-transform:capitalize; color:${isReceived ? '#059669' : '#1d4ed8'}; font-weight:700;">${escapeHtml(e.title)}</span>
+            </div>
+            ${(e.bill_no || e.voucher_no) ? `
+            <div class="bill-info-item" style="margin-top:4px; grid-column:span 2;">
               <span class="bill-info-label">Settled Bill</span>
               <span class="bill-info-value" style="font-family:monospace; font-weight:700; color:#2563eb;">#${escapeHtml(e.bill_no || e.voucher_no || "")}</span>
             </div>
-            ` : `<div></div>`}
-            <div class="bill-info-item" style="text-align:right; margin-top:4px;">
-              <span class="bill-info-label">Entry Type</span>
-              <span class="bill-info-value" style="text-transform:capitalize; color:${isReceived ? '#059669' : '#dc2626'}; font-weight:700;">${escapeHtml(e.title)}</span>
-            </div>
+            ` : ""}
           </div>
 
-          <div style="background:${isReceived ? '#f0fdf4' : '#fef2f2'}; border:1.5px solid ${isReceived ? '#86efac' : '#fca5a5'}; border-radius:10px; padding:16px; text-align:center; margin:16px 0;">
-            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:${isReceived ? '#166534' : '#991b1b'}; letter-spacing:0.06em; margin-bottom:4px;">
+          <div style="background:${isReceived ? '#f0fdf4' : '#eff6ff'}; border:1.5px solid ${isReceived ? '#86efac' : '#93c5fd'}; border-radius:10px; padding:16px; text-align:center; margin:16px 0;">
+            <div style="font-size:11px; text-transform:uppercase; font-weight:700; color:${isReceived ? '#166534' : '#1e40af'}; letter-spacing:0.06em; margin-bottom:4px;">
               ${isReceived ? "Amount Received (प्राप्त रकम)" : "Amount Paid (भुक्तानी रकम)"}
             </div>
-            <div style="font-size:26px; font-weight:800; color:${isReceived ? '#15803d' : '#b91c1c'}; letter-spacing:-0.02em;">
+            <div style="font-size:26px; font-weight:800; color:${isReceived ? '#15803d' : '#1e3a8a'}; letter-spacing:-0.02em;">
               ${fmt(e.amount)}
             </div>
           </div>
@@ -1210,7 +1214,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                           </div>
                         </div>
                         <div style="text-align:right;">
-                          <div style="font-size:14px; font-weight:800; color:${!e.is_order ? (type === 'customer' ? '#059669' : '#dc2626') : '#ea580c'};">
+                          <div style="font-size:14px; font-weight:800; color:${!e.is_order ? (type === 'customer' ? '#059669' : '#1d4ed8') : (Number(e.due_amount || 0) > 0 ? '#ea580c' : '#111827')};">
                             ${fmt(e.amount)}
                           </div>
                           ${e.is_order ? `<div style="font-size:9.5px; color:#6b7280; font-weight:600;">TOTAL BILL</div>` : ""}

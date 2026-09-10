@@ -319,7 +319,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
 
     @media print {
       body {
-        padding: 0;
+        padding: 8mm 12mm;
         background: #ffffff;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
@@ -334,7 +334,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       }
       @page {
         size: A4 portrait;
-        margin: 10mm 15mm 10mm 15mm;
+        margin: 0;
       }
     }
     ` : `
@@ -495,7 +495,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
 
     @media print {
       body {
-        padding: 0;
+        padding: 5mm;
         max-width: 100%;
       }
       .receipt-card {
@@ -503,7 +503,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
         padding: 0;
       }
       @page {
-        margin: 6mm;
+        margin: 0;
       }
     }
     `}
