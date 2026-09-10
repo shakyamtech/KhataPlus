@@ -520,15 +520,8 @@ const POS = () => {
 
       if (shopInfo?.is_vat_registered && invoiceType === "tax_invoice") {
         const panClean = buyerPan.trim();
-        if (!panClean) {
-          return toast.error("कर बिजक (Tax Invoice) जारी गर्न ग्राहकको ९-अङ्कको PAN नम्बर आवश्यक छ!");
-        }
-        if (!/^\d{9}$/.test(panClean)) {
+        if (panClean && !/^\d{9}$/.test(panClean)) {
           return toast.error("कृपया सही ९-अङ्कको PAN नम्बर मात्र प्रविष्ट गर्नुहोस् (PAN must be 9 digits)!");
-        }
-        const addrClean = buyerAddress.trim();
-        if (!addrClean) {
-          return toast.error("कर बिजक (Tax Invoice) जारी गर्न ग्राहकको ठेगाना (Address) आवश्यक छ!");
         }
       }
       
@@ -1160,30 +1153,26 @@ const POS = () => {
                 {invoiceType === "tax_invoice" && (
                   <div className="grid grid-cols-2 gap-2 pt-1 border-t border-primary/10">
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center gap-0.5">
-                        Buyer PAN <span className="text-destructive font-black">*</span>
+                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center justify-between">
+                        <span>Buyer PAN (B2B)</span>
+                        <span className="text-[9px] font-normal text-muted-foreground lowercase">optional</span>
                       </Label>
                       <Input
-                        placeholder="९-अङ्कको PAN (९ Digits)"
+                        placeholder="९-अङ्कको PAN (ऐच्छिक)"
                         maxLength={9}
-                        className={cn(
-                          "h-7 text-xs bg-background font-medium",
-                          !buyerPan.trim() && "border-destructive/60 focus:border-destructive"
-                        )}
+                        className="h-7 text-xs bg-background font-medium"
                         value={buyerPan}
                         onChange={(e) => setBuyerPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center gap-0.5">
-                        Buyer Address <span className="text-destructive font-black">*</span>
+                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center justify-between">
+                        <span>Buyer Address</span>
+                        <span className="text-[9px] font-normal text-muted-foreground lowercase">optional</span>
                       </Label>
                       <Input
-                        placeholder="ठेगाना (Location)"
-                        className={cn(
-                          "h-7 text-xs bg-background font-medium",
-                          !buyerAddress.trim() && "border-destructive/60 focus:border-destructive"
-                        )}
+                        placeholder="ठेगाना (ऐच्छिक)"
+                        className="h-7 text-xs bg-background font-medium"
                         value={buyerAddress}
                         onChange={(e) => setBuyerAddress(e.target.value)}
                       />
@@ -1309,16 +1298,18 @@ const POS = () => {
             <div><Label>Name *</Label><Input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="Full Name" /></div>
             <div><Label>Phone (Optional)</Label><Input value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} placeholder="Mobile Number" /></div>
             <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>PAN No. (Optional)</Label>
-                <Input 
-                  placeholder="९-अङ्कको PAN" 
-                  maxLength={9} 
-                  value={newCustomerPan} 
-                  onChange={(e) => setNewCustomerPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
-                />
-              </div>
-              <div>
+              {shopInfo?.is_vat_registered && (
+                <div>
+                  <Label>PAN No. (Optional · B2B)</Label>
+                  <Input 
+                    placeholder="९-अङ्कको PAN" 
+                    maxLength={9} 
+                    value={newCustomerPan} 
+                    onChange={(e) => setNewCustomerPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                  />
+                </div>
+              )}
+              <div className={shopInfo?.is_vat_registered ? "" : "col-span-2"}>
                 <Label>Address (Optional)</Label>
                 <Input 
                   placeholder="Location / Address" 

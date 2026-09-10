@@ -101,10 +101,12 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [busyAnalysis, setBusyAnalysis] = useState(false);
   const [activeTab, setActiveTab] = useState("ledger");
   const [search, setSearch] = useState("");
+  const [shopInfo, setShopInfo] = useState<any>(null);
 
   const load = async () => {
     if (!user) return;
     try {
+      getShopInfo().then(setShopInfo);
       const pQ = query(collection(db, type === "customer" ? "customers" : "suppliers"), where("user_id", "==", user.uid));
       const pSnap = await getDocs(pQ);
       const p = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1640,16 +1642,18 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               <div><Label>Name *</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name" /></div>
               <div><Label>Phone (Optional)</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Mobile Number" /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>PAN No. (Optional)</Label>
-                  <Input 
-                    placeholder="९-अङ्कको PAN" 
-                    maxLength={9} 
-                    value={pan} 
-                    onChange={(e) => setPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
-                  />
-                </div>
-                <div>
+                {(type === "supplier" || shopInfo?.is_vat_registered) && (
+                  <div>
+                    <Label>PAN No. (Optional{type === "customer" ? " · B2B" : ""})</Label>
+                    <Input 
+                      placeholder="९-अङ्कको PAN" 
+                      maxLength={9} 
+                      value={pan} 
+                      onChange={(e) => setPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                    />
+                  </div>
+                )}
+                <div className={(type === "customer" && !shopInfo?.is_vat_registered) ? "col-span-2" : ""}>
                   <Label>Address (Optional)</Label>
                   <Input 
                     placeholder="Location / City" 
@@ -1756,16 +1760,18 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               <div><Label>Name *</Label><Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full Name" /></div>
               <div><Label>Phone (Optional)</Label><Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Mobile Number" /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>PAN No. (Optional)</Label>
-                  <Input 
-                    placeholder="९-अङ्कको PAN" 
-                    maxLength={9} 
-                    value={editPan} 
-                    onChange={(e) => setEditPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
-                  />
-                </div>
-                <div>
+                {(type === "supplier" || shopInfo?.is_vat_registered) && (
+                  <div>
+                    <Label>PAN No. (Optional{type === "customer" ? " · B2B" : ""})</Label>
+                    <Input 
+                      placeholder="९-अङ्कको PAN" 
+                      maxLength={9} 
+                      value={editPan} 
+                      onChange={(e) => setEditPan(e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                    />
+                  </div>
+                )}
+                <div className={(type === "customer" && !shopInfo?.is_vat_registered) ? "col-span-2" : ""}>
                   <Label>Address (Optional)</Label>
                   <Input 
                     placeholder="Location / City" 
