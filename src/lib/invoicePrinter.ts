@@ -44,6 +44,7 @@ export interface SaleInvoiceData {
   dueAmount?: number;
   tenderedAmount?: number;
   changeAmount?: number;
+  paidVia?: string | null;
   note?: string | null;
   isVatInvoice?: boolean;
   invoiceType?: "tax_invoice" | "abbreviated" | string;
@@ -145,7 +146,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
               <div class="a4-box-row"><span>Bill No :</span><span>${escapeHtml(billNo)}</span></div>
               <div class="a4-box-row"><span>Bill Date :</span><span>${formattedDate}</span></div>
               <div class="a4-box-row"><span>Time :</span><span>${formattedTime}</span></div>
-              <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode || "Cash")}</span></div>
+              <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode === "credit" ? (paidAmt > 0 && hasDue ? `CREDIT (${(data.paidVia || "CASH").toUpperCase()})` : "CREDIT") : (paymentMode || "Cash"))}</span></div>
             </div>
           </div>
         </div>
@@ -191,7 +192,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
             </div>
             ${hasDue ? `
             <div style="display:flex; justify-content:space-between; align-items:center; background:#fef2f2; border:1px solid #f87171; border-radius:4px; padding:4px 8px; margin:4px 0 6px 0; font-size:11px; font-weight:700; color:#b91c1c;">
-              <span>Paid: Rs. ${(paidAmt).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span>Paid${data.paidVia ? ` (${(data.paidVia).toUpperCase()})` : (paidAmt > 0 && paymentMode === "credit" ? " (CASH)" : "")}: Rs. ${(paidAmt).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               <span>Balance Due: Rs. ${(dueAmt).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             ` : ""}
@@ -233,7 +234,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
                 </tr>
                 ${hasDue ? `
                 <tr>
-                  <td class="label" style="color:#15803d; font-size:11px;">Paid Amount</td>
+                  <td class="label" style="color:#15803d; font-size:11px;">Paid Amount ${data.paidVia ? `(${(data.paidVia).toUpperCase()})` : (paidAmt > 0 && paymentMode === "credit" ? "(CASH)" : "")}</td>
                   <td class="val" style="color:#15803d; font-weight:700;">Rs. ${(paidAmt).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
                 <tr style="border-top:1.5px solid #b91c1c; background:#fef2f2;">
@@ -323,7 +324,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
           </div>
           <div class="bill-info-item" style="text-align:right;">
             <span class="bill-info-label">Payment</span>
-            <span class="bill-info-value" style="text-transform:uppercase;">${escapeHtml(paymentMode || "Cash")}</span>
+            <span class="bill-info-value" style="text-transform:uppercase;">${escapeHtml(paymentMode === "credit" ? (paidAmt > 0 && dueAmt > 0 ? `CREDIT (${(data.paidVia || "CASH").toUpperCase()})` : "CREDIT") : (paymentMode || "Cash"))}</span>
           </div>
         </div>
 
@@ -344,7 +345,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
           <div class="summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
           ${discountNum > 0 ? `<div class="summary-row discount"><span>Discount ${data.discountPercent && data.discountPercent > 0 ? `(${data.discountPercent}%)` : ""}</span><span>-${fmt(discountNum)}</span></div>` : ""}
           <div class="summary-row grand-total"><span>Grand Total</span><span>${fmt(total)}</span></div>
-          <div class="summary-row paid"><span>Paid (${(paymentMode || "Cash").toUpperCase()})</span><span>${fmt(paidAmt)}</span></div>
+          ${paidAmt > 0 ? `<div class="summary-row paid"><span>Paid (${(data.paidVia || paymentMode).toUpperCase()})</span><span>${fmt(paidAmt)}</span></div>` : (paymentMode === "credit" ? `<div class="summary-row paid"><span>Paid</span><span>${fmt(0)}</span></div>` : `<div class="summary-row paid"><span>Paid (${paymentMode.toUpperCase()})</span><span>${fmt(paidAmt)}</span></div>`)}
           ${dueAmt > 0 ? `<div class="summary-row due"><span>Outstanding Due</span><span>${fmt(dueAmt)}</span></div>` : ""}
           ${paymentMode === "cash" && tenderedAmt > 0 && changeAmt > 0 ? `
             <div class="summary-row change"><span>Tendered: ${fmt(tenderedAmt)}</span><span>Change: ${fmt(changeAmt)}</span></div>

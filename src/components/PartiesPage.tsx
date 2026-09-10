@@ -39,6 +39,7 @@ type Entry = {
   paid_amount?: number;
   due_amount?: number;
   payment_mode?: string;
+  paid_via?: string | null;
   note?: string | null;
   created_at: string;
   products?: string;
@@ -202,6 +203,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             title: `Sale`,
             bill_no: s.bill_no || s.id.slice(-6).toUpperCase(),
             payment_mode: s.payment_mode || "cash",
+            paid_via: s.paid_via || null,
             amount: totalAmt,
             paid_amount: paidAmt,
             due_amount: dueAmt,
@@ -814,6 +816,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           billNo: e.id.slice(-6).toUpperCase(),
           date: e.created_at,
           paymentMode: e.payment_mode || "cash",
+          paidVia: e.paid_via || null,
           items: (e.order_items || []).map(it => ({
             product_name: it.product_name,
             qty: it.qty,

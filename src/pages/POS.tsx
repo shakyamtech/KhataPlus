@@ -75,7 +75,8 @@ const POS = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [customerId, setCustomerId] = useState<string>("walk-in");
-  const [paymentMode, setPaymentMode] = useState<"cash" | "credit">("cash");
+  const [paymentMode, setPaymentMode] = useState<string>("cash");
+  const [partialMode, setPartialMode] = useState<string>("cash");
   const [amountPaid, setAmountPaid] = useState<string>("");
   const [tendered, setTendered] = useState<string>("");
   const [discount, setDiscount] = useState<string>("");
@@ -678,6 +679,7 @@ const POS = () => {
 
       const batch = writeBatch(db);
       const saleRef = doc(collection(db, "sales"));
+      const effectivePaidMode = paymentMode === "credit" ? (paid > 0 ? partialMode : "credit") : paymentMode;
       
       batch.set(saleRef, {
         id: saleRef.id,
@@ -686,6 +688,7 @@ const POS = () => {
         user_id: user!.uid,
         customer_id: customerId === "walk-in" ? null : customerId,
         payment_mode: paymentMode,
+        paid_via: paymentMode === "credit" && paid > 0 ? partialMode : null,
         amount_paid: paid,
         total: total,
         cost_total: costTotal,
@@ -735,8 +738,10 @@ const POS = () => {
           direction: "in",
           amount: paid,
           category: "sales",
-          payment_mode: paymentMode,
-          note: `Sale #${generatedBillNo}`,
+          payment_mode: effectivePaidMode,
+          note: paymentMode === "credit" 
+            ? `Partial payment (${partialMode.toUpperCase()}) for Sale #${generatedBillNo}` 
+            : `Sale #${generatedBillNo}`,
           reference_id: saleRef.id,
           created_at: new Date().toISOString()
         });
@@ -764,8 +769,11 @@ const POS = () => {
             party_id: customerId,
             party_type: "customer",
             entry_type: "payment_in",
+            payment_mode: effectivePaidMode,
             amount: paid,
-            note: `Payment for sale #${generatedBillNo}`,
+            note: paymentMode === "credit"
+              ? `Partial payment via ${partialMode.toUpperCase()} for sale #${generatedBillNo}`
+              : `Payment for sale #${generatedBillNo}`,
             reference_id: saleRef.id,
             created_at: new Date().toISOString()
           });
@@ -795,6 +803,7 @@ const POS = () => {
           billNo,
           date: new Date(),
           paymentMode,
+          paidVia: paymentMode === "credit" && paid > 0 ? partialMode : null,
           items: cart.map(i => ({
             product_name: i.product_name,
             qty: i.qty,
@@ -824,6 +833,7 @@ const POS = () => {
       setCart([]); setDiscount(""); setDiscountType("flat"); setTendered(""); setAmountPaid(""); setCustomerId("walk-in");
       setCustomerQuery(""); setCustomerSuggestionsOpen(false);
       setBuyerPan(""); setBuyerAddress("");
+      setPartialMode("cash");
       setInvoiceType(shopInfo?.is_vat_registered ? "tax_invoice" : "abbreviated");
       load();
     } catch (e: any) {
@@ -1201,7 +1211,29 @@ const POS = () => {
                 <Input type="number" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
               </div>
             </div>
-            {paymentMode === "cash" && (
+            {paymentMode === "credit" && Number(amountPaid || 0) > 0 && (
+              <div className="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/90 dark:border-emerald-800/50 rounded-lg p-2.5 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                <Label className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                  <span>Paid Via (अंश भुक्तानी माध्यम)</span>
+                  <span className="text-[10px] uppercase font-semibold text-emerald-600 dark:text-emerald-400">{partialMode}</span>
+                </Label>
+                <Select value={partialMode} onValueChange={(v) => setPartialMode(v)}>
+                  <SelectTrigger className="h-8 text-xs font-medium bg-background border-emerald-300 dark:border-emerald-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash (नगद)</SelectItem>
+                    <SelectItem value="esewa">eSewa</SelectItem>
+                    <SelectItem value="khalti">Khalti</SelectItem>
+                    <SelectItem value="bank">Bank / QR</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10.5px] text-emerald-700/90 dark:text-emerald-400/90 font-medium">
+                  बाँकी रकम (रु. {Math.max(0, total - Number(amountPaid || 0)).toFixed(2)}) ग्राहकको उधारो (Due) खातामा चढ्नेछ।
+                </p>
+              </div>
+            )}
+            {(paymentMode === "cash" || (paymentMode === "credit" && Number(amountPaid || 0) > 0 && partialMode === "cash")) && (
               <div>
                 <Label className="text-xs">Tendered Cash (Optional — For Change)</Label>
                 <Input
