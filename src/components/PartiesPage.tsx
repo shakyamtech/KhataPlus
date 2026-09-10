@@ -1188,112 +1188,162 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 const isDebt = Number(selected.balance) > 0;
                 const isAdvance = Number(selected.balance) < 0;
 
-                const body = `
-              <div class="receipt-card">
-                <div class="shop-header">
-                  <div class="shop-title">${escapeHtml(shop.name)}</div>
-                  <div class="shop-meta">
-                    ${shop.phone ? `<div>Phone: <strong>${escapeHtml(shop.phone)}</strong></div>` : ""}
-                    ${shop.pan ? `<div>PAN / VAT: <strong>${escapeHtml(shop.pan)}</strong></div>` : ""}
-                    <div style="margin-top:2px; font-weight:600; color:#374151;">${type === "customer" ? "Customer" : "Supplier"} Account Ledger</div>
-                  </div>
-                </div>
+                const sortedEntries = [...entries].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                const totalBilled = sortedEntries.filter(e => e.is_order).reduce((s, e) => s + Number(e.amount || 0), 0);
+                const totalPaid = sortedEntries.reduce((s, e) => s + (e.is_order ? Number(e.paid_amount || 0) : Number(e.amount || 0)), 0);
 
-                <div class="bill-info">
-                  <div class="bill-info-item">
-                    <span class="bill-info-label">${type === "customer" ? "Customer" : "Supplier"}</span>
-                    <span class="bill-info-value">${escapeHtml(selected.name)}</span>
-                  </div>
-                  <div class="bill-info-item" style="text-align:right;">
-                    <span class="bill-info-label">Statement Date</span>
-                    <span class="bill-info-value">${format(new Date(), "dd MMM yyyy")}</span>
-                  </div>
-                  ${selected.phone ? `
-                  <div class="bill-info-item" style="margin-top:4px;">
-                    <span class="bill-info-label">Contact Number</span>
-                    <span class="bill-info-value">${escapeHtml(selected.phone)}</span>
-                  </div>
-                  ` : `<div></div>`}
-                  <div class="bill-info-item" style="text-align:right; margin-top:4px;">
-                    <span class="bill-info-label">Account Balance</span>
-                    <span class="bill-info-value" style="color:${isDebt ? '#dc2626' : isAdvance ? '#059669' : '#111827'}; font-weight:700;">
-                      ${isDebt ? `Due: ${fmt(selected.balance)}` : isAdvance ? `Advance: ${fmt(Math.abs(selected.balance))}` : "Settled (Rs. 0)"}
-                    </span>
-                  </div>
-                </div>
+                const rowsHtml = sortedEntries.map((e, idx) => {
+                  const isOrder = e.is_order;
+                  const billedAmt = isOrder ? e.amount : 0;
+                  const paidAmt = isOrder ? Number(e.paid_amount || 0) : Number(e.amount || 0);
 
-                <div style="margin-bottom:14px;">
-                  ${entries.map((e) => `
-                    <div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; margin-bottom:12px; background:#ffffff;">
-                      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #f3f4f6;">
-                        <div>
-                          <div style="font-weight:700; font-size:13px; color:#111827; display:flex; align-items:center; gap:6px;">
-                            <span>${escapeHtml(e.title)}</span>
-                            ${e.payment_mode ? `<span style="font-size:9.5px; text-transform:uppercase; background:#f3f4f6; border:1px solid #e5e7eb; padding:1px 5px; border-radius:4px; font-weight:600; color:#4b5563;">${escapeHtml(e.payment_mode)}</span>` : ""}
-                          </div>
-                          <div style="font-size:11px; color:#6b7280; margin-top:2px;">
-                            ${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}
-                          </div>
+                  return `
+                    <tr>
+                      <td style="text-align:center; border:1px solid #111; padding:6px 5px; vertical-align:top;">${idx + 1}</td>
+                      <td style="white-space:nowrap; border:1px solid #111; padding:6px 8px; font-size:11px; color:#374151; vertical-align:top;">
+                        ${format(new Date(e.created_at), "dd/MM/yyyy, hh:mm a")}
+                      </td>
+                      <td style="border:1px solid #111; padding:6px 8px; vertical-align:top;">
+                        <div style="font-weight:700; color:#111827;">
+                          ${escapeHtml(e.title)}
+                          ${e.voucher_no || e.supplier_bill_no ? `<span style="font-family:monospace; font-weight:600; color:#2563eb; margin-left:4px;">#${escapeHtml(e.supplier_bill_no || e.voucher_no || "")}</span>` : ""}
                         </div>
-                        <div style="text-align:right;">
-                          <div style="font-size:14px; font-weight:800; color:${!e.is_order ? (type === 'customer' ? '#059669' : '#1d4ed8') : (Number(e.due_amount || 0) > 0 ? '#ea580c' : '#111827')};">
-                            ${fmt(e.amount)}
+                        ${e.order_items && e.order_items.length > 0 ? `
+                          <div style="margin-top:3px; font-size:11px; color:#4b5563; background:#f9fafb; padding:4px 6px; border-radius:4px; border:1px solid #f3f4f6;">
+                            ${e.order_items.map((it: any) => `${escapeHtml(it.product_name)} ×${it.qty}${it.price ? ` (@${fmt(it.price)})` : ""}`).join(", ")}
                           </div>
-                          ${e.is_order ? `<div style="font-size:9.5px; color:#6b7280; font-weight:600;">TOTAL BILL</div>` : ""}
+                        ` : e.products ? `
+                          <div style="margin-top:2px; font-size:11px; color:#4b5563;">📦 ${escapeHtml(e.products)}</div>
+                        ` : ""}
+                        ${e.note ? `<div style="margin-top:2px; font-size:10.5px; color:#6b7280; font-style:italic;">💬 ${escapeHtml(e.note)}</div>` : ""}
+                      </td>
+                      <td style="text-align:center; border:1px solid #111; padding:6px 8px; font-size:11px; font-weight:600; text-transform:uppercase; vertical-align:top;">
+                        ${escapeHtml(e.payment_mode || "—")}
+                      </td>
+                      <td style="text-align:right; border:1px solid #111; padding:6px 8px; font-weight:600; vertical-align:top; color:#111827;">
+                        ${billedAmt > 0 ? fmt(billedAmt) : "—"}
+                      </td>
+                      <td style="text-align:right; border:1px solid #111; padding:6px 8px; font-weight:600; vertical-align:top; color:#059669;">
+                        ${paidAmt > 0 ? fmt(paidAmt) : "—"}
+                      </td>
+                    </tr>
+                  `;
+                }).join("");
+
+                const body = `
+                  <div class="a4-container" style="background:#ffffff; color:#000000; padding:28px 32px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
+                    
+                    <!-- Header -->
+                    <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:16px;">
+                      <h1 style="font-size:20px; font-weight:800; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.02em;">${escapeHtml(shop.name)}</h1>
+                      ${shop.address ? `<div style="font-size:12px; font-weight:500;">${escapeHtml(shop.address)}</div>` : ''}
+                      <div style="font-size:12px; font-weight:600; margin-top:2px;">
+                        VAT / PAN: <strong>${escapeHtml(shop.pan || 'N/A')}</strong> ${shop.phone ? `· Ph: <strong>${escapeHtml(shop.phone)}</strong>` : ''}
+                      </div>
+                      <div style="display:inline-block; margin-top:10px; padding:4px 18px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
+                        ${type === "customer" ? "ग्राहक खाता हिसाब विवरण (Customer Ledger Statement)" : "सप्लायर खाता हिसाब विवरण (Supplier Ledger Statement)"}
+                      </div>
+                      <div style="font-size:11px; color:#333; margin-top:6px;">
+                        तयार मिति (Statement Date): <strong>${format(new Date(), "dd/MM/yyyy, hh:mm a")}</strong>
+                      </div>
+                    </div>
+
+                    <!-- Party Information & Balance Summary Box -->
+                    <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:16px; border:1px solid #111; padding:12px 16px; border-radius:6px; margin-bottom:16px; background:#f9fafb;">
+                      <div>
+                        <div style="font-size:10.5px; text-transform:uppercase; color:#6b7280; font-weight:700;">पार्टी विवरण (Party Details):</div>
+                        <div style="font-size:15px; font-weight:800; color:#111827; margin-top:2px;">${escapeHtml(selected.name)}</div>
+                        ${selected.address ? `<div style="font-size:11.5px; color:#374151; margin-top:2px;">📍 ${escapeHtml(selected.address)}</div>` : ""}
+                        <div style="font-size:11.5px; color:#374151; margin-top:2px;">
+                          ${selected.phone ? `📞 फोन: <strong>${escapeHtml(selected.phone)}</strong>` : ""}
+                          ${selected.pan ? ` · PAN: <strong>${escapeHtml(selected.pan)}</strong>` : ""}
                         </div>
                       </div>
-
-                      ${e.order_items && e.order_items.length > 0 ? `
-                        <table style="width:100%; border-collapse:collapse; margin-bottom:4px; font-size:11.5px;">
-                          <thead>
-                            <tr style="border-bottom:1.5px solid #d1d5db; color:#4b5563;">
-                              <th style="text-align:left; padding:4px 2px; font-weight:700; font-size:10.5px; text-transform:uppercase;">Item</th>
-                              <th style="text-align:center; padding:4px 4px; font-weight:700; font-size:10.5px; text-transform:uppercase; width:18%;">Qty</th>
-                              <th style="text-align:right; padding:4px 4px; font-weight:700; font-size:10.5px; text-transform:uppercase; width:22%;">Rate</th>
-                              <th style="text-align:right; padding:4px 2px; font-weight:700; font-size:10.5px; text-transform:uppercase; width:25%;">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            ${e.order_items.map(it => `
-                              <tr style="border-bottom:1px dashed #e5e7eb;">
-                                <td style="padding:5px 2px; font-weight:600; color:#111827;">${escapeHtml(it.product_name)}</td>
-                                <td style="padding:5px 4px; text-align:center; color:#4b5563;">${fmtQty(it.qty)} <span style="font-size:10px; color:#9ca3af;">${escapeHtml(it.unit)}</span></td>
-                                <td style="padding:5px 4px; text-align:right; color:#4b5563;">${it.price ? fmt(it.price) : "-"}</td>
-                                <td style="padding:5px 2px; text-align:right; font-weight:700; color:#111827;">${it.total ? fmt(it.total) : (it.price ? fmt(it.price * it.qty) : "-")}</td>
-                              </tr>
-                            `).join("")}
-                          </tbody>
-                        </table>
-                      ` : e.products ? `
-                        <div style="font-size:12px; color:#4b5563; padding:4px 0;">${type === "customer" ? "🛒" : "📦"} ${escapeHtml(e.products)}</div>
-                      ` : ""}
-
-                      ${e.is_order && (Number(e.paid_amount || 0) > 0 || Number(e.due_amount || 0) > 0) ? `
-                        <div style="display:flex; justify-content:flex-end; gap:12px; font-size:11px; margin-top:6px; padding-top:4px; border-top:1px dashed #e5e7eb; color:#6b7280;">
-                          <span>Paid: <strong style="color:#059669;">${fmt(e.paid_amount ?? e.amount)}</strong></span>
-                          ${Number(e.due_amount || 0) > 0 ? `<span>Due: <strong style="color:#ea580c;">${fmt(e.due_amount!)}</strong></span>` : `<span style="color:#059669;">(Fully Paid)</span>`}
+                      <div style="text-align:right; display:flex; flex-direction:column; justify-content:center;">
+                        <div style="font-size:10.5px; text-transform:uppercase; color:#6b7280; font-weight:700;">हालको खाता स्थिति (Account Balance):</div>
+                        <div style="font-size:18px; font-weight:900; margin-top:2px; color:${isDebt ? '#dc2626' : isAdvance ? '#059669' : '#111827'};">
+                          ${isDebt ? `बाँकी (Due): ${fmt(selected.balance)}` : isAdvance ? `अग्रिम (Advance): ${fmt(Math.abs(selected.balance))}` : "हिसाब चुक्ता (Settled)"}
                         </div>
-                      ` : ""}
-
-                      ${e.note ? `<div style="font-size:11px; color:#6b7280; margin-top:4px; font-style:italic;">💬 ${escapeHtml(e.note)}</div>` : ""}
+                        <div style="font-size:10.5px; color:#6b7280; margin-top:1px;">
+                          ${type === 'customer' ? (isDebt ? 'ग्राहकबाट लिनुपर्ने रकम' : 'ग्राहकलाई दिनुपर्ने अग्रिम') : (isDebt ? 'सप्लायरलाई तिर्नुपर्ने रकम' : 'सप्लायरमा रहेको अग्रिम')}
+                        </div>
+                      </div>
                     </div>
-                  `).join("")}
-                  ${entries.length === 0 ? `<div style="text-align:center; padding:20px; color:#9ca3af;">No transaction records found</div>` : ""}
-                </div>
 
-                <div class="summary-section">
-                  <div class="summary-row grand-total">
-                    <span>Outstanding ${dueLabel}</span>
-                    <span>${fmt(Math.abs(Number(selected.balance)))}</span>
+                    <!-- Summary KPI Cards -->
+                    <div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:16px;">
+                      <div style="flex:1; background:#ffffff; border:1.5px solid #111; border-radius:6px; padding:8px 12px;">
+                        <div style="font-size:10.5px; color:#4b5563; font-weight:700; text-transform:uppercase;">
+                          ${type === "customer" ? "कुल बिक्री बिल (Total Invoiced)" : "कुल खरिद बिल (Total Inward)"}
+                        </div>
+                        <div style="font-size:15px; font-weight:800; color:#111827; margin-top:2px;">
+                          ${fmt(totalBilled)}
+                        </div>
+                      </div>
+                      <div style="flex:1; background:#ffffff; border:1.5px solid #059669; border-radius:6px; padding:8px 12px;">
+                        <div style="font-size:10.5px; color:#166534; font-weight:700; text-transform:uppercase;">
+                          ${type === "customer" ? "कुल प्राप्त रकम (Total Received)" : "कुल भुक्तानी गरिएको (Total Paid Out)"}
+                        </div>
+                        <div style="font-size:15px; font-weight:800; color:#059669; margin-top:2px;">
+                          ${fmt(totalPaid)}
+                        </div>
+                      </div>
+                      <div style="flex:1; background:${isDebt ? '#fef2f2' : '#f0fdf4'}; border:1.5px solid ${isDebt ? '#dc2626' : '#059669'}; border-radius:6px; padding:8px 12px;">
+                        <div style="font-size:10.5px; color:${isDebt ? '#991b1b' : '#166534'}; font-weight:700; text-transform:uppercase;">
+                          अन्तिम बाँकी (Outstanding Balance)
+                        </div>
+                        <div style="font-size:15px; font-weight:800; color:${isDebt ? '#dc2626' : '#059669'}; margin-top:2px;">
+                          ${fmt(Math.abs(Number(selected.balance)))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Ledger Table -->
+                    <div style="margin-bottom:20px;">
+                      <table style="width:100%; border-collapse:collapse; font-size:11.5px; border:1px solid #111;">
+                        <thead>
+                          <tr style="background:#e5e7eb; font-weight:700;">
+                            <th style="border:1px solid #111; padding:6px 5px; text-align:center; width:35px;">क्र.सं.</th>
+                            <th style="border:1px solid #111; padding:6px 8px; text-align:left; width:130px;">मिति तथा समय</th>
+                            <th style="border:1px solid #111; padding:6px 8px; text-align:left;">कारोबार विवरण (Particulars & Items)</th>
+                            <th style="border:1px solid #111; padding:6px 8px; text-align:center; width:85px;">माध्यम</th>
+                            <th style="border:1px solid #111; padding:6px 8px; text-align:right; width:100px;">
+                              ${type === "customer" ? "बिल रकम (Debit)" : "बिल रकम (Credit)"}
+                            </th>
+                            <th style="border:1px solid #111; padding:6px 8px; text-align:right; width:100px;">
+                              ${type === "customer" ? "भुक्तानी (Credit)" : "भुक्तानी (Debit)"}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${rowsHtml.length > 0 ? rowsHtml : `<tr><td colspan="6" style="text-align:center; padding:16px; color:#6b7280; border:1px solid #111;">कुनै कारोबार फेला परेन।</td></tr>`}
+                        </tbody>
+                        <tfoot>
+                          <tr style="background:#f3f4f6; font-weight:bold; border-top:2px solid #111;">
+                            <td colspan="4" style="border:1px solid #111; padding:7px 8px; text-align:right;">कुल जम्मा (Total):</td>
+                            <td style="border:1px solid #111; padding:7px 8px; text-align:right; color:#111827; font-weight:700;">${fmt(totalBilled)}</td>
+                            <td style="border:1px solid #111; padding:7px 8px; text-align:right; color:#059669; font-weight:700;">${fmt(totalPaid)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    <!-- Official Signatures -->
+                    <div style="display:flex; justify-content:space-between; margin-top:35px; padding-top:10px; page-break-inside:avoid;">
+                      <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px; font-weight:600;">
+                        तयार गर्ने (Prepared By)
+                      </div>
+                      <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px; font-weight:600;">
+                        पार्टीको हस्ताक्षर (Party Signature)
+                      </div>
+                      <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px; font-weight:700;">
+                        आधिकारिक हस्ताक्षर (Authorized Signature)
+                      </div>
+                    </div>
+
                   </div>
-                </div>
-
-                <div class="receipt-footer">
-                  <div class="footer-highlight">Thank you for your business!</div>
-                  <div class="brand-tag">KhataPlus Store Management System</div>
-                </div>
-              </div>`;
-                printHTML(`${selected.name} — Ledger`, body);
+                `;
+                printHTML(`${selected.name} — Ledger Statement`, body, { paperSize: "a4" });
               }}><Printer className="h-4 w-4 mr-1" />Print Ledger</Button>
 
               <AlertDialog>
