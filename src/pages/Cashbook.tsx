@@ -403,6 +403,7 @@ const Cashbook = () => {
 
   const printBook = async () => {
     const shop = await getShopInfo();
+    const preparedByName = (shop.owner_name || user?.displayName || "").trim();
     const sortedPrintRows = [...filtered].sort((a, b) => {
       const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -502,6 +503,7 @@ const Cashbook = () => {
         <div style="display:flex; justify-content:space-between; margin-top:35px; padding-top:10px; page-break-inside:avoid;">
           <div style="border-top:1px dashed #444; width:180px; text-align:center; padding-top:4px; font-weight:600;">
             तयार गर्ने (Prepared By)
+            ${preparedByName ? `<div style="font-size:11px; font-weight:normal; color:#374151; margin-top:2px;">${escapeHtml(preparedByName)}</div>` : ""}
           </div>
           <div style="border-top:1px dashed #444; width:180px; text-align:center; padding-top:4px; font-weight:700;">
             आधिकारिक हस्ताक्षर (Authorized Signature)

@@ -337,6 +337,7 @@ const Reports = () => {
 
   const handlePrintPlReport = () => {
     if (!shopInfo) return;
+    const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
     const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
     const periodLabel = plPeriodMode === "month" ? plMonthLabel : `अघिल्लो ${range} दिन (Last ${range} Days)`;
 
@@ -436,7 +437,10 @@ const Reports = () => {
         <!-- Signatures -->
         <div style="display:flex; justify-content:space-between; margin-top:40px; padding-top:12px; page-break-inside:avoid;">
           <div style="text-align:center; width:200px;">
-            <div style="border-top:1px dashed #333; padding-top:5px; font-weight:600;">तयार गर्ने (Prepared By)</div>
+            <div style="border-top:1px dashed #333; padding-top:5px; font-weight:600;">
+              तयार गर्ने (Prepared By)
+              ${preparedByName ? `<div style="font-size:11px; font-weight:normal; color:#374151; margin-top:2px;">${escapeHtml(preparedByName)}</div>` : ""}
+            </div>
           </div>
           <div style="text-align:center; width:200px;">
             <div style="border-top:1px dashed #333; padding-top:5px; font-weight:700;">आधिकारिक हस्ताक्षर (Authorized Signature)</div>
@@ -466,6 +470,7 @@ const Reports = () => {
 
   const handlePrintVatReport = () => {
     if (!shopInfo) return;
+    const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
     const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
     const isPayable = vatMonthlyTotals.netPayable > 0;
     const netStatusText = isPayable
@@ -637,13 +642,14 @@ const Reports = () => {
 
         <!-- Official Signatures -->
         <div class="signature-box" style="display:flex; justify-content:space-between; margin-top:28px; padding-top:10px; font-size:11.5px;">
-          <div style="border-top:1px dashed #444; width:150px; text-align:center; padding-top:4px;">
+          <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px; font-weight:600;">
             तयार गर्ने (Prepared By)
+            ${preparedByName ? `<div style="font-size:11px; font-weight:normal; color:#374151; margin-top:2px;">${escapeHtml(preparedByName)}</div>` : ""}
           </div>
-          <div style="border-top:1px dashed #444; width:150px; text-align:center; padding-top:4px;">
+          <div style="border-top:1px dashed #444; width:150px; text-align:center; padding-top:4px; font-weight:600;">
             लेखापाल (Accountant)
           </div>
-          <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px;">
+          <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px; font-weight:700;">
             प्रमाणित गर्ने / प्रोप्राइटर (Authorized Signatory)
           </div>
         </div>

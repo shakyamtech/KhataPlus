@@ -1185,6 +1185,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               </Button>
               <Button variant="outline" onClick={async () => {
                 const shop = await getShopInfo();
+                const preparedByName = (shop.owner_name || user?.displayName || "").trim();
                 const isDebt = Number(selected.balance) > 0;
                 const isAdvance = Number(selected.balance) < 0;
 
@@ -1330,13 +1331,14 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                     <!-- Official Signatures -->
                     <div style="display:flex; justify-content:space-between; margin-top:35px; padding-top:10px; page-break-inside:avoid;">
-                      <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px; font-weight:600;">
+                      <div style="border-top:1px dashed #444; width:180px; text-align:center; padding-top:4px; font-weight:600;">
                         तयार गर्ने (Prepared By)
+                        ${preparedByName ? `<div style="font-size:11px; font-weight:normal; color:#374151; margin-top:2px;">${escapeHtml(preparedByName)}</div>` : ""}
                       </div>
-                      <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px; font-weight:600;">
+                      <div style="border-top:1px dashed #444; width:180px; text-align:center; padding-top:4px; font-weight:600;">
                         पार्टीको हस्ताक्षर (Party Signature)
                       </div>
-                      <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px; font-weight:700;">
+                      <div style="border-top:1px dashed #444; width:180px; text-align:center; padding-top:4px; font-weight:700;">
                         आधिकारिक हस्ताक्षर (Authorized Signature)
                       </div>
                     </div>
