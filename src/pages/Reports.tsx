@@ -446,7 +446,7 @@ const Reports = () => {
       </div>
     `;
 
-    printHTML(`Profit_Loss_Statement_${periodLabel.replace(/[\s\/]+/g, '_')}`, body);
+    printHTML(`Profit_Loss_Statement_${periodLabel.replace(/[\s\/]+/g, '_')}`, body, { paperSize: "a4" });
   };
 
   const chartData = useMemo(() => {
