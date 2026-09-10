@@ -82,11 +82,13 @@ const Reports = () => {
   const isVatShop = shopInfo?.is_vat_registered === true;
 
   const totals = useMemo(() => {
+    const grossRevenue = sales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
+    const discountAllowed = sales.reduce((s, r) => s + Number(r.discount || 0), 0);
     const revenue = sales.reduce((s, r) => s + Number(r.total), 0);
     const cogs = sales.reduce((s, r) => s + Number(r.cost_total), 0);
     const exp = expenses.reduce((s, r) => s + Number(r.amount), 0);
     const totalExp = exp + wastage;
-    return { revenue, cogs, gross: revenue - cogs, exp: totalExp, storeExp: exp, wastage, net: revenue - cogs - totalExp };
+    return { grossRevenue, discountAllowed, revenue, cogs, gross: revenue - cogs, exp: totalExp, storeExp: exp, wastage, net: revenue - cogs - totalExp };
   }, [sales, expenses, wastage]);
 
   const vatTotals = useMemo(() => {
@@ -527,11 +529,17 @@ const Reports = () => {
               <section className="space-y-3">
                 <h3 className="text-xs font-bold text-primary uppercase tracking-wider border-b pb-1">Operating Income</h3>
                 <div className="flex justify-between items-center py-1">
-                  <span className="text-sm">Gross Sales (Revenue)</span>
-                  <span className="font-medium">{fmt(totals.revenue)}</span>
+                  <span className="text-sm">Gross Sales (कुल बिक्री)</span>
+                  <span className="font-medium">{fmt(totals.grossRevenue)}</span>
                 </div>
+                {totals.discountAllowed > 0 && (
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Less: Discount Allowed (छुट दिइएको)</span>
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">({fmt(totals.discountAllowed)})</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center py-2 border-t font-bold">
-                  <span>Total Income</span>
+                  <span>Net Sales Revenue (खुद बिक्री)</span>
                   <span className="text-primary underline underline-offset-4 decoration-2">{fmt(totals.revenue)}</span>
                 </div>
               </section>
