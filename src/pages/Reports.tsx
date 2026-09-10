@@ -84,12 +84,15 @@ const Reports = () => {
   const totals = useMemo(() => {
     const grossRevenue = sales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
     const discountAllowed = sales.reduce((s, r) => s + Number(r.discount || 0), 0);
+    const discountReceived = purchases.reduce((s, r) => s + Number(r.discount || 0), 0);
     const revenue = sales.reduce((s, r) => s + Number(r.total), 0);
     const cogs = sales.reduce((s, r) => s + Number(r.cost_total), 0);
     const exp = expenses.reduce((s, r) => s + Number(r.amount), 0);
     const totalExp = exp + wastage;
-    return { grossRevenue, discountAllowed, revenue, cogs, gross: revenue - cogs, exp: totalExp, storeExp: exp, wastage, net: revenue - cogs - totalExp };
-  }, [sales, expenses, wastage]);
+    const gross = revenue - cogs;
+    const net = gross + discountReceived - totalExp;
+    return { grossRevenue, discountAllowed, discountReceived, revenue, cogs, gross, exp: totalExp, storeExp: exp, wastage, net };
+  }, [sales, purchases, expenses, wastage]);
 
   const vatTotals = useMemo(() => {
     const sMap = new Map(suppliers.map(s => [s.id, s]));
@@ -557,6 +560,17 @@ const Reports = () => {
                 </div>
               </section>
 
+              {/* Other Income & Savings Section (Purchase Discount) */}
+              {totals.discountReceived > 0 && (
+                <section className="space-y-3">
+                  <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border-b pb-1">Other Income & Savings</h3>
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-sm">Discount Received on Purchases (खरिद छुट पाएको)</span>
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">+{fmt(totals.discountReceived)}</span>
+                  </div>
+                </section>
+              )}
+
               {/* Expenses Section */}
               <section className="space-y-3">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b pb-1">Operating Expenses</h3>
@@ -581,7 +595,9 @@ const Reports = () => {
                 <div className="flex justify-between items-center p-4 bg-primary/5 border border-primary/20 rounded-xl">
                   <div>
                     <div className="text-sm font-bold text-primary uppercase tracking-widest">Net Business Profit</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">Calculated as: Gross Profit - Expenses</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      Calculated as: Gross Profit {totals.discountReceived > 0 ? "+ Other Income " : ""}- Expenses
+                    </div>
                   </div>
                   <div className={`text-3xl font-display ${totals.net >= 0 ? "text-primary" : "text-destructive"}`}>
                     {fmt(totals.net)}
