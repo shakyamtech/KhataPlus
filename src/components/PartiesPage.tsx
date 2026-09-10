@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil } from "lucide-react";
+import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
@@ -18,6 +18,7 @@ import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 
 type OrderItem = {
@@ -51,6 +52,21 @@ type Entry = {
   vat_amount?: number;
   is_vat_bill?: boolean;
   supplier_bill_no?: string;
+  bill_no?: string;
+  voucher_no?: string;
+  reference_id?: string;
+  is_settlement?: boolean;
+};
+
+type UnpaidBill = {
+  id: string;
+  bill_no: string;
+  supplier_bill_no?: string;
+  created_at: string;
+  total: number;
+  paid_amount: number;
+  due_amount: number;
+  type: "sale" | "purchase";
 };
 
 export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
@@ -67,6 +83,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [balanceType, setBalanceType] = useState<"payable" | "receivable">(type === "customer" ? "receivable" : "payable");
   const [selected, setSelected] = useState<Party | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [unpaidBills, setUnpaidBills] = useState<UnpaidBill[]>([]);
+  const [settlementMode, setSettlementMode] = useState<"specific" | "fifo" | "on_account">("specific");
+  const [selectedBillId, setSelectedBillId] = useState<string>("");
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState(""); const [payNote, setPayNote] = useState("");
   const [payPaymentMode, setPayPaymentMode] = useState<string>("cash");
@@ -179,6 +198,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             id: s.id,
             is_order: true,
             title: `Sale`,
+            bill_no: s.bill_no || s.id.slice(-6).toUpperCase(),
             payment_mode: s.payment_mode || "cash",
             amount: totalAmt,
             paid_amount: paidAmt,
@@ -197,7 +217,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         });
 
         ledgerData.forEach((l: any) => {
-          if (l.reference_id && saleIdsSet.has(l.reference_id)) return;
+          if (l.reference_id && saleIdsSet.has(l.reference_id) && !l.is_settlement) return;
           items.push({
             id: l.id,
             entry_type: l.entry_type,
@@ -205,12 +225,30 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             title: l.entry_type === "payment_in" ? "Payment Received" : l.entry_type.replace("_", " "),
             amount: Number(l.amount),
             created_at: l.created_at,
+            payment_mode: l.payment_mode,
+            bill_no: l.bill_no,
+            reference_id: l.reference_id,
+            is_settlement: l.is_settlement,
             note: l.note
           });
         });
 
         items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setEntries(items);
+
+        const unpaid = items
+          .filter((it) => it.is_order && Number(it.due_amount || 0) > 0)
+          .map((it) => ({
+            id: it.id,
+            bill_no: it.bill_no || it.id.slice(-6).toUpperCase(),
+            created_at: it.created_at,
+            total: it.amount,
+            paid_amount: it.paid_amount || 0,
+            due_amount: it.due_amount || it.amount,
+            type: "sale" as const
+          }))
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setUnpaidBills(unpaid);
 
       } else {
         const pQ = query(collection(db, "purchases"), where("supplier_id", "==", p.id));
@@ -259,6 +297,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             id: pu.id,
             is_order: true,
             title: `Purchase`,
+            voucher_no: pu.voucher_no || pu.id.slice(-6).toUpperCase(),
+            supplier_bill_no: pu.supplier_bill_no,
             payment_mode: pu.payment_mode || "cash",
             amount: totalAmt,
             paid_amount: paidAmt,
@@ -266,7 +306,6 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             created_at: pu.created_at,
             note: pu.note,
             is_vat_bill: pu.is_vat_bill,
-            supplier_bill_no: pu.supplier_bill_no,
             taxable_amount: pu.taxable_amount,
             vat_amount: pu.vat_amount,
             order_items: orderItems,
@@ -275,7 +314,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         });
 
         ledgerData.forEach((l: any) => {
-          if (l.reference_id && purIdsSet.has(l.reference_id)) return;
+          if (l.reference_id && purIdsSet.has(l.reference_id) && !l.is_settlement) return;
           items.push({
             id: l.id,
             entry_type: l.entry_type,
@@ -283,12 +322,31 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             title: l.entry_type === "payment_out" ? "Payment Made" : l.entry_type.replace("_", " "),
             amount: Number(l.amount),
             created_at: l.created_at,
+            payment_mode: l.payment_mode,
+            voucher_no: l.voucher_no || l.bill_no,
+            reference_id: l.reference_id,
+            is_settlement: l.is_settlement,
             note: l.note
           });
         });
 
         items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setEntries(items);
+
+        const unpaid = items
+          .filter((it) => it.is_order && Number(it.due_amount || 0) > 0)
+          .map((it) => ({
+            id: it.id,
+            bill_no: it.voucher_no || (it.supplier_bill_no ? `Bill #${it.supplier_bill_no}` : it.id.slice(-6).toUpperCase()),
+            supplier_bill_no: it.supplier_bill_no,
+            created_at: it.created_at,
+            total: it.amount,
+            paid_amount: it.paid_amount || 0,
+            due_amount: it.due_amount || it.amount,
+            type: "purchase" as const
+          }))
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setUnpaidBills(unpaid);
       }
     } catch (e: any) {
       toast.error(e.message);
@@ -530,47 +588,207 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     }
   };
 
+  const openPaymentModal = () => {
+    if (!selected) return;
+    if (unpaidBills.length > 0) {
+      setSettlementMode("specific");
+      setSelectedBillId(unpaidBills[0].id);
+      setPayAmount(unpaidBills[0].due_amount.toString());
+    } else {
+      setSettlementMode("on_account");
+      setSelectedBillId("");
+      const bal = Math.abs(Number(selected.balance || 0));
+      setPayAmount(bal > 0 ? bal.toString() : "");
+    }
+    setPayNote("");
+    setPayPaymentMode("cash");
+    setPayOpen(true);
+  };
+
+  const handlePaySingleBill = (e: Entry) => {
+    setSettlementMode("specific");
+    setSelectedBillId(e.id);
+    setPayAmount(String(e.due_amount ?? e.amount));
+    setPayNote("");
+    setPayPaymentMode("cash");
+    setPayOpen(true);
+  };
+
+  const handleBillSelect = (billId: string) => {
+    setSelectedBillId(billId);
+    const b = unpaidBills.find(x => x.id === billId);
+    if (b) {
+      setPayAmount(b.due_amount.toString());
+    }
+  };
+
   const recordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selected || !payAmount || Number(payAmount) <= 0) return toast.error("Enter a valid amount");
+    if (!selected) return;
+    const amt = Number(payAmount);
+    if (isNaN(amt) || amt <= 0) return toast.error("Enter a valid amount");
+
     setBusyPayment(true);
     try {
       const batch = writeBatch(db);
-      const lRef = doc(collection(db, "ledger_entries"));
+      const isReceived = type === "customer";
+      const now = new Date().toISOString();
 
-      batch.set(lRef, {
-        id: lRef.id,
-        user_id: user?.uid,
-        party_type: type,
-        party_id: selected.id,
-        entry_type: type === "customer" ? "payment_in" : "payment_out",
-        party_name: selected.name,
-        amount: Number(payAmount),
-        payment_mode: payPaymentMode,
-        note: (payNote ? payNote + " " : "") + `(Ledger Payment)`,
-        created_at: new Date().toISOString()
-      });
+      if (settlementMode === "specific") {
+        const targetBill = unpaidBills.find(b => b.id === selectedBillId);
+        if (!targetBill) {
+          setBusyPayment(false);
+          return toast.error("Please select a valid bill to settle");
+        }
+        if (amt > targetBill.due_amount) {
+          setBusyPayment(false);
+          return toast.error(`Amount cannot exceed remaining bill due (${fmt(targetBill.due_amount)}). For larger payments, choose Auto FIFO or On-Account.`);
+        }
 
-      const cashRef = doc(collection(db, "cash_transactions"));
-      batch.set(cashRef, {
-        id: cashRef.id,
-        user_id: user?.uid,
-        direction: type === "customer" ? "in" : "out",
-        category: type === "customer" ? "customer_payment" : "supplier_payment",
-        party_id: selected.id,
-        party_name: selected.name,
-        amount: Number(payAmount),
-        payment_mode: payPaymentMode,
-        note: (payNote ? payNote + " " : "") + `(Ledger Payment)`,
-        created_at: new Date().toISOString()
-      });
+        const lRef = doc(collection(db, "ledger_entries"));
+        const billLabel = targetBill.bill_no;
+        const noteDetail = (payNote ? payNote.trim() + " · " : "") + 
+          (isReceived ? `Payment for Bill #${billLabel}` : `Payment for Bill #${billLabel}` + (targetBill.supplier_bill_no ? ` (Supplier Bill: #${targetBill.supplier_bill_no})` : ""));
+
+        batch.set(lRef, {
+          id: lRef.id,
+          user_id: user?.uid,
+          party_type: type,
+          party_id: selected.id,
+          entry_type: isReceived ? "payment_in" : "payment_out",
+          party_name: selected.name,
+          amount: amt,
+          payment_mode: payPaymentMode,
+          reference_id: targetBill.id,
+          bill_no: billLabel,
+          is_settlement: true,
+          note: noteDetail,
+          created_at: now
+        });
+
+        const cashRef = doc(collection(db, "cash_transactions"));
+        batch.set(cashRef, {
+          id: cashRef.id,
+          user_id: user?.uid,
+          direction: isReceived ? "in" : "out",
+          category: isReceived ? "customer_payment" : "supplier_payment",
+          party_id: selected.id,
+          party_name: selected.name,
+          amount: amt,
+          payment_mode: payPaymentMode,
+          reference_id: targetBill.id,
+          note: noteDetail,
+          created_at: now
+        });
+
+      } else if (settlementMode === "fifo") {
+        let remaining = amt;
+        const sorted = [...unpaidBills].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        
+        for (const bill of sorted) {
+          if (remaining <= 0) break;
+          const alloc = Math.min(remaining, bill.due_amount);
+          if (alloc <= 0) continue;
+
+          const lRef = doc(collection(db, "ledger_entries"));
+          const billLabel = bill.bill_no;
+          const noteDetail = (payNote ? payNote.trim() + " · " : "") + 
+            `Settlement for Bill #${billLabel}` + (bill.supplier_bill_no ? ` (Supplier Bill: #${bill.supplier_bill_no})` : "");
+
+          batch.set(lRef, {
+            id: lRef.id,
+            user_id: user?.uid,
+            party_type: type,
+            party_id: selected.id,
+            entry_type: isReceived ? "payment_in" : "payment_out",
+            party_name: selected.name,
+            amount: alloc,
+            payment_mode: payPaymentMode,
+            reference_id: bill.id,
+            bill_no: billLabel,
+            is_settlement: true,
+            note: noteDetail,
+            created_at: now
+          });
+
+          remaining -= alloc;
+        }
+
+        if (remaining > 0) {
+          const lRef = doc(collection(db, "ledger_entries"));
+          batch.set(lRef, {
+            id: lRef.id,
+            user_id: user?.uid,
+            party_type: type,
+            party_id: selected.id,
+            entry_type: isReceived ? "payment_in" : "payment_out",
+            party_name: selected.name,
+            amount: remaining,
+            payment_mode: payPaymentMode,
+            is_settlement: true,
+            note: (payNote ? payNote.trim() + " · " : "") + "Advance / On-Account Balance",
+            created_at: now
+          });
+        }
+
+        const cashRef = doc(collection(db, "cash_transactions"));
+        batch.set(cashRef, {
+          id: cashRef.id,
+          user_id: user?.uid,
+          direction: isReceived ? "in" : "out",
+          category: isReceived ? "customer_payment" : "supplier_payment",
+          party_id: selected.id,
+          party_name: selected.name,
+          amount: amt,
+          payment_mode: payPaymentMode,
+          note: (payNote ? payNote.trim() + " · " : "") + (isReceived ? `Payment received from ${selected.name} (FIFO Settlement)` : `Payment made to ${selected.name} (FIFO Settlement)`),
+          created_at: now
+        });
+
+      } else {
+        const lRef = doc(collection(db, "ledger_entries"));
+        batch.set(lRef, {
+          id: lRef.id,
+          user_id: user?.uid,
+          party_type: type,
+          party_id: selected.id,
+          entry_type: isReceived ? "payment_in" : "payment_out",
+          party_name: selected.name,
+          amount: amt,
+          payment_mode: payPaymentMode,
+          note: (payNote ? payNote.trim() + " · " : "") + "(On-Account Payment)",
+          created_at: now
+        });
+
+        const cashRef = doc(collection(db, "cash_transactions"));
+        batch.set(cashRef, {
+          id: cashRef.id,
+          user_id: user?.uid,
+          direction: isReceived ? "in" : "out",
+          category: isReceived ? "customer_payment" : "supplier_payment",
+          party_id: selected.id,
+          party_name: selected.name,
+          amount: amt,
+          payment_mode: payPaymentMode,
+          note: (payNote ? payNote.trim() + " · " : "") + `(On-Account Payment · ${selected.name})`,
+          created_at: now
+        });
+      }
 
       await batch.commit();
 
-      toast.success("Payment recorded"); setPayOpen(false); setPayAmount(""); setPayNote(""); setPayPaymentMode("cash");
-      openLedger(selected); load();
-    } catch (e: any) {
-      toast.error(e.message);
+      toast.success("Payment recorded successfully!");
+      setPayOpen(false);
+      setPayAmount("");
+      setPayNote("");
+      setPayPaymentMode("cash");
+      setSelectedBillId("");
+
+      await openLedger(selected);
+      load();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to record payment");
     } finally {
       setBusyPayment(false);
     }
@@ -670,10 +888,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               <span class="bill-info-label">Voucher Date</span>
               <span class="bill-info-value">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}</span>
             </div>
-            ${selected.phone ? `
+            ${(e.bill_no || e.voucher_no) ? `
             <div class="bill-info-item" style="margin-top:4px;">
-              <span class="bill-info-label">Contact Number</span>
-              <span class="bill-info-value">${escapeHtml(selected.phone)}</span>
+              <span class="bill-info-label">Settled Bill</span>
+              <span class="bill-info-value" style="font-family:monospace; font-weight:700; color:#2563eb;">#${escapeHtml(e.bill_no || e.voucher_no || "")}</span>
             </div>
             ` : `<div></div>`}
             <div class="bill-info-item" style="text-align:right; margin-top:4px;">
@@ -723,6 +941,199 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       printHTML(`${selected.name} — ${voucherTitle}`, body);
     }
   };
+
+  const renderPaymentDialog = () => (
+    <Dialog open={payOpen} onOpenChange={setPayOpen}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-primary" />
+            <span>
+              {type === "customer" ? "Record Payment Received (उधारो असुली)" : "Record Payment Made (खरिद भुक्तानी)"}
+            </span>
+          </DialogTitle>
+          <DialogDescription>
+            {selected ? `Party: ${selected.name} (Current Balance: ${fmt(selected.balance)})` : "Process a payment entry"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={recordPayment} className="space-y-4 pt-1">
+          {/* Settlement Mode Selection */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase text-muted-foreground">Settlement Method / समायोजन विधि</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSettlementMode("specific");
+                  if (unpaidBills.length > 0) {
+                    const b = unpaidBills.find(x => x.id === selectedBillId) || unpaidBills[0];
+                    setSelectedBillId(b.id);
+                    setPayAmount(b.due_amount.toString());
+                  }
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2.5 rounded-lg border text-center text-xs transition-all",
+                  settlementMode === "specific"
+                    ? "border-primary bg-primary/10 text-primary font-semibold shadow-xs"
+                    : "border-border hover:bg-muted/50 text-muted-foreground"
+                )}
+              >
+                <span className="font-medium text-xs">Specific Bill</span>
+                <span className="text-[10px] opacity-80">निश्चित बिल</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSettlementMode("fifo");
+                  if (unpaidBills.length > 0) {
+                    const totalUnpaid = unpaidBills.reduce((s, b) => s + b.due_amount, 0);
+                    setPayAmount(totalUnpaid.toString());
+                  }
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2.5 rounded-lg border text-center text-xs transition-all",
+                  settlementMode === "fifo"
+                    ? "border-primary bg-primary/10 text-primary font-semibold shadow-xs"
+                    : "border-border hover:bg-muted/50 text-muted-foreground"
+                )}
+              >
+                <span className="font-medium text-xs">Auto FIFO</span>
+                <span className="text-[10px] opacity-80">पुरानोबाट क्रमशः</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSettlementMode("on_account");
+                  setSelectedBillId("");
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2.5 rounded-lg border text-center text-xs transition-all",
+                  settlementMode === "on_account"
+                    ? "border-primary bg-primary/10 text-primary font-semibold shadow-xs"
+                    : "border-border hover:bg-muted/50 text-muted-foreground"
+                )}
+              >
+                <span className="font-medium text-xs">On-Account</span>
+                <span className="text-[10px] opacity-80">खातागत लम्पसम</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Specific Bill Dropdown */}
+          {settlementMode === "specific" && (
+            <div className="space-y-1.5 p-3 rounded-lg bg-muted/40 border">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Select Bill to Settle / चुक्ता गर्ने बिल</Label>
+                <span className="text-[11px] text-muted-foreground">
+                  {unpaidBills.length} unpaid bill{unpaidBills.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              {unpaidBills.length === 0 ? (
+                <div className="text-xs text-amber-600 dark:text-amber-400 py-2">
+                  कुनै पनि बाँकी बिल भेटिएन। तपाईंले <strong>On-Account</strong> भुक्तानी रोज्न सक्नुहुन्छ।
+                </div>
+              ) : (
+                <Select value={selectedBillId} onValueChange={handleBillSelect}>
+                  <SelectTrigger className="w-full bg-background">
+                    <SelectValue placeholder="Select a bill" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56">
+                    {unpaidBills.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        <div className="flex items-center justify-between gap-4 w-full">
+                          <span>
+                            <strong>#{b.bill_no || b.id.slice(-6).toUpperCase()}</strong> ({format(new Date(b.created_at), "dd MMM yyyy")})
+                          </span>
+                          <span className="font-semibold text-rose-600 dark:text-rose-400">
+                            Due: {fmt(b.due_amount)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
+          {/* FIFO Helper Banner */}
+          {settlementMode === "fifo" && (
+            <div className="text-xs p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-950/40 dark:border-blue-900 dark:text-blue-300">
+              💡 तपाईंले जति रकम राख्नुहुन्छ, सिस्टमले सबैभन्दा पुरानो बाँकी बिलबाट सुरु गरेर स्वतः चुक्ता (settle) गर्दै जानेछ।
+            </div>
+          )}
+
+          {/* On-Account Helper Banner */}
+          {settlementMode === "on_account" && (
+            <div className="text-xs p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-900 dark:text-amber-300">
+              ℹ️ यो रकम कुनै निश्चित बिलमा नबाँधी सामान्य खातागत लम्पसम भुक्तानी/क्रेडिटको रूपमा लेजरमा दर्ता हुनेछ।
+            </div>
+          )}
+
+          {/* Amount & Mode */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs font-semibold">Payment Amount (रकम) *</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
+                placeholder="0.00"
+                autoFocus
+                required
+              />
+            </div>
+            <div>
+              <Label className="text-xs font-semibold">Payment Mode (माध्यम)</Label>
+              <Select value={payPaymentMode} onValueChange={setPayPaymentMode}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash (नगद)</SelectItem>
+                  <SelectItem value="esewa">eSewa</SelectItem>
+                  <SelectItem value="khalti">Khalti</SelectItem>
+                  <SelectItem value="bank">Bank Transfer / Cheque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs font-semibold">Remarks / Note (कैफियत)</Label>
+            <Input
+              value={payNote}
+              placeholder="e.g., Paid via cheque / Online / Clearance note"
+              onChange={(e) => setPayNote(e.target.value)}
+            />
+          </div>
+
+          <Button
+            type="submit"
+            disabled={busyPayment || !payAmount || Number(payAmount) <= 0}
+            className="w-full bg-gradient-primary text-primary-foreground font-semibold h-10 shadow-sm"
+          >
+            {busyPayment ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Processing Settlement...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Confirm & Save Payment
+              </>
+            )}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 
   if (selected) {
     return (
@@ -875,7 +1286,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             </AlertDialogContent>
           </AlertDialog>
 
-          <Button onClick={() => { setPayOpen(true); setPayAmount(String(Math.abs(Number(selected.balance)) || "")); }}>
+          <Button onClick={openPaymentModal}>
             <Wallet className="h-4 w-4 mr-1" /> Record Payment
           </Button>
           </div>
@@ -947,12 +1358,37 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                   {entries.map((e) => (
                     <div key={e.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-secondary/20 transition-colors">
                       <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold capitalize text-foreground">{e.title}</span>
+                          {(e.voucher_no || e.bill_no) && (
+                            <span className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded">
+                              #{e.voucher_no || e.bill_no}
+                            </span>
+                          )}
+                          {e.supplier_bill_no && (
+                            <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              Bill #{e.supplier_bill_no}
+                            </span>
+                          )}
                           {e.is_order && (
                             <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground uppercase font-medium">
                               {e.payment_mode || "Bill"}
                             </span>
+                          )}
+                          {e.is_order && (
+                            Number(e.due_amount || 0) === 0 ? (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold px-1.5 py-0.5 rounded">
+                                Fully Paid
+                              </span>
+                            ) : Number(e.paid_amount || 0) > 0 ? (
+                              <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded">
+                                Partial
+                              </span>
+                            ) : (
+                              <span className="text-[10px] bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-bold px-1.5 py-0.5 rounded">
+                                Unpaid
+                              </span>
+                            )
                           )}
                         </div>
                         
@@ -1006,14 +1442,24 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                       <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                         <div className={`font-bold text-base ${
                           !e.is_order
-                            ? "text-rose-600 dark:text-rose-400" 
+                            ? "text-emerald-500 dark:text-emerald-400" 
                             : "text-orange-600 dark:text-orange-500"
                         }`}>
                           {fmt(e.amount)}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          {e.is_order && (
-                            <span className="text-[10px] text-muted-foreground font-medium uppercase">Total Bill</span>
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          {e.is_order && Number(e.due_amount || 0) > 0 && (
+                            <Button
+                              size="sm"
+                              className="h-7 px-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-xs"
+                              onClick={(evt) => {
+                                evt.stopPropagation();
+                                handlePaySingleBill(e);
+                              }}
+                            >
+                              <Wallet className="h-3.5 w-3.5" />
+                              <span>Receive</span>
+                            </Button>
                           )}
                           <Button 
                             size="sm" 
@@ -1173,47 +1619,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           </Card>
         )}
 
-        <Dialog open={payOpen} onOpenChange={setPayOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Record {type === "customer" ? "Payment Received" : "Payment Made"} — {selected.name}</DialogTitle>
-              <DialogDescription>
-                Enter the amount and any notes for this transaction to update the ledger.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Amount</Label>
-                  <Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} autoFocus />
-                </div>
-                <div>
-                  <Label>Payment Mode</Label>
-                  <Select value={payPaymentMode} onValueChange={setPayPaymentMode}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="esewa">eSewa</SelectItem>
-                      <SelectItem value="khalti">Khalti</SelectItem>
-                      <SelectItem value="bank">Bank</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div><Label>Note</Label><Input value={payNote} placeholder="Optional note" onChange={(e) => setPayNote(e.target.value)} /></div>
-              <Button onClick={recordPayment} disabled={busyPayment} className="w-full bg-gradient-primary text-primary-foreground">
-                {busyPayment ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Saving Payment...
-                  </>
-                ) : (
-                  "Save Payment"
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {renderPaymentDialog()}
       </div>
     );
   }
@@ -1313,8 +1719,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               <div className="flex gap-1">
                 <Button size="icon" variant="ghost" onClick={(e) => { 
                   e.stopPropagation(); 
-                  setSelected(p);
-                  setPayOpen(true);
+                  openLedger(p).then(() => {
+                    openPaymentModal();
+                  });
                 }}>
                   <Wallet className="h-4 w-4 text-primary" />
                 </Button>
@@ -1334,48 +1741,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           </Card>
         ))}
 
-        {/* Global Payment Dialog (Shared between Card and Ledger views) */}
-        <Dialog open={payOpen} onOpenChange={setPayOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Record {type === "customer" ? "Payment Received" : "Payment Made"} {selected ? `— ${selected.name}` : ""}</DialogTitle>
-              <DialogDescription>
-                Process a payment entry for this {type}.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Amount</Label>
-                  <Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} autoFocus />
-                </div>
-                <div>
-                  <Label>Payment Mode</Label>
-                  <Select value={payPaymentMode} onValueChange={setPayPaymentMode}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="esewa">eSewa</SelectItem>
-                      <SelectItem value="khalti">Khalti</SelectItem>
-                      <SelectItem value="bank">Bank</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div><Label>Note</Label><Input value={payNote} placeholder="Optional note" onChange={(e) => setPayNote(e.target.value)} /></div>
-              <Button onClick={recordPayment} disabled={busyPayment} className="w-full bg-gradient-primary text-primary-foreground">
-                {busyPayment ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Saving Payment...
-                  </>
-                ) : (
-                  "Save Payment"
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {renderPaymentDialog()}
 
         {/* Edit Party Dialog */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
