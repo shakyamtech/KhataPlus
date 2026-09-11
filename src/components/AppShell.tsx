@@ -889,14 +889,14 @@ export const AppShell = () => {
 
             {/* Shop Settings Modal */}
             <Dialog open={shopOpen} onOpenChange={setShopOpen}>
-                <DialogContent className="max-h-[90vh] flex flex-col p-6" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
+                <DialogContent className="max-h-[90vh] sm:max-w-2xl max-w-[95vw] w-full flex flex-col p-6 overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DialogHeader className="shrink-0">
                         <DialogTitle>{lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}</DialogTitle>
                         <DialogDescription>
                             {lang === "NEP" ? "पसलको विवरणहरू सम्पादन गर्नुहोस्।" : "Edit your shop details."}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-2 overflow-y-auto flex-1 px-1">
+                    <div className="space-y-4 py-2 overflow-y-auto overflow-x-hidden flex-1 px-1">
                         <div className="space-y-2">
                             <Label>{t.shopName}</Label>
                             <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Enter shop name..." />
