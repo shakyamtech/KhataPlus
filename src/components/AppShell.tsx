@@ -5,10 +5,11 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database
 } from "lucide-react";
 import { generateBatchSamplePreview } from "@/lib/batch";
 import { InstallAppModal } from "@/components/InstallAppModal";
+import { BackupModal } from "@/components/BackupModal";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -102,6 +103,7 @@ export const AppShell = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [aboutOpen, setAboutOpen] = useState(false);
     const [installModalOpen, setInstallModalOpen] = useState(false);
+    const [backupOpen, setBackupOpen] = useState(false);
     const [hasMigrated, setHasMigrated] = useState(true);
 
     const [taxInvoicePrefix, setTaxInvoicePrefix] = useState("TAX-");
@@ -541,6 +543,9 @@ export const AppShell = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setInstallModalOpen(true)} className="cursor-pointer font-medium gap-2">
                     <Smartphone className="h-4 w-4 text-primary" /> {lang === "NEP" ? "मोबाइल एप (QR Scan)" : "Mobile App (QR Scan)"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setBackupOpen(true)} className="cursor-pointer font-medium gap-2">
+                    <Database className="h-4 w-4 text-emerald-500" /> {lang === "NEP" ? "डाटा ब्याकअप र रिस्टोर" : "Backup & Restore"}
                 </DropdownMenuItem>
 
                 {/* Theme options Submenu */}
@@ -1273,7 +1278,34 @@ export const AppShell = () => {
                             </div>
                         </div>
 
-                        <div className="pt-4 border-t border-destructive/20 mt-6 space-y-3 bg-destructive/5 rounded-xl p-4 border">
+                        {/* Data Backup & Restore Shortcut */}
+                        <div className="pt-4 border-t border-emerald-500/20 mt-6 space-y-2.5 bg-emerald-500/5 rounded-xl p-4 border">
+                            <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                                <span className="flex items-center gap-1.5">
+                                    <Database className="h-4 w-4" />
+                                    {lang === "NEP" ? "डाटा ब्याकअप र रिस्टोर" : "Data Backup & Restore"}
+                                </span>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2.5 text-xs border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                                    onClick={() => {
+                                        setShopOpen(false);
+                                        setBackupOpen(true);
+                                    }}
+                                >
+                                    {lang === "NEP" ? "ब्याकअप खोल्नुहोस्" : "Open Backup"}
+                                </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {lang === "NEP"
+                                    ? "आफ्नो पसलको सम्पूर्ण डाटा (बिल, सामान, लेजर, हिसाब) सुरक्षित .json फाइलमा डाउनलोड गर्नुहोस् वा पुरानो ब्याकअप रिस्टोर गर्नुहोस्।"
+                                    : "Download a 100% offline .json backup of your entire store data or restore from a previous backup file."}
+                            </p>
+                        </div>
+
+                        <div className="pt-4 border-t border-destructive/20 mt-4 space-y-3 bg-destructive/5 rounded-xl p-4 border">
                             <div className="text-sm font-semibold text-destructive flex items-center gap-1.5">
                                 <Trash2 className="h-4 w-4" />
                                 {lang === "NEP" ? "खतरा क्षेत्र (Danger Zone)" : "Danger Zone"}
@@ -1452,6 +1484,9 @@ export const AppShell = () => {
 
             {/* Install App Modal */}
             <InstallAppModal open={installModalOpen} onOpenChange={setInstallModalOpen} />
+
+            {/* Data Backup & Restore Modal */}
+            <BackupModal open={backupOpen} onOpenChange={setBackupOpen} />
         </div>
     );
 };

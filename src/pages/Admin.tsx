@@ -14,10 +14,11 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2 } from "lucide-react";
+import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download } from "lucide-react";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, writeBatch, doc, updateDoc } from "firebase/firestore";
+import { exportUserDataAsJson, downloadJsonFile } from "@/lib/backup";
 
 type AdminUser = {
   id: string; email: string; created_at: string; last_sign_in_at: string | null;
@@ -31,6 +32,7 @@ const Admin = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [busy, setBusy] = useState(false);
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const [downloadingBackupId, setDownloadingBackupId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [editName, setEditName] = useState("");
@@ -241,6 +243,19 @@ const Admin = () => {
     }
   };
 
+  const handleDownloadUserBackup = async (u: AdminUser) => {
+    setDownloadingBackupId(u.id);
+    try {
+      const { jsonString, filename } = await exportUserDataAsJson(u.id, u.shop_name || u.full_name || "User");
+      downloadJsonFile(jsonString, filename);
+      toast.success(`Backup downloaded for ${u.shop_name || u.email}`);
+    } catch (e: any) {
+      toast.error("Failed to export backup: " + (e.message || "Unknown error"));
+    } finally {
+      setDownloadingBackupId(null);
+    }
+  };
+
 
 
 
@@ -441,33 +456,21 @@ const Admin = () => {
                   </AlertDialogContent>
                 </AlertDialog>
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="flex-1 md:flex-none h-9 border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-500/30 dark:text-amber-400 dark:hover:bg-amber-500/20 dark:hover:text-amber-300"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset Data
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Reset data for {u.email}?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete all <strong>sales</strong>, <strong>purchases</strong>, <strong>cash transactions</strong>, <strong>ledger entries</strong>, and <strong>expenses</strong> for this user.
-                        <br /><br />
-                        <strong>What remains:</strong> Product catalog will be kept intact. Customer and Supplier lists will be preserved, but their ledger balances will be reset to 0. This cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => resetData(u)} disabled={resettingId === u.id} className="bg-amber-600 hover:bg-amber-700 text-white">
-                        {resettingId === u.id ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Resetting...</> : "Reset Ledger & Sales"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {/* Download Tenant Backup (.json) */}
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => handleDownloadUserBackup(u)} 
+                  disabled={downloadingBackupId === u.id}
+                  className="flex-1 md:flex-none h-9 border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-400 dark:hover:bg-emerald-500/20 font-medium text-xs gap-1.5"
+                  title="Download complete JSON backup for this user"
+                >
+                  {downloadingBackupId === u.id ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Exporting...</>
+                  ) : (
+                    <><Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Backup (.json)</>
+                  )}
+                </Button>
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
