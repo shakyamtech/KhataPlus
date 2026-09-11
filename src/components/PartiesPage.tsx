@@ -73,6 +73,76 @@ type UnpaidBill = {
   type: "sale" | "purchase";
 };
 
+function PartyAvatarRing({
+  name,
+  balance = 0,
+  className,
+}: {
+  name: string;
+  balance?: number;
+  className?: string;
+}) {
+  const getInitials = (val: string) => {
+    if (!val || typeof val !== "string") return "?";
+    const cleaned = val.trim().replace(/[^\p{L}\p{N}\s]/gu, "");
+    const parts = cleaned.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return val.slice(0, 2).toUpperCase() || "?";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const bal = Number(balance || 0);
+  const isDebt = bal > 0;
+  const isAdv = bal < 0;
+
+  // Status Ring colors (Idea 1: Financial Status Ring)
+  // Debt (उधारो बाँकी) -> warm orange ring with soft glow
+  // Advance (अग्रिम जम्मा) -> emerald ring
+  // Settled (चुक्ता) -> primary cyan/blue ring
+  const ringClass = isDebt
+    ? "ring-2 ring-orange-500/80 ring-offset-2 ring-offset-background shadow-md shadow-orange-500/10"
+    : isAdv
+      ? "ring-2 ring-emerald-500/80 ring-offset-2 ring-offset-background shadow-md shadow-emerald-500/10"
+      : "ring-2 ring-primary/60 ring-offset-2 ring-offset-background shadow-md shadow-primary/10";
+
+  const bgGradient = isDebt
+    ? "bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-orange-600/30 text-orange-600 dark:text-orange-400 border border-orange-500/30"
+    : isAdv
+      ? "bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-emerald-600/30 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+      : "bg-gradient-to-br from-primary/20 via-sky-500/10 to-primary/30 text-primary border border-primary/30";
+
+  const dotColor = isDebt ? "bg-orange-500" : isAdv ? "bg-emerald-500" : "bg-primary";
+  const statusTitle = isDebt
+    ? "Outstanding Due (तिर्न/उठाउन बाँकी)"
+    : isAdv
+      ? "Advance Balance (अग्रिम जम्मा)"
+      : "Account Settled (हिसाब चुक्ता)";
+
+  return (
+    <div
+      className={cn("relative group shrink-0 cursor-default select-none", className)}
+      title={`${name} • ${statusTitle}`}
+    >
+      <div
+        className={cn(
+          "w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center font-display font-bold text-sm sm:text-base tracking-wider transition-all duration-200 group-hover:scale-105",
+          ringClass,
+          bgGradient
+        )}
+      >
+        {getInitials(name)}
+      </div>
+      <span
+        className={cn(
+          "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full ring-2 ring-background transition-colors duration-200",
+          dotColor
+        )}
+        title={statusTitle}
+      />
+    </div>
+  );
+}
+
 export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const { user } = useAuth();
   const table = type === "customer" ? "customers" : "suppliers";
@@ -1271,6 +1341,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto">
         <PageHeader
+          avatar={<PartyAvatarRing name={selected.name} balance={selected.balance} />}
           title={selected.name}
           subtitle={`${selected.phone || "No phone"}${selected.pan ? ` • PAN: ${selected.pan}` : ""}${selected.address ? ` • 📍 ${selected.address}` : ""}`}
           actions={
