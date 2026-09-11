@@ -780,16 +780,11 @@ export const AppShell = () => {
                 <DialogContent className="max-h-[90vh] sm:max-w-md w-full flex flex-col p-6" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DialogHeader className="shrink-0">
                         <div className="flex items-center gap-3.5 text-left">
-                            <div className="relative shrink-0">
-                                <Avatar className="h-12 w-12 rounded-full border-2 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.35)] ring-2 ring-amber-400/20">
-                                    <AvatarFallback className="bg-gradient-to-br from-amber-500/20 via-primary/20 to-amber-400/10 text-amber-400 font-bold text-base uppercase">
-                                        {getUserInitials(fullName, user?.email)}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 rounded-full h-4 w-4 flex items-center justify-center shadow-md ring-1 ring-background">
-                                    <Crown className="h-2.5 w-2.5 fill-current" />
-                                </div>
-                            </div>
+                            <Avatar className="h-12 w-12 rounded-full border-2 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.35)] ring-2 ring-amber-400/20 shrink-0">
+                                <AvatarFallback className="bg-gradient-to-br from-amber-500/20 via-primary/20 to-amber-400/10 text-amber-400 font-bold text-base uppercase">
+                                    {getUserInitials(fullName, user?.email)}
+                                </AvatarFallback>
+                            </Avatar>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <DialogTitle className="text-base font-bold">
