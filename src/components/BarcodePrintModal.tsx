@@ -52,10 +52,11 @@ interface BarcodePrintModalProps {
 export function BarcodePrintModal({
   open,
   onOpenChange,
-  products,
+  products = [],
   initialSelectedProduct,
   onProductsUpdated
 }: BarcodePrintModalProps) {
+  if (!open) return null;
   // Search & Filter
   const [search, setSearch] = useState("");
   const [onlyWithBarcodes, setOnlyWithBarcodes] = useState(false);
@@ -293,7 +294,7 @@ export function BarcodePrintModal({
       showProductName,
       showPrice,
       showBarcodeNumber,
-      pricePrefix
+      pricePrefix: pricePrefix === "none" ? "" : pricePrefix
     };
 
     printBarcodeStickers(printItems, config);
@@ -557,7 +558,7 @@ export function BarcodePrintModal({
                       <SelectContent>
                         <SelectItem value="MRP: " className="text-xs">MRP: Rs. XXX</SelectItem>
                         <SelectItem value="Rs. " className="text-xs">Rs. XXX</SelectItem>
-                        <SelectItem value="" className="text-xs">Only Number</SelectItem>
+                        <SelectItem value="none" className="text-xs">Only Number</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -625,7 +626,7 @@ export function BarcodePrintModal({
 
                   {showPrice && (
                     <div className="text-[11.5px] font-black text-neutral-900 mt-1">
-                      {pricePrefix}Rs. {Number(sampleItem.sell_price || 0).toLocaleString("en-IN")}
+                      {pricePrefix === "none" ? "" : pricePrefix}Rs. {Number(sampleItem.sell_price || 0).toLocaleString("en-IN")}
                     </div>
                   )}
                 </div>

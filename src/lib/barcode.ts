@@ -248,7 +248,7 @@ export function renderSingleLabelHtml(
       ` : ""}
 
       ${config.showPrice ? `
-        <div class="label-price">${escapeHtml(config.pricePrefix)}Rs. ${formattedPrice}</div>
+        <div class="label-price">${escapeHtml(config.pricePrefix === "none" ? "" : config.pricePrefix)}Rs. ${formattedPrice}</div>
       ` : ""}
     </div>
   `;
