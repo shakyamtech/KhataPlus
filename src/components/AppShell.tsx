@@ -729,9 +729,6 @@ export const AppShell = () => {
                                         {fullName ? fullName.slice(0, 2) : (user?.email ? user.email.slice(0, 2) : "US")}
                                     </AvatarFallback>
                                 </Avatar>
-                                <div className="absolute -bottom-0.5 -right-0.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 rounded-full h-3.5 w-3.5 flex items-center justify-center shadow-sm ring-1 ring-background">
-                                    <Crown className="h-2 w-2 fill-current" />
-                                </div>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
