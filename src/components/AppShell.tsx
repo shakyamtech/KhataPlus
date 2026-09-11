@@ -5,8 +5,9 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers
 } from "lucide-react";
+import { generateBatchSamplePreview } from "@/lib/batch";
 import { InstallAppModal } from "@/components/InstallAppModal";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,10 @@ export const AppShell = () => {
     const [purchasePrefix, setPurchasePrefix] = useState("INW-");
     const [purchaseSuffix, setPurchaseSuffix] = useState("");
     const [purchaseNextNo, setPurchaseNextNo] = useState("1");
+    const [batchPrefixStyle, setBatchPrefixStyle] = useState<"product_3_letters" | "custom">("product_3_letters");
+    const [batchCustomPrefix, setBatchCustomPrefix] = useState("BATCH-");
+    const [batchDateFormat, setBatchDateFormat] = useState<"m_d_yy" | "yyyy_mm" | "fiscal_year" | "none">("m_d_yy");
+    const [batchDigits, setBatchDigits] = useState<"3" | "4">("3");
     const [dbLastTax, setDbLastTax] = useState<string | null>(null);
     const [dbLastAbb, setDbLastAbb] = useState<string | null>(null);
     const [dbLastBill, setDbLastBill] = useState<string | null>(null);
@@ -209,6 +214,10 @@ export const AppShell = () => {
                     setPurchasePrefix(data.purchase_prefix ?? "INW-");
                     setPurchaseSuffix(data.purchase_suffix ?? "");
                     setPurchaseNextNo(String(data.purchase_next_no ?? 1));
+                    setBatchPrefixStyle(data.batch_prefix_style ?? "product_3_letters");
+                    setBatchCustomPrefix(data.batch_custom_prefix ?? "BATCH-");
+                    setBatchDateFormat(data.batch_date_format ?? "m_d_yy");
+                    setBatchDigits(String(data.batch_digits ?? 3) === "4" ? "4" : "3");
 
                     if (data.migrated_to_batches !== undefined) {
                         setHasMigrated(data.migrated_to_batches === true);
@@ -345,7 +354,11 @@ export const AppShell = () => {
                 bill_next_no: Math.max(1, parseInt(billNextNo) || 1),
                 purchase_prefix: purchasePrefix.trim() || "INW-",
                 purchase_suffix: purchaseSuffix.trim(),
-                purchase_next_no: Math.max(1, parseInt(purchaseNextNo) || 1)
+                purchase_next_no: Math.max(1, parseInt(purchaseNextNo) || 1),
+                batch_prefix_style: batchPrefixStyle,
+                batch_custom_prefix: batchCustomPrefix.trim().toUpperCase() || "BATCH-",
+                batch_date_format: batchDateFormat,
+                batch_digits: batchDigits === "4" ? 4 : 3
             }, { merge: true });
 
             setShopName(newName);
@@ -1152,6 +1165,82 @@ export const AppShell = () => {
                                                         placeholder="/83" 
                                                         className="h-8 text-xs font-mono"
                                                     />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Batch Number Series Config */}
+                                        <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
+                                            <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                                    <Layers className="h-3.5 w-3.5 text-primary" />
+                                                    {lang === "NEP" ? "४. ब्याच नम्बर सिरिज (Batch Number Series)" : "Batch Number Series (ब्याच नम्बर सिरिज)"}
+                                                </Label>
+                                                <span className="text-[10px] font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20">
+                                                    {lang === "NEP" ? "नमुना:" : "Sample:"} {generateBatchSamplePreview({
+                                                        batch_prefix_style: batchPrefixStyle,
+                                                        batch_custom_prefix: batchCustomPrefix,
+                                                        batch_date_format: batchDateFormat,
+                                                        batch_digits: batchDigits === "4" ? 4 : 3
+                                                    })}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                                <div>
+                                                    <Label className="text-[10px] text-muted-foreground">{lang === "NEP" ? "प्रिफिक्स शैली (Prefix Style)" : "Prefix Style"}</Label>
+                                                    <Select value={batchPrefixStyle} onValueChange={(v: "product_3_letters" | "custom") => setBatchPrefixStyle(v)}>
+                                                        <SelectTrigger className="h-8 text-xs bg-background">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="product_3_letters" className="text-xs">
+                                                                {lang === "NEP" ? "सामानको ३ अक्षर (PEN-, WAI-)" : "Product 3 Letters (PEN-)"}
+                                                            </SelectItem>
+                                                            <SelectItem value="custom" className="text-xs">
+                                                                {lang === "NEP" ? "कस्टम प्रिफिक्स (Custom)" : "Custom Prefix"}
+                                                            </SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {batchPrefixStyle === "custom" ? (
+                                                    <div>
+                                                        <Label className="text-[10px] text-muted-foreground">{lang === "NEP" ? "कस्टम प्रिफिक्स" : "Custom Prefix"}</Label>
+                                                        <Input 
+                                                            value={batchCustomPrefix} 
+                                                            onChange={(e) => setBatchCustomPrefix(e.target.value.toUpperCase())} 
+                                                            placeholder="BATCH-" 
+                                                            className="h-8 text-xs font-mono bg-background"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <Label className="text-[10px] text-muted-foreground">{lang === "NEP" ? "अङ्क लम्बाइ (Digits)" : "Digits"}</Label>
+                                                        <Select value={batchDigits} onValueChange={(v: "3" | "4") => setBatchDigits(v)}>
+                                                            <SelectTrigger className="h-8 text-xs bg-background">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="3" className="text-xs">३ अङ्क (001, 002)</SelectItem>
+                                                                <SelectItem value="4" className="text-xs">४ अङ्क (0001, 0002)</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
+
+                                                <div>
+                                                    <Label className="text-[10px] text-muted-foreground">{lang === "NEP" ? "मिति ढाँचा (Date in Suffix)" : "Date Suffix"}</Label>
+                                                    <Select value={batchDateFormat} onValueChange={(v: any) => setBatchDateFormat(v)}>
+                                                        <SelectTrigger className="h-8 text-xs bg-background">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="m_d_yy" className="text-xs">M/D-YY (/9/11-26)</SelectItem>
+                                                            <SelectItem value="yyyy_mm" className="text-xs">YYYY-MM (/2026-09)</SelectItem>
+                                                            <SelectItem value="fiscal_year" className="text-xs">{lang === "NEP" ? "आर्थिक वर्ष (/81-82)" : "Fiscal Year (/81-82)"}</SelectItem>
+                                                            <SelectItem value="none" className="text-xs">{lang === "NEP" ? "मिति नराख्ने (None)" : "None"}</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 </div>
                                             </div>
                                         </div>

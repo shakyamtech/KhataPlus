@@ -16,6 +16,7 @@ import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { Switch } from "@/components/ui/switch";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { generateUniqueBarcode } from "@/lib/barcode";
+import { generateNextBatchNumber } from "@/lib/batch";
 
 const DEFAULT_UNITS = ["pcs", "set", "doz"];
 
@@ -502,6 +503,31 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
     }
   });
 
+  const handleAutoBatch = async () => {
+    try {
+      const pName = edit.name?.trim() || "Item";
+      let existingBatchNames: string[] = [];
+
+      if (edit.id) {
+        const bQ = query(collection(db, "product_batches"), where("product_id", "==", edit.id));
+        const bSnap = await getDocs(bQ);
+        existingBatchNames = bSnap.docs.map(d => d.data().batch_name).filter(Boolean);
+      }
+
+      const generated = generateNextBatchNumber({
+        productName: pName,
+        existingBatches: existingBatchNames,
+        shopInfo: shopInfo || undefined,
+        date: new Date()
+      });
+
+      setEdit((prev: any) => ({ ...prev, batch_name: generated }));
+      toast.success(`Batch generated: ${generated}`);
+    } catch (err: any) {
+      toast.error("Failed to generate batch number");
+    }
+  };
+
   const save = async () => {
     if (!user) return;
     if (!edit.name.trim()) return toast.error("Name required");
@@ -696,7 +722,27 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
             </div>
             {!edit.id && (
               <div className="grid sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>Opening Batch No. (Optional)</Label><Input value={edit.batch_name || ""} onChange={(e) => setEdit({ ...edit, batch_name: e.target.value })} placeholder="e.g. BATCH-001" /></div>
+                <div className="space-y-1.5">
+                  <Label>Opening Batch No. (Optional)</Label>
+                  <div className="flex gap-1.5">
+                    <Input 
+                      value={edit.batch_name || ""} 
+                      onChange={(e) => setEdit({ ...edit, batch_name: e.target.value })} 
+                      placeholder="e.g. PEN-001/9/11-26" 
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 px-3 text-xs font-semibold text-primary hover:bg-primary/10 border-primary/30"
+                      onClick={handleAutoBatch}
+                      title="Auto-generate batch number"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 mr-1" />
+                      Auto
+                    </Button>
+                  </div>
+                </div>
                 {edit.has_expiry && (
                   <div className="space-y-1.5">
                     <Label>Expiry Date (Optional)</Label>

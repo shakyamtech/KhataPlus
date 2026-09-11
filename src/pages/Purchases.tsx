@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon, Search, Receipt, FileText, Printer, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
+import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon, Search, Receipt, FileText, Printer, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { generateNextBatchNumber } from "@/lib/batch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -536,6 +537,26 @@ const Purchases = () => {
   const updateItem = (id: string, k: "qty" | "cost_price" | "batch_name" | "expiry_date", v: number | string) =>
     setItems((arr) => arr.map((i) => i.product_id === id ? { ...i, [k]: v } : i));
   const removeItem = (id: string) => setItems((arr) => arr.filter((i) => i.product_id !== id));
+
+  const handleAutoBatchForItem = async (productId: string, productName: string) => {
+    try {
+      const batchQ = query(collection(db, "product_batches"), where("product_id", "==", productId));
+      const batchSnap = await getDocs(batchQ);
+      const existingBatchNames = batchSnap.docs.map(d => d.data().batch_name).filter(Boolean);
+
+      const generated = generateNextBatchNumber({
+        productName,
+        existingBatches: existingBatchNames,
+        shopInfo: shopInfo || undefined,
+        date: new Date()
+      });
+
+      updateItem(productId, "batch_name", generated);
+      toast.success(`Batch generated: ${generated}`);
+    } catch (e: any) {
+      toast.error("Failed to generate batch");
+    }
+  };
 
 
   const editPurchase = async (p: any) => {
@@ -1075,7 +1096,7 @@ const Purchases = () => {
 
           <div className="space-y-2.5">
             {items.length > 0 && (
-              <div className="hidden sm:grid sm:grid-cols-[1fr_80px_130px_80px_80px_80px_auto] sm:gap-3 px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30 rounded-lg border border-border/40">
+              <div className="hidden sm:grid sm:grid-cols-[1fr_130px_130px_80px_80px_80px_auto] sm:gap-3 px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30 rounded-lg border border-border/40">
                 <div>Item</div>
                 <div>Batch</div>
                 <div>Expiry</div>
@@ -1086,7 +1107,7 @@ const Purchases = () => {
               </div>
             )}
             {items.map((i) => (
-              <div key={i.product_id} className="bg-secondary p-3 rounded-xl space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_80px_130px_80px_80px_80px_auto] sm:gap-3 sm:items-center shadow-soft transition-all">
+              <div key={i.product_id} className="bg-secondary p-3 rounded-xl space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[1fr_130px_130px_80px_80px_80px_auto] sm:gap-3 sm:items-center shadow-soft transition-all">
                 <div className="flex items-center justify-between sm:justify-start gap-2 border-b sm:border-0 pb-2 sm:pb-0 border-border/40">
                   <div className="font-semibold text-foreground truncate">{i.product_name} <span className="text-xs font-normal text-muted-foreground">/{i.unit}</span></div>
                   <Button size="icon" variant="ghost" className="h-8 w-8 sm:hidden text-destructive hover:bg-destructive/10" onClick={() => removeItem(i.product_id)}>
@@ -1096,7 +1117,19 @@ const Purchases = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-1 gap-2 items-end sm:contents">
                   <div className="space-y-1 sm:space-y-0">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase sm:hidden block">Batch (Opt)</Label>
-                    <Input className="h-9 font-medium text-xs sm:text-sm bg-background" value={i.batch_name || ""} onChange={(e) => updateItem(i.product_id, "batch_name", e.target.value)} placeholder="Batch" />
+                    <div className="flex items-center gap-1">
+                      <Input className="h-9 font-medium text-xs bg-background" value={i.batch_name || ""} onChange={(e) => updateItem(i.product_id, "batch_name", e.target.value)} placeholder="Batch" />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-primary hover:bg-primary/10"
+                        onClick={() => handleAutoBatchForItem(i.product_id, i.product_name)}
+                        title="Auto Generate Batch"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                   {i.has_expiry ? (
                     <div className="space-y-1 sm:space-y-0">
