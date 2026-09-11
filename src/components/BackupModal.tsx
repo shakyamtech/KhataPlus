@@ -33,7 +33,8 @@ import {
   Package,
   Users,
   ShoppingCart,
-  Wallet
+  Wallet,
+  FileSpreadsheet
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ export function BackupModal({ open, onOpenChange, onSuccess }: BackupModalProps)
 
   // Export state
   const [exporting, setExporting] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   // Restore state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -88,6 +90,23 @@ export function BackupModal({ open, onOpenChange, onSuccess }: BackupModalProps)
       toast.error(err.message || "Failed to export backup");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleExcelExport = async () => {
+    if (!user) return;
+    setExportingExcel(true);
+    try {
+      const res = await exportUserDataToExcel(user.uid, shopInfo?.name);
+      toast.success(
+        lang === "NEP"
+          ? `एक्सेल फाइल (${res.filename}) डाउनलोड भयो!`
+          : `Excel workbook (${res.filename}) downloaded!`
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Failed to export Excel workbook");
+    } finally {
+      setExportingExcel(false);
     }
   };
 
@@ -206,31 +225,67 @@ export function BackupModal({ open, onOpenChange, onSuccess }: BackupModalProps)
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border bg-card text-center space-y-3">
+              <div className="p-4 rounded-xl border bg-card text-center space-y-3.5">
                 <div className="text-xs text-muted-foreground">
-                  {lang === "NEP" ? "हालको पसल:" : "Target Shop:"} <strong>{shopInfo?.name || "My Shop"}</strong>
+                  {lang === "NEP" ? "हालको पसल:" : "Target Shop:"} <strong className="text-foreground">{shopInfo?.name || "My Shop"}</strong>
                 </div>
-                <Button
-                  onClick={handleExport}
-                  disabled={exporting}
-                  className="w-full sm:w-auto px-6 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md transition-all active:scale-95"
-                >
-                  {exporting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {lang === "NEP" ? "ब्याकअप तयार हुँदैछ..." : "Preparing Backup..."}
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4" />
-                      {lang === "NEP" ? "अहिले ब्याकअप डाउनलोड गर्नुहोस् (.json)" : "Download Complete Backup (.json)"}
-                    </>
-                  )}
-                </Button>
-                <p className="text-[11px] text-muted-foreground">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {/* Option 1A: JSON System Backup */}
+                  <div className="flex flex-col gap-1 text-left">
+                    <Button
+                      onClick={handleExport}
+                      disabled={exporting || exportingExcel}
+                      className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-sm transition-all active:scale-95 text-xs"
+                    >
+                      {exporting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {lang === "NEP" ? "तयार हुँदैछ..." : "Preparing..."}
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 shrink-0" />
+                          <span>{lang === "NEP" ? "ब्याकअप डाउनलोड (.json)" : "Download Backup (.json)"}</span>
+                        </>
+                      )}
+                    </Button>
+                    <span className="text-[10px] text-muted-foreground text-center">
+                      {lang === "NEP" ? "सफ्टवेयर पुनः रिस्टोर गर्नको लागि" : "For database restore in app"}
+                    </span>
+                  </div>
+
+                  {/* Option 1B: Excel Workbook */}
+                  <div className="flex flex-col gap-1 text-left">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleExcelExport}
+                      disabled={exporting || exportingExcel}
+                      className="w-full h-11 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400 font-bold gap-2 shadow-sm transition-all active:scale-95 text-xs"
+                    >
+                      {exportingExcel ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {lang === "NEP" ? "एक्सेल बन्दैछ..." : "Generating Excel..."}
+                        </>
+                      ) : (
+                        <>
+                          <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          <span>{lang === "NEP" ? "एक्सेल सिट (.xlsx)" : "Export to Excel (.xlsx)"}</span>
+                        </>
+                      )}
+                    </Button>
+                    <span className="text-[10px] text-muted-foreground text-center">
+                      {lang === "NEP" ? "एक्सेलमा हेर्न, अडिट र प्रिन्ट गर्न" : "For viewing, audit & print"}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/50">
                   {lang === "NEP"
-                    ? "यो फाइललाई आफ्नो गुगल ड्राइभ, पेनड्राइभ वा कम्प्युटरमा सुरक्षित राख्नुहोस्।"
-                    : "Save this file to Google Drive, USB drive, or your computer for safekeeping."}
+                    ? "यो फाइलहरूलाई आफ्नो गुगल ड्राइभ, पेनड्राइभ वा कम्प्युटरमा सुरक्षित राख्नुहोस्।"
+                    : "Save these files to Google Drive, USB drive, or your computer for safekeeping."}
                 </p>
               </div>
             </TabsContent>

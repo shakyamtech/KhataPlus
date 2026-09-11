@@ -62,13 +62,12 @@ export function downloadJsonFile(content: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+import * as XLSX from "xlsx";
+
 /**
- * Exports all shop data for a specific user as a structured, versioned JSON file
+ * Common internal fetcher for all user shop records
  */
-export async function exportUserDataAsJson(
-  userId: string,
-  customShopName?: string
-): Promise<{ jsonString: string; filename: string; counts: Record<string, number> }> {
+export async function fetchFullUserDatabase(userId: string, customShopName?: string) {
   if (!userId) throw new Error("User ID is required for backup");
 
   // 1. Query all user-owned collections in parallel
@@ -145,6 +144,38 @@ export async function exportUserDataAsJson(
     stock_adjustments: stockAdjustments.length
   };
 
+  return {
+    products,
+    batches,
+    customers,
+    suppliers,
+    sales,
+    saleItems,
+    purchases,
+    purchaseItems,
+    cashTransactions,
+    ledgerEntries,
+    stockAdjustments,
+    profileData,
+    shopName,
+    counts
+  };
+}
+
+/**
+ * Exports all shop data for a specific user as a structured, versioned JSON file
+ */
+export async function exportUserDataAsJson(
+  userId: string,
+  customShopName?: string
+): Promise<{ jsonString: string; filename: string; counts: Record<string, number> }> {
+  const full = await fetchFullUserDatabase(userId, customShopName);
+  const {
+    products, batches, customers, suppliers, sales, saleItems,
+    purchases, purchaseItems, cashTransactions, ledgerEntries,
+    stockAdjustments, profileData, shopName, counts
+  } = full;
+
   const payload: BackupPayload = {
     metadata: {
       version: "1.0",
@@ -188,6 +219,135 @@ export async function exportUserDataAsJson(
   const filename = `KhataPlus_Backup_${cleanShop}_${dateStr}.json`;
 
   return { jsonString, filename, counts };
+}
+
+/**
+ * Exports complete shop data into a clean, human-readable multi-sheet Excel (.xlsx) file
+ */
+export async function exportUserDataToExcel(
+  userId: string,
+  customShopName?: string
+): Promise<{ filename: string; counts: Record<string, number> }> {
+  const full = await fetchFullUserDatabase(userId, customShopName);
+  const {
+    products, batches, customers, suppliers, sales,
+    purchases, cashTransactions, shopName, counts
+  } = full;
+
+  const wb = XLSX.utils.book_new();
+
+  // 1. Products Sheet
+  const productRows = products.map(p => ({
+    "Barcode": p.barcode || "",
+    "Product Name": p.name || "",
+    "Category": p.category || "",
+    "Cost Price (Rs.)": p.cost_price ?? p.purchase_price ?? 0,
+    "Selling Price (Rs.)": p.selling_price ?? p.price ?? 0,
+    "Stock Qty": p.stock_qty ?? 0,
+    "Unit": p.unit || "pcs",
+    "Min Stock Alert": p.min_stock_alert ?? 0
+  }));
+  const wsProducts = XLSX.utils.json_to_sheet(
+    productRows.length > 0 ? productRows : [{ "Status": "No products recorded" }]
+  );
+  XLSX.utils.book_append_sheet(wb, wsProducts, "Products");
+
+  // 2. Batches Sheet
+  const prodNameMap = new Map(products.map(p => [p.id, p.name]));
+  const batchRows = batches.map(b => ({
+    "Product Name": prodNameMap.get(b.product_id) || b.product_id || "",
+    "Batch No": b.batch_number || "",
+    "Expiry Date": b.expiry_date || "N/A",
+    "Cost Price (Rs.)": b.cost_price ?? 0,
+    "Selling Price (Rs.)": b.selling_price ?? 0,
+    "Initial Qty": b.initial_qty ?? 0,
+    "Current Stock": b.current_qty ?? 0
+  }));
+  const wsBatches = XLSX.utils.json_to_sheet(
+    batchRows.length > 0 ? batchRows : [{ "Status": "No batches recorded" }]
+  );
+  XLSX.utils.book_append_sheet(wb, wsBatches, "Batches");
+
+  // 3. Customers Sheet
+  const customerRows = customers.map(c => ({
+    "Customer Name": c.name || "",
+    "Phone": c.phone || "",
+    "Address": c.address || "",
+    "PAN / Vat": c.pan || "",
+    "Credit Balance (Rs.)": c.balance ?? 0
+  }));
+  const wsCustomers = XLSX.utils.json_to_sheet(
+    customerRows.length > 0 ? customerRows : [{ "Status": "No customers recorded" }]
+  );
+  XLSX.utils.book_append_sheet(wb, wsCustomers, "Customers");
+
+  // 4. Suppliers Sheet
+  const supplierRows = suppliers.map(s => ({
+    "Supplier Name": s.name || "",
+    "Phone": s.phone || "",
+    "Address": s.address || "",
+    "PAN / Vat": s.pan || "",
+    "Payable Balance (Rs.)": s.balance ?? 0
+  }));
+  const wsSuppliers = XLSX.utils.json_to_sheet(
+    supplierRows.length > 0 ? supplierRows : [{ "Status": "No suppliers recorded" }]
+  );
+  XLSX.utils.book_append_sheet(wb, wsSuppliers, "Suppliers");
+
+  // 5. Sales Sheet
+  const salesRows = sales.map(s => ({
+    "Invoice No": s.invoice_number || s.id,
+    "Date": s.created_at ? s.created_at.slice(0, 10) : "",
+    "Customer": s.customer_name || "Walk-in",
+    "Payment Mode": s.payment_mode || s.payment_type || "Cash",
+    "Subtotal (Rs.)": s.subtotal ?? 0,
+    "Discount (Rs.)": s.discount ?? 0,
+    "Tax (Rs.)": s.tax ?? 0,
+    "Grand Total (Rs.)": s.total_amount ?? s.total ?? 0,
+    "Paid Amount (Rs.)": s.paid_amount ?? 0,
+    "Due Amount (Rs.)": (s.total_amount ?? 0) - (s.paid_amount ?? 0)
+  }));
+  const wsSales = XLSX.utils.json_to_sheet(
+    salesRows.length > 0 ? salesRows : [{ "Status": "No sales recorded" }]
+  );
+  XLSX.utils.book_append_sheet(wb, wsSales, "Sales");
+
+  // 6. Purchases Sheet
+  const purchaseRows = purchases.map(p => ({
+    "Bill No": p.bill_number || p.id,
+    "Date": p.created_at ? p.created_at.slice(0, 10) : "",
+    "Supplier": p.supplier_name || "",
+    "Total Amount (Rs.)": p.total_amount ?? p.total ?? 0,
+    "Paid (Rs.)": p.paid_amount ?? 0,
+    "Due (Rs.)": (p.total_amount ?? 0) - (p.paid_amount ?? 0)
+  }));
+  const wsPurchases = XLSX.utils.json_to_sheet(
+    purchaseRows.length > 0 ? purchaseRows : [{ "Status": "No purchases recorded" }]
+  );
+  XLSX.utils.book_append_sheet(wb, wsPurchases, "Purchases");
+
+  // 7. Cashbook Sheet
+  const cashRows = cashTransactions.map(c => ({
+    "Date": c.created_at ? c.created_at.slice(0, 10) : "",
+    "Type": c.type === "in" ? "Cash In (आम्दानी)" : "Cash Out (खर्च)",
+    "Category": c.category || "",
+    "Amount (Rs.)": c.amount ?? 0,
+    "Description": c.description || c.notes || ""
+  }));
+  const wsCash = XLSX.utils.json_to_sheet(
+    cashRows.length > 0 ? cashRows : [{ "Status": "No cashbook transactions recorded" }]
+  );
+  XLSX.utils.book_append_sheet(wb, wsCash, "Cashbook");
+
+  // File naming
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const cleanShop = shopName.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const filename = `KhataPlus_${cleanShop}_Ledgers_${dateStr}.xlsx`;
+
+  // Write and trigger download in browser
+  XLSX.writeFile(wb, filename);
+
+  return { filename, counts };
 }
 
 /**
