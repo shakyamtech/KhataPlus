@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { doc, collection, writeBatch, updateDoc, query, where, getDocs } from "firebase/firestore";
+import { doc, collection, writeBatch, updateDoc, query, where, getDocs, getDoc } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
+import { Loader2, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -372,16 +372,37 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [edit, setEdit] = useState<any>(blankProduct);
   const [busy, setBusy] = useState(false);
-  const [customUnits, setCustomUnits] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem("khataplus_custom_units");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [customUnits, setCustomUnits] = useState<string[]>([]);
   const [unitDialogOpen, setUnitDialogOpen] = useState(false);
   const [newUnitName, setNewUnitName] = useState("");
+
+  // Load user-specific custom units from local cache and sync with Firestore profile
+  useEffect(() => {
+    if (!user) return;
+    const storageKey = `khataplus_custom_units_${user.uid}`;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        setCustomUnits(JSON.parse(saved));
+      } else {
+        // Fallback to old key if migrating on same device
+        const oldSaved = localStorage.getItem("khataplus_custom_units");
+        if (oldSaved) setCustomUnits(JSON.parse(oldSaved));
+      }
+    } catch {}
+
+    getDoc(doc(db, "profiles", user.uid)).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Array.isArray(data.custom_units)) {
+          setCustomUnits(data.custom_units);
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(data.custom_units));
+          } catch {}
+        }
+      }
+    }).catch(console.error);
+  }, [user]);
 
   const allUnits = Array.from(new Set([
     ...DEFAULT_UNITS,
@@ -406,14 +427,41 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
 
     const updated = [...customUnits, trimmed];
     setCustomUnits(updated);
+    const storageKey = user ? `khataplus_custom_units_${user.uid}` : "khataplus_custom_units";
     try {
-      localStorage.setItem("khataplus_custom_units", JSON.stringify(updated));
+      localStorage.setItem(storageKey, JSON.stringify(updated));
     } catch (e) {}
+
+    if (user) {
+      updateDoc(doc(db, "profiles", user.uid), {
+        custom_units: updated
+      }).catch(console.error);
+    }
 
     setEdit((prev: any) => ({ ...prev, unit: trimmed }));
     setNewUnitName("");
     setUnitDialogOpen(false);
     toast.success(`Unit "${trimmed}" added!`);
+  };
+
+  const handleDeleteUnit = (unitToDelete: string) => {
+    const updated = customUnits.filter(u => u.toLowerCase() !== unitToDelete.toLowerCase());
+    setCustomUnits(updated);
+    const storageKey = user ? `khataplus_custom_units_${user.uid}` : "khataplus_custom_units";
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+    } catch (e) {}
+
+    if (user) {
+      updateDoc(doc(db, "profiles", user.uid), {
+        custom_units: updated
+      }).catch(console.error);
+    }
+
+    if (edit?.unit?.toLowerCase() === unitToDelete.toLowerCase()) {
+      setEdit((prev: any) => ({ ...prev, unit: "pcs" }));
+    }
+    toast.success(`Unit "${unitToDelete}" removed`);
   };
 
   useEffect(() => {
@@ -731,9 +779,9 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
       <Dialog open={unitDialogOpen} onOpenChange={setUnitDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add New Unit</DialogTitle>
+            <DialogTitle>Manage Product Units (युनिट व्यवस्थापन)</DialogTitle>
             <DialogDescription>
-              Create a custom unit for your products (e.g. Plate, kg, box, pkt, bottle).
+              Add custom units for your shop, or remove ones you don't need.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -744,21 +792,64 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
             className="space-y-4 pt-2"
           >
             <div className="space-y-2">
-              <Label htmlFor="new-unit-input">Unit Name</Label>
-              <Input
-                id="new-unit-input"
-                value={newUnitName}
-                onChange={(e) => setNewUnitName(e.target.value)}
-                placeholder="e.g. Plate, kg, box, bottle"
-                autoFocus
-              />
+              <Label htmlFor="new-unit-input">Add New Unit (नयाँ युनिट थप्नुहोस्)</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="new-unit-input"
+                  value={newUnitName}
+                  onChange={(e) => setNewUnitName(e.target.value)}
+                  placeholder="e.g. Plate, kg, box, pkt, bottle"
+                  autoFocus
+                />
+                <Button type="submit" className="bg-gradient-primary text-primary-foreground shrink-0">
+                  <Plus className="h-4 w-4 mr-1" /> Add
+                </Button>
+              </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+
+            <div className="space-y-2 pt-2 border-t border-border/60">
+              <Label className="text-xs text-muted-foreground uppercase font-semibold">Your Custom Units (थपिएका युनिटहरू)</Label>
+              {customUnits.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic py-1">No custom units added yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pt-1">
+                  {customUnits.map((u) => (
+                    <div
+                      key={u}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/90 border border-border text-xs font-semibold text-foreground"
+                    >
+                      <span>{u}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteUnit(u)}
+                        className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded-full hover:bg-destructive/10"
+                        title={`Remove "${u}"`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5 pt-2 border-t border-border/60">
+              <Label className="text-xs text-muted-foreground uppercase font-semibold">Standard Units (डिफल्ट युनिटहरू)</Label>
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {DEFAULT_UNITS.map((u) => (
+                  <span
+                    key={u}
+                    className="px-2 py-0.5 rounded-md bg-muted text-[11px] font-medium text-muted-foreground"
+                  >
+                    {u}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
               <Button type="button" variant="outline" onClick={() => setUnitDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" className="bg-gradient-primary text-primary-foreground">
-                Add Unit
+                Done / बन्द गर्नुहोस्
               </Button>
             </div>
           </form>
