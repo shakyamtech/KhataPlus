@@ -5,7 +5,7 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown
 } from "lucide-react";
 import { generateBatchSamplePreview } from "@/lib/batch";
 import { InstallAppModal } from "@/components/InstallAppModal";
@@ -723,18 +723,26 @@ export const AppShell = () => {
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-primary/20 hover:ring-primary/40 focus:ring-primary/50 transition-all select-none p-0 flex items-center justify-center">
+                            <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-amber-400/80 hover:ring-amber-400 focus:ring-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.3)] transition-all select-none p-0 flex items-center justify-center">
                                 <Avatar className="h-9 w-9">
-                                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-sm uppercase">
+                                    <AvatarFallback className="bg-gradient-to-br from-amber-500/20 via-primary/30 to-amber-400/15 text-amber-400 font-bold text-sm uppercase">
                                         {fullName ? fullName.slice(0, 2) : (user?.email ? user.email.slice(0, 2) : "US")}
                                     </AvatarFallback>
                                 </Avatar>
+                                <div className="absolute -bottom-0.5 -right-0.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 rounded-full h-3.5 w-3.5 flex items-center justify-center shadow-sm ring-1 ring-background">
+                                    <Crown className="h-2 w-2 fill-current" />
+                                </div>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
                             <DropdownMenuLabel className="font-normal">
                                 <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-bold leading-none text-foreground">{fullName || "User Profile"}</p>
+                                    <div className="flex items-center justify-between gap-1">
+                                        <p className="text-sm font-bold leading-none text-foreground truncate">{fullName || "User Profile"}</p>
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-400/30 flex items-center gap-0.5 shrink-0">
+                                            <Crown className="h-2 w-2 fill-current" /> PRO
+                                        </span>
+                                    </div>
                                     <p className="text-xs leading-none text-muted-foreground truncate">{user?.email}</p>
                                 </div>
                             </DropdownMenuLabel>
@@ -820,12 +828,34 @@ export const AppShell = () => {
 
             {/* Profile Settings Modal */}
             <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-                <DialogContent className="max-h-[90vh] flex flex-col p-6" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
+                <DialogContent className="max-h-[90vh] sm:max-w-md w-full flex flex-col p-6" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DialogHeader className="shrink-0">
-                        <DialogTitle>{lang === "NEP" ? "प्रोफाइल सेटिङ" : "Profile Settings"}</DialogTitle>
-                        <DialogDescription>
-                            {lang === "NEP" ? "आफ्नो प्रोफाइल विवरणहरू सम्पादन गर्नुहोस्।" : "Edit your profile details."}
-                        </DialogDescription>
+                        <div className="flex items-center gap-3.5 text-left">
+                            <div className="relative shrink-0">
+                                <Avatar className="h-12 w-12 rounded-full border-2 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.35)] ring-2 ring-amber-400/20">
+                                    <AvatarFallback className="bg-gradient-to-br from-amber-500/20 via-primary/20 to-amber-400/10 text-amber-400 font-bold text-base uppercase">
+                                        {fullName ? fullName.slice(0, 2) : (user?.email ? user.email.slice(0, 2) : "US")}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 rounded-full h-4 w-4 flex items-center justify-center shadow-md ring-1 ring-background">
+                                    <Crown className="h-2.5 w-2.5 fill-current" />
+                                </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <DialogTitle className="text-base font-bold">
+                                        {lang === "NEP" ? "प्रोफाइल सेटिङ" : "Profile Settings"}
+                                    </DialogTitle>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-400/10 text-amber-400 border border-amber-400/40 flex items-center gap-1 shadow-sm">
+                                        <Crown className="h-2.5 w-2.5 fill-current" />
+                                        {lang === "NEP" ? "प्रिमियम" : "Premium"}
+                                    </span>
+                                </div>
+                                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                                    {lang === "NEP" ? "आफ्नो प्रोफाइल विवरणहरू सम्पादन गर्नुहोस्।" : "Edit your profile details."}
+                                </DialogDescription>
+                            </div>
+                        </div>
                     </DialogHeader>
                     <div className="space-y-4 py-2 overflow-y-auto flex-1 px-1">
                         <div className="space-y-2">
