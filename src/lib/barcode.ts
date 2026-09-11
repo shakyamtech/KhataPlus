@@ -102,21 +102,9 @@ export function generateUniqueBarcode(existingBarcodes: (string | null | undefin
       .filter(Boolean)
   );
 
-  // Extract all existing 4-digit numbers (1000 to 9999)
-  const numbers = Array.from(existingSet)
-    .map(b => parseInt(b, 10))
-    .filter(n => !isNaN(n) && n >= 1000 && n <= 9999);
-
+  // Always find the lowest available 4-digit number starting at 1001
+  // If demo products are deleted, it automatically starts back from 1001!
   let candidateNum = 1001;
-
-  if (numbers.length > 0) {
-    const maxNum = Math.max(...numbers);
-    if (maxNum >= 1001 && maxNum < 9999) {
-      candidateNum = maxNum + 1;
-    }
-  }
-
-  // If candidate is already taken, find next available number
   while (existingSet.has(String(candidateNum)) && candidateNum < 99999) {
     candidateNum++;
   }
