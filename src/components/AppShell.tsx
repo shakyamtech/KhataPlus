@@ -60,6 +60,24 @@ const nav = [
     { to: "/balance-sheet", label: "Balance Sheet", icon: FileSpreadsheet },
 ];
 
+function getUserInitials(name?: string, email?: string): string {
+    const trimmed = (name || "").trim();
+    if (trimmed) {
+        const parts = trimmed.split(/\s+/).filter(Boolean);
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        if (parts.length === 1) {
+            return parts[0].slice(0, 2).toUpperCase();
+        }
+    }
+    const cleanEmail = (email || "").trim();
+    if (cleanEmail) {
+        return cleanEmail.slice(0, 2).toUpperCase();
+    }
+    return "US";
+}
+
 export const AppShell = () => {
     const { lang, setLang, t } = useLanguage();
     const { user, signOut } = useAuth();
@@ -726,7 +744,7 @@ export const AppShell = () => {
                             <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-amber-400/80 hover:ring-amber-400 focus:ring-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.3)] transition-all select-none p-0 flex items-center justify-center">
                                 <Avatar className="h-9 w-9">
                                     <AvatarFallback className="bg-gradient-to-br from-amber-500/20 via-primary/30 to-amber-400/15 text-amber-400 font-bold text-sm uppercase">
-                                        {fullName ? fullName.slice(0, 2) : (user?.email ? user.email.slice(0, 2) : "US")}
+                                        {getUserInitials(fullName, user?.email)}
                                     </AvatarFallback>
                                 </Avatar>
                             </Button>
@@ -831,7 +849,7 @@ export const AppShell = () => {
                             <div className="relative shrink-0">
                                 <Avatar className="h-12 w-12 rounded-full border-2 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.35)] ring-2 ring-amber-400/20">
                                     <AvatarFallback className="bg-gradient-to-br from-amber-500/20 via-primary/20 to-amber-400/10 text-amber-400 font-bold text-base uppercase">
-                                        {fullName ? fullName.slice(0, 2) : (user?.email ? user.email.slice(0, 2) : "US")}
+                                        {getUserInitials(fullName, user?.email)}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 rounded-full h-4 w-4 flex items-center justify-center shadow-md ring-1 ring-background">
