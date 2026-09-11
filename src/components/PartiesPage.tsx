@@ -77,10 +77,12 @@ function PartyAvatarRing({
   name,
   balance = 0,
   className,
+  size = "md",
 }: {
   name: string;
   balance?: number;
   className?: string;
+  size?: "sm" | "md";
 }) {
   const getInitials = (val: string) => {
     if (!val || typeof val !== "string") return "?";
@@ -118,6 +120,8 @@ function PartyAvatarRing({
       ? "Advance Balance (अग्रिम जम्मा)"
       : "Account Settled (हिसाब चुक्ता)";
 
+  const isSmall = size === "sm";
+
   return (
     <div
       className={cn("relative group shrink-0 cursor-default select-none", className)}
@@ -125,7 +129,8 @@ function PartyAvatarRing({
     >
       <div
         className={cn(
-          "w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center font-display font-bold text-sm sm:text-base tracking-wider transition-all duration-200 group-hover:scale-105",
+          "rounded-full flex items-center justify-center font-display font-bold tracking-wider transition-all duration-200 group-hover:scale-105",
+          isSmall ? "w-10 h-10 text-xs" : "w-12 h-12 sm:w-14 sm:h-14 text-sm sm:text-base",
           ringClass,
           bgGradient
         )}
@@ -134,7 +139,8 @@ function PartyAvatarRing({
       </div>
       <span
         className={cn(
-          "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full ring-2 ring-background transition-colors duration-200",
+          "absolute rounded-full ring-2 ring-background transition-colors duration-200",
+          isSmall ? "-bottom-0.5 -right-0.5 w-2.5 h-2.5" : "-bottom-0.5 -right-0.5 w-3.5 h-3.5",
           dotColor
         )}
         title={statusTitle}
@@ -2014,12 +2020,15 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       <div className="grid sm:grid-cols-2 gap-3">
         {filtered.map((p) => (
           <Card key={p.id} className="p-4 shadow-card border border-transparent cursor-pointer hover:shadow-elegant hover:-translate-y-1 hover:border-primary/40 transition-all duration-300 outline-none group" onClick={() => openLedger(p)}>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="font-display text-lg">{p.name}</div>
-                {p.phone && <div className="text-xs text-muted-foreground">{p.phone}</div>}
+            <div className="flex items-start justify-between gap-2.5">
+              <div className="flex items-center gap-3 min-w-0">
+                <PartyAvatarRing name={p.name} balance={p.balance} size="sm" />
+                <div className="min-w-0">
+                  <div className="font-display text-lg truncate leading-tight">{p.name}</div>
+                  {p.phone && <div className="text-xs text-muted-foreground truncate mt-0.5">{p.phone}</div>}
+                </div>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 shrink-0">
                 <Button size="icon" variant="ghost" onClick={(e) => {
                   e.stopPropagation();
                   openLedger(p).then(() => {
