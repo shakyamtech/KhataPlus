@@ -302,11 +302,11 @@ export function BarcodePrintModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-background">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background rounded-2xl shadow-2xl">
         {/* Header */}
-        <div className="p-5 border-b bg-secondary/30 flex items-start justify-between">
+        <div className="px-6 py-5 border-b bg-secondary/30 flex items-start justify-between pr-14">
           <div>
-            <DialogTitle className="text-xl font-display flex items-center gap-2">
+            <DialogTitle className="text-xl font-display flex items-center gap-2.5">
               <Printer className="h-5 w-5 text-primary" />
               Barcode Sticker Printing
             </DialogTitle>
@@ -314,7 +314,7 @@ export function BarcodePrintModal({
               Print scannable Code-128 barcode labels for thermal printers or standard A4 sticker paper.
             </DialogDescription>
           </div>
-          <Badge variant="outline" className="px-3 py-1 font-semibold text-xs border-primary/20 bg-primary/5 text-primary">
+          <Badge variant="outline" className="px-3.5 py-1.5 font-semibold text-xs border-primary/20 bg-primary/5 text-primary shrink-0">
             {totalLabelsCount} Sticker{totalLabelsCount === 1 ? "" : "s"} Selected
           </Badge>
         </div>
@@ -324,36 +324,36 @@ export function BarcodePrintModal({
           {/* Left Column: Product Selection (7 cols) */}
           <div className="md:col-span-7 flex flex-col border-r border-border/60 overflow-hidden h-[480px] md:h-[580px]">
             {/* Search and filter toolbar */}
-            <div className="p-3 border-b bg-secondary/20 space-y-2 shrink-0">
+            <div className="p-4 px-5 border-b bg-secondary/20 space-y-3 shrink-0">
               <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by product name or barcode..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="pl-9 h-9 text-xs"
+                  className="pl-10 h-10 text-xs bg-background/80"
                 />
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-1">
+              <div className="flex items-center justify-between text-xs pt-0.5">
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     onClick={handleSelectAll}
-                    className="h-7 text-[11px] px-2.5"
+                    className="h-7 text-[11px] px-3 font-medium"
                   >
-                    <CheckSquare className="h-3.5 w-3.5 mr-1 text-primary" /> Select All
+                    <CheckSquare className="h-3.5 w-3.5 mr-1.5 text-primary" /> Select All
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     onClick={handleDeselectAll}
-                    className="h-7 text-[11px] px-2.5"
+                    className="h-7 text-[11px] px-3 font-medium"
                   >
-                    <Square className="h-3.5 w-3.5 mr-1" /> Deselect
+                    <Square className="h-3.5 w-3.5 mr-1.5" /> Deselect
                   </Button>
                 </div>
 
@@ -364,16 +364,16 @@ export function BarcodePrintModal({
                     variant="ghost"
                     onClick={handleFillWithLiveStock}
                     title="Set sticker quantity equal to live stock for selected items"
-                    className="h-7 text-[11px] px-2 text-muted-foreground hover:text-foreground"
+                    className="h-7 text-[11px] px-2.5 text-muted-foreground hover:text-foreground"
                   >
-                    <Layers className="h-3 w-3 mr-1" /> Sync Live Stock
+                    <Layers className="h-3.5 w-3.5 mr-1.5" /> Sync Live Stock
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
                     onClick={handleSetAllToOne}
-                    className="h-7 text-[11px] px-2 text-muted-foreground hover:text-foreground"
+                    className="h-7 text-[11px] px-2.5 text-muted-foreground hover:text-foreground"
                   >
                     Set All 1
                   </Button>
@@ -382,9 +382,9 @@ export function BarcodePrintModal({
             </div>
 
             {/* Product Table */}
-            <div className="flex-1 overflow-y-auto p-2 divide-y divide-border/40">
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {filteredProducts.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground text-xs">
+                <div className="p-12 text-center text-muted-foreground text-xs">
                   No matching products found.
                 </div>
               ) : (
@@ -396,8 +396,10 @@ export function BarcodePrintModal({
                   return (
                     <div
                       key={p.id}
-                      className={`p-2.5 flex items-center justify-between gap-2 rounded-lg transition-colors text-xs ${
-                        isSelected ? "bg-primary/5 border border-primary/20" : "hover:bg-secondary/40"
+                      className={`p-3 px-3.5 flex items-center justify-between gap-3 rounded-xl transition-colors text-xs border ${
+                        isSelected 
+                          ? "bg-primary/5 border-primary/30 shadow-xs" 
+                          : "border-transparent bg-secondary/30 hover:bg-secondary/60 hover:border-border/50"
                       }`}
                     >
                       {/* Checkbox and Product info */}
@@ -421,10 +423,10 @@ export function BarcodePrintModal({
                       </div>
 
                       {/* Barcode column / Generate button */}
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2.5 shrink-0">
                         {hasBarcode ? (
                           <div className="text-right">
-                            <span className="font-mono text-[11px] bg-secondary px-1.5 py-0.5 rounded border text-muted-foreground">
+                            <span className="font-mono text-[11px] bg-secondary/80 px-2 py-0.5 rounded-md border border-border/60 text-muted-foreground">
                               {p.barcode}
                             </span>
                           </div>
@@ -434,7 +436,7 @@ export function BarcodePrintModal({
                             variant="outline"
                             onClick={() => handleQuickGenerateBarcode(p)}
                             disabled={generatingForId === p.id}
-                            className="h-7 text-[10px] px-2 border-dashed text-primary hover:bg-primary/10"
+                            className="h-7 text-[10px] px-2.5 border-dashed text-primary hover:bg-primary/10"
                           >
                             <Sparkles className="h-3 w-3 mr-1" />
                             {generatingForId === p.id ? "Gen..." : "Auto Barcode"}
@@ -451,8 +453,8 @@ export function BarcodePrintModal({
                             placeholder="0"
                             onChange={e => handleQuantityChange(p.id, e.target.value)}
                             disabled={!isSelected}
-                            className={`h-8 text-center text-xs font-semibold ${
-                              !isSelected ? "opacity-40" : "border-primary"
+                            className={`h-8 text-center text-xs font-semibold rounded-lg ${
+                              !isSelected ? "opacity-40" : "border-primary bg-background shadow-xs"
                             }`}
                           />
                         </div>
@@ -464,14 +466,14 @@ export function BarcodePrintModal({
             </div>
 
             {/* Sticky summary bar at bottom of product table */}
-            <div className="p-2.5 border-t bg-secondary/10 flex items-center justify-between text-xs text-muted-foreground shrink-0">
-              <span>{Object.keys(selectedQuantities).length} items selected</span>
+            <div className="px-5 py-3 border-t bg-secondary/15 flex items-center justify-between text-xs text-muted-foreground shrink-0">
+              <span className="font-medium">{Object.keys(selectedQuantities).length} items selected</span>
               <span className="font-bold text-foreground">{totalLabelsCount} stickers total</span>
             </div>
           </div>
 
           {/* Right Column: Format Settings & Live Preview (5 cols) */}
-          <div className="md:col-span-5 flex flex-col bg-secondary/10 overflow-y-auto p-4 space-y-4">
+          <div className="md:col-span-5 flex flex-col bg-secondary/10 overflow-y-auto p-5 md:p-6 space-y-5">
             {/* Format Selection */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -500,7 +502,7 @@ export function BarcodePrintModal({
                   ))}
                 </SelectContent>
               </Select>
-              <div className="text-[11px] text-muted-foreground bg-card p-2 rounded-md border">
+              <div className="text-[11px] text-muted-foreground bg-card p-2.5 rounded-lg border">
                 {BARCODE_FORMAT_PRESETS.find(f => f.id === format)?.description}
               </div>
             </div>
@@ -634,7 +636,7 @@ export function BarcodePrintModal({
             </div>
 
             {/* Print Output Stats */}
-            <div className="bg-primary/5 rounded-lg p-2.5 border border-primary/20 text-xs space-y-1">
+            <div className="bg-primary/5 rounded-xl p-3 border border-primary/20 text-xs space-y-1.5">
               <div className="flex justify-between font-medium">
                 <span>Total Stickers:</span>
                 <span className="font-bold text-primary">{totalLabelsCount}</span>
@@ -652,12 +654,12 @@ export function BarcodePrintModal({
         </div>
 
         {/* Footer actions */}
-        <div className="p-4 border-t bg-secondary/20 flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 border-t bg-secondary/20 flex items-center justify-between shrink-0">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="text-xs"
+            className="text-xs px-4"
           >
             Close
           </Button>
@@ -666,7 +668,7 @@ export function BarcodePrintModal({
             type="button"
             onClick={handlePrint}
             disabled={totalLabelsCount === 0}
-            className="bg-gradient-primary text-primary-foreground font-semibold text-xs px-5 shadow-soft hover:shadow-elegant flex items-center gap-2"
+            className="bg-gradient-primary text-primary-foreground font-semibold text-xs px-6 h-9 shadow-soft hover:shadow-elegant flex items-center gap-2"
           >
             <Printer className="h-4 w-4" />
             Print {totalLabelsCount} Barcode Sticker{totalLabelsCount === 1 ? "" : "s"}
