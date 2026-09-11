@@ -669,12 +669,24 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                     variant="outline"
                     size="sm"
                     className="shrink-0 px-3 text-xs font-semibold text-primary hover:bg-primary/10 border-primary/30"
-                    onClick={() => {
-                      const code = generateUniqueBarcode();
-                      setEdit({ ...edit, barcode: code });
-                      toast.success(`Generated: ${code}`);
+                    onClick={async () => {
+                      try {
+                        let existingBarcodes: string[] = [];
+                        if (user?.uid) {
+                          const q = query(collection(db, "products"), where("user_id", "==", user.uid));
+                          const snap = await getDocs(q);
+                          existingBarcodes = snap.docs.map(d => d.data().barcode).filter(Boolean);
+                        }
+                        const code = generateUniqueBarcode(existingBarcodes);
+                        setEdit((prev: any) => ({ ...prev, barcode: code }));
+                        toast.success(`Generated Barcode: ${code}`);
+                      } catch {
+                        const code = generateUniqueBarcode();
+                        setEdit((prev: any) => ({ ...prev, barcode: code }));
+                        toast.success(`Generated Barcode: ${code}`);
+                      }
                     }}
-                    title="Auto-generate unique barcode"
+                    title="Auto-generate unique 4-digit barcode"
                   >
                     <Sparkles className="h-3.5 w-3.5 mr-1" />
                     Auto

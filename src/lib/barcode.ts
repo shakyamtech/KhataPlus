@@ -92,28 +92,36 @@ export function generateBarcodeSvg(
 }
 
 /**
- * Generates a unique 12-digit numeric barcode (Prefix 20 + Timestamp + Random digits)
- * EAN/UPC style 12-digit number guaranteed unique and easily scannable
+ * Generates a clean 4-digit in-store retail barcode (starts at 1001, e.g. 1001, 1002, 1003)
+ * Follows standard retail PLU / Code 128 in-store item numbering for compact thermal printing
  */
 export function generateUniqueBarcode(existingBarcodes: (string | null | undefined)[] = []): string {
-  const existingSet = new Set(existingBarcodes.filter(Boolean));
-  let attempts = 0;
+  const existingSet = new Set(
+    existingBarcodes
+      .map(b => (b ? String(b).trim() : ""))
+      .filter(Boolean)
+  );
 
-  while (attempts < 100) {
-    attempts++;
-    // Generate a 12-digit barcode: "20" (in-store standard prefix) + 6 digits from time + 4 random digits
-    const now = Date.now().toString();
-    const timeSlice = now.slice(-6);
-    const rand = Math.floor(1000 + Math.random() * 9000).toString();
-    const candidate = `20${timeSlice}${rand}`;
+  // Extract all existing 4-digit numbers (1000 to 9999)
+  const numbers = Array.from(existingSet)
+    .map(b => parseInt(b, 10))
+    .filter(n => !isNaN(n) && n >= 1000 && n <= 9999);
 
-    if (!existingSet.has(candidate)) {
-      return candidate;
+  let candidateNum = 1001;
+
+  if (numbers.length > 0) {
+    const maxNum = Math.max(...numbers);
+    if (maxNum >= 1001 && maxNum < 9999) {
+      candidateNum = maxNum + 1;
     }
   }
 
-  // Fallback
-  return `20${Date.now().toString().slice(-10)}`;
+  // If candidate is already taken, find next available number
+  while (existingSet.has(String(candidateNum)) && candidateNum < 99999) {
+    candidateNum++;
+  }
+
+  return String(candidateNum);
 }
 
 export type BarcodePaperFormat =
