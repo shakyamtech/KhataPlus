@@ -629,22 +629,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
             
             <div className={cn("grid gap-3", shopInfo?.is_vat_registered ? "grid-cols-2" : "grid-cols-1")}>
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label>Barcode (Optional)</Label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const code = generateUniqueBarcode();
-                      setEdit({ ...edit, barcode: code });
-                      toast.success(`Generated: ${code}`);
-                    }}
-                    className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1 hover:underline cursor-pointer"
-                    title="Generate unique 12-digit barcode"
-                  >
-                    <Sparkles className="h-3 w-3" />
-                    <span>⚡ Auto Generate</span>
-                  </button>
-                </div>
+                <Label>Barcode (Optional)</Label>
                 <div className="flex gap-1.5">
                   <Input 
                     value={edit.barcode || ""} 
@@ -655,7 +640,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="shrink-0 px-2.5 text-xs font-semibold text-primary hover:bg-primary/10 border-primary/30"
+                    className="shrink-0 px-3 text-xs font-semibold text-primary hover:bg-primary/10 border-primary/30"
                     onClick={() => {
                       const code = generateUniqueBarcode();
                       setEdit({ ...edit, barcode: code });
@@ -663,7 +648,8 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                     }}
                     title="Auto-generate unique barcode"
                   >
-                    ⚡ Auto
+                    <Sparkles className="h-3.5 w-3.5 mr-1" />
+                    Auto
                   </Button>
                 </div>
               </div>
