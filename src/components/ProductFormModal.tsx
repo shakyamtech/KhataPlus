@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
+import { Loader2, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { Switch } from "@/components/ui/switch";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
+import { generateUniqueBarcode } from "@/lib/barcode";
 
 const DEFAULT_UNITS = ["pcs", "set", "doz"];
 
@@ -628,8 +629,43 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
             
             <div className={cn("grid gap-3", shopInfo?.is_vat_registered ? "grid-cols-2" : "grid-cols-1")}>
               <div className="space-y-1.5">
-                <Label>Barcode (Optional)</Label>
-                <Input value={edit.barcode || ""} onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} placeholder="Scan or type barcode..." />
+                <div className="flex items-center justify-between">
+                  <Label>Barcode (Optional)</Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const code = generateUniqueBarcode();
+                      setEdit({ ...edit, barcode: code });
+                      toast.success(`Generated: ${code}`);
+                    }}
+                    className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1 hover:underline cursor-pointer"
+                    title="Generate unique 12-digit barcode"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    <span>⚡ Auto Generate</span>
+                  </button>
+                </div>
+                <div className="flex gap-1.5">
+                  <Input 
+                    value={edit.barcode || ""} 
+                    onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} 
+                    placeholder="Scan or type barcode..." 
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 px-2.5 text-xs font-semibold text-primary hover:bg-primary/10 border-primary/30"
+                    onClick={() => {
+                      const code = generateUniqueBarcode();
+                      setEdit({ ...edit, barcode: code });
+                      toast.success(`Generated: ${code}`);
+                    }}
+                    title="Auto-generate unique barcode"
+                  >
+                    ⚡ Auto
+                  </Button>
+                </div>
               </div>
               {shopInfo?.is_vat_registered && (
                 <div className="space-y-1.5">

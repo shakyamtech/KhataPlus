@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { ProductFormModal } from "@/components/ProductFormModal";
+import { BarcodePrintModal } from "@/components/BarcodePrintModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type Ingredient = {
@@ -39,6 +40,8 @@ const Products = () => {
   const [items, setItems] = useState<Product[]>([]);
   const [open, setOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
+  const [barcodeTargetProduct, setBarcodeTargetProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const [sourcingOpen, setSourcingOpen] = useState(false);
@@ -311,10 +314,29 @@ const Products = () => {
         title="Products & Stock"
         subtitle="Manage your products and live stock"
         actions={
-          <Button onClick={() => { setSelectedProduct(null); setOpen(true); }} className="bg-gradient-primary text-primary-foreground shadow-soft"><Plus className="h-4 w-4 mr-1" /> Add Product</Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBarcodeTargetProduct(null);
+                setBarcodeModalOpen(true);
+              }}
+              className="border-primary/30 hover:bg-primary/10 text-foreground font-medium shadow-sm"
+            >
+              <Barcode className="h-4 w-4 mr-1.5 text-primary" /> Barcode Stickers
+            </Button>
+            <Button onClick={() => { setSelectedProduct(null); setOpen(true); }} className="bg-gradient-primary text-primary-foreground shadow-soft"><Plus className="h-4 w-4 mr-1" /> Add Product</Button>
+          </div>
         }
       />
       <ProductFormModal open={open} onOpenChange={setOpen} product={selectedProduct} onSuccess={() => load()} />
+      <BarcodePrintModal
+        open={barcodeModalOpen}
+        onOpenChange={setBarcodeModalOpen}
+        products={items}
+        initialSelectedProduct={barcodeTargetProduct}
+        onProductsUpdated={() => load()}
+      />
 
       <Input className="mb-4 max-w-sm" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
 
@@ -355,6 +377,18 @@ const Products = () => {
                     </div>
                   </div>
                   <div className="flex gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity bg-secondary/50 rounded-lg p-0.5 shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setBarcodeTargetProduct(p);
+                        setBarcodeModalOpen(true);
+                      }}
+                      title="Print Barcode Stickers"
+                      className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"
+                    >
+                      <Barcode className="h-4 w-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => loadBatches(p)} title="Active Batches" className="h-8 w-8 hover:bg-orange-500 hover:text-white text-muted-foreground rounded-md"><Layers className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => openAdjust(p)} title="Adjust Stock" className="h-8 w-8 hover:bg-red-500 hover:text-white text-muted-foreground rounded-md"><PackageMinus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => loadSourcingHistory(p)} title="Sourcing History" className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><History className="h-4 w-4" /></Button>
