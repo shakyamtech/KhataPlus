@@ -21,6 +21,9 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+      },
       includeAssets: ["favicon.ico", "favicon.svg", "apple-touch-icon.png", "favicon-32x32.png", "favicon-16x16.png"],
       manifest: {
         name: "KhataPlus - Shop POS & Inventory",

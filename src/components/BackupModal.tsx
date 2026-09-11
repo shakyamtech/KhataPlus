@@ -4,6 +4,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import {
   exportUserDataAsJson,
+  exportUserDataToExcel,
   downloadJsonFile,
   parseAndValidateBackupFile,
   restoreUserDataFromJson,

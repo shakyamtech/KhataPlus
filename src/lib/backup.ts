@@ -62,8 +62,6 @@ export function downloadJsonFile(content: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-import * as XLSX from "xlsx";
-
 /**
  * Common internal fetcher for all user shop records
  */
@@ -228,6 +226,9 @@ export async function exportUserDataToExcel(
   userId: string,
   customShopName?: string
 ): Promise<{ filename: string; counts: Record<string, number> }> {
+  // Dynamically import xlsx on demand to keep initial app bundle small and fast
+  const XLSX = await import("xlsx");
+
   const full = await fetchFullUserDatabase(userId, customShopName);
   const {
     products, batches, customers, suppliers, sales,
