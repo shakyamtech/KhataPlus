@@ -49,16 +49,15 @@ export function BackupModal({ open, onOpenChange, onSuccess }: BackupModalProps)
   const { lang } = useLanguage();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [activeTab, setActiveTab] = useState<"export" | "restore">("export");
-  
+
   // Export state
   const [exporting, setExporting] = useState(false);
-  
+
   // Restore state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [validating, setValidating] = useState(false);
   const [summary, setSummary] = useState<ValidationSummary | null>(null);
   const [restoreMode, setRestoreMode] = useState<"merge" | "clean">("merge");
-  const [autoSafetyBackup, setAutoSafetyBackup] = useState(true);
   const [restoring, setRestoring] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -120,24 +119,6 @@ export function BackupModal({ open, onOpenChange, onSuccess }: BackupModalProps)
 
     setRestoring(true);
     try {
-      // If user has enabled safety backup, export current database first
-      if (autoSafetyBackup && user) {
-        try {
-          const { jsonString, filename } = await exportUserDataAsJson(
-            user.uid,
-            `${shopInfo?.name || "Shop"}_PreRestore_Safety`
-          );
-          downloadJsonFile(jsonString, filename);
-          toast.info(
-            lang === "NEP"
-              ? "चालु डाटाको सुरक्षा ब्याकअप (Safety Snapshot) डाउनलोड गरियो।"
-              : "Pre-restore safety backup downloaded."
-          );
-        } catch (snapErr) {
-          console.warn("Safety snapshot failed to download:", snapErr);
-        }
-      }
-
       const res = await restoreUserDataFromJson(user.uid, summary.payload, restoreMode);
       if (res.success) {
         toast.success(
@@ -382,28 +363,6 @@ export function BackupModal({ open, onOpenChange, onSuccess }: BackupModalProps)
                         </span>
                       </div>
                     )}
-                  </div>
-
-                  {/* Safety Snapshot Checkbox */}
-                  <div className="flex items-center space-x-2 pt-1 pb-1">
-                    <input
-                      type="checkbox"
-                      id="autoSafetyBackup"
-                      checked={autoSafetyBackup}
-                      onChange={(e) => setAutoSafetyBackup(e.target.checked)}
-                      className="h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
-                    />
-                    <label
-                      htmlFor="autoSafetyBackup"
-                      className="text-xs font-medium cursor-pointer text-foreground flex items-center gap-1.5 select-none"
-                    >
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                      <span>
-                        {lang === "NEP"
-                          ? "रिस्टोर गर्नु अघि हालको डाटाको सुरक्षा ब्याकअप (Safety Snapshot) स्वतः डाउनलोड गर्ने"
-                          : "Auto-download safety backup of current data before restoring"}
-                      </span>
-                    </label>
                   </div>
 
                   <Button
