@@ -865,10 +865,19 @@ export const AppShell = () => {
             <Dialog open={shopOpen} onOpenChange={setShopOpen}>
                 <DialogContent className="max-h-[90vh] max-w-2xl w-[95vw] sm:w-full flex flex-col p-6 overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DialogHeader className="shrink-0">
-                        <DialogTitle>{lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}</DialogTitle>
-                        <DialogDescription>
-                            {lang === "NEP" ? "पसलको विवरणहरू सम्पादन गर्नुहोस्।" : "Edit your shop details."}
-                        </DialogDescription>
+                        <div className="flex items-center gap-3.5 text-left">
+                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 border border-primary/25 shadow-[0_2px_12px_rgba(6,182,212,0.18)] flex items-center justify-center text-primary shrink-0">
+                                <Settings className="h-6 w-6" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <DialogTitle className="text-base font-bold">
+                                    {lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                                    {lang === "NEP" ? "पसलको विवरणहरू सम्पादन गर्नुहोस्।" : "Edit your shop details."}
+                                </DialogDescription>
+                            </div>
+                        </div>
                     </DialogHeader>
                     <div className="space-y-4 py-2 overflow-y-auto overflow-x-hidden flex-1 px-1">
                         <div className="space-y-2">
