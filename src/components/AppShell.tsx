@@ -500,6 +500,97 @@ export const AppShell = () => {
         }
     };
 
+    const renderUserProfileDropdown = (triggerSizeClass: string = "h-9 w-9") => (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button 
+                    variant="ghost" 
+                    className={`relative ${triggerSizeClass} rounded-full ring-2 ring-amber-400/80 hover:ring-amber-400 focus:ring-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.3)] transition-all select-none p-0 flex items-center justify-center bg-card shadow-sm hover:scale-105 active:scale-95 duration-200`}
+                >
+                    <Avatar className={triggerSizeClass}>
+                        <AvatarFallback className="bg-gradient-to-br from-amber-500/20 via-primary/30 to-amber-400/15 text-amber-400 font-bold text-sm uppercase">
+                            {getUserInitials(fullName, user?.email)}
+                        </AvatarFallback>
+                    </Avatar>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
+                <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                        <div className="flex items-center justify-between gap-1">
+                            <p className="text-sm font-bold leading-none text-foreground truncate">{fullName || "User Profile"}</p>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-400/30 flex items-center gap-0.5 shrink-0">
+                                <Crown className="h-2 w-2 fill-current" /> PRO
+                            </span>
+                        </div>
+                        <p className="text-xs leading-none text-muted-foreground truncate">{user?.email}</p>
+                    </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => {
+                    setNewName(shopName);
+                    setProfileOpen(true);
+                }} className="cursor-pointer font-medium gap-2">
+                    <User className="h-4 w-4 text-primary" /> {lang === "NEP" ? "प्रोफाइल सेटिङ" : "Profile Settings"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                    setNewName(shopName);
+                    setShopOpen(true);
+                }} className="cursor-pointer font-medium gap-2">
+                    <Store className="h-4 w-4 text-primary" /> {lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setInstallModalOpen(true)} className="cursor-pointer font-medium gap-2">
+                    <Smartphone className="h-4 w-4 text-primary" /> {lang === "NEP" ? "मोबाइल एप (QR Scan)" : "Mobile App (QR Scan)"}
+                </DropdownMenuItem>
+
+                {/* Theme options Submenu */}
+                <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="font-medium gap-2">
+                        <Palette className="h-4 w-4 text-primary" /> {lang === "NEP" ? "रंग / थिम" : "Theme Options"}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                        <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer gap-2">
+                                <Sun className="h-4 w-4 text-amber-500" /> {lang === "NEP" ? "उज्यालो (Light)" : "Light Mode"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer gap-2">
+                                <Moon className="h-4 w-4 text-indigo-500" /> {lang === "NEP" ? "अध्यारो (Dark)" : "Dark Mode"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer gap-2">
+                                <Laptop className="h-4 w-4 text-muted-foreground" /> {lang === "NEP" ? "सिस्टम (System)" : "System Default"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <div className="px-2 py-1.5">
+                                <p className="text-xs text-muted-foreground mb-2 font-medium">{lang === "NEP" ? "रंग छान्नुहोस्" : "Color Theme"}</p>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setColorTheme("teal")} className={`w-6 h-6 rounded-full bg-[#06b6d4] ring-offset-background transition-all ${colorTheme === "teal" ? "ring-2 ring-[#06b6d4] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Ocean Teal" />
+                                    <button onClick={() => setColorTheme("indigo")} className={`w-6 h-6 rounded-full bg-[#3b82f6] ring-offset-background transition-all ${colorTheme === "indigo" ? "ring-2 ring-[#3b82f6] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Premium Indigo" />
+                                    <button onClick={() => setColorTheme("gold")} className={`w-6 h-6 rounded-full bg-[#fbbf24] ring-offset-background transition-all ${colorTheme === "gold" ? "ring-2 ring-[#fbbf24] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Luxury Gold" />
+                                    <button onClick={() => setColorTheme("purple")} className={`w-6 h-6 rounded-full bg-[#9333ea] ring-offset-background transition-all ${colorTheme === "purple" ? "ring-2 ring-[#9333ea] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Royal Purple" />
+                                </div>
+                            </div>
+                        </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                </DropdownMenuSub>
+
+                <DropdownMenuItem onClick={() => setAboutOpen(true)} className="cursor-pointer font-medium gap-2">
+                    <Info className="h-4 w-4 text-primary" /> {lang === "NEP" ? "हाम्रो बारेमा" : "About App"}
+                </DropdownMenuItem>
+
+                {!hasMigrated && (
+                    <DropdownMenuItem onClick={migrateToBatches} className="cursor-pointer font-medium gap-2 text-amber-600">
+                        <Package className="h-4 w-4 text-amber-600" /> Migrate to Batches
+                    </DropdownMenuItem>
+                )}
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={async () => { await signOut(); navigate("/auth"); }} className="cursor-pointer font-bold text-destructive hover:bg-destructive/10 hover:text-destructive gap-2">
+                    <LogOut className="h-4 w-4" /> {t.signOut}
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+
     return (
         <div className="flex min-h-screen bg-background">
             <aside className="hidden md:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
@@ -575,86 +666,7 @@ export const AppShell = () => {
 
             {/* Desktop top-right profile corner */}
             <div className="hidden md:flex fixed top-4 right-6 z-50 items-center gap-2">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-2 ring-primary/20 hover:ring-primary/45 focus:ring-primary/50 transition-all select-none p-0 flex items-center justify-center bg-card shadow-sm hover:scale-105 active:scale-95 duration-200">
-                            <Avatar className="h-10 w-10">
-                                <AvatarFallback className="bg-primary text-primary-foreground font-bold text-sm uppercase">
-                                    {fullName ? fullName.slice(0, 2) : (user?.email ? user.email.slice(0, 2) : "US")}
-                                </AvatarFallback>
-                            </Avatar>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
-                        <DropdownMenuLabel className="font-normal">
-                            <div className="flex flex-col space-y-1">
-                                <p className="text-sm font-bold leading-none text-foreground">{fullName || "User Profile"}</p>
-                                <p className="text-xs leading-none text-muted-foreground truncate">{user?.email}</p>
-                            </div>
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => {
-                            setNewName(shopName);
-                            setProfileOpen(true);
-                        }} className="cursor-pointer font-medium gap-2">
-                            <User className="h-4 w-4 text-primary" /> {lang === "NEP" ? "प्रोफाइल सेटिङ" : "Profile Settings"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                            setNewName(shopName);
-                            setShopOpen(true);
-                        }} className="cursor-pointer font-medium gap-2">
-                            <Store className="h-4 w-4 text-primary" /> {lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setInstallModalOpen(true)} className="cursor-pointer font-medium gap-2">
-                            <Smartphone className="h-4 w-4 text-primary" /> {lang === "NEP" ? "मोबाइल एप (QR Scan)" : "Mobile App (QR Scan)"}
-                        </DropdownMenuItem>
-
-                        {/* Theme options Submenu */}
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger className="font-medium gap-2">
-                                <Palette className="h-4 w-4 text-primary" /> {lang === "NEP" ? "रंग / थिम" : "Theme Options"}
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                                <DropdownMenuSubContent>
-                                    <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer gap-2">
-                                        <Sun className="h-4 w-4 text-amber-500" /> {lang === "NEP" ? "उज्यालो (Light)" : "Light Mode"}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer gap-2">
-                                        <Moon className="h-4 w-4 text-indigo-500" /> {lang === "NEP" ? "अध्यारो (Dark)" : "Dark Mode"}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer gap-2">
-                                        <Laptop className="h-4 w-4 text-muted-foreground" /> {lang === "NEP" ? "सिस्टम (System)" : "System Default"}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <div className="px-2 py-1.5">
-                                        <p className="text-xs text-muted-foreground mb-2 font-medium">{lang === "NEP" ? "रंग छान्नुहोस्" : "Color Theme"}</p>
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => setColorTheme("teal")} className={`w-6 h-6 rounded-full bg-[#06b6d4] ring-offset-background transition-all ${colorTheme === "teal" ? "ring-2 ring-[#06b6d4] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Ocean Teal" />
-                                            <button onClick={() => setColorTheme("indigo")} className={`w-6 h-6 rounded-full bg-[#3b82f6] ring-offset-background transition-all ${colorTheme === "indigo" ? "ring-2 ring-[#3b82f6] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Premium Indigo" />
-                                            <button onClick={() => setColorTheme("gold")} className={`w-6 h-6 rounded-full bg-[#fbbf24] ring-offset-background transition-all ${colorTheme === "gold" ? "ring-2 ring-[#fbbf24] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Luxury Gold" />
-                                            <button onClick={() => setColorTheme("purple")} className={`w-6 h-6 rounded-full bg-[#9333ea] ring-offset-background transition-all ${colorTheme === "purple" ? "ring-2 ring-[#9333ea] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Royal Purple" />
-                                        </div>
-                                    </div>
-                                </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                        </DropdownMenuSub>
-
-                        <DropdownMenuItem onClick={() => setAboutOpen(true)} className="cursor-pointer font-medium gap-2">
-                            <Info className="h-4 w-4 text-primary" /> {lang === "NEP" ? "हाम्रो बारेमा" : "About App"}
-                        </DropdownMenuItem>
-
-                        {!hasMigrated && (
-                            <DropdownMenuItem onClick={migrateToBatches} className="cursor-pointer font-medium gap-2 text-amber-600">
-                                <Package className="h-4 w-4 text-amber-600" /> Migrate to Batches
-                            </DropdownMenuItem>
-                        )}
-
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={async () => { await signOut(); navigate("/auth"); }} className="cursor-pointer font-bold text-destructive hover:bg-destructive/10 hover:text-destructive gap-2">
-                            <LogOut className="h-4 w-4" /> {t.signOut}
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {renderUserProfileDropdown("h-10 w-10")}
             </div>
 
             {/* Mobile top bar */}
@@ -739,85 +751,7 @@ export const AppShell = () => {
                         <QrCode className="h-4 w-4" />
                     </Button>
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-amber-400/80 hover:ring-amber-400 focus:ring-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.3)] transition-all select-none p-0 flex items-center justify-center">
-                                <Avatar className="h-9 w-9">
-                                    <AvatarFallback className="bg-gradient-to-br from-amber-500/20 via-primary/30 to-amber-400/15 text-amber-400 font-bold text-sm uppercase">
-                                        {getUserInitials(fullName, user?.email)}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
-                            <DropdownMenuLabel className="font-normal">
-                                <div className="flex flex-col space-y-1">
-                                    <div className="flex items-center justify-between gap-1">
-                                        <p className="text-sm font-bold leading-none text-foreground truncate">{fullName || "User Profile"}</p>
-                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-400/30 flex items-center gap-0.5 shrink-0">
-                                            <Crown className="h-2 w-2 fill-current" /> PRO
-                                        </span>
-                                    </div>
-                                    <p className="text-xs leading-none text-muted-foreground truncate">{user?.email}</p>
-                                </div>
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => {
-                                setNewName(shopName);
-                                setProfileOpen(true);
-                            }} className="cursor-pointer font-medium gap-2">
-                                <User className="h-4 w-4 text-primary" /> {lang === "NEP" ? "प्रोफाइल सेटिङ" : "Profile Settings"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
-                                setNewName(shopName);
-                                setShopOpen(true);
-                            }} className="cursor-pointer font-medium gap-2">
-                                <Store className="h-4 w-4 text-primary" /> {lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setInstallModalOpen(true)} className="cursor-pointer font-medium gap-2">
-                                <Smartphone className="h-4 w-4 text-primary" /> {lang === "NEP" ? "मोबाइल एप (QR Scan)" : "Mobile App (QR Scan)"}
-                            </DropdownMenuItem>
-
-                            {/* Theme options Submenu */}
-                            <DropdownMenuSub>
-                                <DropdownMenuSubTrigger className="font-medium gap-2">
-                                    <Palette className="h-4 w-4 text-primary" /> {lang === "NEP" ? "रंग / थिम" : "Theme Options"}
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuPortal>
-                                    <DropdownMenuSubContent>
-                                        <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer gap-2">
-                                            <Sun className="h-4 w-4 text-amber-500" /> {lang === "NEP" ? "उज्यालो (Light)" : "Light Mode"}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer gap-2">
-                                            <Moon className="h-4 w-4 text-indigo-500" /> {lang === "NEP" ? "अध्यारो (Dark)" : "Dark Mode"}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer gap-2">
-                                            <Laptop className="h-4 w-4 text-muted-foreground" /> {lang === "NEP" ? "सिस्टम (System)" : "System Default"}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <div className="px-2 py-1.5">
-                                            <p className="text-xs text-muted-foreground mb-2 font-medium">{lang === "NEP" ? "रंग छान्नुहोस्" : "Color Theme"}</p>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => setColorTheme("teal")} className={`w-6 h-6 rounded-full bg-[#06b6d4] ring-offset-background transition-all ${colorTheme === "teal" ? "ring-2 ring-[#06b6d4] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Ocean Teal" />
-                                                <button onClick={() => setColorTheme("indigo")} className={`w-6 h-6 rounded-full bg-[#3b82f6] ring-offset-background transition-all ${colorTheme === "indigo" ? "ring-2 ring-[#3b82f6] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Premium Indigo" />
-                                                <button onClick={() => setColorTheme("gold")} className={`w-6 h-6 rounded-full bg-[#fbbf24] ring-offset-background transition-all ${colorTheme === "gold" ? "ring-2 ring-[#fbbf24] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Luxury Gold" />
-                                                <button onClick={() => setColorTheme("purple")} className={`w-6 h-6 rounded-full bg-[#9333ea] ring-offset-background transition-all ${colorTheme === "purple" ? "ring-2 ring-[#9333ea] ring-offset-2 scale-110" : "hover:scale-110"}`} title="Royal Purple" />
-                                            </div>
-                                        </div>
-                                    </DropdownMenuSubContent>
-                                </DropdownMenuPortal>
-                            </DropdownMenuSub>
-
-                            <DropdownMenuItem onClick={() => setAboutOpen(true)} className="cursor-pointer font-medium gap-2">
-                                <Info className="h-4 w-4 text-primary" /> {lang === "NEP" ? "हाम्रो बारेमा" : "About App"}
-                            </DropdownMenuItem>
-
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={async () => { await signOut(); navigate("/auth"); }} className="cursor-pointer font-bold text-destructive hover:bg-destructive/10 hover:text-destructive gap-2">
-                                <LogOut className="h-4 w-4" /> {t.signOut}
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {renderUserProfileDropdown("h-9 w-9")}
                 </div>
             </div>
 
