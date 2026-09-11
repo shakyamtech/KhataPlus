@@ -889,7 +889,7 @@ export const AppShell = () => {
 
             {/* Shop Settings Modal */}
             <Dialog open={shopOpen} onOpenChange={setShopOpen}>
-                <DialogContent className="max-h-[90vh] sm:max-w-2xl max-w-[95vw] w-full flex flex-col p-6 overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
+                <DialogContent className="max-h-[90vh] max-w-2xl w-[95vw] sm:w-full flex flex-col p-6 overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DialogHeader className="shrink-0">
                         <DialogTitle>{lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}</DialogTitle>
                         <DialogDescription>
@@ -1290,7 +1290,7 @@ export const AppShell = () => {
                             </div>
                         </div>
 
-                        <div className="pt-4 border-t border-destructive/20 mt-6 space-y-3 bg-destructive/5 -mx-6 px-6 py-4">
+                        <div className="pt-4 border-t border-destructive/20 mt-6 space-y-3 bg-destructive/5 rounded-xl p-4 border">
                             <div className="text-sm font-semibold text-destructive flex items-center gap-1.5">
                                 <Trash2 className="h-4 w-4" />
                                 {lang === "NEP" ? "खतरा क्षेत्र (Danger Zone)" : "Danger Zone"}
