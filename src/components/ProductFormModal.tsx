@@ -408,9 +408,11 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
 
   const allUnits = Array.from(new Set([
     ...DEFAULT_UNITS,
-    ...customUnits,
+    ...(Array.isArray(customUnits) ? customUnits : []),
     ...(edit?.unit ? [edit.unit] : [])
-  ])).filter(Boolean);
+  ]))
+    .map(u => (typeof u === "string" ? u.trim() : ""))
+    .filter(Boolean);
 
   const handleAddUnit = () => {
     const trimmed = newUnitName.trim();
