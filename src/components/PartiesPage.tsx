@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil, CheckCircle2, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
@@ -30,7 +30,7 @@ type OrderItem = {
   hs_code?: string;
 };
 
-type Party = { id: string; name: string; phone: string | null; balance: number; pan?: string; address?: string };
+type Party = { id: string; name: string; phone: string | null; balance: number; pan?: string; address?: string; txCount?: number };
 type Entry = {
   id: string;
   entry_type?: string;
@@ -218,7 +218,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           if (isPayment) return acc - Number(e.amount);
           return acc;
         }, 0);
-        return { ...party, balance: Math.round(balance * 100) / 100 };
+        const orderCount = partyEntries.filter((e: any) => type === "customer" ? e.entry_type === "sale" : e.entry_type === "purchase").length;
+        const txCount = orderCount > 0 ? orderCount : partyEntries.length;
+        return { ...party, balance: Math.round(balance * 100) / 100, txCount };
       });
 
       setItems(parties.sort((a, b) => a.name.localeCompare(b.name)));
@@ -2028,7 +2030,18 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                   {p.phone && <div className="text-xs text-muted-foreground truncate mt-0.5">{p.phone}</div>}
                 </div>
               </div>
-              <div className="flex gap-1 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
+                <div
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/80 border border-border/50 text-xs font-semibold text-muted-foreground select-none transition-colors hover:text-foreground hover:bg-secondary"
+                  title={type === "customer" ? `${p.txCount || 0} वटा बिक्री / अर्डर (Total Orders)` : `${p.txCount || 0} वटा खरिद बिल (Total Purchase Bills)`}
+                >
+                  {type === "customer" ? (
+                    <ShoppingCart className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <Receipt className="h-3.5 w-3.5 text-primary" />
+                  )}
+                  <span>{p.txCount || 0}</span>
+                </div>
                 <Button size="icon" variant="ghost" onClick={(e) => {
                   e.stopPropagation();
                   openLedger(p).then(() => {
