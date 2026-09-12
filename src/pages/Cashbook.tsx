@@ -24,6 +24,7 @@ const inCategories = [
   "sale", 
   "customer_payment", 
   "opening", 
+  "capital",
   "other"
 ];
 
@@ -41,7 +42,8 @@ const outCategories = [
 ];
 
 const categoryLabel: Record<string, string> = {
-  opening: "Opening Balance",
+  opening: "Opening Balance / Capital (सुरुको पुँजी)",
+  capital: "Owner's Capital (थप पुँजी / लगानी)",
 };
 
 const getCategoryLabel = (c: string) =>

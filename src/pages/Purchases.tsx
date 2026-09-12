@@ -378,6 +378,7 @@ const Purchases = () => {
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [purchaseType, setPurchaseType] = useState<"vat_bill" | "non_vat">("vat_bill");
   const [supplierBillNo, setSupplierBillNo] = useState<string>("");
+  const [purchaseDate, setPurchaseDate] = useState<string>("");
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [history, setHistory] = useState<any[]>([]);
@@ -603,6 +604,15 @@ const Purchases = () => {
       setPurchaseType(p.is_vat_bill === false ? "non_vat" : "vat_bill");
       setSupplierBillNo(p.supplier_bill_no || "");
       setAmountPaid((p.amount_paid || 0).toString());
+      if (p.created_at) {
+        try {
+          setPurchaseDate(p.created_at.split('T')[0]);
+        } catch {
+          setPurchaseDate("");
+        }
+      } else {
+        setPurchaseDate("");
+      }
       setItems(mappedItems);
       setShowForm(true);
       toast.success(`${pi.length} items loaded!`, { id: "load-items" });
@@ -733,6 +743,9 @@ const Purchases = () => {
 
       const batch = writeBatch(db);
       const purchaseRef = doc(collection(db, "purchases"));
+      const effectiveDate = purchaseDate
+        ? new Date(`${purchaseDate}T12:00:00`).toISOString()
+        : new Date().toISOString();
       
       batch.set(purchaseRef, {
         id: purchaseRef.id,
@@ -756,7 +769,7 @@ const Purchases = () => {
           ? (discountType === "percent" ? `Discount received: ${typedDiscount}% (Rs. ${discountNum})` : `Discount received: Rs. ${discountNum}`)
           : (editingId ? "Updated purchase" : null),
         prepared_by: shop.owner_name || user?.displayName || null,
-        created_at: new Date().toISOString()
+        created_at: effectiveDate
       });
 
       if (!editingId) {
@@ -795,7 +808,7 @@ const Purchases = () => {
           original_qty: Number(item.qty),
           remaining_qty: Number(item.qty),
           cost_price: Number(item.cost_price),
-          created_at: new Date().toISOString()
+          created_at: effectiveDate
         });
       }
 
@@ -812,7 +825,7 @@ const Purchases = () => {
             ? `Partial payment (${partialMode.toUpperCase()}) for Purchase ${voucherNoToSave || purchaseRef.id}`
             : `Purchase ${voucherNoToSave || purchaseRef.id}`,
           reference_id: purchaseRef.id,
-          created_at: new Date().toISOString()
+          created_at: effectiveDate
         });
       }
 
@@ -827,7 +840,7 @@ const Purchases = () => {
           amount: purchaseTotal,
           note: `Purchase ${purchaseRef.id}`,
           reference_id: purchaseRef.id,
-          created_at: new Date().toISOString()
+          created_at: effectiveDate
         });
 
         if (paid > 0) {
@@ -844,7 +857,7 @@ const Purchases = () => {
               ? `Partial payment via ${partialMode.toUpperCase()} for purchase ${voucherNoToSave || purchaseRef.id}`
               : `Payment for purchase ${voucherNoToSave || purchaseRef.id}`,
             reference_id: purchaseRef.id,
-            created_at: new Date().toISOString()
+            created_at: effectiveDate
           });
         }
       }
@@ -860,6 +873,7 @@ const Purchases = () => {
       setDiscountType("flat");
       setPurchaseType("vat_bill");
       setSupplierBillNo("");
+      setPurchaseDate("");
       setShowForm(false); 
       setEditingId(null); 
       setEditingOriginalPaid(0); 
@@ -982,6 +996,7 @@ const Purchases = () => {
             setPaymentMode("cash");
             setPurchaseType("vat_bill");
             setSupplierBillNo("");
+            setPurchaseDate("");
             setAmountPaid("0");
           }
         }} className="bg-gradient-primary text-primary-foreground">
@@ -1062,7 +1077,7 @@ const Purchases = () => {
             </div>
           )}
 
-          <div className="grid sm:grid-cols-2 gap-3 mb-3">
+          <div className="grid sm:grid-cols-3 gap-3 mb-3">
             <div>
               <Label>Supplier</Label>
               <div className="flex gap-2">
@@ -1077,6 +1092,42 @@ const Purchases = () => {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs font-semibold flex items-center gap-1">
+                  <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>Bill / Inward Date (दाखिला मिति)</span>
+                </Label>
+                {purchaseDate ? (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium border border-amber-300/60">
+                      Backdated
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPurchaseDate("")}
+                      className="text-[10px] text-primary hover:underline font-medium"
+                      title="Reset to today's date"
+                    >
+                      ✕ Reset
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40">
+                    स्वतः आज (Today)
+                  </span>
+                )}
+              </div>
+              <Input
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                className={cn(
+                  "h-9 text-xs bg-background font-medium",
+                  purchaseDate && "border-amber-400 bg-amber-50/40 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 font-semibold"
+                )}
+              />
             </div>
             <div>
               <Label>Add product</Label>

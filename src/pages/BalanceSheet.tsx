@@ -21,7 +21,7 @@ const Row = ({ label, value, bold }: { label: string; value: number; bold?: bool
 const BalanceSheet = () => {
   const { user } = useAuth();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
-  const [d, setD] = useState({ cash: 0, stock: 0, receivable: 0, payable: 0, revenue: 0, cogs: 0, expenses: 0 });
+  const [d, setD] = useState({ cash: 0, stock: 0, receivable: 0, payable: 0, capital: 0, drawings: 0, revenue: 0, cogs: 0, expenses: 0 });
 
   useEffect(() => {
     if (!user) return;
@@ -66,12 +66,21 @@ const BalanceSheet = () => {
         const revenue = sales.reduce((s, r: any) => s + +r.total, 0);
         const cogs = sales.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
-        const nonExpenseCats = ["purchase", "purchases", "supplier_payment", "payment"];
+        const capitalCats = ["opening", "capital", "investment", "owner_investment"];
+        const capital = cash
+          .filter((c: any) => c.direction === "in" && capitalCats.includes((c.category || "").toLowerCase()))
+          .reduce((s, r: any) => s + +r.amount, 0);
+
+        const drawings = cash
+          .filter((c: any) => c.direction === "out" && (c.category || "").toLowerCase() === "personal")
+          .reduce((s, r: any) => s + +r.amount, 0);
+
+        const nonExpenseCats = ["purchase", "purchases", "supplier_payment", "payment", "personal"];
         const cashExpenses = cash.filter((c: any) => c.direction === "out" && !nonExpenseCats.includes(c.category)).reduce((s, r: any) => s + +r.amount, 0);
         const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
         const expenses = cashExpenses + wastageExpenses;
 
-        setD({ cash: cashBal, stock, receivable, payable, revenue, cogs, expenses });
+        setD({ cash: cashBal, stock, receivable, payable, capital, drawings, revenue, cogs, expenses });
       } catch (err: any) {
         console.error("BalanceSheet error:", err);
       }
@@ -81,7 +90,8 @@ const BalanceSheet = () => {
   const totalAssets = d.cash + d.stock + d.receivable;
   const grossProfit = d.revenue - d.cogs;
   const netProfit = grossProfit - d.expenses;
-  const totalLiabilitiesAndEquity = d.payable + netProfit;
+  const totalEquity = d.capital + netProfit - d.drawings;
+  const totalLiabilitiesAndEquity = d.payable + totalEquity;
 
   const handlePrintBalanceSheet = () => {
     if (!shopInfo) return;
@@ -192,13 +202,18 @@ const BalanceSheet = () => {
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.payable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">साहुको पुँजी / नाफा (Owner's Equity)</td>
-                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${netProfit.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">सुरुवाती पुँजी (Owner's Capital)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.capital.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111; color:#6b7280; font-size:10.5px;">—</td>
-                    <td style="padding:6px 8px; text-align:right; border:1px solid #111; color:#6b7280; font-size:10.5px;">—</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">खुद व्यापारिक नाफा (Retained Profit)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111; ${netProfit >= 0 ? 'color:#007a3d;' : 'color:#c00;'}">Rs. ${netProfit.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
+                  ${d.drawings > 0 ? `
+                  <tr>
+                    <td style="padding:6px 8px; border:1px solid #111; color:#c00;">घटाउनुहोस्: निजी खर्च (Drawings)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; color:#c00; border:1px solid #111;">(Rs. ${d.drawings.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
+                  </tr>` : ''}
                 </tbody>
                 <tfoot>
                   <tr style="background:#edf2f7; font-weight:800; font-size:12px;">
@@ -284,8 +299,10 @@ const BalanceSheet = () => {
 
           <div className="text-xs uppercase text-muted-foreground mt-4">Liabilities & Equity</div>
           <Row label="Supplier Payables" value={d.payable} />
-          <Row label="Owner's Equity (Net Profit)" value={netProfit} />
-          <Row label="Total" value={totalLiabilitiesAndEquity} bold />
+          <Row label="Owner's Capital (सुरुवाती पुँजी)" value={d.capital} />
+          <Row label="Retained Earnings (खुद नाफा)" value={netProfit} />
+          {d.drawings > 0 && <Row label="Less: Drawings (निजी खर्च)" value={-d.drawings} />}
+          <Row label="Total Liabilities & Equity" value={totalLiabilitiesAndEquity} bold />
         </Card>
       </div>
 

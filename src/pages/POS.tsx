@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
@@ -81,6 +81,7 @@ const POS = () => {
   const [tendered, setTendered] = useState<string>("");
   const [discount, setDiscount] = useState<string>("");
   const [discountType, setDiscountType] = useState<"flat" | "percent">("flat");
+  const [billDate, setBillDate] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerSuggestionsOpen, setCustomerSuggestionsOpen] = useState(false);
@@ -678,6 +679,9 @@ const POS = () => {
       const batch = writeBatch(db);
       const saleRef = doc(collection(db, "sales"));
       const effectivePaidMode = paymentMode === "credit" ? (paid > 0 ? partialMode : "credit") : paymentMode;
+      const effectiveDate = billDate
+        ? new Date(`${billDate}T12:00:00`).toISOString()
+        : new Date().toISOString();
       
       batch.set(saleRef, {
         id: saleRef.id,
@@ -704,7 +708,7 @@ const POS = () => {
         taxable_amount: taxableAmount,
         vat_amount: vatAmount,
         prepared_by: shop.owner_name || user?.displayName || null,
-        created_at: new Date().toISOString()
+        created_at: effectiveDate
       });
 
       // Increment profile sequence counter
@@ -746,7 +750,7 @@ const POS = () => {
             ? `Partial payment (${partialMode.toUpperCase()}) for Sale #${generatedBillNo}` 
             : `Sale #${generatedBillNo}`,
           reference_id: saleRef.id,
-          created_at: new Date().toISOString()
+          created_at: effectiveDate
         });
       }
 
@@ -761,7 +765,7 @@ const POS = () => {
           amount: total,
           note: `Sale #${generatedBillNo}`,
           reference_id: saleRef.id,
-          created_at: new Date().toISOString()
+          created_at: effectiveDate
         });
 
         if (paid > 0) {
@@ -778,7 +782,7 @@ const POS = () => {
               ? `Partial payment via ${partialMode.toUpperCase()} for sale #${generatedBillNo}`
               : `Payment for sale #${generatedBillNo}`,
             reference_id: saleRef.id,
-            created_at: new Date().toISOString()
+            created_at: effectiveDate
           });
         }
       }
@@ -804,7 +808,7 @@ const POS = () => {
             address: buyerAddress.trim() || null
           },
           billNo,
-          date: new Date(),
+          date: new Date(effectiveDate),
           paymentMode,
           paidVia: paymentMode === "credit" && paid > 0 ? partialMode : null,
           items: cart.map(i => ({
@@ -838,6 +842,7 @@ const POS = () => {
       setCustomerQuery(""); setCustomerSuggestionsOpen(false);
       setBuyerPan(""); setBuyerAddress("");
       setPartialMode("cash");
+      setBillDate("");
       setInvoiceType(shopInfo?.is_vat_registered ? "tax_invoice" : "abbreviated");
       load();
     } catch (e: any) {
@@ -1128,6 +1133,44 @@ const POS = () => {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+
+            {/* Bill Date (Optional Backdated Sale) */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>Bill Date (बिल मिति)</span>
+                </Label>
+                {billDate ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium border border-amber-300/60">
+                      पुरानो मिति (Backdated)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setBillDate("")}
+                      className="text-[10px] text-primary hover:underline font-medium"
+                      title="Reset to today's date"
+                    >
+                      ✕ Reset (आज)
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40">
+                    स्वतः आज (Today)
+                  </span>
+                )}
+              </div>
+              <Input
+                type="date"
+                value={billDate}
+                onChange={(e) => setBillDate(e.target.value)}
+                className={cn(
+                  "h-8 text-xs bg-background font-medium",
+                  billDate && "border-amber-400 bg-amber-50/40 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 font-semibold"
+                )}
+              />
             </div>
 
             {shopInfo?.is_vat_registered && (
