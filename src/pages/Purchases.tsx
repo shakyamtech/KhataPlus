@@ -1079,21 +1079,6 @@ const Purchases = () => {
 
           <div className="grid sm:grid-cols-3 gap-3 mb-3">
             <div>
-              <Label>Supplier</Label>
-              <div className="flex gap-2">
-                <Select value={supplierId} onValueChange={setSupplierId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— none —</SelectItem>
-                    {suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Button size="icon" variant="outline" onClick={() => setSupplierDialogOpen(true)} title="Add New Supplier" className="shrink-0">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div>
               <div className="flex items-center justify-between mb-1">
                 <Label className="text-xs font-semibold flex items-center gap-1">
                   <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1128,6 +1113,21 @@ const Purchases = () => {
                   purchaseDate && "border-amber-400 bg-amber-50/40 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 font-semibold"
                 )}
               />
+            </div>
+            <div>
+              <Label>Supplier</Label>
+              <div className="flex gap-2">
+                <Select value={supplierId} onValueChange={setSupplierId}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— none —</SelectItem>
+                    {suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button size="icon" variant="outline" onClick={() => setSupplierDialogOpen(true)} title="Add New Supplier" className="shrink-0">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div>
               <Label>Add product</Label>
