@@ -543,14 +543,7 @@ export const AppShell = () => {
                 <DropdownMenuContent className="w-60" align="end" sideOffset={8}>
                     <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                            <div className="flex items-center justify-between gap-1">
-                                <p className="text-sm font-bold leading-none text-foreground truncate">{fullName || "User Profile"}</p>
-                                {isPro && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-400/30 flex items-center gap-0.5 shrink-0">
-                                        <Crown className="h-2 w-2 fill-current" /> {subscription?.plan === "lifetime" || isAdmin ? "VIP" : "PRO"}
-                                    </span>
-                                )}
-                            </div>
+                            <p className="text-sm font-bold leading-none text-foreground truncate">{fullName || "User Profile"}</p>
                             <p className="text-xs leading-none text-muted-foreground truncate">{user?.email}</p>
                         </div>
                     </DropdownMenuLabel>
