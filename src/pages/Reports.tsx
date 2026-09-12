@@ -446,7 +446,62 @@ const Reports = () => {
     let filingPeriod = "पुस मसान्तभित्र (वार्षिक)";
     let progressPercent = 0;
 
-    if (annualSales <= 3000000) {
+    if (isVatShop) {
+      // Once VAT Registered, business is LEGALLY a Regular Taxpayer (D-03) under Nepal Income Tax Act
+      category = "D-03";
+      progressPercent = 100;
+      categoryTitle = "D-03 (नियमित भ्याट करदाता / Regular VAT)";
+      categoryDesc = "भ्याट दर्ता भएकाले D-01/D-02 लागू हुँदैन। मासिक भ्याट दाखिला तथा वर्षको अन्त्यमा P&L खुद नाफामा आयकर लाग्नेछ।";
+      filingPeriod = "मासिक भ्याट (प्रत्येक २५ गते) + वार्षिक आयकर (असोज मसान्त)";
+
+      const netProfit = annualNetProfit;
+      let calculatedTax = 0;
+
+      if (entity === "pvt_ltd") {
+        calculatedTax = Math.round(netProfit * 0.25);
+        taxBasisExplanation = "प्राइभेट लिमिटेड कम्पनी: खुद नाफाको २५% संस्थागत आयकर (मासिक भ्याट दायित्व VAT ट्याबमा हेर्नुहोस्)";
+      } else {
+        const isMarried = marital === "married";
+        const basicLimit = isMarried ? 600000 : 500000;
+
+        if (netProfit <= 0) {
+          calculatedTax = 0;
+          taxBasisExplanation = "खुद नाफा नभएको/नोक्सान भएकोले आयकर शून्य (मासिक भ्याट छुट्टै बुझाउनुपर्नेछ)";
+        } else if (netProfit <= basicLimit) {
+          calculatedTax = Math.round(netProfit * 0.01);
+          taxBasisExplanation = `भ्याट दर्ता व्यक्तिगत खुद नाफा रु ${fmt(netProfit)} मा १% सामाजिक सुरक्षा कर`;
+        } else {
+          calculatedTax += basicLimit * 0.01;
+          let remaining = netProfit - basicLimit;
+
+          const slab2 = Math.min(remaining, 200000);
+          calculatedTax += slab2 * 0.10;
+          remaining -= slab2;
+
+          if (remaining > 0) {
+            const slab3Limit = isMarried ? 300000 : 300000;
+            const slab3 = Math.min(remaining, slab3Limit);
+            calculatedTax += slab3 * 0.20;
+            remaining -= slab3;
+          }
+
+          if (remaining > 0) {
+            const slab4Limit = isMarried ? 900000 : 1000000;
+            const slab4 = Math.min(remaining, slab4Limit);
+            calculatedTax += slab4 * 0.30;
+            remaining -= slab4;
+          }
+
+          if (remaining > 0) {
+            calculatedTax += remaining * 0.36;
+          }
+
+          taxBasisExplanation = `भ्याट दर्ता आयकर स्ल्याब (${isMarried ? "विवाहित ६L छुट" : "एकल ५L छुट"} अनुसार खुद नाफा रु ${fmt(netProfit)} मा)`;
+        }
+      }
+      estimatedTax = Math.round(calculatedTax);
+    } else if (annualSales <= 3000000) {
+      // Non-VAT, <= 30 Lakhs
       category = "D-01";
       progressPercent = Math.min(100, Math.round((annualSales / 3000000) * 100));
       categoryTitle = "D-01 (सङ्क्षिप्त कर / Presumptive)";
@@ -463,6 +518,7 @@ const Reports = () => {
       categoryDesc = "३० लाखसम्म कारोबार: कुनै अडिट नचाहिने, तोकिएको एकमुष्ट रकम तिरेर चुक्ता हुने।";
       filingPeriod = "पुस मसान्तभित्र (वार्षिक कर चुक्ता)";
     } else if (annualSales <= 10000000) {
+      // Non-VAT, 30L to 1 Crore
       category = "D-02";
       progressPercent = Math.min(100, Math.round(((annualSales - 3000000) / 7000000) * 100));
       categoryTitle = "D-02 (कारोबारमा आधारित कर / Turnover Tax)";
@@ -503,6 +559,7 @@ const Reports = () => {
       }
       categoryDesc = "३० लाख देखि १ करोडसम्म कारोबार: अडिट बिना सिधै कारोबार रकममा निश्चित % कर।";
     } else {
+      // Non-VAT, > 1 Crore
       category = "D-03";
       progressPercent = 100;
       categoryTitle = "D-03 (नियमित करदाता / Audited P&L)";
