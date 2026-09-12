@@ -936,12 +936,34 @@ const Purchases = () => {
       const shop = await getShopInfo();
       const piQ = query(collection(db, "purchase_items"), where("purchase_id", "==", h.id));
       const piSnap = await getDocs(piQ);
-      const itemsList = piSnap.docs.map(d => {
+      const itemsList = await Promise.all(piSnap.docs.map(async d => {
         const data = d.data();
         const price = Number(data.cost_price ?? data.price ?? 0);
         const qty = Number(data.qty ?? data.quantity ?? 1);
-        const matchedProd = products.find(p => p.id === data.product_id || p.name === data.product_name);
-        const resolvedHsCode = (data.hs_code || matchedProd?.hs_code || "").trim() || undefined;
+        let resolvedHsCode = (data.hs_code || "").trim() || undefined;
+
+        // 1. Match from memory products list (by ID or exact name)
+        if (!resolvedHsCode) {
+          const matchedProd = products.find(p => 
+            p.id === data.product_id || 
+            (p.name && data.product_name && p.name.trim().toLowerCase() === data.product_name.trim().toLowerCase())
+          );
+          if (matchedProd?.hs_code) {
+            resolvedHsCode = matchedProd.hs_code.trim();
+          }
+        }
+
+        // 2. Direct Firestore fallback in case product was updated or local state was cached
+        if (!resolvedHsCode && data.product_id) {
+          try {
+            const pSnap = await getDoc(doc(db, "products", data.product_id));
+            if (pSnap.exists()) {
+              const pData = pSnap.data();
+              resolvedHsCode = (pData.hs_code || "").trim() || undefined;
+            }
+          } catch (_) {}
+        }
+
         return {
           product_name: data.product_name || "Item",
           qty,
@@ -950,7 +972,7 @@ const Purchases = () => {
           total: price * qty,
           hs_code: resolvedHsCode
         };
-      });
+      }));
 
       const supp = suppliers.find(s => s.id === h.supplier_id);
 
