@@ -42,8 +42,8 @@ const outCategories = [
 ];
 
 const categoryLabel: Record<string, string> = {
-  opening: "Opening Balance / Capital (सुरुको पुँजी)",
-  capital: "Owner's Capital (थप पुँजी / लगानी)",
+  opening: "Opening Balance (सुरुवाती मौज्दात)",
+  capital: "Owner's Investment (साहुको थप लगानी)",
 };
 
 const getCategoryLabel = (c: string) =>

@@ -5,9 +5,9 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, Check, Loader2
 } from "lucide-react";
-import { generateBatchSamplePreview } from "@/lib/batch";
+import { generateBatchSamplePreview, getNepaliFiscalYear } from "@/lib/batch";
 import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
 import { InstallAppModal } from "@/components/InstallAppModal";
 import { BackupModal } from "@/components/BackupModal";
@@ -129,6 +129,67 @@ export const AppShell = () => {
     const [dbLastAbb, setDbLastAbb] = useState<string | null>(null);
     const [dbLastBill, setDbLastBill] = useState<string | null>(null);
     const [dbLastPur, setDbLastPur] = useState<string | null>(null);
+
+    const [fiscalYearDialogOpen, setFiscalYearDialogOpen] = useState(false);
+    const [targetFiscalSuffix, setTargetFiscalSuffix] = useState("");
+    const [busyFiscalYear, setBusyFiscalYear] = useState(false);
+
+    const openFiscalYearDialog = () => {
+        const existing = (billSuffix || taxInvoiceSuffix || purchaseSuffix || "").trim();
+        const match = existing.match(/(\d{2})[-/](\d{2})/);
+        let suggested = "";
+        if (match) {
+            const nextStart = parseInt(match[1], 10) + 1;
+            const nextEnd = parseInt(match[2], 10) + 1;
+            suggested = `/${String(nextStart).padStart(2, "0")}-${String(nextEnd).padStart(2, "0")}`;
+        } else {
+            const fy = getNepaliFiscalYear();
+            suggested = `/${fy}`;
+        }
+        setTargetFiscalSuffix(suggested);
+        setFiscalYearDialogOpen(true);
+    };
+
+    const handleStartNewFiscalYear = async () => {
+        if (!user?.uid) return;
+        setBusyFiscalYear(true);
+        try {
+            const formattedSuffix = targetFiscalSuffix.trim();
+            const profileRef = doc(db, "profiles", user.uid);
+
+            await updateDoc(profileRef, {
+                bill_next_no: 1,
+                bill_suffix: formattedSuffix,
+                tax_invoice_next_no: 1,
+                tax_invoice_suffix: formattedSuffix,
+                abbreviated_next_no: 1,
+                abbreviated_suffix: formattedSuffix,
+                purchase_next_no: 1,
+                purchase_suffix: formattedSuffix,
+                updated_at: new Date().toISOString()
+            });
+
+            setBillNextNo("1");
+            setBillSuffix(formattedSuffix);
+            setTaxInvoiceNextNo("1");
+            setTaxInvoiceSuffix(formattedSuffix);
+            setAbbreviatedNextNo("1");
+            setAbbreviatedSuffix(formattedSuffix);
+            setPurchaseNextNo("1");
+            setPurchaseSuffix(formattedSuffix);
+
+            toast.success(
+                lang === "NEP"
+                    ? `नयाँ आर्थिक वर्ष (${formattedSuffix}) सुरु भयो! अब बिल नम्बरहरू १ बाट काटिनेछन्।`
+                    : `New Fiscal Year (${formattedSuffix}) started! Invoices now start from #1.`
+            );
+            setFiscalYearDialogOpen(false);
+        } catch (err: any) {
+            toast.error(err.message || "Failed to rollover fiscal year");
+        } finally {
+            setBusyFiscalYear(false);
+        }
+    };
 
     const migrateToBatches = async () => {
         if (!user) return;
@@ -1055,9 +1116,36 @@ export const AppShell = () => {
                                     || (purNextNum > 1 ? `${purchasePrefix.trim() || "INW-"}${String(purNextNum - 1).padStart(4, "0")}${purchaseSuffix.trim()}` : (lang === "NEP" ? "छैन (None)" : "None"));
                                 const purPreviewNext = `${purchasePrefix.trim() || "INW-"}${String(purNextNum).padStart(4, "0")}${purchaseSuffix.trim()}`;
 
-                                return (
-                                    <>
-                                        {taxType === "vat" ? (
+                                 return (
+                                     <>
+                                         {/* Fiscal Year Rollover Banner */}
+                                         <div className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 space-y-2">
+                                             <div className="flex items-center justify-between flex-wrap gap-2">
+                                                 <div>
+                                                     <div className="text-xs font-bold text-primary flex items-center gap-1.5">
+                                                         <RotateCcw className="h-3.5 w-3.5" />
+                                                         <span>{lang === "NEP" ? "आर्थिक वर्ष व्यवस्थापन (Fiscal Year Rollover)" : "Fiscal Year Rollover (आर्थिक वर्ष)"}</span>
+                                                     </div>
+                                                     <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                         {lang === "NEP"
+                                                             ? "नयाँ आर्थिक वर्ष (साउन १) लाग्दा १-क्लिकमा बिल नम्बरहरू १ बाट सुरु गर्न र नयाँ सफिक्स मिलाउनुहोस्।"
+                                                             : "Safely start bill series from #1 and set new fiscal year suffix (e.g. /82-83) with zero data loss."}
+                                                     </p>
+                                                 </div>
+                                                 <Button
+                                                     type="button"
+                                                     size="sm"
+                                                     variant="outline"
+                                                     onClick={openFiscalYearDialog}
+                                                     className="h-8 text-xs font-semibold gap-1.5 bg-background border-primary/30 hover:bg-primary hover:text-primary-foreground text-primary shadow-2xs shrink-0"
+                                                 >
+                                                     <Sparkles className="h-3.5 w-3.5" />
+                                                     {lang === "NEP" ? "नयाँ आर्थिक वर्ष सुरु गर्नुहोस्" : "Start New Fiscal Year"}
+                                                 </Button>
+                                             </div>
+                                         </div>
+
+                                         {taxType === "vat" ? (
                                             <div className="space-y-3 bg-secondary/30 rounded-xl p-3 border">
                                                 {/* 1. Tax Invoice Config */}
                                                 <div className="space-y-2">
@@ -1611,6 +1699,85 @@ export const AppShell = () => {
 
             {/* Data Backup & Restore Modal */}
             <BackupModal open={backupOpen} onOpenChange={setBackupOpen} />
+
+            {/* Start New Fiscal Year Rollover Dialog */}
+            <Dialog open={fiscalYearDialogOpen} onOpenChange={setFiscalYearDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-primary">
+                            <Sparkles className="h-4 w-4" />
+                            {lang === "NEP" ? "नयाँ आर्थिक वर्ष सुरु गर्नुहोस्" : "Start New Fiscal Year"}
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">
+                            {lang === "NEP"
+                                ? "नयाँ आर्थिक वर्ष (साउन १) मा बिल नम्बरहरू पुनः १ बाट सुरु गर्न र नयाँ सफिक्स मिलाउनुहोस्।"
+                                : "Start fresh invoice sequences from 1 for the new Nepali fiscal year."}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3 py-2 text-xs">
+                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 space-y-2">
+                            <Label className="text-xs font-bold text-primary block">
+                                {lang === "NEP" ? "नयाँ आर्थिक वर्ष कोड / सफिक्स (Fiscal Year Suffix):" : "New Fiscal Year Suffix:"}
+                            </Label>
+                            <Input
+                                value={targetFiscalSuffix}
+                                onChange={(e) => setTargetFiscalSuffix(e.target.value)}
+                                placeholder="/82-83"
+                                className="font-mono text-sm h-9 bg-background font-bold text-primary"
+                            />
+                            <p className="text-[11px] text-muted-foreground">
+                                {lang === "NEP" 
+                                    ? `अब काटिने बिलहरूको नम्बर: BILL-0001${targetFiscalSuffix.trim()} हुनेछ।` 
+                                    : `New bills will be numbered like: BILL-0001${targetFiscalSuffix.trim()}`}
+                            </p>
+                        </div>
+
+                        <div className="bg-secondary/40 border rounded-xl p-3 space-y-1.5">
+                            <div className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                <span>{lang === "NEP" ? "यो कार्यले के-के परिवर्तन गर्छ?" : "What this action will do:"}</span>
+                            </div>
+                            <ul className="text-[11.5px] text-muted-foreground space-y-1 list-disc list-inside pl-1">
+                                <li>{lang === "NEP" ? "बिक्री बिल (Sales Bill) नम्बर १ मा रिसेट हुनेछ।" : "Sales Bill number resets to 1."}</li>
+                                <li>{lang === "NEP" ? "कर बिजक (Tax Invoice) नम्बर १ मा रिसेट हुनेछ।" : "Tax Invoice number resets to 1."}</li>
+                                <li>{lang === "NEP" ? "खरिद दाखिला (Inward) नम्बर १ मा रिसेट हुनेछ।" : "Purchase Inward number resets to 1."}</li>
+                                <li>{lang === "NEP" ? `सबै बिलहरूको Suffix "${targetFiscalSuffix.trim()}" मा अद्यावधिक हुनेछ।` : `All invoice suffixes update to "${targetFiscalSuffix.trim()}".`}</li>
+                            </ul>
+                        </div>
+
+                        <div className="bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-2.5 text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed flex items-start gap-2">
+                            <Shield className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                            <span>
+                                <strong>{lang === "NEP" ? "डाटा १००% सुरक्षित:" : "100% Data Safe:"}</strong> {lang === "NEP" 
+                                    ? "अघिल्लो वर्षका सबै बिक्री, खरिद, स्टक र ग्राहकका पुराना हिसाबहरू यथावत रहनेछन्। कुनै पनि डाटा मेटिने छैन।" 
+                                    : "All previous sales, purchases, stock and ledger records remain completely intact."}
+                            </span>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setFiscalYearDialogOpen(false)}
+                            disabled={busyFiscalYear}
+                            className="h-9 text-xs"
+                        >
+                            {lang === "NEP" ? "रद्द गर्नुहोस् (Cancel)" : "Cancel"}
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleStartNewFiscalYear}
+                            disabled={busyFiscalYear || !targetFiscalSuffix.trim()}
+                            className="h-9 text-xs font-bold gap-1.5 bg-primary text-primary-foreground"
+                        >
+                            {busyFiscalYear ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                            {lang === "NEP" ? "हो, नयाँ वर्ष सुरु गर्नुहोस्" : "Confirm & Start New FY"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
