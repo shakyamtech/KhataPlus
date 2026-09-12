@@ -369,17 +369,45 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           if (chunk.length > 0) {
             const chunkQ = query(collection(db, "purchase_items"), where("purchase_id", "in", chunk));
             const chunkSnap = await getDocs(chunkQ);
+
+            // Gather product_ids that might need hs_code fallback
+            const missingHsProductIds = new Set<string>();
+            chunkSnap.docs.forEach(d => {
+              const data = d.data();
+              if (!data.hs_code && data.product_id) {
+                missingHsProductIds.add(data.product_id);
+              }
+            });
+
+            const productHsMap: Record<string, string> = {};
+            if (missingHsProductIds.size > 0) {
+              const prodIdChunks = [];
+              const idsArr = Array.from(missingHsProductIds);
+              for (let j = 0; j < idsArr.length; j += 10) prodIdChunks.push(idsArr.slice(j, j + 10));
+              for (const pChunk of prodIdChunks) {
+                try {
+                  const pQuery = query(collection(db, "products"), where("__name__", "in", pChunk));
+                  const pSnap = await getDocs(pQuery);
+                  pSnap.docs.forEach(pd => {
+                    if (pd.data().hs_code) productHsMap[pd.id] = pd.data().hs_code;
+                  });
+                } catch (_) {}
+              }
+            }
+
             chunkSnap.docs.forEach(d => {
               const data = d.data();
               if (!prodsMap[data.purchase_id]) prodsMap[data.purchase_id] = [];
               const price = Number(data.cost_price ?? data.price ?? 0);
               const qty = Number(data.qty ?? data.quantity ?? 1);
+              const resolvedHs = (data.hs_code || (data.product_id ? productHsMap[data.product_id] : "") || "").trim() || undefined;
               prodsMap[data.purchase_id].push({
                 product_name: data.product_name || "Item",
                 qty,
                 unit: data.unit || "pcs",
                 price,
-                total: price * qty
+                total: price * qty,
+                hs_code: resolvedHs
               });
             });
           }
