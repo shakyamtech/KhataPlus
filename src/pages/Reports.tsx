@@ -44,6 +44,7 @@ const Reports = () => {
     return { year: now.getFullYear(), month: now.getMonth() };
   });
   const [regSearch, setRegSearch] = useState("");
+  const [regViewFilter, setRegViewFilter] = useState<"all" | "purchases" | "sales">("all");
 
   const loadData = async () => {
     if (!user) return;
@@ -1294,10 +1295,10 @@ const Reports = () => {
         {/* Registers Tab: Available for both PAN & VAT Shops */}
         <TabsContent value="registers" className="space-y-4">
           {/* Header, Month Navigation & Print Actions */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 bg-card p-4 rounded-xl shadow-card border border-border/40">
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-foreground">खरिद तथा बिक्री खाता (Purchase & Sales Registers)</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-bold text-foreground">खरिद तथा बिक्री खाता (Purchase & Sales Registers)</h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
                   {isVatShop ? "VAT Registered" : "PAN Registered"}
                 </span>
@@ -1307,9 +1308,9 @@ const Reports = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
               {/* Search input */}
-              <div className="relative w-full sm:w-56">
+              <div className="relative w-full sm:w-48 md:w-56">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   type="text"
@@ -1321,7 +1322,7 @@ const Reports = () => {
               </div>
 
               {/* Month Picker Navigation */}
-              <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-1">
+              <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-0.5 shrink-0">
                 <Button
                   type="button"
                   variant="ghost"
@@ -1332,7 +1333,7 @@ const Reports = () => {
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="font-semibold text-xs px-3 min-w-[120px] text-center select-none text-foreground">
+                <span className="font-semibold text-xs px-2.5 min-w-[110px] text-center select-none text-foreground">
                   {regMonthLabel}
                 </span>
                 <Button
@@ -1348,8 +1349,8 @@ const Reports = () => {
                 </Button>
               </div>
 
-              <Button onClick={handlePrintRegistersReport} variant="outline" size="sm" className="gap-2 shrink-0">
-                <Printer className="h-4 w-4 text-primary" />
+              <Button onClick={handlePrintRegistersReport} variant="outline" size="sm" className="h-8 gap-1.5 shrink-0">
+                <Printer className="h-3.5 w-3.5 text-primary" />
                 प्रिन्ट / PDF
               </Button>
             </div>
@@ -1357,7 +1358,12 @@ const Reports = () => {
 
           {/* Month Summary Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Card className="p-4 shadow-card border-0 bg-secondary/30">
+            <Card
+              onClick={() => setRegViewFilter("purchases")}
+              className={`p-4 shadow-card border transition-all cursor-pointer hover:border-primary/50 ${
+                regViewFilter === "purchases" ? "bg-primary/10 border-primary" : "bg-secondary/30 border-transparent"
+              }`}
+            >
               <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold uppercase">
                 <span>कुल खरिद (Total Purchases)</span>
                 <ShoppingBag className="h-4 w-4 text-blue-500" />
@@ -1371,7 +1377,12 @@ const Reports = () => {
               </div>
             </Card>
 
-            <Card className="p-4 shadow-card border-0 bg-secondary/30">
+            <Card
+              onClick={() => setRegViewFilter("sales")}
+              className={`p-4 shadow-card border transition-all cursor-pointer hover:border-primary/50 ${
+                regViewFilter === "sales" ? "bg-primary/10 border-primary" : "bg-secondary/30 border-transparent"
+              }`}
+            >
               <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold uppercase">
                 <span>कुल बिक्री (Total Sales)</span>
                 <Receipt className="h-4 w-4 text-emerald-500" />
@@ -1385,7 +1396,12 @@ const Reports = () => {
               </div>
             </Card>
 
-            <Card className="p-4 shadow-elegant border-0 bg-gradient-primary text-primary-foreground">
+            <Card
+              onClick={() => setRegViewFilter("all")}
+              className={`p-4 shadow-elegant border transition-all cursor-pointer bg-gradient-primary text-primary-foreground ${
+                regViewFilter === "all" ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-transparent"
+              }`}
+            >
               <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider opacity-90">
                 <span>व्यापार अन्तर (Net Turnover)</span>
                 <Scale className="h-4 w-4 opacity-80" />
@@ -1399,112 +1415,164 @@ const Reports = () => {
             </Card>
           </div>
 
+          {/* Quick Register Switcher */}
+          <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
+            <div className="flex items-center gap-1.5 p-1 bg-muted/60 border border-border/60 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setRegViewFilter("all")}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  regViewFilter === "all"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                सबै खाताहरू (All)
+              </button>
+              <button
+                type="button"
+                onClick={() => setRegViewFilter("purchases")}
+                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  regViewFilter === "purchases"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <ShoppingBag className="h-3 w-3 text-blue-500" />
+                <span>१. खरिद खाता ({filteredRegPurchases.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRegViewFilter("sales")}
+                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  regViewFilter === "sales"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Receipt className="h-3 w-3 text-emerald-500" />
+                <span>२. बिक्री खाता ({filteredRegSales.length})</span>
+              </button>
+            </div>
+
+            <span className="text-[11px] text-muted-foreground">
+              {regViewFilter === "purchases"
+                ? "खरिद खाता मात्र देखाइएको छ"
+                : regViewFilter === "sales"
+                  ? "बिक्री खाता मात्र देखाइएको छ"
+                  : "दुवै खाताहरू देखाइएको छ"}
+            </span>
+          </div>
+
           {/* Section 1: Purchase Register */}
-          <Card className="shadow-card border-0 overflow-hidden">
-            <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="h-4 w-4 text-primary" />
-                <h3 className="font-bold text-sm text-foreground">१. खरिद खाता (Purchase Register)</h3>
+          {(regViewFilter === "all" || regViewFilter === "purchases") && (
+            <Card className="shadow-card border-0 overflow-hidden">
+              <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4 text-primary" />
+                  <h3 className="font-bold text-sm text-foreground">१. खरिद खाता (Purchase Register)</h3>
+                </div>
+                <span className="text-xs text-muted-foreground font-medium">
+                  {regMonthLabel} का खरिदहरू: {filteredRegPurchases.length}
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground font-medium">
-                {regMonthLabel} का खरिदहरू: {filteredRegPurchases.length}
-              </span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
-                    <th className="p-3">मिति (Date)</th>
-                    <th className="p-3">भौचर नं. (Voucher)</th>
-                    <th className="p-3">सप्लायरको नाम</th>
-                    <th className="p-3">सप्लायर PAN</th>
-                    <th className="p-3">सप्लायर बिल नं.</th>
-                    <th className="p-3">भुक्तानी</th>
-                    <th className="p-3 text-right">कुल रकम</th>
-                    <th className="p-3 text-center">प्रिन्ट</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {filteredRegPurchases.map((p: any) => (
-                    <tr key={p.id} className="hover:bg-secondary/20 transition-colors">
-                      <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
-                        {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
-                      </td>
-                      <td className="p-3 font-mono font-medium text-foreground">
-                        {p.voucherNo}
-                      </td>
-                      <td className="p-3 font-semibold text-foreground truncate max-w-[160px]">
-                        {p.supplierName}
-                      </td>
-                      <td className="p-3 text-muted-foreground font-mono">
-                        {p.supplierPan}
-                      </td>
-                      <td className="p-3 font-medium text-foreground">
-                        {p.billNo}
-                      </td>
-                      <td className="p-3">
-                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                          p.payment_mode === "credit" ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        }`}>
-                          {p.payment_mode || "cash"}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right font-bold text-foreground">
-                        {fmt(p.total)}
-                      </td>
-                      <td className="p-3 text-center">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-primary"
-                          onClick={() => handleReprintPurchase(p)}
-                          title="भौचर प्रिन्ट (Print Inward Voucher)"
-                        >
-                          <Printer className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
+                      <th className="p-3">मिति (Date)</th>
+                      <th className="p-3">भौचर नं. (Voucher)</th>
+                      <th className="p-3">सप्लायरको नाम</th>
+                      <th className="p-3">सप्लायर PAN</th>
+                      <th className="p-3">सप्लायर बिल नं.</th>
+                      <th className="p-3">भुक्तानी</th>
+                      <th className="p-3 text-right">कुल रकम</th>
+                      <th className="p-3 text-center">प्रिन्ट</th>
                     </tr>
-                  ))}
-                  {filteredRegPurchases.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="p-6 text-center text-muted-foreground">
-                        {regSearch.trim() ? "खोजेको विवरणसँग मिल्ने कुनै खरिद फेला परेन।" : `${regMonthLabel} मा कुनै खरिद प्रविष्टि फेला परेन।`}
-                      </td>
-                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {filteredRegPurchases.map((p: any) => (
+                      <tr key={p.id} className="hover:bg-secondary/20 transition-colors">
+                        <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
+                          {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
+                        </td>
+                        <td className="p-3 font-mono font-medium text-foreground">
+                          {p.voucherNo}
+                        </td>
+                        <td className="p-3 font-semibold text-foreground truncate max-w-[160px]">
+                          {p.supplierName}
+                        </td>
+                        <td className="p-3 text-muted-foreground font-mono">
+                          {p.supplierPan}
+                        </td>
+                        <td className="p-3 font-medium text-foreground">
+                          {p.billNo}
+                        </td>
+                        <td className="p-3">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                            p.payment_mode === "credit" ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          }`}>
+                            {p.payment_mode || "cash"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right font-bold text-foreground">
+                          {fmt(p.total)}
+                        </td>
+                        <td className="p-3 text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => handleReprintPurchase(p)}
+                            title="भौचर प्रिन्ट (Print Inward Voucher)"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredRegPurchases.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="p-6 text-center text-muted-foreground">
+                          {regSearch.trim() ? "खोजेको विवरणसँग मिल्ने कुनै खरिद फेला परेन।" : `${regMonthLabel} मा कुनै खरिद प्रविष्टि फेला परेन।`}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                  {filteredRegPurchases.length > 0 && (
+                    <tfoot>
+                      <tr className="bg-muted/40 font-bold border-t border-border">
+                        <td colSpan={6} className="p-3 uppercase text-muted-foreground">
+                          कुल जम्मा (Total Purchases):
+                        </td>
+                        <td className="p-3 text-right text-primary">
+                          {fmt(filteredRegPurchases.reduce((s: number, r: any) => s + Number(r.total || 0), 0))}
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
                   )}
-                </tbody>
-                {filteredRegPurchases.length > 0 && (
-                  <tfoot>
-                    <tr className="bg-muted/40 font-bold border-t border-border">
-                      <td colSpan={6} className="p-3 uppercase text-muted-foreground">
-                        कुल जम्मा (Total Purchases):
-                      </td>
-                      <td className="p-3 text-right text-primary">
-                        {fmt(filteredRegPurchases.reduce((s: number, r: any) => s + Number(r.total || 0), 0))}
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
-          </Card>
+                </table>
+              </div>
+            </Card>
+          )}
 
           {/* Section 2: Sales Register */}
-          <Card className="shadow-card border-0 overflow-hidden">
-            <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-primary" />
-                <h3 className="font-bold text-sm text-foreground">२. बिक्री खाता (Sales Register)</h3>
+          {(regViewFilter === "all" || regViewFilter === "sales") && (
+            <Card className="shadow-card border-0 overflow-hidden">
+              <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-primary" />
+                  <h3 className="font-bold text-sm text-foreground">२. बिक्री खाता (Sales Register)</h3>
+                </div>
+                <span className="text-xs text-muted-foreground font-medium">
+                  {regMonthLabel} का बिलहरू: {filteredRegSales.length}
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground font-medium">
-                {regMonthLabel} का बिलहरू: {filteredRegSales.length}
-              </span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
                     <th className="p-3">मिति (Date)</th>
                     <th className="p-3">बिल नं. (Bill No)</th>
                     <th className="p-3">ग्राहकको नाम (Customer)</th>
@@ -1576,6 +1644,7 @@ const Reports = () => {
               </table>
             </div>
           </Card>
+          )}
         </TabsContent>
 
         {isVatShop && (
