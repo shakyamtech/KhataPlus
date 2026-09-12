@@ -11,7 +11,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { format, startOfDay, subDays } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search } from "lucide-react";
+import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
@@ -45,6 +45,7 @@ const Reports = () => {
   });
   const [regSearch, setRegSearch] = useState("");
   const [regViewFilter, setRegViewFilter] = useState<"all" | "purchases" | "sales">("all");
+  const [showTaxDetails, setShowTaxDetails] = useState(false);
 
   const loadData = async () => {
     if (!user) return;
@@ -393,6 +394,141 @@ const Reports = () => {
       (p.payment_mode && p.payment_mode.toLowerCase().includes(q))
     );
   }, [regMonthlyTotals.purchasesList, regSearch]);
+
+  const taxCompliance = useMemo(() => {
+    const now = new Date();
+    const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    const annualSales = allSales
+      .filter(s => s.created_at && new Date(s.created_at) >= oneYearAgo)
+      .reduce((sum, s) => sum + Number(s.total || 0), 0);
+
+    const localTier = shopInfo?.local_level_type || "municipality";
+    const nature = shopInfo?.business_nature || "general_trading";
+    const marital = shopInfo?.marital_status || "single";
+    const entity = shopInfo?.entity_type || "proprietorship";
+    const isVatShop = Boolean(shopInfo?.is_vat_registered);
+
+    const vatThreshold = nature === "services" ? 2000000 : 5000000;
+    const vatThresholdLabel = nature === "services" ? "रु २० लाख (सेवा/परामर्श/होटल)" : "रु ५० लाख (वस्तु/व्यापार)";
+    const vatCrossed = annualSales >= vatThreshold;
+    const vatAlert = !isVatShop && vatCrossed;
+
+    let category: "D-01" | "D-02" | "D-03" = "D-01";
+    let categoryTitle = "D-01 (सङ्क्षिप्त कर / Presumptive Tax)";
+    let categoryDesc = "वार्षिक ३० लाखसम्मको कारोबार हुने साना व्यवसायी (D-01)";
+    let estimatedTax = 0;
+    let taxBasisExplanation = "";
+    let filingPeriod = "पुस मसान्तभित्र (वार्षिक)";
+    let progressPercent = 0;
+
+    if (annualSales <= 3000000) {
+      category = "D-01";
+      progressPercent = Math.min(100, Math.round((annualSales / 3000000) * 100));
+      categoryTitle = "D-01 (सङ्क्षिप्त कर / Presumptive)";
+      if (localTier === "metropolitan") {
+        estimatedTax = 7500;
+        taxBasisExplanation = "महानगर / उपमहानगरपालिका अन्तर्गत वार्षिक एकमुष्ट रु ७,५००";
+      } else if (localTier === "rural_municipality") {
+        estimatedTax = 2500;
+        taxBasisExplanation = "गाउँपालिका क्षेत्र अन्तर्गत वार्षिक एकमुष्ट रु २,५००";
+      } else {
+        estimatedTax = 4000;
+        taxBasisExplanation = "नगरपालिका क्षेत्र अन्तर्गत वार्षिक एकमुष्ट रु ४,०००";
+      }
+      categoryDesc = "३० लाखसम्म कारोबार: कुनै अडिट नचाहिने, तोकिएको एकमुष्ट रकम तिरेर चुक्ता हुने।";
+      filingPeriod = "पुस मसान्तभित्र (वार्षिक कर चुक्ता)";
+    } else if (annualSales <= 10000000) {
+      category = "D-02";
+      progressPercent = Math.min(100, Math.round(((annualSales - 3000000) / 7000000) * 100));
+      categoryTitle = "D-02 (कारोबारमा आधारित कर / Turnover Tax)";
+      filingPeriod = "चौमासिक (प्रत्येक ४ महिनामा बुझाउने)";
+
+      if (nature === "low_margin") {
+        const rate = 0.0025;
+        estimatedTax = Math.round(annualSales * rate);
+        taxBasisExplanation = "ग्यास, चुरोट, बिँडी आदि (न्यून नाफा ३% सम्म) - कारोबारको ०.२५%";
+      } else if (nature === "services") {
+        const rate = 0.02;
+        estimatedTax = Math.round(annualSales * rate);
+        taxBasisExplanation = "सेवा, परामर्श वा होटल व्यवसाय - कारोबारको २.००%";
+      } else {
+        const rate = 0.0075;
+        estimatedTax = Math.round(annualSales * rate);
+        taxBasisExplanation = "सामान्य खुद्रा व्यापार तथा सामान बिक्री - कारोबारको ०.७५%";
+      }
+      categoryDesc = "३० लाख देखि १ करोडसम्म कारोबार: अडिट बिना सिधै कारोबार रकममा निश्चित % कर।";
+    } else {
+      category = "D-03";
+      progressPercent = 100;
+      categoryTitle = "D-03 (नियमित करदाता / Audited P&L)";
+      categoryDesc = "१ करोडभन्दा माथि वा स्वेच्छिक अडिट: आयव्यय हिसाब (P&L) बाट खुद नाफामा कर।";
+      filingPeriod = "असोज मसान्तभित्र (अडिट रिपोर्ट सहित)";
+
+      const netProfit = Math.max(0, plTotals.net);
+      let calculatedTax = 0;
+
+      if (entity === "pvt_ltd") {
+        calculatedTax = Math.round(netProfit * 0.25);
+        taxBasisExplanation = "प्राइभेट लिमिटेड कम्पनी: खुद नाफाको २५% संस्थागत कर (Corporate Tax)";
+      } else {
+        const isMarried = marital === "married";
+        const basicLimit = isMarried ? 600000 : 500000;
+
+        if (netProfit <= basicLimit) {
+          calculatedTax = Math.round(netProfit * 0.01);
+          taxBasisExplanation = `${isMarried ? "विवाहित पहिलो ६ लाख" : "एकल पहिलो ५ लाख"} सम्म १% सामाजिक सुरक्षा कर`;
+        } else {
+          calculatedTax += basicLimit * 0.01;
+          let remaining = netProfit - basicLimit;
+
+          const slab2 = Math.min(remaining, 200000);
+          calculatedTax += slab2 * 0.10;
+          remaining -= slab2;
+
+          if (remaining > 0) {
+            const slab3Limit = isMarried ? 300000 : 300000;
+            const slab3 = Math.min(remaining, slab3Limit);
+            calculatedTax += slab3 * 0.20;
+            remaining -= slab3;
+          }
+
+          if (remaining > 0) {
+            const slab4Limit = isMarried ? 900000 : 1000000;
+            const slab4 = Math.min(remaining, slab4Limit);
+            calculatedTax += slab4 * 0.30;
+            remaining -= slab4;
+          }
+
+          if (remaining > 0) {
+            calculatedTax += remaining * 0.36;
+          }
+
+          taxBasisExplanation = `व्यक्तिगत आयकर स्ल्याब (${isMarried ? "विवाहित रु ६ लाख छुट" : "एकल रु ५ लाख छुट"} अनुसार खुद नाफा रु ${fmt(netProfit)} मा)`;
+        }
+      }
+      estimatedTax = Math.round(calculatedTax);
+    }
+
+    return {
+      annualSales,
+      category,
+      categoryTitle,
+      categoryDesc,
+      estimatedTax,
+      taxBasisExplanation,
+      filingPeriod,
+      progressPercent,
+      vatAlert,
+      vatCrossed,
+      vatThreshold,
+      vatThresholdLabel,
+      localTier,
+      nature,
+      marital,
+      entity,
+      isVatShop
+    };
+  }, [allSales, shopInfo, plTotals.net]);
 
   const handleReprintSale = async (s: any) => {
     if (!shopInfo) return;
@@ -1396,24 +1532,144 @@ const Reports = () => {
               </div>
             </Card>
 
+            {/* 3rd Card: Nepal Tax Status & Estimation (नेपाल आयकर तथा दायित्व) */}
             <Card
-              onClick={() => setRegViewFilter("all")}
-              className={`p-4 shadow-elegant border transition-all cursor-pointer bg-gradient-primary text-primary-foreground ${
-                regViewFilter === "all" ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "border-transparent"
-              }`}
+              onClick={() => setShowTaxDetails(!showTaxDetails)}
+              className="p-4 shadow-elegant border transition-all cursor-pointer bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 text-white hover:border-indigo-400/50 relative overflow-hidden group"
             >
-              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider opacity-90">
-                <span>व्यापार अन्तर (Net Turnover)</span>
-                <Scale className="h-4 w-4 opacity-80" />
+              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none group-hover:bg-indigo-500/20 transition-all" />
+              
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-indigo-200">
+                <div className="flex items-center gap-1.5">
+                  <Scale className="h-4 w-4 text-indigo-400" />
+                  <span>नेपाल आयकर दायित्व ({taxCompliance.category})</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  IRD Nepal
+                </span>
               </div>
-              <div className="font-display text-2xl font-bold mt-2">
-                {fmt(regMonthlyTotals.totalSalesAmount - regMonthlyTotals.totalPurchasesAmount)}
+
+              <div className="flex items-baseline justify-between mt-2">
+                <div className="font-display text-2xl font-bold text-white">
+                  {fmt(taxCompliance.estimatedTax)}
+                  <span className="text-xs font-normal text-indigo-300 ml-1.5">
+                    (अनुमानित कर)
+                  </span>
+                </div>
               </div>
-              <div className="text-[11px] opacity-90 mt-1 border-t border-white/20 pt-1.5">
-                कुल बिक्री - कुल खरिद (Sales minus Purchases)
+
+              <div className="text-[11px] text-indigo-200/90 mt-1 border-t border-indigo-500/20 pt-1.5 flex items-center justify-between">
+                <span className="truncate pr-2">{taxCompliance.taxBasisExplanation}</span>
+                <span className="text-[10px] text-indigo-300 underline font-semibold shrink-0">
+                  {showTaxDetails ? "लुकाउनुहोस् ▲" : "विवरण हेर्नुहोस् ▼"}
+                </span>
               </div>
             </Card>
           </div>
+
+          {/* Mandatory VAT Registration Alert Banner */}
+          {taxCompliance.vatAlert && (
+            <div className="p-3.5 bg-amber-500/15 border-2 border-amber-500/40 rounded-xl text-amber-950 dark:text-amber-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                    <span>⚠️ भ्याट अनिवार्य दर्ता सीमा पार (Mandatory VAT Registration Alert)</span>
+                  </div>
+                  <p className="text-xs text-amber-900/90 dark:text-amber-200 mt-1 leading-relaxed">
+                    तपाईंको पछिल्लो १२ महिनाको कुल कारोबार <strong>{fmt(taxCompliance.annualSales)}</strong> पुगेको छ, जुन नेपाल सरकार आन्तरिक राजस्व विभागले तोकेको भ्याट सीमा <strong>({taxCompliance.vatThresholdLabel})</strong> भन्दा बढी हो। मूल्य अभिवृद्धि कर ऐन अनुसार अब व्यवसाय <strong>भ्याट (VAT) मा दर्ता</strong> हुनु अनिवार्य छ।
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 flex items-center gap-2">
+                <span className="text-xs px-2.5 py-1 rounded-md bg-amber-500/20 font-bold border border-amber-500/30">
+                  सीमा: {taxCompliance.vatThresholdLabel}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Expandable Tax Compliance Details Drawer */}
+          {showTaxDetails && (
+            <Card className="p-4 bg-secondary/30 border border-primary/20 rounded-xl space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h4 className="font-bold text-sm text-foreground">
+                    नेपाल आन्तरिक राजस्व विभाग (IRD) आयकर तथा कारोबार विश्लेषण
+                  </h4>
+                </div>
+                <span className="text-xs font-medium text-muted-foreground">
+                  आर्थिक वर्ष २०८१/८२ - २०८३ नियम
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* 1. Category Card */}
+                <div className="p-3 rounded-lg bg-background/60 border border-border/60">
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase">करदाता वर्ग (Tax Category)</div>
+                  <div className="font-bold text-base text-primary mt-1">{taxCompliance.categoryTitle}</div>
+                  <div className="text-xs text-muted-foreground mt-1 leading-snug">{taxCompliance.categoryDesc}</div>
+                  <div className="text-[11px] font-medium text-foreground/80 mt-2 pt-2 border-t border-border/40">
+                    दाखिला समय: <span className="font-semibold text-primary">{taxCompliance.filingPeriod}</span>
+                  </div>
+                </div>
+
+                {/* 2. Turnover Progress Card */}
+                <div className="p-3 rounded-lg bg-background/60 border border-border/60">
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase">वार्षिक कारोबार (12-Month Sales)</div>
+                  <div className="font-bold text-base text-foreground mt-1">{fmt(taxCompliance.annualSales)}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {taxCompliance.category === "D-01" 
+                      ? "D-01 अधिकतम सीमा रु ३०,००,००० सम्म"
+                      : taxCompliance.category === "D-02"
+                        ? "D-02 अधिकतम सीमा रु १,००,००,००० सम्म"
+                        : "१ करोड भन्दा माथि (नियमित करदाता)"}
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-1.5 mt-2.5 overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        taxCompliance.annualSales >= 5000000 ? "bg-amber-500" : "bg-primary"
+                      }`}
+                      style={{ width: `${taxCompliance.progressPercent}%` }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1.5 flex justify-between">
+                    <span>०</span>
+                    <span>{taxCompliance.category === "D-01" ? "३० लाख" : "१ करोड"}</span>
+                  </div>
+                </div>
+
+                {/* 3. Estimated Tax & Base */}
+                <div className="p-3 rounded-lg bg-background/60 border border-border/60">
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase">अनुमानित आयकर (Est. Income Tax)</div>
+                  <div className="font-display font-bold text-xl text-emerald-600 dark:text-emerald-400 mt-1">
+                    {fmt(taxCompliance.estimatedTax)}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{taxCompliance.taxBasisExplanation}</div>
+                  <div className="text-[11px] text-muted-foreground mt-2 pt-2 border-t border-border/40">
+                    सेटिङ्स परिवर्तन गर्न: <span className="text-primary font-medium">Settings &rarr; Shop Information</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Legal Reference & Slabs Note */}
+              <div className="p-3 rounded-lg bg-muted/40 border border-border/40 text-xs space-y-1.5 text-muted-foreground">
+                <div className="font-semibold text-foreground flex items-center gap-1.5">
+                  <Info className="h-3.5 w-3.5 text-primary" />
+                  <span>आयकर ऐन, २०५८ तथा आर्थिक ऐनका मुख्य मापदण्डहरू:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-0.5 text-[11px] leading-relaxed pl-1">
+                  <li><strong>D-01 (३० लाखसम्म कारोबार):</strong> अडिट तथा नाफा/नोक्सान नचाहिने; महानगर/उपमहानगरपालिकामा रु ७,५००, नगरपालिकामा रु ४,००० र गाउँपालिकामा रु २,५०० बुझाए पुग्ने।</li>
+                  <li><strong>D-02 (३० लाख देखि १ करोडसम्म):</strong> अडिट नचाहिने; सामान्य खुद्रा व्यापारमा कारोबारको ०.७५%, ग्यास/चुरोट जस्ता न्यून नाफामा ०.२५%, सेवा व्यवसायमा २% कर लाग्ने।</li>
+                  <li><strong>D-03 (१ करोडभन्दा माथि वा अडिट बेसिस):</strong> दर्तावाला अडिटरबाट लेखापरीक्षण गरी खुद नाफामा एकललाई रु ५ लाख / विवाहितलाई रु ६ लाख छुटपछि क्रमशः १०%, २०%, ३०% र ३६% स्ल्याब लाग्ने।</li>
+                  <li><strong>भ्याट सीमा:</strong> पछिल्लो १२ महिनामा सामान कारोबार रु ५० लाख (वा सेवा रु २० लाख) नाघेमा ३० दिनभित्र अनिवार्य भ्याट दर्ता गर्नुपर्ने कानुनी व्यवस्था छ।</li>
+                </ul>
+              </div>
+            </Card>
+          )}
 
           {/* Quick Register Switcher */}
           <div className="flex items-center justify-between gap-2 flex-wrap pt-1">

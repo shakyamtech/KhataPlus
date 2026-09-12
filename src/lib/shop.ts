@@ -26,6 +26,10 @@ export interface ShopInfo {
   batch_date_format?: "m_d_yy" | "yyyy_mm" | "fiscal_year" | "none";
   batch_digits?: 3 | 4;
   barcode_starting_no?: number;
+  local_level_type?: "municipality" | "metropolitan" | "rural_municipality";
+  business_nature?: "general_trading" | "low_margin" | "services";
+  entity_type?: "proprietorship" | "pvt_ltd";
+  marital_status?: "single" | "married";
 }
 
 export const getShopInfo = async (): Promise<ShopInfo> => {
@@ -85,7 +89,11 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
         batch_custom_prefix: data.batch_custom_prefix ?? "BATCH-",
         batch_date_format: data.batch_date_format ?? "m_d_yy",
         batch_digits: (Number(data.batch_digits) === 4 ? 4 : 3) as 3 | 4,
-        barcode_starting_no: Number(data.barcode_starting_no ?? 1001)
+        barcode_starting_no: Number(data.barcode_starting_no ?? 1001),
+        local_level_type: data.local_level_type ?? "municipality",
+        business_nature: data.business_nature ?? "general_trading",
+        entity_type: data.entity_type ?? "proprietorship",
+        marital_status: data.marital_status ?? "single"
       };
     }
   } catch (e) {
@@ -114,6 +122,10 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
     batch_custom_prefix: "BATCH-",
     batch_date_format: "m_d_yy",
     batch_digits: 3,
-    barcode_starting_no: 1001
+    barcode_starting_no: 1001,
+    local_level_type: "municipality",
+    business_nature: "general_trading",
+    entity_type: "proprietorship",
+    marital_status: "single"
   };
 };

@@ -5,7 +5,7 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, Check, Loader2
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, Check, Loader2, Scale
 } from "lucide-react";
 import { generateBatchSamplePreview, getNepaliFiscalYear } from "@/lib/batch";
 import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
@@ -129,6 +129,10 @@ export const AppShell = () => {
     const [dbLastAbb, setDbLastAbb] = useState<string | null>(null);
     const [dbLastBill, setDbLastBill] = useState<string | null>(null);
     const [dbLastPur, setDbLastPur] = useState<string | null>(null);
+    const [localLevelType, setLocalLevelType] = useState<"municipality" | "metropolitan" | "rural_municipality">("municipality");
+    const [businessNature, setBusinessNature] = useState<"general_trading" | "low_margin" | "services">("general_trading");
+    const [entityType, setEntityType] = useState<"proprietorship" | "pvt_ltd">("proprietorship");
+    const [maritalStatus, setMaritalStatus] = useState<"single" | "married">("single");
 
     const [fiscalYearDialogOpen, setFiscalYearDialogOpen] = useState(false);
     const [targetFiscalSuffix, setTargetFiscalSuffix] = useState("");
@@ -305,6 +309,11 @@ export const AppShell = () => {
                     setBatchDigits(String(data.batch_digits ?? 3) === "4" ? "4" : "3");
                     setBarcodeStartingNo(String(data.barcode_starting_no ?? 1001));
 
+                    setLocalLevelType(data.local_level_type ?? "municipality");
+                    setBusinessNature(data.business_nature ?? "general_trading");
+                    setEntityType(data.entity_type ?? "proprietorship");
+                    setMaritalStatus(data.marital_status ?? "single");
+
                     // Calculate tenant subscription
                     const subInfo = calculateSubscription(data, isAdmin);
                     setSubscription(subInfo);
@@ -449,7 +458,11 @@ export const AppShell = () => {
                 batch_custom_prefix: batchCustomPrefix.trim().toUpperCase() || "BATCH-",
                 batch_date_format: batchDateFormat,
                 batch_digits: batchDigits === "4" ? 4 : 3,
-                barcode_starting_no: Math.max(1, parseInt(barcodeStartingNo) || 1001)
+                barcode_starting_no: Math.max(1, parseInt(barcodeStartingNo) || 1001),
+                local_level_type: localLevelType,
+                business_nature: businessNature,
+                entity_type: entityType,
+                marital_status: maritalStatus
             }, { merge: true });
 
             setShopName(newName);
@@ -1082,6 +1095,83 @@ export const AppShell = () => {
                         <div className="space-y-2">
                             <Label>{taxType === "vat" ? (lang === "NEP" ? "PAN / VAT नम्बर (९ अंक)" : "VAT / PAN Number (9 Digits)") : t.panNo}</Label>
                             <Input value={panNo} onChange={(e) => setPanNo(e.target.value)} placeholder={taxType === "vat" ? "Enter 9-digit VAT number..." : "Enter PAN number..."} />
+                        </div>
+
+                        {/* Nepal Tax Compliance Profile Configuration */}
+                        <div className="pt-3 border-t space-y-3">
+                            <div className="space-y-0.5">
+                                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <Scale className="h-3.5 w-3.5 text-primary" />
+                                    <span>{lang === "NEP" ? "नेपाल आयकर तथा करदाता प्रोफाइल (Nepal Tax Profile - IRD)" : "Nepal Tax Compliance Profile (IRD)"}</span>
+                                </Label>
+                                <div className="text-[10px] text-muted-foreground leading-tight">
+                                    {lang === "NEP" ? "D-01, D-02 र आयकर गणनाका लागि पसलको स्थानीय तह र प्रकृतिको सही विवरण भर्नुहोस्।" : "Configure location and trade nature for automated D-01, D-02 and Income tax calculations."}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-secondary/30 rounded-xl p-3 border">
+                                {/* Local Level Type */}
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-semibold text-foreground">
+                                        {lang === "NEP" ? "स्थानीय तह (Location)" : "Local Municipality Tier"}
+                                    </Label>
+                                    <select
+                                        value={localLevelType}
+                                        onChange={(e: any) => setLocalLevelType(e.target.value)}
+                                        className="w-full h-8 px-2 text-xs rounded-md border border-input bg-background font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+                                    >
+                                        <option value="municipality">{lang === "NEP" ? "नगरपालिका (D-01 कर: रु. ४,०००)" : "Municipality (D-01 Tax: Rs. 4,000)"}</option>
+                                        <option value="metropolitan">{lang === "NEP" ? "महानगर / उपमहानगर (D-01 कर: रु. ७,५००)" : "Metro / Sub-Metro (D-01 Tax: Rs. 7,500)"}</option>
+                                        <option value="rural_municipality">{lang === "NEP" ? "गाउँपालिका (D-01 कर: रु. २,५००)" : "Rural Municipality (D-01 Tax: Rs. 2,500)"}</option>
+                                    </select>
+                                </div>
+
+                                {/* Business Nature */}
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-semibold text-foreground">
+                                        {lang === "NEP" ? "व्यापारको प्रकृति (Business Nature)" : "Business Nature"}
+                                    </Label>
+                                    <select
+                                        value={businessNature}
+                                        onChange={(e: any) => setBusinessNature(e.target.value)}
+                                        className="w-full h-8 px-2 text-xs rounded-md border border-input bg-background font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+                                    >
+                                        <option value="general_trading">{lang === "NEP" ? "सामान्य खुद्रा व्यापार (D-02 कर: ०.७५%)" : "General Retail Trading (0.75% Tax)"}</option>
+                                        <option value="low_margin">{lang === "NEP" ? "ग्यास, चुरोट, बिँडी आदि (D-02 कर: ०.२५%)" : "Gas / Cigarettes / Low Margin (0.25% Tax)"}</option>
+                                        <option value="services">{lang === "NEP" ? "सेवा, होटल, मर्मत तथा अन्य (D-02 कर: २%)" : "Services / Hotel / Repair (2% Tax)"}</option>
+                                    </select>
+                                </div>
+
+                                {/* Entity Type */}
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-semibold text-foreground">
+                                        {lang === "NEP" ? "स्वामित्व प्रकार (Entity Type)" : "Entity Type"}
+                                    </Label>
+                                    <select
+                                        value={entityType}
+                                        onChange={(e: any) => setEntityType(e.target.value)}
+                                        className="w-full h-8 px-2 text-xs rounded-md border border-input bg-background font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+                                    >
+                                        <option value="proprietorship">{lang === "NEP" ? "एकलौटी फर्म / व्यक्ति (Proprietorship)" : "Sole Proprietorship / Individual"}</option>
+                                        <option value="pvt_ltd">{lang === "NEP" ? "कम्पनी / प्रा.लि. (Pvt Ltd - २५% कर)" : "Company / Pvt Ltd (25% Tax)"}</option>
+                                    </select>
+                                </div>
+
+                                {/* Marital Status */}
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-semibold text-foreground">
+                                        {lang === "NEP" ? "व्यक्तिगत छुट स्ल्याब (Tax Slab Exemption)" : "Tax Slab Exemption"}
+                                    </Label>
+                                    <select
+                                        value={maritalStatus}
+                                        onChange={(e: any) => setMaritalStatus(e.target.value)}
+                                        className="w-full h-8 px-2 text-xs rounded-md border border-input bg-background font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+                                    >
+                                        <option value="single">{lang === "NEP" ? "एकल (रु. ५ लाख सम्म १% सामाजिक सुरक्षा)" : "Single (Up to 5 Lakhs @ 1%)"}</option>
+                                        <option value="married">{lang === "NEP" ? "दम्पती / विवाहित (रु. ६ लाख सम्म १% सामाजिक सुरक्षा)" : "Married / Couple (Up to 6 Lakhs @ 1%)"}</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Invoice Numbering & Prefix Configuration */}
