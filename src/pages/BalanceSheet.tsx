@@ -213,7 +213,7 @@ const BalanceSheet = () => {
 
         <!-- Note / Disclaimer -->
         <div style="border:1px solid #e5e7eb; background:#f9fafb; padding:10px 12px; border-radius:4px; font-size:10.5px; color:#4b5563; margin-bottom:24px; page-break-inside:avoid;">
-          <strong>* लेखा टिप्पणी (Note):</strong> यो वित्तीय विवरण प्रणालीमा प्रविष्ट गरिएका बिक्री, खरिद, नगद कारोबार तथा मौज्दात स्टकको आधारमा स्वचालित रूपमा तयार गरिएको हो। आधिकारिक कर चुक्ता वा बाह्य लेखापरीक्षण (Statutory Audit) का लागि दर्तावाला लेखापरीक्षक (Auditor / CA) सँग परामर्श लिनुहोला।
+          <strong>* Note:</strong> This is a simplified account derived from your recorded sales, purchases, cash and stock. For official tax filing or audit compliance, consult a certified accountant or auditor.
         </div>
 
         <!-- Signatures -->
@@ -291,7 +291,7 @@ const BalanceSheet = () => {
 
       <Card className="p-4 shadow-card border border-border/40 bg-muted/30">
         <div className="text-xs text-muted-foreground leading-relaxed">
-          📒 <strong className="text-foreground">लेखा टिप्पणी (Note):</strong> यो विवरण प्रणालीमा प्रविष्ट गरिएका बिक्री, खरिद, नगद तथा स्टकको आधारमा तयार गरिएको प्रारम्भिक वित्तीय हिसाब हो। आधिकारिक कर चुक्ता वा बाह्य अडिट प्रयोजनका लागि दर्तावाला लेखापरीक्षक (Auditor / CA) सँग परामर्श लिनुहोला।
+          📒 <strong className="text-foreground">Note:</strong> This is a simplified account derived from your recorded sales, purchases, cash and stock. For tax filing, consult an accountant.
         </div>
       </Card>
     </div>
