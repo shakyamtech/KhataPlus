@@ -542,49 +542,16 @@ export const AppShell = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-60" align="end" sideOffset={8}>
                     <DropdownMenuLabel className="font-normal">
-                        <div className="flex flex-col space-y-1.5">
+                        <div className="flex flex-col space-y-1">
                             <div className="flex items-center justify-between gap-1">
                                 <p className="text-sm font-bold leading-none text-foreground truncate">{fullName || "User Profile"}</p>
-                                {isPro ? (
+                                {isPro && (
                                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-400/30 flex items-center gap-0.5 shrink-0">
-                                        <Crown className="h-2 w-2 fill-current" /> {subscription?.plan === "lifetime" || isAdmin ? "VIP LIFETIME" : "PRO"}
-                                    </span>
-                                ) : isExpired ? (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-500 border border-rose-400/30 flex items-center gap-0.5 shrink-0">
-                                        EXPIRED
-                                    </span>
-                                ) : (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-400/30 flex items-center gap-0.5 shrink-0">
-                                        <Sparkles className="h-2.5 w-2.5" /> TRIAL ({subscription?.daysLeft ?? 30}d)
+                                        <Crown className="h-2 w-2 fill-current" /> {subscription?.plan === "lifetime" || isAdmin ? "VIP" : "PRO"}
                                     </span>
                                 )}
                             </div>
                             <p className="text-xs leading-none text-muted-foreground truncate">{user?.email}</p>
-
-                            {/* Plan details subtitle */}
-                            <div className="pt-1 text-[10px] text-muted-foreground">
-                                {isPro ? (
-                                    <span className="text-amber-500 dark:text-amber-400 font-medium">
-                                        {isAdmin 
-                                            ? (lang === "NEP" ? "👑 एडमिन VIP सुविधा" : "👑 Admin VIP Access")
-                                            : subscription?.plan === "lifetime"
-                                                ? (lang === "NEP" ? "👑 आजीवन VIP सदस्यता" : "👑 Lifetime VIP PRO")
-                                                : (lang === "NEP" ? `👑 PRO सदस्यता • ${subscription?.daysLeft} दिन बाँकी` : `👑 PRO Plan • ${subscription?.daysLeft} days left`)}
-                                    </span>
-                                ) : isExpired ? (
-                                    <span className="text-rose-500 font-medium flex items-center gap-1">
-                                        <AlertCircle className="h-3 w-3" />
-                                        {lang === "NEP" ? "ट्रायल सकियो • एडमिनसँग सम्पर्क गर्नुहोस्" : "Trial Expired • Please upgrade"}
-                                    </span>
-                                ) : (
-                                    <span className="text-cyan-600 dark:text-cyan-400 font-medium flex items-center gap-1">
-                                        <Sparkles className="h-3 w-3" />
-                                        {lang === "NEP" 
-                                            ? `३०-दिन नि:शुल्क ट्रायल • ${subscription?.daysLeft ?? 30} दिन बाँकी` 
-                                            : `30-Day Trial • ${subscription?.daysLeft ?? 30} days left`}
-                                    </span>
-                                )}
-                            </div>
                         </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
