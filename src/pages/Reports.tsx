@@ -636,7 +636,7 @@ const Reports = () => {
               <tr style="background:#f9fafb;">
                 <th style="border:1px solid #111; padding:5px 4px; text-align:center; width:35px;">क्र.सं.</th>
                 <th style="border:1px solid #111; padding:5px 6px; text-align:left; width:80px;">मिति</th>
-                <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:75px;">बिल नं.</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:80px;">बिल / भौचर नं.</th>
                 <th style="border:1px solid #111; padding:5px 6px; text-align:left;">खरिदकर्ताको नाम</th>
                 <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:85px;">ग्राहक PAN</th>
                 <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:65px;">भुक्तानी</th>
@@ -1573,9 +1573,9 @@ const Reports = () => {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
-                    <th className="p-3">मिति (Date)</th>
-                    <th className="p-3">बिल नं. (Bill No)</th>
-                    <th className="p-3">ग्राहकको नाम (Customer)</th>
+                      <th className="p-3">मिति (Date)</th>
+                      <th className="p-3">बिल / भौचर नं. (Bill / Voucher No)</th>
+                      <th className="p-3">ग्राहकको नाम (Customer)</th>
                     <th className="p-3">ग्राहक PAN</th>
                     <th className="p-3">भुक्तानी</th>
                     <th className="p-3 text-right">कुल रकम</th>
