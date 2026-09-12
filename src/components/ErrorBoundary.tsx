@@ -16,7 +16,19 @@ export const MaintenanceView: React.FC<{
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleReload = () => {
+  const handleReload = async () => {
+    try {
+      if ("caches" in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+      }
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      }
+    } catch (_) {}
     if (onReload) onReload();
     else window.location.reload();
   };
@@ -175,7 +187,21 @@ export class ErrorBoundary extends React.Component<Props, State> {
       return (
         <MaintenanceView 
           error={this.state.error} 
-          onReload={() => window.location.reload()} 
+          onReload={async () => {
+            try {
+              if ("caches" in window) {
+                const cacheKeys = await caches.keys();
+                await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+              }
+              if ("serviceWorker" in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const reg of registrations) {
+                  await reg.unregister();
+                }
+              }
+            } catch (_) {}
+            window.location.reload();
+          }} 
         />
       );
     }
