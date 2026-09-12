@@ -25,6 +25,7 @@ export interface ShopInfo {
   batch_custom_prefix?: string;
   batch_date_format?: "m_d_yy" | "yyyy_mm" | "fiscal_year" | "none";
   batch_digits?: 3 | 4;
+  barcode_starting_no?: number;
 }
 
 export const getShopInfo = async (): Promise<ShopInfo> => {
@@ -48,7 +49,8 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
       bill_next_no: 1,
       purchase_prefix: "INW-",
       purchase_suffix: "",
-      purchase_next_no: 1
+      purchase_next_no: 1,
+      barcode_starting_no: 1001
     };
   }
   
@@ -82,7 +84,8 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
         batch_prefix_style: data.batch_prefix_style ?? "product_3_letters",
         batch_custom_prefix: data.batch_custom_prefix ?? "BATCH-",
         batch_date_format: data.batch_date_format ?? "m_d_yy",
-        batch_digits: (Number(data.batch_digits) === 4 ? 4 : 3) as 3 | 4
+        batch_digits: (Number(data.batch_digits) === 4 ? 4 : 3) as 3 | 4,
+        barcode_starting_no: Number(data.barcode_starting_no ?? 1001)
       };
     }
   } catch (e) {
@@ -110,6 +113,7 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
     batch_prefix_style: "product_3_letters",
     batch_custom_prefix: "BATCH-",
     batch_date_format: "m_d_yy",
-    batch_digits: 3
+    batch_digits: 3,
+    barcode_starting_no: 1001
   };
 };

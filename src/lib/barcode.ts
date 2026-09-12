@@ -95,17 +95,21 @@ export function generateBarcodeSvg(
  * Generates a clean 4-digit in-store retail barcode (starts at 1001, e.g. 1001, 1002, 1003)
  * Follows standard retail PLU / Code 128 in-store item numbering for compact thermal printing
  */
-export function generateUniqueBarcode(existingBarcodes: (string | null | undefined)[] = []): string {
+export function generateUniqueBarcode(
+  existingBarcodes: (string | null | undefined)[] = [],
+  startNo: number = 1001
+): string {
   const existingSet = new Set(
     existingBarcodes
       .map(b => (b ? String(b).trim() : ""))
       .filter(Boolean)
   );
 
-  // Always find the lowest available 4-digit number starting at 1001
-  // If demo products are deleted, it automatically starts back from 1001!
-  let candidateNum = 1001;
-  while (existingSet.has(String(candidateNum)) && candidateNum < 99999) {
+  // Starts from shop's configured starting barcode number (default 1001)
+  // Always finds the first available number >= startNo
+  const initialNum = Math.max(1, Number(startNo) || 1001);
+  let candidateNum = initialNum;
+  while (existingSet.has(String(candidateNum)) && candidateNum < 999999) {
     candidateNum++;
   }
 

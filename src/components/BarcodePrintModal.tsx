@@ -30,6 +30,7 @@ import {
   printBarcodeStickers,
   LabelProductItem
 } from "@/lib/barcode";
+import { getShopInfo } from "@/lib/shop";
 
 interface Product {
   id: string;
@@ -188,7 +189,8 @@ export function BarcodePrintModal({
     setGeneratingForId(product.id);
     try {
       const existingBarcodes = products.map(p => p.barcode);
-      const newBarcode = generateUniqueBarcode(existingBarcodes);
+      const shopInfo = await getShopInfo();
+      const newBarcode = generateUniqueBarcode(existingBarcodes, shopInfo?.barcode_starting_no || 1001);
 
       const ref = doc(db, "products", product.id);
       await updateDoc(ref, {

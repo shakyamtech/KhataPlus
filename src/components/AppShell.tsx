@@ -122,6 +122,7 @@ export const AppShell = () => {
     const [batchCustomPrefix, setBatchCustomPrefix] = useState("BATCH-");
     const [batchDateFormat, setBatchDateFormat] = useState<"m_d_yy" | "yyyy_mm" | "fiscal_year" | "none">("m_d_yy");
     const [batchDigits, setBatchDigits] = useState<"3" | "4">("3");
+    const [barcodeStartingNo, setBarcodeStartingNo] = useState("1001");
     const [dbLastTax, setDbLastTax] = useState<string | null>(null);
     const [dbLastAbb, setDbLastAbb] = useState<string | null>(null);
     const [dbLastBill, setDbLastBill] = useState<string | null>(null);
@@ -239,6 +240,7 @@ export const AppShell = () => {
                     setBatchCustomPrefix(data.batch_custom_prefix ?? "BATCH-");
                     setBatchDateFormat(data.batch_date_format ?? "m_d_yy");
                     setBatchDigits(String(data.batch_digits ?? 3) === "4" ? "4" : "3");
+                    setBarcodeStartingNo(String(data.barcode_starting_no ?? 1001));
 
                     if (data.migrated_to_batches !== undefined) {
                         setHasMigrated(data.migrated_to_batches === true);
@@ -379,7 +381,8 @@ export const AppShell = () => {
                 batch_prefix_style: batchPrefixStyle,
                 batch_custom_prefix: batchCustomPrefix.trim().toUpperCase() || "BATCH-",
                 batch_date_format: batchDateFormat,
-                batch_digits: batchDigits === "4" ? 4 : 3
+                batch_digits: batchDigits === "4" ? 4 : 3,
+                barcode_starting_no: Math.max(1, parseInt(barcodeStartingNo) || 1001)
             }, { merge: true });
 
             setShopName(newName);
@@ -1233,6 +1236,41 @@ export const AppShell = () => {
                                                 </div>
                                             </div>
                                         </div>
+
+                                        {/* 5. In-Store Barcode Series Config */}
+                                        <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
+                                            <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                                    <QrCode className="h-3.5 w-3.5 text-primary" />
+                                                    {lang === "NEP" ? "५. इन-स्टोर बारकोड सिरिज (Barcode Series)" : "In-Store Barcode Series (बारकोड सिरिज)"}
+                                                </Label>
+                                                <span className="text-[10px] font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20">
+                                                    {lang === "NEP" ? "नमुना:" : "Sample:"} {barcodeStartingNo || "1001"}, {Number(barcodeStartingNo || 1001) + 1}...
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div>
+                                                    <Label className="text-[10px] text-muted-foreground">
+                                                        {lang === "NEP" ? "सुरुवाती बारकोड नम्बर (Starting No.)" : "Starting Barcode Number"}
+                                                    </Label>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        max={999999}
+                                                        value={barcodeStartingNo}
+                                                        onChange={(e) => setBarcodeStartingNo(e.target.value)}
+                                                        className="h-8 text-xs bg-background font-mono font-semibold"
+                                                        placeholder="1001"
+                                                    />
+                                                </div>
+                                                <div className="flex items-end pb-1 text-[11px] text-muted-foreground leading-tight">
+                                                    {lang === "NEP"
+                                                        ? "पसलमा बारकोड नभएका सामानमा ✨ Auto थिच्दा यो नम्बरबाट सुरु भएर क्रमैसँग अघि बढ्छ।"
+                                                        : "Unbarcoded products will start from this number when clicking ✨ Auto."}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </>
                                 );
                             })()}
@@ -1248,7 +1286,8 @@ export const AppShell = () => {
                                         setAbbreviatedNextNo("1");
                                         setBillNextNo("1");
                                         setPurchaseNextNo("1");
-                                        toast.info(lang === "NEP" ? "काउन्टर १ मा सेट भयो। लागू गर्न सेभ गर्नुहोस्।" : "Counters set to 1. Click Save to apply.");
+                                        setBarcodeStartingNo("1001");
+                                        toast.info(lang === "NEP" ? "काउन्टरहरू रिसेट भए। लागू गर्न सेभ गर्नुहोस्।" : "Counters reset to defaults. Click Save to apply.");
                                     }}
                                 >
                                     <RotateCcw className="h-3 w-3 mr-1" />

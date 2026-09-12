@@ -677,11 +677,13 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                           const snap = await getDocs(q);
                           existingBarcodes = snap.docs.map(d => d.data().barcode).filter(Boolean);
                         }
-                        const code = generateUniqueBarcode(existingBarcodes);
+                        const startingNo = shopInfo?.barcode_starting_no || 1001;
+                        const code = generateUniqueBarcode(existingBarcodes, startingNo);
                         setEdit((prev: any) => ({ ...prev, barcode: code }));
                         toast.success(`Generated Barcode: ${code}`);
                       } catch {
-                        const code = generateUniqueBarcode();
+                        const startingNo = shopInfo?.barcode_starting_no || 1001;
+                        const code = generateUniqueBarcode([], startingNo);
                         setEdit((prev: any) => ({ ...prev, barcode: code }));
                         toast.success(`Generated Barcode: ${code}`);
                       }
