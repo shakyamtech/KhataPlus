@@ -5,9 +5,10 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle
 } from "lucide-react";
 import { generateBatchSamplePreview } from "@/lib/batch";
+import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
 import { InstallAppModal } from "@/components/InstallAppModal";
 import { BackupModal } from "@/components/BackupModal";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -123,6 +124,7 @@ export const AppShell = () => {
     const [batchDateFormat, setBatchDateFormat] = useState<"m_d_yy" | "yyyy_mm" | "fiscal_year" | "none">("m_d_yy");
     const [batchDigits, setBatchDigits] = useState<"3" | "4">("3");
     const [barcodeStartingNo, setBarcodeStartingNo] = useState("1001");
+    const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
     const [dbLastTax, setDbLastTax] = useState<string | null>(null);
     const [dbLastAbb, setDbLastAbb] = useState<string | null>(null);
     const [dbLastBill, setDbLastBill] = useState<string | null>(null);
@@ -241,6 +243,10 @@ export const AppShell = () => {
                     setBatchDateFormat(data.batch_date_format ?? "m_d_yy");
                     setBatchDigits(String(data.batch_digits ?? 3) === "4" ? "4" : "3");
                     setBarcodeStartingNo(String(data.barcode_starting_no ?? 1001));
+
+                    // Calculate tenant subscription
+                    const subInfo = calculateSubscription(data, isAdmin);
+                    setSubscription(subInfo);
 
                     if (data.migrated_to_batches !== undefined) {
                         setHasMigrated(data.migrated_to_batches === true);
@@ -505,33 +511,88 @@ export const AppShell = () => {
         }
     };
 
-    const renderUserProfileDropdown = (triggerSizeClass: string = "h-9 w-9") => (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button 
-                    variant="ghost" 
-                    className={`relative ${triggerSizeClass} rounded-full ring-2 ring-amber-400/80 hover:ring-amber-400 focus:ring-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.3)] transition-all select-none p-0 flex items-center justify-center bg-card shadow-sm hover:scale-105 active:scale-95 duration-200`}
-                >
-                    <Avatar className={triggerSizeClass}>
-                        <AvatarFallback className="bg-gradient-to-br from-amber-500/20 via-primary/30 to-amber-400/15 text-amber-400 font-bold text-sm uppercase">
-                            {getUserInitials(fullName, user?.email)}
-                        </AvatarFallback>
-                    </Avatar>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
-                <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                        <div className="flex items-center justify-between gap-1">
-                            <p className="text-sm font-bold leading-none text-foreground truncate">{fullName || "User Profile"}</p>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-400/30 flex items-center gap-0.5 shrink-0">
-                                <Crown className="h-2 w-2 fill-current" /> PRO
+    const renderUserProfileDropdown = (triggerSizeClass: string = "h-9 w-9") => {
+        const isPro = subscription?.isPro ?? false;
+        const isExpired = subscription?.isExpired ?? false;
+
+        let ringClass = "ring-2 ring-cyan-500/90 hover:ring-cyan-400 focus:ring-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.35)]";
+        let fallbackClass = "bg-gradient-to-br from-cyan-500/20 via-primary/30 to-teal-400/15 text-cyan-600 dark:text-cyan-400 font-bold text-sm uppercase";
+
+        if (isPro) {
+            ringClass = "ring-2 ring-amber-400/90 hover:ring-amber-400 focus:ring-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.35)]";
+            fallbackClass = "bg-gradient-to-br from-amber-500/20 via-primary/30 to-amber-400/15 text-amber-400 font-bold text-sm uppercase";
+        } else if (isExpired) {
+            ringClass = "ring-2 ring-rose-500/80 hover:ring-rose-400 focus:ring-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.3)]";
+            fallbackClass = "bg-gradient-to-br from-rose-500/20 via-primary/30 to-rose-400/15 text-rose-500 font-bold text-sm uppercase";
+        }
+
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button 
+                        variant="ghost" 
+                        className={`relative ${triggerSizeClass} rounded-full ${ringClass} transition-all select-none p-0 flex items-center justify-center bg-card shadow-sm hover:scale-105 active:scale-95 duration-200`}
+                    >
+                        <Avatar className={triggerSizeClass}>
+                            <AvatarFallback className={fallbackClass}>
+                                {getUserInitials(fullName, user?.email)}
+                            </AvatarFallback>
+                        </Avatar>
+                        {isPro && (
+                            <span className="absolute -top-1 -right-1 bg-amber-400 text-amber-950 rounded-full p-0.5 shadow-sm">
+                                <Crown className="h-2.5 w-2.5 fill-current" />
                             </span>
+                        )}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-60" align="end" sideOffset={8}>
+                    <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1.5">
+                            <div className="flex items-center justify-between gap-1">
+                                <p className="text-sm font-bold leading-none text-foreground truncate">{fullName || "User Profile"}</p>
+                                {isPro ? (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-400/30 flex items-center gap-0.5 shrink-0">
+                                        <Crown className="h-2 w-2 fill-current" /> {subscription?.plan === "lifetime" || isAdmin ? "VIP LIFETIME" : "PRO"}
+                                    </span>
+                                ) : isExpired ? (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-500 border border-rose-400/30 flex items-center gap-0.5 shrink-0">
+                                        EXPIRED
+                                    </span>
+                                ) : (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-400/30 flex items-center gap-0.5 shrink-0">
+                                        <Sparkles className="h-2.5 w-2.5" /> TRIAL ({subscription?.daysLeft ?? 30}d)
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-xs leading-none text-muted-foreground truncate">{user?.email}</p>
+
+                            {/* Plan details subtitle */}
+                            <div className="pt-1 text-[10px] text-muted-foreground">
+                                {isPro ? (
+                                    <span className="text-amber-500 dark:text-amber-400 font-medium">
+                                        {isAdmin 
+                                            ? (lang === "NEP" ? "👑 एडमिन VIP सुविधा" : "👑 Admin VIP Access")
+                                            : subscription?.plan === "lifetime"
+                                                ? (lang === "NEP" ? "👑 आजीवन VIP सदस्यता" : "👑 Lifetime VIP PRO")
+                                                : (lang === "NEP" ? `👑 PRO सदस्यता • ${subscription?.daysLeft} दिन बाँकी` : `👑 PRO Plan • ${subscription?.daysLeft} days left`)}
+                                    </span>
+                                ) : isExpired ? (
+                                    <span className="text-rose-500 font-medium flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        {lang === "NEP" ? "ट्रायल सकियो • एडमिनसँग सम्पर्क गर्नुहोस्" : "Trial Expired • Please upgrade"}
+                                    </span>
+                                ) : (
+                                    <span className="text-cyan-600 dark:text-cyan-400 font-medium flex items-center gap-1">
+                                        <Sparkles className="h-3 w-3" />
+                                        {lang === "NEP" 
+                                            ? `३०-दिन नि:शुल्क ट्रायल • ${subscription?.daysLeft ?? 30} दिन बाँकी` 
+                                            : `30-Day Trial • ${subscription?.daysLeft ?? 30} days left`}
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                        <p className="text-xs leading-none text-muted-foreground truncate">{user?.email}</p>
-                    </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => {
                     setNewName(shopName);
                     setProfileOpen(true);
@@ -598,6 +659,7 @@ export const AppShell = () => {
             </DropdownMenuContent>
         </DropdownMenu>
     );
+};
 
     return (
         <div className="flex min-h-screen bg-background">
@@ -764,6 +826,16 @@ export const AppShell = () => {
             </div>
 
             <main className="flex-1 min-w-0 pt-14 md:pt-0 pb-20 md:pb-0 bg-background overflow-x-hidden">
+                {subscription?.isExpired && !isAdmin && (
+                    <div className="bg-gradient-to-r from-rose-500/15 via-amber-500/10 to-rose-500/15 border-b border-rose-500/30 px-4 py-2 text-xs text-center flex items-center justify-center gap-2 text-rose-600 dark:text-rose-400 font-medium">
+                        <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                        <span>
+                            {lang === "NEP"
+                                ? "तपाईंको ३०-दिनको नि:शुल्क ट्रायल अवधि सकिएको छ। नियमित सेवा र अपडेटहरू सुचारु राख्न कृपया एडमिनसँग सम्पर्क गर्नुहोस्।"
+                                : "Your 30-day free trial has expired. Please contact admin/support to activate your full VIP Pro plan."}
+                        </span>
+                    </div>
+                )}
                 <Outlet />
             </main>
 
@@ -788,8 +860,20 @@ export const AppShell = () => {
                 <DialogContent className="max-h-[90vh] sm:max-w-md w-full flex flex-col p-6" onOpenAutoFocus={(e) => e.preventDefault()} onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DialogHeader className="shrink-0">
                         <div className="flex items-center gap-3.5 text-left">
-                            <Avatar className="h-12 w-12 rounded-full border-2 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.35)] ring-2 ring-amber-400/20 shrink-0">
-                                <AvatarFallback className="bg-gradient-to-br from-amber-500/20 via-primary/20 to-amber-400/10 text-amber-400 font-bold text-base uppercase">
+                            <Avatar className={`h-12 w-12 rounded-full border-2 ${
+                                subscription?.isPro 
+                                    ? "border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.35)] ring-2 ring-amber-400/20" 
+                                    : subscription?.isExpired
+                                        ? "border-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.3)] ring-2 ring-rose-400/20"
+                                        : "border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.35)] ring-2 ring-cyan-400/20"
+                            } shrink-0`}>
+                                <AvatarFallback className={`${
+                                    subscription?.isPro
+                                        ? "bg-gradient-to-br from-amber-500/20 via-primary/20 to-amber-400/10 text-amber-400"
+                                        : subscription?.isExpired
+                                            ? "bg-gradient-to-br from-rose-500/20 via-primary/20 to-rose-400/10 text-rose-500"
+                                            : "bg-gradient-to-br from-cyan-500/20 via-primary/20 to-teal-400/10 text-cyan-600 dark:text-cyan-400"
+                                } font-bold text-base uppercase`}>
                                     {getUserInitials(fullName, user?.email)}
                                 </AvatarFallback>
                             </Avatar>
@@ -798,10 +882,22 @@ export const AppShell = () => {
                                     <DialogTitle className="text-base font-bold">
                                         {lang === "NEP" ? "प्रोफाइल सेटिङ" : "Profile Settings"}
                                     </DialogTitle>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-400/10 text-amber-400 border border-amber-400/40 flex items-center gap-1 shadow-sm">
-                                        <Crown className="h-2.5 w-2.5 fill-current" />
-                                        {lang === "NEP" ? "प्रिमियम" : "Premium"}
-                                    </span>
+                                    {subscription?.isPro ? (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-400/10 text-amber-400 border border-amber-400/40 flex items-center gap-1 shadow-sm">
+                                            <Crown className="h-2.5 w-2.5 fill-current" />
+                                            {subscription?.plan === "lifetime" || isAdmin ? "VIP LIFETIME" : "PRO"}
+                                        </span>
+                                    ) : subscription?.isExpired ? (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-500 border border-rose-400/40 flex items-center gap-1 shadow-sm">
+                                            <AlertCircle className="h-2.5 w-2.5" />
+                                            EXPIRED
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-400/40 flex items-center gap-1 shadow-sm">
+                                            <Sparkles className="h-2.5 w-2.5" />
+                                            TRIAL ({subscription?.daysLeft ?? 30}d)
+                                        </span>
+                                    )}
                                 </div>
                                 <DialogDescription className="text-xs text-muted-foreground mt-0.5">
                                     {lang === "NEP" ? "आफ्नो प्रोफाइल विवरणहरू सम्पादन गर्नुहोस्।" : "Edit your profile details."}
@@ -810,6 +906,42 @@ export const AppShell = () => {
                         </div>
                     </DialogHeader>
                     <div className="space-y-4 py-2 overflow-y-auto flex-1 px-1">
+                        {/* Subscription Status Details Card */}
+                        <div className={`rounded-xl p-3 border text-xs space-y-1.5 ${
+                            subscription?.isPro 
+                                ? "bg-amber-500/10 border-amber-400/30 text-amber-950 dark:text-amber-300"
+                                : subscription?.isExpired
+                                    ? "bg-rose-500/10 border-rose-400/30 text-rose-950 dark:text-rose-300"
+                                    : "bg-cyan-500/10 border-cyan-400/30 text-cyan-950 dark:text-cyan-300"
+                        }`}>
+                            <div className="flex items-center justify-between font-bold">
+                                <span className="flex items-center gap-1.5">
+                                    {subscription?.isPro ? (
+                                        <Crown className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                                    ) : subscription?.isExpired ? (
+                                        <AlertCircle className="h-3.5 w-3.5 text-rose-500" />
+                                    ) : (
+                                        <Sparkles className="h-3.5 w-3.5 text-cyan-500" />
+                                    )}
+                                    {lang === "NEP" ? "सदस्यता स्थिति (Subscription)" : "Subscription Status"}
+                                </span>
+                                <span className="font-mono uppercase text-[10px] px-2 py-0.5 rounded-full bg-background/80 border">
+                                    {subscription?.isPro 
+                                        ? (subscription?.plan === "lifetime" || isAdmin ? "VIP Lifetime" : "VIP Pro") 
+                                        : (subscription?.isExpired ? "Expired" : "30-Day Trial")}
+                                </span>
+                            </div>
+                            <p className="text-[11px] opacity-90 leading-relaxed">
+                                {subscription?.isPro
+                                    ? (subscription?.plan === "lifetime" || isAdmin 
+                                        ? (lang === "NEP" ? "तपाईंको खातामा आजीवन VIP प्रो सुविधा सक्रिय छ।" : "Your account has permanent VIP Lifetime Pro access.")
+                                        : (lang === "NEP" ? `तपाईंको प्रो सदस्यतामा ${subscription?.daysLeft} दिन बाँकी छ।` : `Your Pro subscription has ${subscription?.daysLeft} days remaining.`))
+                                    : subscription?.isExpired
+                                        ? (lang === "NEP" ? "ट्रायल अवधि सकिएको छ। सेवा निरन्तरताको लागि एडमिनसँग सम्पर्क गर्नुहोस्।" : "Your trial has expired. Please contact admin to renew.")
+                                        : (lang === "NEP" ? `३०-दिनको नि:शुल्क ट्रायल चलिरहेको छ (${subscription?.daysLeft ?? 30} दिन बाँकी)।` : `30-Day Free Trial is active (${subscription?.daysLeft ?? 30} days left).`)}
+                            </p>
+                        </div>
+
                         <div className="space-y-2">
                             <Label>Email Address (Login ID)</Label>
                             <Input value={user?.email || ""} readOnly className="bg-muted text-muted-foreground font-medium select-all" />

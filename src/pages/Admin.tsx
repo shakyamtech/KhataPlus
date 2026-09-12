@@ -14,16 +14,22 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download } from "lucide-react";
+import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download, Crown, Sparkles, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, writeBatch, doc, updateDoc } from "firebase/firestore";
 import { exportUserDataAsJson, downloadJsonFile } from "@/lib/backup";
+import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
 
 type AdminUser = {
   id: string; email: string; created_at: string; last_sign_in_at: string | null;
   full_name: string; shop_name: string; roles: string[];
   banned_until?: string | null;
+  plan?: string | null;
+  subscription_status?: string | null;
+  trial_ends_at?: string | null;
+  subscription_ends_at?: string | null;
+  subInfo: SubscriptionInfo;
 };
 
 const Admin = () => {
@@ -35,6 +41,9 @@ const Admin = () => {
   const [downloadingBackupId, setDownloadingBackupId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminUser | null>(null);
+  const [managingSubUser, setManagingSubUser] = useState<AdminUser | null>(null);
+  const [subBusy, setSubBusy] = useState(false);
+  const [planFilter, setPlanFilter] = useState<"all" | "pro" | "trial" | "expired">("all");
   const [editName, setEditName] = useState("");
   const [editShop, setEditShop] = useState("");
   const [editPassword, setEditPassword] = useState("");
@@ -64,6 +73,9 @@ const Admin = () => {
           userRoles.push("admin");
         }
 
+        const isUserAdmin = adminUserIds.has(docSnap.id) || userRoles.includes("admin");
+        const subInfo = calculateSubscription(data, isUserAdmin);
+
         loadedUsers.push({
           id: docSnap.id,
           email: data.email || docSnap.id + "@unknown",
@@ -72,7 +84,12 @@ const Admin = () => {
           full_name: data.full_name || "",
           shop_name: data.shop_name || "",
           roles: userRoles,
-          banned_until: data.banned_until || null
+          banned_until: data.banned_until || null,
+          plan: data.plan || null,
+          subscription_status: data.subscription_status || null,
+          trial_ends_at: data.trial_ends_at || null,
+          subscription_ends_at: data.subscription_ends_at || null,
+          subInfo
         });
       });
       
@@ -261,13 +278,83 @@ const Admin = () => {
 
 
 
+  const handleUpdateSubscription = async (
+    u: AdminUser,
+    action: "lifetime" | "1month" | "3months" | "6months" | "1year" | "extend15" | "extend30" | "expire"
+  ) => {
+    setSubBusy(true);
+    try {
+      const now = new Date();
+      let updates: any = {};
+
+      if (action === "lifetime") {
+        updates = {
+          plan: "lifetime",
+          subscription_status: "active",
+          subscription_ends_at: null,
+          updated_at: now.toISOString()
+        };
+      } else if (action === "expire") {
+        updates = {
+          plan: u.subInfo.isPro ? "pro" : "trial",
+          subscription_status: "expired",
+          subscription_ends_at: now.toISOString(),
+          trial_ends_at: now.toISOString(),
+          updated_at: now.toISOString()
+        };
+      } else if (action === "extend15" || action === "extend30") {
+        const addDays = action === "extend15" ? 15 : 30;
+        const baseDate = (u.trial_ends_at && new Date(u.trial_ends_at) > now) ? new Date(u.trial_ends_at) : now;
+        const newTrialEnd = new Date(baseDate.getTime() + addDays * 24 * 60 * 60 * 1000).toISOString();
+        updates = {
+          plan: "trial",
+          subscription_status: "trial",
+          trial_ends_at: newTrialEnd,
+          updated_at: now.toISOString()
+        };
+      } else {
+        let addDays = 30;
+        if (action === "3months") addDays = 90;
+        if (action === "6months") addDays = 180;
+        if (action === "1year") addDays = 365;
+
+        const baseDate = (u.subscription_ends_at && new Date(u.subscription_ends_at) > now) ? new Date(u.subscription_ends_at) : now;
+        const newSubEnd = new Date(baseDate.getTime() + addDays * 24 * 60 * 60 * 1000).toISOString();
+        updates = {
+          plan: "pro",
+          subscription_status: "active",
+          subscription_ends_at: newSubEnd,
+          updated_at: now.toISOString()
+        };
+      }
+
+      await updateDoc(doc(db, "profiles", u.id), updates);
+      toast.success(`Updated subscription for ${u.email}`);
+      setManagingSubUser(null);
+      await load();
+    } catch (e: any) {
+      toast.error("Failed to update subscription: " + (e.message || "Unknown error"));
+    } finally {
+      setSubBusy(false);
+    }
+  };
+
   const sortedUsers = [...users].sort((a, b) => {
     const timeA = a.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : 0;
     const timeB = b.last_sign_in_at ? new Date(b.last_sign_in_at).getTime() : 0;
     return timeB - timeA;
   });
 
+  const proCount = users.filter((u) => u.subInfo.isPro).length;
+  const trialCount = users.filter((u) => u.subInfo.isTrial && !u.subInfo.isExpired).length;
+  const expiredCount = users.filter((u) => u.subInfo.isExpired).length;
+
   const filteredUsers = sortedUsers.filter((u) => {
+    // Plan filter
+    if (planFilter === "pro" && !u.subInfo.isPro) return false;
+    if (planFilter === "trial" && (u.subInfo.isPro || u.subInfo.isExpired)) return false;
+    if (planFilter === "expired" && !u.subInfo.isExpired) return false;
+
     const query = searchQuery.toLowerCase().trim();
     if (!query) return true;
     return (
@@ -307,6 +394,42 @@ const Admin = () => {
         />
       </div>
 
+      {/* Subscription Plan Filter Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <Button
+          size="sm"
+          variant={planFilter === "all" ? "default" : "outline"}
+          onClick={() => setPlanFilter("all")}
+          className="h-8 text-xs font-semibold rounded-lg"
+        >
+          All Users ({users.length})
+        </Button>
+        <Button
+          size="sm"
+          variant={planFilter === "pro" ? "default" : "outline"}
+          onClick={() => setPlanFilter("pro")}
+          className={`h-8 text-xs font-semibold rounded-lg ${planFilter !== "pro" ? "border-amber-300 text-amber-700 dark:border-amber-500/30 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10" : "bg-amber-500 hover:bg-amber-600 text-white"}`}
+        >
+          <Crown className="h-3 w-3 mr-1 fill-current" /> VIP Pro ({proCount})
+        </Button>
+        <Button
+          size="sm"
+          variant={planFilter === "trial" ? "default" : "outline"}
+          onClick={() => setPlanFilter("trial")}
+          className={`h-8 text-xs font-semibold rounded-lg ${planFilter !== "trial" ? "border-cyan-300 text-cyan-700 dark:border-cyan-500/30 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-500/10" : "bg-cyan-600 hover:bg-cyan-700 text-white"}`}
+        >
+          <Sparkles className="h-3 w-3 mr-1" /> 30-Day Trial ({trialCount})
+        </Button>
+        <Button
+          size="sm"
+          variant={planFilter === "expired" ? "default" : "outline"}
+          onClick={() => setPlanFilter("expired")}
+          className={`h-8 text-xs font-semibold rounded-lg ${planFilter !== "expired" ? "border-rose-300 text-rose-700 dark:border-rose-500/30 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10" : "bg-rose-600 hover:bg-rose-700 text-white"}`}
+        >
+          <AlertCircle className="h-3 w-3 mr-1" /> Expired ({expiredCount})
+        </Button>
+      </div>
+
       <div className="grid gap-4">
         {filteredUsers.map((u) => (
           <Card key={u.id} className="p-4 shadow-card border-0 overflow-hidden">
@@ -337,6 +460,20 @@ const Admin = () => {
                       <Ban className="h-3 w-3 mr-1" /> Suspended
                     </Badge>
                   )}
+                  {u.subInfo.isPro ? (
+                    <Badge variant="default" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-400/30 hover:bg-amber-500/25 transition-colors font-bold text-[10px]">
+                      <Crown className="h-3 w-3 mr-1 fill-current" />
+                      {u.subInfo.plan === "lifetime" || u.subInfo.isAdmin ? "VIP Lifetime" : `VIP Pro (${u.subInfo.daysLeft}d)`}
+                    </Badge>
+                  ) : u.subInfo.isExpired ? (
+                    <Badge variant="destructive" className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-400/30 font-bold text-[10px]">
+                      <AlertCircle className="h-3 w-3 mr-1" /> Expired
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-400/30 font-bold text-[10px]">
+                      <Sparkles className="h-3 w-3 mr-1" /> Trial: {u.subInfo.daysLeft}d left
+                    </Badge>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
@@ -365,6 +502,17 @@ const Admin = () => {
               </div>
 
               <div className="flex items-center gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-sidebar-border/50">
+                {/* Manage Subscription / Trial Plan */}
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1 md:flex-none h-9 border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-500/30 dark:text-amber-400 dark:hover:bg-amber-500/20 font-medium text-xs gap-1.5"
+                  onClick={() => setManagingSubUser(u)}
+                  title="Manage subscription plan & trial"
+                >
+                  <Crown className="h-3.5 w-3.5 fill-amber-500 text-amber-500" /> Plan
+                </Button>
+
                 <Dialog open={editing?.id === u.id} onOpenChange={(o) => { if (!o) { setEditing(null); setEditPassword(""); } }}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline" className="flex-1 md:flex-none h-9" onClick={() => { setEditing(u); setEditName(u.full_name); setEditShop(u.shop_name); setEditPassword(""); }}>
@@ -502,6 +650,155 @@ const Admin = () => {
           </Card>
         )}
       </div>
+
+      {/* Subscription Management Dialog */}
+      <Dialog open={!!managingSubUser} onOpenChange={(open) => { if (!open) setManagingSubUser(null); }}>
+        <DialogContent className="max-w-md w-full">
+          <DialogHeader>
+            <div className="flex items-center gap-2.5 text-left">
+              <div className="h-10 w-10 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-500 shrink-0">
+                <Crown className="h-5 w-5 fill-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-bold">Manage SaaS Subscription</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground truncate">
+                  {managingSubUser?.email} • {managingSubUser?.shop_name || "No Shop"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {managingSubUser && (
+            <div className="space-y-4 py-2">
+              {/* Current Status Badge & Card */}
+              <div className={`p-3 rounded-xl border text-xs space-y-1 ${
+                managingSubUser.subInfo.isPro 
+                  ? "bg-amber-500/10 border-amber-400/30 text-amber-950 dark:text-amber-300"
+                  : managingSubUser.subInfo.isExpired
+                    ? "bg-rose-500/10 border-rose-400/30 text-rose-950 dark:text-rose-300"
+                    : "bg-cyan-500/10 border-cyan-400/30 text-cyan-950 dark:text-cyan-300"
+              }`}>
+                <div className="flex items-center justify-between font-bold">
+                  <span>Current Subscription</span>
+                  <span className="uppercase font-mono text-[10px] px-2 py-0.5 rounded bg-background/80 border">
+                    {managingSubUser.subInfo.isPro 
+                      ? (managingSubUser.subInfo.plan === "lifetime" || managingSubUser.subInfo.isAdmin ? "VIP Lifetime" : "VIP Pro")
+                      : (managingSubUser.subInfo.isExpired ? "Expired" : "30-Day Trial")}
+                  </span>
+                </div>
+                <div className="text-[11px] opacity-80">
+                  {managingSubUser.subInfo.plan === "lifetime" || managingSubUser.subInfo.isAdmin ? (
+                    <span>Permanent VIP Access (Never expires)</span>
+                  ) : managingSubUser.subInfo.isPro ? (
+                    <span>Pro Plan Active: <b>{managingSubUser.subInfo.daysLeft} days remaining</b></span>
+                  ) : managingSubUser.subInfo.isExpired ? (
+                    <span>Subscription or Trial has expired</span>
+                  ) : (
+                    <span>Trial Active: <b>{managingSubUser.subInfo.daysLeft} days remaining</b></span>
+                  )}
+                </div>
+              </div>
+
+              {/* Section 1: Upgrade to VIP Pro */}
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Crown className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                  Upgrade / Extend VIP Pro
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={subBusy}
+                    onClick={() => handleUpdateSubscription(managingSubUser, "1month")}
+                    className="text-xs font-semibold h-9"
+                  >
+                    +1 Month (30d)
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={subBusy}
+                    onClick={() => handleUpdateSubscription(managingSubUser, "3months")}
+                    className="text-xs font-semibold h-9"
+                  >
+                    +3 Months (90d)
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={subBusy}
+                    onClick={() => handleUpdateSubscription(managingSubUser, "6months")}
+                    className="text-xs font-semibold h-9"
+                  >
+                    +6 Months (180d)
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={subBusy}
+                    onClick={() => handleUpdateSubscription(managingSubUser, "1year")}
+                    className="text-xs font-semibold h-9"
+                  >
+                    +1 Year (365d)
+                  </Button>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={subBusy}
+                  onClick={() => handleUpdateSubscription(managingSubUser, "lifetime")}
+                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold h-9 shadow-sm"
+                >
+                  <Crown className="h-3.5 w-3.5 mr-1.5 fill-current" />
+                  Grant Lifetime VIP (Permanent)
+                </Button>
+              </div>
+
+              {/* Section 2: Extend Trial */}
+              <div className="space-y-2 pt-2 border-t">
+                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-cyan-500" />
+                  Extend Free Trial
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={subBusy}
+                    onClick={() => handleUpdateSubscription(managingSubUser, "extend15")}
+                    className="text-xs font-semibold h-9 border-cyan-300 text-cyan-700 hover:bg-cyan-50 dark:border-cyan-500/30 dark:text-cyan-400"
+                  >
+                    +15 Days Trial
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={subBusy}
+                    onClick={() => handleUpdateSubscription(managingSubUser, "extend30")}
+                    className="text-xs font-semibold h-9 border-cyan-300 text-cyan-700 hover:bg-cyan-50 dark:border-cyan-500/30 dark:text-cyan-400"
+                  >
+                    +30 Days Trial
+                  </Button>
+                </div>
+              </div>
+
+              {/* Section 3: Expire */}
+              <div className="pt-2 border-t">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={subBusy}
+                  onClick={() => handleUpdateSubscription(managingSubUser, "expire")}
+                  className="w-full text-xs text-destructive hover:bg-destructive/10 hover:text-destructive h-8 font-medium"
+                >
+                  <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
+                  Expire Subscription Now
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

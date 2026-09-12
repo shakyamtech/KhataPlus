@@ -130,6 +130,9 @@ const Auth = () => {
         tax_type: taxType,
         is_vat_registered: taxType === "vat",
         migrated_to_batches: true,
+        plan: "trial",
+        subscription_status: "trial",
+        trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
