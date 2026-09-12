@@ -538,11 +538,6 @@ export const AppShell = () => {
                                 {getUserInitials(fullName, user?.email)}
                             </AvatarFallback>
                         </Avatar>
-                        {isPro && (
-                            <span className="absolute -top-1 -right-1 bg-amber-400 text-amber-950 rounded-full p-0.5 shadow-sm">
-                                <Crown className="h-2.5 w-2.5 fill-current" />
-                            </span>
-                        )}
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-60" align="end" sideOffset={8}>
