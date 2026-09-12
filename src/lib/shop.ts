@@ -27,7 +27,17 @@ export interface ShopInfo {
   batch_digits?: 3 | 4;
   barcode_starting_no?: number;
   local_level_type?: "municipality" | "metropolitan" | "rural_municipality";
-  business_nature?: "general_trading" | "low_margin" | "services";
+  business_nature?: 
+    | "general_trading"      // १. सामान्य खुद्रा तथा थोक व्यापार (किराना, फेन्सी, कपडा, जुत्ता, कस्मेटिक्स)
+    | "low_margin"          // २. न्यून मार्जिन हुने वस्तुहरू (ग्यास डिलर, चुरोट, सुर्ती, पेट्रोलियम, रिचार्ज)
+    | "gold_silver"         // ३. सुन चाँदी तथा बहुमूल्य गहना पसल (Jewellery - अनिवार्य भ्याट)
+    | "hardware_sanitary"   // ४. निर्माण सामग्री, हार्डवेयर, सेनिटरी, मार्बल तथा टायल
+    | "hotel_restaurant"    // ५. होटल, रेस्टुरेन्ट, क्याफे, खाजाघर तथा क्याटरिङ (२%)
+    | "services"            // ६. सेवा, परामर्श, आइटी, डिजिटल तथा प्राविधिक सेवा (२%)
+    | "auto_workshop"       // ७. वर्कसप, ग्यारेज, मर्मत तथा अटो स्पेयर पार्ट्स
+    | "pharmacy_health"     // ८. औषधि पसल, फार्मेसी तथा स्वास्थ्य क्लिनिक
+    | "transport_logistics" // ९. ढुवानी, यातायात तथा कुरियर सेवा (२%)
+    | "manufacturing";      // १०. उत्पादन, प्रशोधन तथा साना घरेलु उद्योग
   entity_type?: "proprietorship" | "pvt_ltd";
   marital_status?: "single" | "married";
 }

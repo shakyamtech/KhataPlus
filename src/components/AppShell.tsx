@@ -130,7 +130,7 @@ export const AppShell = () => {
     const [dbLastBill, setDbLastBill] = useState<string | null>(null);
     const [dbLastPur, setDbLastPur] = useState<string | null>(null);
     const [localLevelType, setLocalLevelType] = useState<"municipality" | "metropolitan" | "rural_municipality">("municipality");
-    const [businessNature, setBusinessNature] = useState<"general_trading" | "low_margin" | "services">("general_trading");
+    const [businessNature, setBusinessNature] = useState<string>("general_trading");
     const [entityType, setEntityType] = useState<"proprietorship" | "pvt_ltd">("proprietorship");
     const [maritalStatus, setMaritalStatus] = useState<"single" | "married">("single");
 
@@ -1129,16 +1129,23 @@ export const AppShell = () => {
                                 {/* Business Nature */}
                                 <div className="space-y-1.5">
                                     <Label className="text-[11px] font-semibold text-foreground">
-                                        {lang === "NEP" ? "व्यापारको प्रकृति (Business Nature)" : "Business Nature"}
+                                        {lang === "NEP" ? "व्यवसायको प्रकृति (Business Nature & Trade Type)" : "Business Nature & Trade Type"}
                                     </Label>
                                     <select
                                         value={businessNature}
                                         onChange={(e: any) => setBusinessNature(e.target.value)}
                                         className="w-full h-8 px-2 text-xs rounded-md border border-input bg-background font-medium focus:outline-none focus:ring-1 focus:ring-primary"
                                     >
-                                        <option value="general_trading">{lang === "NEP" ? "सामान्य खुद्रा व्यापार (D-02 कर: ०.७५%)" : "General Retail Trading (0.75% Tax)"}</option>
-                                        <option value="low_margin">{lang === "NEP" ? "ग्यास, चुरोट, बिँडी आदि (D-02 कर: ०.२५%)" : "Gas / Cigarettes / Low Margin (0.25% Tax)"}</option>
-                                        <option value="services">{lang === "NEP" ? "सेवा, होटल, मर्मत तथा अन्य (D-02 कर: २%)" : "Services / Hotel / Repair (2% Tax)"}</option>
+                                        <option value="general_trading">{lang === "NEP" ? "१. सामान्य खुद्रा/थोक (किराना, फेन्सी, कपडा, जुत्ता, कस्मेटिक्स - ०.७५%)" : "1. Retail Trading (Grocery, Clothing, Fancy - 0.75%)"}</option>
+                                        <option value="gold_silver">{lang === "NEP" ? "२. सुन चाँदी तथा बहुमूल्य गहना पसल (Jewellery - अनिवार्य भ्याट/विलासिता कर)" : "2. Gold, Silver & Jewellery (Mandatory VAT / Luxury Tax)"}</option>
+                                        <option value="hardware_sanitary">{lang === "NEP" ? "३. निर्माण सामग्री, हार्डवेयर, मार्बल, टायल (०.७५% - सहरी भ्याट क्षेत्र)" : "3. Hardware, Sanitary, Marble & Paint (0.75%)"}</option>
+                                        <option value="low_margin">{lang === "NEP" ? "४. ग्यास, चुरोट, सुर्ती, पेट्रोलियम (न्यून मार्जिन ३% सम्म - ०.२५%)" : "4. Gas, Cigarettes, Tobacco, Fuel (0.25% Tax)"}</option>
+                                        <option value="hotel_restaurant">{lang === "NEP" ? "५. होटल, रेस्टुरेन्ट, क्याफे, खाजाघर, क्याटरिङ (२% कर / २०L भ्याट)" : "5. Hotel, Restaurant, Cafe & Catering (2% Tax)"}</option>
+                                        <option value="services">{lang === "NEP" ? "६. सेवा, परामर्श, आइटी, डिजिटल तथा प्राविधिक सेवा (२% कर)" : "6. Services, IT, Consulting & Digital (2% Tax)"}</option>
+                                        <option value="auto_workshop">{lang === "NEP" ? "७. वर्कसप, ग्यारेज, मर्मत तथा अटो स्पेयर पार्ट्स (२% / ०.७५%)" : "7. Garage, Workshop & Auto Spare Parts"}</option>
+                                        <option value="pharmacy_health">{lang === "NEP" ? "८. औषधि पसल, फार्मेसी तथा स्वास्थ्य क्लिनिक (०.७५%)" : "8. Pharmacy & Healthcare Clinic (0.75%)"}</option>
+                                        <option value="transport_logistics">{lang === "NEP" ? "९. ढुवानी, यातायात तथा कुरियर सेवा (२% कर)" : "9. Transport, Cargo & Courier Logistics (2%)"}</option>
+                                        <option value="manufacturing">{lang === "NEP" ? "१०. उत्पादन, प्रशोधन तथा साना घरेलु उद्योग (P&L अडिट बेसिस)" : "10. Small Manufacturing & Industry (Audited P&L)"}</option>
                                     </select>
                                 </div>
 

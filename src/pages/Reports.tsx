@@ -412,9 +412,30 @@ const Reports = () => {
     const entity = shopInfo?.entity_type || "proprietorship";
     const isVatShop = Boolean(shopInfo?.is_vat_registered);
 
-    const vatThreshold = nature === "services" ? 2000000 : 5000000;
-    const vatThresholdLabel = nature === "services" ? "रु २० लाख (सेवा/परामर्श/होटल)" : "रु ५० लाख (वस्तु/व्यापार)";
-    const vatCrossed = annualSales >= vatThreshold;
+    const isServiceOrHotel = nature === "services" || nature === "hotel_restaurant" || nature === "transport_logistics";
+    const isGoldJewellery = nature === "gold_silver";
+    const isHardwareSanitary = nature === "hardware_sanitary";
+    const isUrbanArea = localTier === "metropolitan" || localTier === "municipality";
+
+    // Mandatory VAT logic according to Nepal VAT Regulations (अनुसूची / नियम ७)
+    let vatThreshold = 5000000;
+    let vatThresholdLabel = "रु ५० लाख (वस्तु/व्यापार)";
+    let vatSpecificNotice = "";
+
+    if (isGoldJewellery) {
+      vatThreshold = isUrbanArea ? 0 : 5000000;
+      vatThresholdLabel = isUrbanArea ? "सहरी क्षेत्रमा सुनचाँदी अनिवार्य भ्याट" : "रु ५० लाख";
+      vatSpecificNotice = "मूल्य अभिवृद्धि कर नियमावली अनुसार सहरी क्षेत्रमा सुन, चाँदी तथा बहुमूल्य गहना कारोबार गर्ने पसलहरू सुरुदेखि नै अनिवार्य भ्याट (VAT) मा दर्ता हुनुपर्ने र १० लाख माथिका गहनामा २% विलासिता शुल्क लाग्ने कानुनी व्यवस्था छ।";
+    } else if (isHardwareSanitary && isUrbanArea) {
+      vatThreshold = 0;
+      vatThresholdLabel = "सहरी क्षेत्रमा हार्डवेयर अनिवार्य भ्याट";
+      vatSpecificNotice = "सहरी क्षेत्रमा निर्माण सामग्री, हार्डवेयर, मार्बल तथा सेनिटरी व्यवसाय कारोबार रकम जतिसुकै भए पनि अनिवार्य भ्याटको दायरामा पर्दछ।";
+    } else if (isServiceOrHotel) {
+      vatThreshold = 2000000;
+      vatThresholdLabel = "रु २० लाख (सेवा/होटल/परामर्श)";
+    }
+
+    const vatCrossed = vatThreshold === 0 ? true : annualSales >= vatThreshold;
     const vatAlert = !isVatShop && vatCrossed;
 
     let category: "D-01" | "D-02" | "D-03" = "D-01";
@@ -451,14 +472,34 @@ const Reports = () => {
         const rate = 0.0025;
         estimatedTax = Math.round(annualSales * rate);
         taxBasisExplanation = "ग्यास, चुरोट, बिँडी आदि (न्यून नाफा ३% सम्म) - कारोबारको ०.२५%";
-      } else if (nature === "services") {
+      } else if (isServiceOrHotel) {
         const rate = 0.02;
         estimatedTax = Math.round(annualSales * rate);
-        taxBasisExplanation = "सेवा, परामर्श वा होटल व्यवसाय - कारोबारको २.००%";
+        taxBasisExplanation = "होटल, क्याफे, रेस्टुरेन्ट वा सेवा व्यवसाय - कारोबारको २.००%";
+      } else if (nature === "auto_workshop") {
+        const rate = 0.02;
+        estimatedTax = Math.round(annualSales * rate);
+        taxBasisExplanation = "वर्कसप, ग्यारेज तथा मर्मत सेवा - कारोबारको २.००% (पार्ट्स बिक्रीमा ०.७५%)";
+      } else if (nature === "pharmacy_health") {
+        const rate = 0.0075;
+        estimatedTax = Math.round(annualSales * rate);
+        taxBasisExplanation = "औषधि पसल / फार्मेसी (औषधि भ्याट छुट) - कारोबारको ०.७५%";
+      } else if (nature === "hardware_sanitary") {
+        const rate = 0.0075;
+        estimatedTax = Math.round(annualSales * rate);
+        taxBasisExplanation = "हार्डवेयर, सेनिटरी तथा निर्माण सामग्री - कारोबारको ०.७५% (सहरी क्षेत्रमा भ्याट अनिवार्य)";
+      } else if (nature === "gold_silver") {
+        const rate = 0.0075;
+        estimatedTax = Math.round(annualSales * rate);
+        taxBasisExplanation = "सुन चाँदी तथा गहना व्यापार - कारोबारको ०.७५% (सहरी क्षेत्रमा अनिवार्य भ्याट लागू)";
+      } else if (nature === "manufacturing") {
+        category = "D-03";
+        categoryTitle = "D-03 (उत्पादन उद्योग / Audited P&L)";
+        taxBasisExplanation = "साना उत्पादन तथा घरेलु उद्योग - आयव्यय (P&L) खुद नाफामा आधारित";
       } else {
         const rate = 0.0075;
         estimatedTax = Math.round(annualSales * rate);
-        taxBasisExplanation = "सामान्य खुद्रा व्यापार तथा सामान बिक्री - कारोबारको ०.७५%";
+        taxBasisExplanation = "सामान्य खुद्रा/थोक व्यापार (किराना, फेन्सी, आदि) - कारोबारको ०.७५%";
       }
       categoryDesc = "३० लाख देखि १ करोडसम्म कारोबार: अडिट बिना सिधै कारोबार रकममा निश्चित % कर।";
     } else {
@@ -526,6 +567,7 @@ const Reports = () => {
       vatCrossed,
       vatThreshold,
       vatThresholdLabel,
+      vatSpecificNotice,
       localTier,
       nature,
       marital,
@@ -1580,10 +1622,18 @@ const Reports = () => {
                 </div>
                 <div>
                   <div className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
-                    <span>⚠️ भ्याट अनिवार्य दर्ता सीमा पार (Mandatory VAT Registration Alert)</span>
+                    <span>⚠️ भ्याट अनिवार्य दर्ता तथा कानुनी सूचना (Mandatory VAT Registration Alert)</span>
                   </div>
                   <p className="text-xs text-amber-900/90 dark:text-amber-200 mt-1 leading-relaxed">
-                    तपाईंको पछिल्लो १२ महिनाको कुल कारोबार <strong>{fmt(taxCompliance.annualSales)}</strong> पुगेको छ, जुन नेपाल सरकार आन्तरिक राजस्व विभागले तोकेको भ्याट सीमा <strong>({taxCompliance.vatThresholdLabel})</strong> भन्दा बढी हो। मूल्य अभिवृद्धि कर ऐन अनुसार अब व्यवसाय <strong>भ्याट (VAT) मा दर्ता</strong> हुनु अनिवार्य छ।
+                    {taxCompliance.vatSpecificNotice ? (
+                      <>
+                        {taxCompliance.vatSpecificNotice} <strong>(हालको वार्षिक कारोबार: {fmt(taxCompliance.annualSales)})</strong>
+                      </>
+                    ) : (
+                      <>
+                        तपाईंको पछिल्लो १२ महिनाको कुल कारोबार <strong>{fmt(taxCompliance.annualSales)}</strong> पुगेको छ, जुन नेपाल सरकार आन्तरिक राजस्व विभागले तोकेको भ्याट सीमा <strong>({taxCompliance.vatThresholdLabel})</strong> भन्दा बढी हो। मूल्य अभिवृद्धि कर ऐन अनुसार अब व्यवसाय <strong>भ्याट (VAT) मा दर्ता</strong> हुनु अनिवार्य छ।
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
@@ -1665,11 +1715,12 @@ const Reports = () => {
                   <Info className="h-3.5 w-3.5 text-primary" />
                   <span>आयकर ऐन, २०५८ तथा आर्थिक ऐनका मुख्य मापदण्डहरू:</span>
                 </div>
-                <ul className="list-disc list-inside space-y-0.5 text-[11px] leading-relaxed pl-1">
+                <ul className="list-disc list-inside space-y-1 text-[11px] leading-relaxed pl-1">
                   <li><strong>D-01 (३० लाखसम्म कारोबार):</strong> अडिट तथा नाफा/नोक्सान नचाहिने; महानगर/उपमहानगरपालिकामा रु ७,५००, नगरपालिकामा रु ४,००० र गाउँपालिकामा रु २,५०० बुझाए पुग्ने।</li>
-                  <li><strong>D-02 (३० लाख देखि १ करोडसम्म):</strong> अडिट नचाहिने; सामान्य खुद्रा व्यापारमा कारोबारको ०.७५%, ग्यास/चुरोट जस्ता न्यून नाफामा ०.२५%, सेवा व्यवसायमा २% कर लाग्ने।</li>
+                  <li><strong>D-02 (३० लाख देखि १ करोडसम्म):</strong> अडिट नचाहिने; सामान्य खुद्रा व्यापारमा कारोबारको ०.७५%, ग्यास/चुरोट जस्ता न्यून नाफामा ०.२५%, सेवा, होटल तथा क्याफेमा २% कर लाग्ने।</li>
+                  <li><strong>सुन चाँदी, गहना तथा हार्डवेयर व्यवसाय:</strong> मूल्य अभिवृद्धि कर नियमावली अनुसार महानगर/नगरपालिका क्षेत्रमा सुनचाँदी, बहुमूल्य गहना, हार्डवेयर, मार्बल, सेनिटरी तथा मदिराको कारोबार गर्ने पसलहरू सुरुदेखि नै अनिवार्य भ्याटमा दर्ता हुनुपर्ने र १० लाख माथिका गहनामा २% विलासिता शुल्क लाग्ने व्यवस्था छ।</li>
                   <li><strong>D-03 (१ करोडभन्दा माथि वा अडिट बेसिस):</strong> दर्तावाला अडिटरबाट लेखापरीक्षण गरी खुद नाफामा एकललाई रु ५ लाख / विवाहितलाई रु ६ लाख छुटपछि क्रमशः १०%, २०%, ३०% र ३६% स्ल्याब लाग्ने।</li>
-                  <li><strong>भ्याट सीमा:</strong> पछिल्लो १२ महिनामा सामान कारोबार रु ५० लाख (वा सेवा रु २० लाख) नाघेमा ३० दिनभित्र अनिवार्य भ्याट दर्ता गर्नुपर्ने कानुनी व्यवस्था छ।</li>
+                  <li><strong>भ्याट सीमा:</strong> पछिल्लो १२ महिनामा सामान कारोबार रु ५० लाख (वा सेवा/होटल रु २० लाख) नाघेमा ३० दिनभित्र अनिवार्य भ्याट दर्ता गर्नुपर्ने कानुनी व्यवस्था छ।</li>
                 </ul>
               </div>
             </Card>
