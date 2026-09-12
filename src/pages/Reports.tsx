@@ -11,7 +11,10 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { format, startOfDay, subDays } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight } from "lucide-react";
+import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
 
 const Reports = () => {
   const { user } = useAuth();
@@ -36,6 +39,11 @@ const Reports = () => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
+  const [regMonth, setRegMonth] = useState<{ year: number; month: number }>(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
+  const [regSearch, setRegSearch] = useState("");
 
   const loadData = async () => {
     if (!user) return;
@@ -289,6 +297,384 @@ const Reports = () => {
     setPlMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { ...prev, month: prev.month + 1 });
   };
   const plMonthLabel = `${MONTHS_EN[plMonth.month]} ${plMonth.year}`;
+
+  const goToPrevRegMonth = () => setRegMonth(prev =>
+    prev.month === 0 ? { year: prev.year - 1, month: 11 } : { ...prev, month: prev.month - 1 }
+  );
+  const goToNextRegMonth = () => {
+    const now = new Date();
+    if (regMonth.year === now.getFullYear() && regMonth.month === now.getMonth()) return;
+    setRegMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { ...prev, month: prev.month + 1 });
+  };
+  const regMonthLabel = `${MONTHS_EN[regMonth.month]} ${regMonth.year}`;
+
+  const regMonthlyTotals = useMemo(() => {
+    const sMap = new Map(suppliers.map(s => [s.id, s]));
+    const cMap = new Map(customers.map(c => [c.id, c]));
+
+    const isInMonth = (dateStr: string, y: number, m: number) => {
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      return d.getFullYear() === y && d.getMonth() === m;
+    };
+
+    const salesList: any[] = [];
+    const purchasesList: any[] = [];
+    let totalSalesAmount = 0;
+    let totalPurchasesAmount = 0;
+
+    allSales.forEach(s => {
+      if (!isInMonth(s.created_at, regMonth.year, regMonth.month)) return;
+      const cust = s.customer_id ? cMap.get(s.customer_id) : null;
+      const customerName = s.customer_name || cust?.name || "Walk-in Customer";
+      const customerPan = s.buyer_pan || cust?.pan || "—";
+      const billNo = s.bill_no || s.id?.slice(-6)?.toUpperCase() || "—";
+      const total = Number(s.total || 0);
+      totalSalesAmount += total;
+      salesList.push({
+        ...s,
+        customerName,
+        customerPan,
+        billNo,
+        total
+      });
+    });
+
+    allPurchases.forEach(p => {
+      if (!isInMonth(p.created_at, regMonth.year, regMonth.month)) return;
+      const supp = p.supplier_id ? sMap.get(p.supplier_id) : null;
+      const supplierName = p.supplier_name || supp?.name || "—";
+      const supplierPan = p.supplier_pan || supp?.pan || "—";
+      const billNo = p.supplier_bill_no || "—";
+      const voucherNo = p.voucher_no || p.id?.slice(-6)?.toUpperCase() || "—";
+      const total = Number(p.total || 0);
+      totalPurchasesAmount += total;
+      purchasesList.push({
+        ...p,
+        supplierName,
+        supplierPan,
+        billNo,
+        voucherNo,
+        total
+      });
+    });
+
+    salesList.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    purchasesList.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return {
+      salesList,
+      purchasesList,
+      totalSalesAmount,
+      totalPurchasesAmount
+    };
+  }, [allSales, allPurchases, suppliers, customers, regMonth]);
+
+  const filteredRegSales = useMemo(() => {
+    const q = regSearch.trim().toLowerCase();
+    if (!q) return regMonthlyTotals.salesList;
+    return regMonthlyTotals.salesList.filter(s =>
+      (s.billNo && s.billNo.toLowerCase().includes(q)) ||
+      (s.customerName && s.customerName.toLowerCase().includes(q)) ||
+      (s.customerPan && s.customerPan.toLowerCase().includes(q)) ||
+      (s.payment_mode && s.payment_mode.toLowerCase().includes(q))
+    );
+  }, [regMonthlyTotals.salesList, regSearch]);
+
+  const filteredRegPurchases = useMemo(() => {
+    const q = regSearch.trim().toLowerCase();
+    if (!q) return regMonthlyTotals.purchasesList;
+    return regMonthlyTotals.purchasesList.filter(p =>
+      (p.voucherNo && p.voucherNo.toLowerCase().includes(q)) ||
+      (p.billNo && p.billNo.toLowerCase().includes(q)) ||
+      (p.supplierName && p.supplierName.toLowerCase().includes(q)) ||
+      (p.supplierPan && p.supplierPan.toLowerCase().includes(q)) ||
+      (p.payment_mode && p.payment_mode.toLowerCase().includes(q))
+    );
+  }, [regMonthlyTotals.purchasesList, regSearch]);
+
+  const handleReprintSale = async (s: any) => {
+    if (!shopInfo) return;
+    try {
+      const cust = s.customer_id ? customers.find(c => c.id === s.customer_id) : null;
+      const customerName = s.customer_name || cust?.name || "Walk-in Customer";
+      const customerPan = s.buyer_pan || cust?.pan || null;
+      const customerPhone = s.buyer_phone || cust?.phone || null;
+      const customerAddress = s.buyer_address || cust?.address || null;
+
+      const rawItems = Array.isArray(s.items) && s.items.length > 0
+        ? s.items
+        : Array.isArray(s.order_items) && s.order_items.length > 0
+          ? s.order_items
+          : [];
+
+      const itemsList = rawItems.map((it: any) => ({
+        product_name: it.product_name || it.name || "Item",
+        qty: Number(it.qty || it.quantity || 1),
+        unit: it.unit || "pcs",
+        price: Number(it.price || it.sell_price || it.rate || 0),
+        total: Number(it.total ?? (Number(it.qty || 1) * Number(it.price || it.sell_price || 0))),
+        hs_code: it.hs_code
+      }));
+
+      const isTaxInv = s.invoice_type === "tax_invoice" || s.is_vat_invoice === true || Number(s.vat_amount) > 0;
+
+      printSaleInvoice({
+        shop: shopInfo,
+        customer: {
+          name: customerName,
+          phone: customerPhone,
+          pan: customerPan,
+          address: customerAddress
+        },
+        billNo: s.bill_no || s.id?.slice(-6)?.toUpperCase() || "—",
+        date: s.created_at ? new Date(s.created_at) : new Date(),
+        paymentMode: s.payment_mode || "cash",
+        paidVia: s.paid_via || null,
+        items: itemsList,
+        subtotal: s.subtotal ? Number(s.subtotal) : undefined,
+        discount: s.discount ? Number(s.discount) : undefined,
+        discountPercent: s.discount_percent ?? undefined,
+        nonTaxableAmount: s.non_taxable_amount ? Number(s.non_taxable_amount) : undefined,
+        taxableAmount: s.taxable_amount ? Number(s.taxable_amount) : undefined,
+        vatAmount: s.vat_amount ? Number(s.vat_amount) : undefined,
+        total: Number(s.total || 0),
+        paidAmount: s.paid_amount !== undefined ? Number(s.paid_amount) : Number(s.total || 0),
+        dueAmount: s.due_amount !== undefined ? Number(s.due_amount) : 0,
+        tenderedAmount: s.tendered !== undefined ? Number(s.tendered) : undefined,
+        changeAmount: s.change !== undefined ? Number(s.change) : undefined,
+        isVatInvoice: isTaxInv,
+        invoiceType: s.invoice_type || (isTaxInv ? "tax_invoice" : undefined),
+        note: s.note,
+        preparedBy: s.prepared_by || (user?.displayName) || shopInfo.owner_name || null
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast.error("बिल प्रिन्ट गर्न समस्या भयो: " + (err.message || err));
+    }
+  };
+
+  const handleReprintPurchase = async (p: any) => {
+    if (!shopInfo) return;
+    try {
+      const supp = p.supplier_id ? suppliers.find(s => s.id === p.supplier_id) : null;
+      const supplierName = p.supplier_name || supp?.name || "Supplier";
+      const supplierPan = p.supplier_pan || supp?.pan || null;
+      const supplierPhone = p.supplier_phone || supp?.phone || null;
+      const supplierAddress = p.supplier_address || supp?.address || null;
+
+      const rawItems = Array.isArray(p.items) && p.items.length > 0
+        ? p.items
+        : Array.isArray(p.order_items) && p.order_items.length > 0
+          ? p.order_items
+          : [];
+
+      const itemsList = rawItems.map((it: any) => ({
+        product_name: it.product_name || it.name || "Item",
+        qty: Number(it.qty || it.quantity || 1),
+        unit: it.unit || "pcs",
+        price: Number(it.price || it.buy_price || it.cost_price || 0),
+        total: Number(it.total ?? (Number(it.qty || 1) * Number(it.price || 0))),
+        hs_code: it.hs_code
+      }));
+
+      const isVatBill = p.is_vat_bill === true || Number(p.vat_amount) > 0;
+
+      printPurchaseVoucher({
+        shop: shopInfo,
+        supplier: {
+          name: supplierName,
+          phone: supplierPhone,
+          pan: supplierPan,
+          address: supplierAddress
+        },
+        voucherNo: p.voucher_no || p.id?.slice(-6)?.toUpperCase() || "—",
+        supplierBillNo: p.supplier_bill_no,
+        date: p.created_at ? new Date(p.created_at) : new Date(),
+        paymentMode: p.payment_mode || "cash",
+        paidVia: p.paid_via || null,
+        items: itemsList,
+        subtotal: p.subtotal ? Number(p.subtotal) : undefined,
+        discount: p.discount ? Number(p.discount) : undefined,
+        discountPercent: p.discount_percent ?? undefined,
+        taxableAmount: p.taxable_amount ? Number(p.taxable_amount) : undefined,
+        vatAmount: p.vat_amount ? Number(p.vat_amount) : undefined,
+        total: Number(p.total || 0),
+        paidAmount: p.amount_paid !== undefined ? Number(p.amount_paid) : (p.paid_amount !== undefined ? Number(p.paid_amount) : Number(p.total || 0)),
+        dueAmount: p.due_amount !== undefined ? Number(p.due_amount) : 0,
+        note: p.note,
+        isVatBill,
+        preparedBy: p.prepared_by || p.entered_by || (user?.displayName) || shopInfo.owner_name || null
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast.error("खरिद भौचर प्रिन्ट गर्न समस्या भयो: " + (err.message || err));
+    }
+  };
+
+  const handlePrintRegistersReport = () => {
+    if (!shopInfo) return;
+    const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
+    const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
+
+    const purchaseRows = regMonthlyTotals.purchasesList.map((p, idx) => `
+      <tr>
+        <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
+        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}</td>
+        <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(p.voucherNo)}</td>
+        <td style="border:1px solid #111; padding:5px 6px;"><strong>${escapeHtml(p.supplierName)}</strong></td>
+        <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(p.supplierPan)}</td>
+        <td style="text-align:center; border:1px solid #111; padding:5px 6px;">${escapeHtml(p.billNo)}</td>
+        <td style="text-align:center; text-transform:uppercase; border:1px solid #111; padding:5px 6px;">${escapeHtml(p.payment_mode || "cash")}</td>
+        <td style="text-align:right; font-weight:700; border:1px solid #111; padding:5px 6px;">${(p.total || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      </tr>
+    `).join("");
+
+    const salesRows = regMonthlyTotals.salesList.map((s, idx) => `
+      <tr>
+        <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
+        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</td>
+        <td style="text-align:center; font-family:monospace; font-weight:600; border:1px solid #111; padding:5px 6px;">${escapeHtml(s.billNo)}</td>
+        <td style="border:1px solid #111; padding:5px 6px;"><strong>${escapeHtml(s.customerName)}</strong></td>
+        <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(s.customerPan)}</td>
+        <td style="text-align:center; text-transform:uppercase; border:1px solid #111; padding:5px 6px;">${escapeHtml(s.payment_mode || "cash")}</td>
+        <td style="text-align:right; font-weight:700; border:1px solid #111; padding:5px 6px;">${(s.total || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      </tr>
+    `).join("");
+
+    const body = `
+      <div class="a4-container" style="background:#ffffff; color:#000000; padding:24px 28px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
+        
+        <!-- Header -->
+        <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px;">
+          <h1 style="font-size:20px; font-weight:800; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.02em;">${escapeHtml(shopInfo.name)}</h1>
+          ${shopInfo.address ? `<div style="font-size:12px; font-weight:500;">${escapeHtml(shopInfo.address)}</div>` : ''}
+          <div style="font-size:12px; font-weight:600; margin-top:2px;">
+            ${isVatShop ? "VAT" : "PAN"} No: <strong>${escapeHtml(shopInfo.pan || 'N/A')}</strong> ${shopInfo.phone ? `· Ph: <strong>${escapeHtml(shopInfo.phone)}</strong>` : ''}
+          </div>
+          <div style="display:inline-block; margin-top:8px; padding:3px 14px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
+            खरिद तथा बिक्री खाता (Monthly Purchase & Sales Register Book)
+          </div>
+          <div style="font-size:11px; color:#333; margin-top:4px;">
+            अवधि (Period): <strong>${regMonthLabel}</strong> · तयार मिति (Report Date): <strong>${dateFormatted}</strong>
+          </div>
+        </div>
+
+        <!-- Monthly Turnover Summary Box -->
+        <div style="margin-bottom:16px; page-break-inside:avoid;">
+          <table style="width:100%; border-collapse:collapse; font-size:12px; border:1px solid #111;">
+            <thead>
+              <tr style="background:#f3f4f6; text-transform:uppercase; font-size:11px;">
+                <th style="border:1px solid #111; padding:6px 8px; text-align:left;">विवरण (Summary Particulars)</th>
+                <th style="border:1px solid #111; padding:6px 8px; text-align:center;">कुल संख्या (Total Count)</th>
+                <th style="border:1px solid #111; padding:6px 8px; text-align:right;">कुल रकम (Total Amount)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="border:1px solid #111; padding:6px 8px;"><strong>यस महिनाको कुल खरिद (Total Monthly Purchases)</strong></td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:center;">${regMonthlyTotals.purchasesList.length} वटा भौचर</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:700;">Rs. ${regMonthlyTotals.totalPurchasesAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+              <tr>
+                <td style="border:1px solid #111; padding:6px 8px;"><strong>यस महिनाको कुल बिक्री (Total Monthly Sales)</strong></td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:center;">${regMonthlyTotals.salesList.length} वटा बिल</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-weight:700;">Rs. ${regMonthlyTotals.totalSalesAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+              <tr style="background:#edf2f7; font-weight:bold;">
+                <td colspan="2" style="border:1px solid #111; padding:6px 8px;">खुद व्यापार अन्तर (Net Turnover Balance: Sales - Purchases)</td>
+                <td style="border:1px solid #111; padding:6px 8px; text-align:right; font-size:13px; color:${regMonthlyTotals.totalSalesAmount >= regMonthlyTotals.totalPurchasesAmount ? '#007a3d' : '#c00'};">
+                  Rs. ${(regMonthlyTotals.totalSalesAmount - regMonthlyTotals.totalPurchasesAmount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Section 1: Purchase Register -->
+        <div style="margin-bottom:18px;">
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:4px 8px; border:1px solid #111; border-bottom:none; display:flex; justify-content:space-between;">
+            <span>१. खरिद खाता (Purchase Register)</span>
+            <span style="font-weight:normal; font-size:11px;">जम्मा खरिदहरू: ${regMonthlyTotals.purchasesList.length}</span>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:10.5px; border:1px solid #111;">
+            <thead>
+              <tr style="background:#f9fafb;">
+                <th style="border:1px solid #111; padding:5px 4px; text-align:center; width:35px;">क्र.सं.</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:left; width:80px;">मिति</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:75px;">भौचर नं.</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:left;">सप्लायरको नाम</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:85px;">PAN नं.</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:80px;">सप्लायर बिल</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:65px;">भुक्तानी</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:right; width:95px;">रकम (Rs.)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${purchaseRows || '<tr><td colspan="8" style="border:1px solid #111; padding:12px; text-align:center; color:#666;">यस महिनामा कुनै खरिद भएको छैन।</td></tr>'}
+            </tbody>
+            ${regMonthlyTotals.purchasesList.length > 0 ? `
+            <tfoot>
+              <tr style="background:#f3f4f6; font-weight:bold;">
+                <td colspan="7" style="border:1px solid #111; padding:5px 6px; text-align:right;">कुल खरिद जम्मा (Total Purchases):</td>
+                <td style="border:1px solid #111; padding:5px 6px; text-align:right;">${regMonthlyTotals.totalPurchasesAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            </tfoot>
+            ` : ''}
+          </table>
+        </div>
+
+        <!-- Section 2: Sales Register -->
+        <div style="margin-bottom:18px;">
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:4px 8px; border:1px solid #111; border-bottom:none; display:flex; justify-content:space-between;">
+            <span>२. बिक्री खाता (Sales Register)</span>
+            <span style="font-weight:normal; font-size:11px;">जम्मा बिक्री बिलहरू: ${regMonthlyTotals.salesList.length}</span>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:10.5px; border:1px solid #111;">
+            <thead>
+              <tr style="background:#f9fafb;">
+                <th style="border:1px solid #111; padding:5px 4px; text-align:center; width:35px;">क्र.सं.</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:left; width:80px;">मिति</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:75px;">बिल नं.</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:left;">खरिदकर्ताको नाम</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:85px;">ग्राहक PAN</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:center; width:65px;">भुक्तानी</th>
+                <th style="border:1px solid #111; padding:5px 6px; text-align:right; width:95px;">रकम (Rs.)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${salesRows || '<tr><td colspan="7" style="border:1px solid #111; padding:12px; text-align:center; color:#666;">यस महिनामा कुनै बिक्री भएको छैन।</td></tr>'}
+            </tbody>
+            ${regMonthlyTotals.salesList.length > 0 ? `
+            <tfoot>
+              <tr style="background:#f3f4f6; font-weight:bold;">
+                <td colspan="6" style="border:1px solid #111; padding:5px 6px; text-align:right;">कुल बिक्री जम्मा (Total Sales):</td>
+                <td style="border:1px solid #111; padding:5px 6px; text-align:right;">${regMonthlyTotals.totalSalesAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            </tfoot>
+            ` : ''}
+          </table>
+        </div>
+
+        <!-- Official Signatures -->
+        <div class="signature-box" style="display:flex; justify-content:space-between; margin-top:28px; padding-top:10px; font-size:11.5px; page-break-inside:avoid;">
+          <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px; font-weight:600;">
+            तयार गर्ने (Prepared By)
+            ${preparedByName ? `<div style="font-size:11px; font-weight:normal; color:#374151; margin-top:2px;">${escapeHtml(preparedByName)}</div>` : ""}
+          </div>
+          <div style="border-top:1px dashed #444; width:150px; text-align:center; padding-top:4px; font-weight:600;">
+            लेखापाल (Accountant)
+          </div>
+          <div style="border-top:1px dashed #444; width:170px; text-align:center; padding-top:4px; font-weight:700;">
+            प्रमाणित गर्ने / प्रोप्राइटर (Authorized Signatory)
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    printHTML(`Purchase_Sales_Registers_${shopInfo.name}_${regMonthLabel.replace(" ", "_")}`, body, { paperSize: "a4" });
+  };
 
   const plTotals = useMemo(() => {
     let targetSales = sales;
@@ -669,9 +1055,13 @@ const Reports = () => {
       } />
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className={`grid ${isVatShop ? "grid-cols-3 max-w-md" : "grid-cols-2 max-w-sm"} w-full mx-auto`}>
+        <TabsList className={`grid ${isVatShop ? "grid-cols-4 max-w-xl" : "grid-cols-3 max-w-md"} w-full mx-auto`}>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="pl">Profit & Loss</TabsTrigger>
+          <TabsTrigger value="registers" className="flex items-center gap-1.5">
+            <BookOpen className="h-3.5 w-3.5" />
+            <span>Registers (खाताहरू)</span>
+          </TabsTrigger>
           {isVatShop && (
             <TabsTrigger value="vat" className="flex items-center gap-1.5">
               <Receipt className="h-3.5 w-3.5" />
@@ -897,6 +1287,293 @@ const Reports = () => {
                   </div>
                 </div>
               </section>
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* Registers Tab: Available for both PAN & VAT Shops */}
+        <TabsContent value="registers" className="space-y-4">
+          {/* Header, Month Navigation & Print Actions */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-foreground">खरिद तथा बिक्री खाता (Purchase & Sales Registers)</h2>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
+                  {isVatShop ? "VAT Registered" : "PAN Registered"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                सबै ग्राहक तथा सप्लायरहरूका मासिक बिलहरूको अभिलेख (All Sales & Inward Purchases)
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Search input */}
+              <div className="relative w-full sm:w-56">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="बिल नं., ग्राहक वा सप्लायर..."
+                  value={regSearch}
+                  onChange={(e) => setRegSearch(e.target.value)}
+                  className="h-8 pl-8 text-xs bg-background/80"
+                />
+              </div>
+
+              {/* Month Picker Navigation */}
+              <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={goToPrevRegMonth}
+                  title="Previous Month"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-semibold text-xs px-3 min-w-[120px] text-center select-none text-foreground">
+                  {regMonthLabel}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={goToNextRegMonth}
+                  disabled={regMonth.year === new Date().getFullYear() && regMonth.month === new Date().getMonth()}
+                  title="Next Month"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <Button onClick={handlePrintRegistersReport} variant="outline" size="sm" className="gap-2 shrink-0">
+                <Printer className="h-4 w-4 text-primary" />
+                प्रिन्ट / PDF
+              </Button>
+            </div>
+          </div>
+
+          {/* Month Summary Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Card className="p-4 shadow-card border-0 bg-secondary/30">
+              <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold uppercase">
+                <span>कुल खरिद (Total Purchases)</span>
+                <ShoppingBag className="h-4 w-4 text-blue-500" />
+              </div>
+              <div className="font-display text-2xl font-bold text-foreground mt-2">
+                {fmt(regMonthlyTotals.totalPurchasesAmount)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1 border-t border-border/40 pt-1.5 flex justify-between">
+                <span>जम्मा खरिद प्रविष्टि:</span>
+                <span className="font-semibold text-foreground">{regMonthlyTotals.purchasesList.length} वटा</span>
+              </div>
+            </Card>
+
+            <Card className="p-4 shadow-card border-0 bg-secondary/30">
+              <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold uppercase">
+                <span>कुल बिक्री (Total Sales)</span>
+                <Receipt className="h-4 w-4 text-emerald-500" />
+              </div>
+              <div className="font-display text-2xl font-bold text-foreground mt-2">
+                {fmt(regMonthlyTotals.totalSalesAmount)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1 border-t border-border/40 pt-1.5 flex justify-between">
+                <span>जम्मा बिक्री बिल:</span>
+                <span className="font-semibold text-foreground">{regMonthlyTotals.salesList.length} वटा</span>
+              </div>
+            </Card>
+
+            <Card className="p-4 shadow-elegant border-0 bg-gradient-primary text-primary-foreground">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider opacity-90">
+                <span>व्यापार अन्तर (Net Turnover)</span>
+                <Scale className="h-4 w-4 opacity-80" />
+              </div>
+              <div className="font-display text-2xl font-bold mt-2">
+                {fmt(regMonthlyTotals.totalSalesAmount - regMonthlyTotals.totalPurchasesAmount)}
+              </div>
+              <div className="text-[11px] opacity-90 mt-1 border-t border-white/20 pt-1.5">
+                कुल बिक्री - कुल खरिद (Sales minus Purchases)
+              </div>
+            </Card>
+          </div>
+
+          {/* Section 1: Purchase Register */}
+          <Card className="shadow-card border-0 overflow-hidden">
+            <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4 text-primary" />
+                <h3 className="font-bold text-sm text-foreground">१. खरिद खाता (Purchase Register)</h3>
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">
+                {regMonthLabel} का खरिदहरू: {filteredRegPurchases.length}
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
+                    <th className="p-3">मिति (Date)</th>
+                    <th className="p-3">भौचर नं. (Voucher)</th>
+                    <th className="p-3">सप्लायरको नाम</th>
+                    <th className="p-3">सप्लायर PAN</th>
+                    <th className="p-3">सप्लायर बिल नं.</th>
+                    <th className="p-3">भुक्तानी</th>
+                    <th className="p-3 text-right">कुल रकम</th>
+                    <th className="p-3 text-center">प्रिन्ट</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {filteredRegPurchases.map((p: any) => (
+                    <tr key={p.id} className="hover:bg-secondary/20 transition-colors">
+                      <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
+                        {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
+                      </td>
+                      <td className="p-3 font-mono font-medium text-foreground">
+                        {p.voucherNo}
+                      </td>
+                      <td className="p-3 font-semibold text-foreground truncate max-w-[160px]">
+                        {p.supplierName}
+                      </td>
+                      <td className="p-3 text-muted-foreground font-mono">
+                        {p.supplierPan}
+                      </td>
+                      <td className="p-3 font-medium text-foreground">
+                        {p.billNo}
+                      </td>
+                      <td className="p-3">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                          p.payment_mode === "credit" ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        }`}>
+                          {p.payment_mode || "cash"}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right font-bold text-foreground">
+                        {fmt(p.total)}
+                      </td>
+                      <td className="p-3 text-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          onClick={() => handleReprintPurchase(p)}
+                          title="भौचर प्रिन्ट (Print Inward Voucher)"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredRegPurchases.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-muted-foreground">
+                        {regSearch.trim() ? "खोजेको विवरणसँग मिल्ने कुनै खरिद फेला परेन।" : `${regMonthLabel} मा कुनै खरिद प्रविष्टि फेला परेन।`}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                {filteredRegPurchases.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-muted/40 font-bold border-t border-border">
+                      <td colSpan={6} className="p-3 uppercase text-muted-foreground">
+                        कुल जम्मा (Total Purchases):
+                      </td>
+                      <td className="p-3 text-right text-primary">
+                        {fmt(filteredRegPurchases.reduce((s: number, r: any) => s + Number(r.total || 0), 0))}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </Card>
+
+          {/* Section 2: Sales Register */}
+          <Card className="shadow-card border-0 overflow-hidden">
+            <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-primary" />
+                <h3 className="font-bold text-sm text-foreground">२. बिक्री खाता (Sales Register)</h3>
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">
+                {regMonthLabel} का बिलहरू: {filteredRegSales.length}
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
+                    <th className="p-3">मिति (Date)</th>
+                    <th className="p-3">बिल नं. (Bill No)</th>
+                    <th className="p-3">ग्राहकको नाम (Customer)</th>
+                    <th className="p-3">ग्राहक PAN</th>
+                    <th className="p-3">भुक्तानी</th>
+                    <th className="p-3 text-right">कुल रकम</th>
+                    <th className="p-3 text-center">प्रिन्ट</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {filteredRegSales.map((s: any) => (
+                    <tr key={s.id} className="hover:bg-secondary/20 transition-colors">
+                      <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
+                        {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
+                      </td>
+                      <td className="p-3 font-mono font-semibold text-primary">
+                        {s.billNo}
+                      </td>
+                      <td className="p-3 font-semibold text-foreground truncate max-w-[160px]">
+                        {s.customerName}
+                      </td>
+                      <td className="p-3 text-muted-foreground font-mono">
+                        {s.customerPan}
+                      </td>
+                      <td className="p-3">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                          s.payment_mode === "credit" ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        }`}>
+                          {s.payment_mode || "cash"}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right font-bold text-foreground">
+                        {fmt(s.total)}
+                      </td>
+                      <td className="p-3 text-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          onClick={() => handleReprintSale(s)}
+                          title="बिल प्रिन्ट (Print Sales Invoice)"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredRegSales.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                        {regSearch.trim() ? "खोजेको विवरणसँग मिल्ने कुनै बिक्री फेला परेन।" : `${regMonthLabel} मा कुनै बिक्री बिल फेला परेन।`}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                {filteredRegSales.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-muted/40 font-bold border-t border-border">
+                      <td colSpan={5} className="p-3 uppercase text-muted-foreground">
+                        कुल जम्मा (Total Sales):
+                      </td>
+                      <td className="p-3 text-right text-primary">
+                        {fmt(filteredRegSales.reduce((s: number, r: any) => s + Number(r.total || 0), 0))}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
             </div>
           </Card>
         </TabsContent>
