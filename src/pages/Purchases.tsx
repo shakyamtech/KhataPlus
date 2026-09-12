@@ -23,9 +23,9 @@ import { ProductFormModal } from "@/components/ProductFormModal";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printPurchaseVoucher } from "@/lib/invoicePrinter";
 
-type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null; has_expiry?: boolean };
+type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null; has_expiry?: boolean; hs_code?: string | null };
 type Supplier = { id: string; name: string; phone?: string; pan?: string; address?: string };
-type Item = { product_id: string; product_name: string; unit: string; cost_price: number | string; qty: number | string; batch_name?: string; has_expiry?: boolean; expiry_date?: string };
+type Item = { product_id: string; product_name: string; unit: string; cost_price: number | string; qty: number | string; batch_name?: string; has_expiry?: boolean; expiry_date?: string; hs_code?: string | null };
 
 const paymentModeLabels: Record<string, string> = {
   cash: "Cash",
@@ -531,7 +531,8 @@ const Purchases = () => {
       qty: 1, 
       batch_name, 
       has_expiry: hasExpiry, 
-      expiry_date 
+      expiry_date,
+      hs_code: p.hs_code || ""
     }]);
     setProductPick("");
   };
@@ -588,7 +589,8 @@ const Purchases = () => {
           qty: Number(item.qty || item.quantity || 0),
           batch_name: batchName === "N/A" ? "" : batchName,
           has_expiry: prod ? !!prod.has_expiry : (item.has_expiry || !!expiryDate),
-          expiry_date: expiryDate
+          expiry_date: expiryDate,
+          hs_code: item.hs_code || prod?.hs_code || ""
         };
       });
 
@@ -789,7 +791,8 @@ const Purchases = () => {
           qty: Number(item.qty),
           cost_price: Number(item.cost_price),
           batch_name: item.batch_name?.trim() || "",
-          expiry_date: item.has_expiry ? (item.expiry_date || null) : null
+          expiry_date: item.has_expiry ? (item.expiry_date || null) : null,
+          hs_code: item.hs_code?.trim() || null
         });
 
         const pRef = doc(db, "products", item.product_id);
@@ -937,12 +940,15 @@ const Purchases = () => {
         const data = d.data();
         const price = Number(data.cost_price ?? data.price ?? 0);
         const qty = Number(data.qty ?? data.quantity ?? 1);
+        const matchedProd = products.find(p => p.id === data.product_id || p.name === data.product_name);
+        const resolvedHsCode = (data.hs_code || matchedProd?.hs_code || "").trim() || undefined;
         return {
           product_name: data.product_name || "Item",
           qty,
           unit: data.unit || "pcs",
           price,
-          total: price * qty
+          total: price * qty,
+          hs_code: resolvedHsCode
         };
       });
 

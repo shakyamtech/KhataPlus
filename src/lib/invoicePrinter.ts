@@ -141,18 +141,21 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
     const dueAmt = data.dueAmount !== undefined ? Number(data.dueAmount) : (paymentMode === "credit" ? Math.max(0, total - paidAmt) : 0);
     const hasDue = dueAmt > 0;
 
+    const hasHsCode = adjustedItems.some(i => Boolean(i.hs_code && i.hs_code.trim()));
+
     const a4Rows = adjustedItems.length > 0
       ? adjustedItems.map((i, idx) => `
         <tr class="a4-item-row">
           <td class="center" style="width:45px;">${idx + 1}</td>
           <td><strong>${escapeHtml(i.product_name)}</strong></td>
+          ${hasHsCode ? `<td class="center" style="width:85px; font-family:monospace; font-size:11px;">${escapeHtml(i.hs_code || "-")}</td>` : ""}
           <td class="num" style="width:70px;">${fmtQty(i.qty)}</td>
           <td class="center" style="width:60px;">${escapeHtml(i.unit || "Pcs")}</td>
           <td class="num" style="width:95px;">${(Number(i.price) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
           <td class="num" style="width:110px; font-weight:700;">${((Number(i.qty) || 0) * (Number(i.price) || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
       `).join("")
-      : `<tr class="a4-item-row"><td colspan="6" style="text-align:center; padding:16px; color:#6b7280;">General Sale</td></tr>`;
+      : `<tr class="a4-item-row"><td colspan="${hasHsCode ? 7 : 6}" style="text-align:center; padding:16px; color:#6b7280;">General Sale</td></tr>`;
 
     body = `
       <div class="a4-container">
@@ -200,6 +203,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
               <tr>
                 <th style="width:45px;" class="center">S.No</th>
                 <th>Particulars</th>
+                ${hasHsCode ? `<th style="width:85px;" class="center">HS Code</th>` : ""}
                 <th style="width:70px;" class="num">Qty</th>
                 <th style="width:60px;" class="center">Unit</th>
                 <th style="width:95px;" class="num">Rate</th>
@@ -211,6 +215,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
               <tr class="a4-filler-row">
                 <td>&nbsp;</td>
                 <td></td>
+                ${hasHsCode ? `<td></td>` : ""}
                 <td></td>
                 <td></td>
                 <td></td>
@@ -503,18 +508,21 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
   const supplierAddress = (supplier.address || "").trim();
   const preparedByName = (data.preparedBy || shop.owner_name || "").trim();
 
+  const hasHsCode = items.some(i => Boolean(i.hs_code && i.hs_code.trim()));
+
   const a4Rows = items.length > 0
     ? items.map((i, idx) => `
       <tr class="a4-item-row">
         <td class="center" style="width:45px;">${idx + 1}</td>
         <td><strong>${escapeHtml(i.product_name)}</strong></td>
+        ${hasHsCode ? `<td class="center" style="width:85px; font-family:monospace; font-size:11px;">${escapeHtml(i.hs_code || "-")}</td>` : ""}
         <td class="num" style="width:70px;">${fmtQty(i.qty)}</td>
         <td class="center" style="width:60px;">${escapeHtml(i.unit || "Pcs")}</td>
         <td class="num" style="width:95px;">${(Number(i.price) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         <td class="num" style="width:110px; font-weight:700;">${((Number(i.qty) || 0) * (Number(i.price) || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
       </tr>
     `).join("")
-    : `<tr class="a4-item-row"><td colspan="6" style="text-align:center; padding:16px; color:#6b7280;">General Purchase Inward</td></tr>`;
+    : `<tr class="a4-item-row"><td colspan="${hasHsCode ? 7 : 6}" style="text-align:center; padding:16px; color:#6b7280;">General Purchase Inward</td></tr>`;
 
   const body = `
     <div class="a4-container">
@@ -562,6 +570,7 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
             <tr>
               <th style="width:45px;" class="center">S.No</th>
               <th>Particulars (Item Inward)</th>
+              ${hasHsCode ? `<th style="width:85px;" class="center">HS Code</th>` : ""}
               <th style="width:70px;" class="num">Qty</th>
               <th style="width:60px;" class="center">Unit</th>
               <th style="width:95px;" class="num">Cost Rate</th>
@@ -573,6 +582,7 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
             <tr class="a4-filler-row">
               <td>&nbsp;</td>
               <td></td>
+              ${hasHsCode ? `<td></td>` : ""}
               <td></td>
               <td></td>
               <td></td>
