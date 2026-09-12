@@ -707,86 +707,83 @@ const Reports = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="pl">
-          <Card className="shadow-elegant border-0 overflow-hidden">
-            <div className="p-5 md:p-6 bg-gradient-primary text-primary-foreground flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <div className="text-sm opacity-90 uppercase tracking-widest font-bold">Profit & Loss Statement (नाफा-नोक्सान विवरण)</div>
-                <div className="text-xs opacity-75 mt-0.5">
-                  अवधि: <strong>{plPeriodMode === "month" ? plMonthLabel : `अघिल्लो ${range} दिन (Last ${range} Days)`}</strong>
-                </div>
+        <TabsContent value="pl" className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-foreground">Profit & Loss Statement (नाफा-नोक्सान विवरण)</h2>
               </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* Period Mode Selector: Monthly vs Days */}
-                <div className="flex bg-black/20 backdrop-blur-sm p-1 rounded-lg border border-white/10 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setPlPeriodMode("month")}
-                    className={`px-3 py-1 rounded-md font-semibold transition-all ${
-                      plPeriodMode === "month"
-                        ? "bg-white text-primary shadow-sm"
-                        : "text-white/80 hover:text-white"
-                    }`}
-                  >
-                    मासिक (Monthly)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPlPeriodMode("days")}
-                    className={`px-3 py-1 rounded-md font-semibold transition-all ${
-                      plPeriodMode === "days"
-                        ? "bg-white text-primary shadow-sm"
-                        : "text-white/80 hover:text-white"
-                    }`}
-                  >
-                    अघिल्लो {range} दिन
-                  </button>
-                </div>
-
-                {/* If Month mode: show Month Navigation */}
-                {plPeriodMode === "month" && (
-                  <div className="flex items-center bg-black/20 backdrop-blur-sm border border-white/10 rounded-lg p-0.5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-white hover:bg-white/20"
-                      onClick={goToPrevPlMonth}
-                      title="अघिल्लो महिना"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="font-semibold text-xs px-2.5 min-w-[115px] text-center select-none text-white">
-                      {plMonthLabel}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-white hover:bg-white/20"
-                      onClick={goToNextPlMonth}
-                      disabled={plMonth.year === new Date().getFullYear() && plMonth.month === new Date().getMonth()}
-                      title="पछिल्लो महिना"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-
-                {/* Print Button */}
-                <Button
-                  onClick={handlePrintPlReport}
-                  variant="outline"
-                  size="sm"
-                  className="bg-white/95 text-primary hover:bg-white border-0 text-xs font-semibold h-8 gap-1.5 shadow-sm"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                  प्रिन्ट / PDF
-                </Button>
-              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                अवधि: <strong className="text-foreground">{plPeriodMode === "month" ? plMonthLabel : `अघिल्लो ${range} दिन (Last ${range} Days)`}</strong>
+              </p>
             </div>
 
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Period Mode Selector: Monthly vs Days */}
+              <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPlPeriodMode("month")}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                    plPeriodMode === "month"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  मासिक (Monthly)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlPeriodMode("days")}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                    plPeriodMode === "days"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  अघिल्लो {range} दिन
+                </button>
+              </div>
+
+              {/* If Month mode: show Month Navigation */}
+              {plPeriodMode === "month" && (
+                <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={goToPrevPlMonth}
+                    title="अघिल्लो महिना"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="font-semibold text-xs px-3 min-w-[120px] text-center select-none text-foreground">
+                    {plMonthLabel}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={goToNextPlMonth}
+                    disabled={plMonth.year === new Date().getFullYear() && plMonth.month === new Date().getMonth()}
+                    title="पछिल्लो महिना"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Print Button */}
+              <Button onClick={handlePrintPlReport} variant="outline" size="sm" className="gap-2 shrink-0">
+                <Printer className="h-4 w-4 text-primary" />
+                प्रिन्ट / PDF
+              </Button>
+            </div>
+          </div>
+
+          <Card className="shadow-card border border-border/40 overflow-hidden">
             <div className="p-6 space-y-6 bg-card text-card-foreground">
               {/* 2-Column Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
