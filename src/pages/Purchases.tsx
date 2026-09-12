@@ -1056,7 +1056,7 @@ const Purchases = () => {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">पुरानो मिति छान्नुहोस् वा टाइप गर्नुहोस्:</Label>
+                  <Label className="text-[11px] text-muted-foreground">मिति छान्नुहोस् वा टाइप गर्नुहोस्:</Label>
                   <Input
                     type="date"
                     value={purchaseDate}
