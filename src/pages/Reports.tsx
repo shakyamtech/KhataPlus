@@ -398,9 +398,13 @@ const Reports = () => {
   const taxCompliance = useMemo(() => {
     const now = new Date();
     const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-    const annualSales = allSales
-      .filter(s => s.created_at && new Date(s.created_at) >= oneYearAgo)
-      .reduce((sum, s) => sum + Number(s.total || 0), 0);
+    const annualSalesList = allSales.filter(s => s.created_at && new Date(s.created_at) >= oneYearAgo);
+    const annualSales = annualSalesList.reduce((sum, s) => sum + Number(s.total || 0), 0);
+    const annualCogs = annualSalesList.reduce((sum, s) => sum + Number(s.cost_total || 0), 0);
+    const annualExp = allExpenses
+      .filter(e => e.created_at && new Date(e.created_at) >= oneYearAgo)
+      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const annualNetProfit = Math.max(0, annualSales - annualCogs - annualExp);
 
     const localTier = shopInfo?.local_level_type || "municipality";
     const nature = shopInfo?.business_nature || "general_trading";
@@ -464,7 +468,7 @@ const Reports = () => {
       categoryDesc = "१ करोडभन्दा माथि वा स्वेच्छिक अडिट: आयव्यय हिसाब (P&L) बाट खुद नाफामा कर।";
       filingPeriod = "असोज मसान्तभित्र (अडिट रिपोर्ट सहित)";
 
-      const netProfit = Math.max(0, plTotals.net);
+      const netProfit = annualNetProfit;
       let calculatedTax = 0;
 
       if (entity === "pvt_ltd") {
@@ -528,7 +532,7 @@ const Reports = () => {
       entity,
       isVatShop
     };
-  }, [allSales, shopInfo, plTotals.net]);
+  }, [allSales, allExpenses, shopInfo]);
 
   const handleReprintSale = async (s: any) => {
     if (!shopInfo) return;
