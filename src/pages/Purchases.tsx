@@ -1007,7 +1007,7 @@ const Purchases = () => {
 
       {showForm && (
         <Card className="p-4 mb-6 shadow-elegant border-0">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {editingId ? "खरिद सम्पादन (Edit Purchase)" : "नयाँ खरिद दाखिला (New Purchase Inward)"}
@@ -1017,12 +1017,60 @@ const Purchases = () => {
                   ? editingVoucherNo
                   : `${shopInfo?.purchase_prefix ?? "INW-"}${String(shopInfo?.purchase_next_no ?? 1).padStart(4, "0")}${shopInfo?.purchase_suffix ?? ""}`}
               </span>
+              {editingId && (
+                <span className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded font-medium">
+                  सम्पादन मोड
+                </span>
+              )}
             </div>
-            {editingId && (
-              <span className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded font-medium">
-                सम्पादन मोड (Editing Mode)
-              </span>
-            )}
+
+            {/* Compact Date Trigger Button */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border font-medium transition-all shadow-2xs",
+                    purchaseDate
+                      ? "bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-semibold"
+                      : "bg-background hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+                  )}
+                  title="खरिद / दाखिला मिति परिवर्तन गर्नुहोस्"
+                >
+                  <CalendarIcon className={cn("h-3.5 w-3.5", purchaseDate ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")} />
+                  <span>{purchaseDate ? `दाखिला मिति: ${purchaseDate}` : "दाखिला मिति: आज (Today)"}</span>
+                  <span className="text-[10px] text-muted-foreground ml-0.5">▾</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3 space-y-2.5" align="end">
+                <div className="flex items-center justify-between pb-1.5 border-b">
+                  <span className="text-xs font-bold text-foreground">दाखिला मिति (Inward Date)</span>
+                  {purchaseDate && (
+                    <button
+                      type="button"
+                      onClick={() => setPurchaseDate("")}
+                      className="text-[11px] text-primary hover:underline font-semibold"
+                    >
+                      ✕ Reset (आज)
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">पुरानो मिति छान्नुहोस् वा टाइप गर्नुहोस्:</Label>
+                  <Input
+                    type="date"
+                    value={purchaseDate}
+                    onChange={(e) => setPurchaseDate(e.target.value)}
+                    className="h-8 text-xs bg-background font-medium"
+                  />
+                </div>
+                <p className="text-[10.5px] text-muted-foreground leading-tight">
+                  {purchaseDate
+                    ? `यस खरिद बिलको मिति ${purchaseDate} हुनेछ।`
+                    : "खाली छोड्दा यो खरिद स्वतः आजको समयमा दाखिला हुनेछ।"}
+                </p>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {isVatShop && (
@@ -1077,43 +1125,7 @@ const Purchases = () => {
             </div>
           )}
 
-          <div className="grid sm:grid-cols-3 gap-3 mb-3">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <Label className="text-xs font-semibold flex items-center gap-1">
-                  <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>Bill / Inward Date (दाखिला मिति)</span>
-                </Label>
-                {purchaseDate ? (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium border border-amber-300/60">
-                      Backdated
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setPurchaseDate("")}
-                      className="text-[10px] text-primary hover:underline font-medium"
-                      title="Reset to today's date"
-                    >
-                      ✕ Reset
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40">
-                    स्वतः आज (Today)
-                  </span>
-                )}
-              </div>
-              <Input
-                type="date"
-                value={purchaseDate}
-                onChange={(e) => setPurchaseDate(e.target.value)}
-                className={cn(
-                  "h-9 text-xs bg-background font-medium",
-                  purchaseDate && "border-amber-400 bg-amber-50/40 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 font-semibold"
-                )}
-              />
-            </div>
+          <div className="grid sm:grid-cols-2 gap-3 mb-3">
             <div>
               <Label>Supplier</Label>
               <div className="flex gap-2">
