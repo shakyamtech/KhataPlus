@@ -923,7 +923,60 @@ const POS = () => {
           <div className="flex items-center gap-2 mb-3">
             <ShoppingCart className="h-5 w-5 text-primary" />
             <div className="font-display text-xl">Cart</div>
-            <div className="ml-auto text-sm text-muted-foreground">{cart.length} item(s)</div>
+
+            <div className="ml-auto flex items-center gap-1.5">
+              {/* Compact Date Picker Popover */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex items-center gap-1 text-xs px-2 py-0.5 rounded-md border font-medium transition-all shadow-2xs",
+                      billDate
+                        ? "bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-semibold"
+                        : "bg-background hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+                    )}
+                    title="बिक्री बिल मिति परिवर्तन गर्नुहोस्"
+                  >
+                    <CalendarIcon className={cn("h-3.5 w-3.5", billDate ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")} />
+                    <span>{billDate ? `मिति: ${billDate}` : "आज (Today)"}</span>
+                    <span className="text-[10px] text-muted-foreground">▾</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-3 space-y-2.5" align="end">
+                  <div className="flex items-center justify-between pb-1.5 border-b">
+                    <span className="text-xs font-bold text-foreground">बिक्री बिल मिति (Bill Date)</span>
+                    {billDate && (
+                      <button
+                        type="button"
+                        onClick={() => setBillDate("")}
+                        className="text-[11px] text-primary hover:underline font-semibold"
+                      >
+                        ✕ Reset (आज)
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">पुरानो मिति छान्नुहोस् वा टाइप गर्नुहोस्:</Label>
+                    <Input
+                      type="date"
+                      value={billDate}
+                      onChange={(e) => setBillDate(e.target.value)}
+                      className="h-8 text-xs bg-background font-medium"
+                    />
+                  </div>
+                  <p className="text-[10.5px] text-muted-foreground leading-tight">
+                    {billDate
+                      ? `यो बिक्री बिल ${billDate} मितिमा दर्ता हुनेछ।`
+                      : "खाली छोड्दा यो बिल स्वतः आजको समयमा दर्ता हुनेछ।"}
+                  </p>
+                </PopoverContent>
+              </Popover>
+
+              <div className="text-xs text-muted-foreground font-medium shrink-0 bg-secondary/80 px-2 py-0.5 rounded-md">
+                {cart.length} item(s)
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2 max-h-[40vh] overflow-y-auto">
@@ -1135,43 +1188,7 @@ const POS = () => {
               </div>
             </div>
 
-            {/* Bill Date (Optional Backdated Sale) */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>Bill Date (बिल मिति)</span>
-                </Label>
-                {billDate ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium border border-amber-300/60">
-                      पुरानो मिति (Backdated)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setBillDate("")}
-                      className="text-[10px] text-primary hover:underline font-medium"
-                      title="Reset to today's date"
-                    >
-                      ✕ Reset (आज)
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40">
-                    स्वतः आज (Today)
-                  </span>
-                )}
-              </div>
-              <Input
-                type="date"
-                value={billDate}
-                onChange={(e) => setBillDate(e.target.value)}
-                className={cn(
-                  "h-8 text-xs bg-background font-medium",
-                  billDate && "border-amber-400 bg-amber-50/40 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 font-semibold"
-                )}
-              />
-            </div>
+
 
             {shopInfo?.is_vat_registered && (
               <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 space-y-2">
