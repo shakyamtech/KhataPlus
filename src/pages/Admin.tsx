@@ -410,7 +410,7 @@ const Admin = () => {
           onClick={() => setPlanFilter("pro")}
           className={`h-8 text-xs font-semibold rounded-lg ${planFilter !== "pro" ? "border-amber-300 text-amber-700 dark:border-amber-500/30 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10" : "bg-amber-500 hover:bg-amber-600 text-white"}`}
         >
-          <Crown className="h-3 w-3 mr-1 fill-current" /> VIP Pro ({proCount})
+          <Crown className="h-3 w-3 mr-1 fill-current" /> Premium ({proCount})
         </Button>
         <Button
           size="sm"
@@ -463,7 +463,7 @@ const Admin = () => {
                   {u.subInfo.isPro ? (
                     <Badge variant="default" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-400/30 hover:bg-amber-500/25 transition-colors font-bold text-[10px]">
                       <Crown className="h-3 w-3 mr-1 fill-current" />
-                      {u.subInfo.plan === "lifetime" || u.subInfo.isAdmin ? "VIP Lifetime" : `VIP Pro (${u.subInfo.daysLeft}d)`}
+                      {u.subInfo.plan === "lifetime" || u.subInfo.isAdmin ? "Premium" : `Premium (${u.subInfo.daysLeft}d)`}
                     </Badge>
                   ) : u.subInfo.isExpired ? (
                     <Badge variant="destructive" className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-400/30 font-bold text-[10px]">
@@ -682,15 +682,15 @@ const Admin = () => {
                   <span>Current Subscription</span>
                   <span className="uppercase font-mono text-[10px] px-2 py-0.5 rounded bg-background/80 border">
                     {managingSubUser.subInfo.isPro 
-                      ? (managingSubUser.subInfo.plan === "lifetime" || managingSubUser.subInfo.isAdmin ? "VIP Lifetime" : "VIP Pro")
+                      ? "Premium"
                       : (managingSubUser.subInfo.isExpired ? "Expired" : "30-Day Trial")}
                   </span>
                 </div>
                 <div className="text-[11px] opacity-80">
                   {managingSubUser.subInfo.plan === "lifetime" || managingSubUser.subInfo.isAdmin ? (
-                    <span>Permanent VIP Access (Never expires)</span>
+                    <span>Permanent Premium Access (Never expires)</span>
                   ) : managingSubUser.subInfo.isPro ? (
-                    <span>Pro Plan Active: <b>{managingSubUser.subInfo.daysLeft} days remaining</b></span>
+                    <span>Premium Active: <b>{managingSubUser.subInfo.daysLeft} days remaining</b></span>
                   ) : managingSubUser.subInfo.isExpired ? (
                     <span>Subscription or Trial has expired</span>
                   ) : (
@@ -699,11 +699,11 @@ const Admin = () => {
                 </div>
               </div>
 
-              {/* Section 1: Upgrade to VIP Pro */}
+              {/* Section 1: Upgrade to Premium */}
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <Crown className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-                  Upgrade / Extend VIP Pro
+                  Upgrade / Extend Premium
                 </Label>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
@@ -750,7 +750,7 @@ const Admin = () => {
                   className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold h-9 shadow-sm"
                 >
                   <Crown className="h-3.5 w-3.5 mr-1.5 fill-current" />
-                  Grant Lifetime VIP (Permanent)
+                  Grant Lifetime Premium (Permanent)
                 </Button>
               </div>
 

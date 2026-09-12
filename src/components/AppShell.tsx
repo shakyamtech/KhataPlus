@@ -847,17 +847,17 @@ export const AppShell = () => {
                                     {subscription?.isPro ? (
                                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-400/10 text-amber-400 border border-amber-400/40 flex items-center gap-1 shadow-sm">
                                             <Crown className="h-2.5 w-2.5 fill-current" />
-                                            {subscription?.plan === "lifetime" || isAdmin ? "VIP LIFETIME" : "PRO"}
+                                            {lang === "NEP" ? "प्रिमियम" : "PREMIUM"}
                                         </span>
                                     ) : subscription?.isExpired ? (
                                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-500 border border-rose-400/40 flex items-center gap-1 shadow-sm">
                                             <AlertCircle className="h-2.5 w-2.5" />
-                                            EXPIRED
+                                            {lang === "NEP" ? "सकियो" : "EXPIRED"}
                                         </span>
                                     ) : (
                                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-400/40 flex items-center gap-1 shadow-sm">
                                             <Sparkles className="h-2.5 w-2.5" />
-                                            TRIAL ({subscription?.daysLeft ?? 30}d)
+                                            {lang === "NEP" ? `ट्रायल (${subscription?.daysLeft ?? 30} दिन)` : `TRIAL (${subscription?.daysLeft ?? 30}d)`}
                                         </span>
                                     )}
                                 </div>
@@ -889,15 +889,13 @@ export const AppShell = () => {
                                 </span>
                                 <span className="font-mono uppercase text-[10px] px-2 py-0.5 rounded-full bg-background/80 border">
                                     {subscription?.isPro 
-                                        ? (subscription?.plan === "lifetime" || isAdmin ? "VIP Lifetime" : "VIP Pro") 
-                                        : (subscription?.isExpired ? "Expired" : "30-Day Trial")}
+                                        ? (lang === "NEP" ? "प्रिमियम" : "Premium") 
+                                        : (subscription?.isExpired ? (lang === "NEP" ? "सकियो" : "Expired") : (lang === "NEP" ? "३०-दिन ट्रायल" : "30-Day Trial"))}
                                 </span>
                             </div>
                             <p className="text-[11px] opacity-90 leading-relaxed">
                                 {subscription?.isPro
-                                    ? (subscription?.plan === "lifetime" || isAdmin 
-                                        ? (lang === "NEP" ? "तपाईंको खातामा आजीवन VIP प्रो सुविधा सक्रिय छ।" : "Your account has permanent VIP Lifetime Pro access.")
-                                        : (lang === "NEP" ? `तपाईंको प्रो सदस्यतामा ${subscription?.daysLeft} दिन बाँकी छ।` : `Your Pro subscription has ${subscription?.daysLeft} days remaining.`))
+                                    ? (lang === "NEP" ? "तपाईंको खातामा प्रिमियम (Premium) पहुँच सक्रिय छ।" : "Your account has Premium access.")
                                     : subscription?.isExpired
                                         ? (lang === "NEP" ? "ट्रायल अवधि सकिएको छ। सेवा निरन्तरताको लागि एडमिनसँग सम्पर्क गर्नुहोस्।" : "Your trial has expired. Please contact admin to renew.")
                                         : (lang === "NEP" ? `३०-दिनको नि:शुल्क ट्रायल चलिरहेको छ (${subscription?.daysLeft ?? 30} दिन बाँकी)।` : `30-Day Free Trial is active (${subscription?.daysLeft ?? 30} days left).`)}
