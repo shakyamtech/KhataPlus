@@ -530,7 +530,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
     }
   };
 
-  const save = async () => {
+  const save = async (keepOpen = false) => {
     if (!user) return;
     if (!edit.name.trim()) return toast.error("Name required");
     
@@ -621,9 +621,10 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
         }
         await batch.commit();
       }
-      toast.success("Saved");
-      onOpenChange(false);
-      setEdit(blankProduct);
+
+      const savedProductName = payload.name;
+      toast.success(keepOpen ? `"${savedProductName}" सेभ भयो! अर्को सामान थप्नुहोस्` : "Saved");
+
       if (onSuccess && savedId) {
         onSuccess(savedId, { 
           id: savedId, 
@@ -631,6 +632,23 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
           batch_name: batchNameVal, 
           expiry_date: expiryDateVal 
         });
+      }
+
+      if (keepOpen) {
+        // Reset form for next product while keeping useful context (unit preference, expiry mode)
+        setEdit({
+          ...blankProduct,
+          unit: edit.unit || "pcs",
+          has_expiry: !!edit.has_expiry,
+          is_taxable: edit.is_taxable !== false
+        });
+        setTimeout(() => {
+          const el = document.getElementById("product-name-input");
+          if (el) el.focus();
+        }, 100);
+      } else {
+        onOpenChange(false);
+        setEdit(blankProduct);
       }
     } catch (e: any) {
       toast.error(e.message);
@@ -652,7 +670,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
           <div className="space-y-2.5">
             <div className="space-y-1.5">
               <Label>Name</Label>
-              <Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." />
+              <Input id="product-name-input" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Enter item name..." />
             </div>
             
             <div className={cn("grid gap-3", shopInfo?.is_vat_registered ? "grid-cols-2" : "grid-cols-1")}>
@@ -842,18 +860,47 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                   placeholder="e.g. 5"
                 />
               </div>
-              <div>
-                <Button onClick={save} disabled={busy} className="w-full h-10 bg-gradient-primary text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-all">
-                  {busy ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Saving...
-                    </>
-                  ) : (
-                    edit.id ? "Save Changes" : "Save Product"
-                  )}
-                </Button>
-              </div>
+              {!edit.id ? (
+                <div className="flex gap-2 items-end">
+                  <Button 
+                    type="button"
+                    onClick={() => save(true)} 
+                    disabled={busy} 
+                    variant="outline"
+                    className="flex-1 h-10 border-primary/40 text-primary hover:bg-primary/10 font-semibold text-xs transition-all gap-1.5 shadow-xs"
+                    title="Save current product and immediately enter the next product without closing this popup"
+                  >
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    Save & Add Another
+                  </Button>
+                  <Button 
+                    type="button"
+                    onClick={() => save(false)} 
+                    disabled={busy} 
+                    className="flex-1 h-10 bg-gradient-primary text-primary-foreground font-semibold shadow-md hover:shadow-lg text-xs transition-all"
+                  >
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Product"}
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <Button 
+                    type="button"
+                    onClick={() => save(false)} 
+                    disabled={busy} 
+                    className="w-full h-10 bg-gradient-primary text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-all"
+                  >
+                    {busy ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>
