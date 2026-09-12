@@ -703,18 +703,30 @@ const Reports = () => {
       const supplierPhone = p.supplier_phone || supp?.phone || null;
       const supplierAddress = p.supplier_address || supp?.address || null;
 
-      const rawItems = Array.isArray(p.items) && p.items.length > 0
+      let rawItems = Array.isArray(p.items) && p.items.length > 0
         ? p.items
         : Array.isArray(p.order_items) && p.order_items.length > 0
           ? p.order_items
           : [];
 
+      if (rawItems.length === 0 && p.id) {
+        try {
+          const piQ = query(collection(db, "purchase_items"), where("purchase_id", "==", p.id));
+          const piSnap = await getDocs(piQ);
+          if (!piSnap.empty) {
+            rawItems = piSnap.docs.map(d => d.data());
+          }
+        } catch (err) {
+          console.error("Error fetching purchase_items", err);
+        }
+      }
+
       const itemsList = rawItems.map((it: any) => ({
         product_name: it.product_name || it.name || "Item",
-        qty: Number(it.qty || it.quantity || 1),
+        qty: Number(it.qty ?? it.quantity ?? 1),
         unit: it.unit || "pcs",
-        price: Number(it.price || it.buy_price || it.cost_price || 0),
-        total: Number(it.total ?? (Number(it.qty || 1) * Number(it.price || 0))),
+        price: Number(it.cost_price ?? it.price ?? it.buy_price ?? 0),
+        total: Number(it.total ?? (Number(it.qty ?? it.quantity ?? 1) * Number(it.cost_price ?? it.price ?? 0))),
         hs_code: it.hs_code
       }));
 
