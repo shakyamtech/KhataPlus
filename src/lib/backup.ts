@@ -255,16 +255,26 @@ export async function exportUserDataToExcel(
   XLSX.utils.book_append_sheet(wb, wsProducts, "Products");
 
   // 2. Batches Sheet
-  const prodNameMap = new Map(products.map(p => [p.id, p.name]));
-  const batchRows = batches.map(b => ({
-    "Product Name": prodNameMap.get(b.product_id) || b.product_id || "",
-    "Batch No": b.batch_number || "",
-    "Expiry Date": b.expiry_date || "N/A",
-    "Cost Price (Rs.)": b.cost_price ?? 0,
-    "Selling Price (Rs.)": b.selling_price ?? 0,
-    "Initial Qty": b.initial_qty ?? 0,
-    "Current Stock": b.current_qty ?? 0
-  }));
+  const prodMap = new Map(products.map(p => [p.id, p]));
+  const batchRows = batches.map(b => {
+    const parentProd = prodMap.get(b.product_id);
+    const prodName = parentProd?.name || b.product_name || b.product_id || "";
+    const sellingPrice = Number(parentProd?.selling_price ?? parentProd?.price ?? b.selling_price ?? 0);
+    const costPrice = Number(b.cost_price ?? parentProd?.cost_price ?? 0);
+    const initialQty = Number(b.original_qty ?? b.initial_qty ?? 0);
+    const currentStock = Number(b.remaining_qty ?? b.current_qty ?? 0);
+    const batchName = b.batch_name || b.batch_number || "N/A";
+
+    return {
+      "Product Name": prodName,
+      "Batch No": batchName,
+      "Expiry Date": b.expiry_date || "N/A",
+      "Cost Price (Rs.)": costPrice,
+      "Selling Price (Rs.)": sellingPrice,
+      "Initial Qty": initialQty,
+      "Current Stock": currentStock
+    };
+  });
   const wsBatches = XLSX.utils.json_to_sheet(
     batchRows.length > 0 ? batchRows : [{ "Status": "No batches recorded" }]
   );
