@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { fmt } from "@/lib/format";
 import { formatNepaliDate } from "@/lib/fiscalYear";
 import { getShopInfo } from "@/lib/shop";
+import { printHTML, escapeHtml } from "@/lib/print";
 import { toast } from "sonner";
 import {
   Account,
@@ -45,7 +47,9 @@ import {
   CircleDollarSign,
   TrendingUp,
   ArrowDownLeft,
-  ArrowUpRight
+  ArrowUpRight,
+  Scale,
+  CheckCircle2
 } from "lucide-react";
 import { collection, query, where, getDocs, doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -53,12 +57,28 @@ import { db } from "@/lib/firebase";
 export default function Accounting() {
   const { user } = useAuth();
   const { lang } = useLanguage();
+  const [searchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<"vouchers" | "daybook" | "chart">("vouchers");
+  const [activeTab, setActiveTab] = useState<"vouchers" | "daybook" | "trial" | "chart">("vouchers");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [shopInfo, setShopInfo] = useState<any>(null);
+
+  // Raw collections for Trial Balance
+  const [cashDocs, setCashDocs] = useState<any[]>([]);
+  const [salesDocs, setSalesDocs] = useState<any[]>([]);
+  const [ledgerDocs, setLedgerDocs] = useState<any[]>([]);
+  const [productDocs, setProductDocs] = useState<any[]>([]);
+  const [stockAdjDocs, setStockAdjDocs] = useState<any[]>([]);
+
+  // Sync tab with URL search params
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t === "trial" || t === "daybook" || t === "chart" || t === "vouchers") {
+      setActiveTab(t as any);
+    }
+  }, [searchParams]);
 
   // Voucher Form State
   const [voucherModalOpen, setVoucherModalOpen] = useState(false);
@@ -88,16 +108,27 @@ export default function Accounting() {
     if (!user) return;
     setLoading(true);
     try {
-      const [accs, vSnap, sInfo] = await Promise.all([
+      const [accs, vSnap, sInfo, cSnap, sSnap, lSnap, pSnap, wSnap] = await Promise.all([
         getAccounts(user.uid),
         getDocs(query(collection(db, "vouchers"), where("user_id", "==", user.uid))),
-        getShopInfo()
+        getShopInfo(),
+        getDocs(query(collection(db, "cash_transactions"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "sales"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "ledger_entries"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "products"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid)))
       ]);
       setAccounts(accs);
       const vList = vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher));
       vList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setVouchers(vList);
       setShopInfo(sInfo);
+
+      setCashDocs(cSnap.docs.map(d => d.data()));
+      setSalesDocs(sSnap.docs.map(d => d.data()));
+      setLedgerDocs(lSnap.docs.map(d => d.data()));
+      setProductDocs(pSnap.docs.map(d => d.data()));
+      setStockAdjDocs(wSnap.docs.map(d => d.data()));
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to load accounting data");
@@ -277,6 +308,414 @@ export default function Accounting() {
     return map[grp] || grp;
   };
 
+  // Trial Balance Data Calculation
+  const trialBalanceData = useMemo(() => {
+    // 1. Cash in hand
+    const cashBal = cashDocs.reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+
+    // 2. Stock / Inventory
+    const stockVal = productDocs.reduce((s, r: any) => s + (+r.stock_qty || 0) * (+r.cost_price || 0), 0);
+
+    // 3. Debtors and Creditors from ledger
+    const partyBalances: Record<string, number> = {};
+    ledgerDocs.forEach((e: any) => {
+      const key = `${e.party_type}_${e.party_id}`;
+      let val = Number(e.amount);
+      if (e.party_type === "customer") {
+        val = ["sale", "debit"].includes(e.entry_type) ? val : -val;
+      } else {
+        val = ["purchase", "credit"].includes(e.entry_type) ? val : -val;
+      }
+      partyBalances[key] = (partyBalances[key] || 0) + val;
+    });
+    const receivable = Object.entries(partyBalances).filter(([k]) => k.startsWith("customer_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
+    const payable = Object.entries(partyBalances).filter(([k]) => k.startsWith("supplier_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
+
+    // 4. Sales Revenue & Cost of Goods Sold
+    const revenue = salesDocs.reduce((s, r: any) => s + +r.total, 0);
+    const cogs = salesDocs.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
+
+    // 5. Bank Accounts
+    const bankAccounts = accounts.filter(a => a.group === "bank_accounts");
+    const bankRows = bankAccounts.map(b => {
+      let bal = Number(b.opening_balance || 0);
+      vouchers.forEach(v => {
+        if (v.debit_account_id === b.id) bal += Number(v.amount || 0);
+        if (v.credit_account_id === b.id) bal -= Number(v.amount || 0);
+      });
+      return {
+        id: b.id,
+        name: b.name,
+        group: "Bank Accounts",
+        debit: bal >= 0 ? bal : 0,
+        credit: bal < 0 ? Math.abs(bal) : 0
+      };
+    }).filter(r => r.debit > 0 || r.credit > 0);
+
+    // 6. Fixed Assets
+    const assetAccounts = accounts.filter(a => a.group === "fixed_assets");
+    const cashFixedAssets = cashDocs
+      .filter((c: any) => c.direction === "out" && (c.category === "fixed_asset" || c.account_group === "fixed_asset"))
+      .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+
+    const fixedAssetRows = assetAccounts.map((a, idx) => {
+      let bal = Number(a.opening_balance || 0);
+      vouchers.forEach(v => {
+        if (v.debit_account_id === a.id) bal += Number(v.amount || 0);
+        if (v.credit_account_id === a.id) bal -= Number(v.amount || 0);
+      });
+      if (idx === 0) bal += cashFixedAssets;
+      return {
+        id: a.id,
+        name: a.name,
+        group: "Fixed Assets",
+        debit: bal >= 0 ? bal : 0,
+        credit: bal < 0 ? Math.abs(bal) : 0
+      };
+    }).filter(r => r.debit > 0 || r.credit > 0);
+
+    if (fixedAssetRows.length === 0 && cashFixedAssets > 0) {
+      fixedAssetRows.push({
+        id: "cash_fixed_assets",
+        name: lang === "NEP" ? "स्थिर सम्पत्ति (Fixed Assets)" : "Fixed Assets",
+        group: "Fixed Assets",
+        debit: cashFixedAssets,
+        credit: 0
+      });
+    }
+
+    // 7. Loans & Borrowings
+    const loanAccounts = accounts.filter(a => a.group === "loans_liabilities");
+    const cashLoansTaken = cashDocs
+      .filter((c: any) => c.direction === "in" && (c.category === "loan" || c.account_group === "loan"))
+      .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+    const cashLoansRepaid = cashDocs
+      .filter((c: any) => c.direction === "out" && (c.category === "loan_repayment" || c.account_group === "loan" || c.account_group === "loan_repayment"))
+      .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+
+    const loanRows = loanAccounts.map((l, idx) => {
+      let bal = Number(l.opening_balance || 0);
+      vouchers.forEach(v => {
+        if (v.credit_account_id === l.id) bal += Number(v.amount || 0);
+        if (v.debit_account_id === l.id) bal -= Number(v.amount || 0);
+      });
+      if (idx === 0) bal += (cashLoansTaken - cashLoansRepaid);
+      return {
+        id: l.id,
+        name: l.name,
+        group: "Loans & Liabilities",
+        debit: bal < 0 ? Math.abs(bal) : 0,
+        credit: bal >= 0 ? bal : 0
+      };
+    }).filter(r => r.debit > 0 || r.credit > 0);
+
+    if (loanRows.length === 0 && (cashLoansTaken - cashLoansRepaid) > 0) {
+      loanRows.push({
+        id: "cash_loans",
+        name: lang === "NEP" ? "बैंक तथा व्यक्तिगत ऋण (Loans)" : "Bank & Personal Loans",
+        group: "Loans & Liabilities",
+        debit: 0,
+        credit: cashLoansTaken - cashLoansRepaid
+      });
+    }
+
+    // 8. Current Liabilities / Outstanding
+    const currLiabAccounts = accounts.filter(a => a.group === "current_liabilities");
+    const currLiabRows = currLiabAccounts.map(l => {
+      let bal = Number(l.opening_balance || 0);
+      vouchers.forEach(v => {
+        if (v.credit_account_id === l.id) bal += Number(v.amount || 0);
+        if (v.debit_account_id === l.id) bal -= Number(v.amount || 0);
+      });
+      return {
+        id: l.id,
+        name: l.name,
+        group: "Current Liabilities",
+        debit: bal < 0 ? Math.abs(bal) : 0,
+        credit: bal >= 0 ? bal : 0
+      };
+    }).filter(r => r.debit > 0 || r.credit > 0);
+
+    // 9. Capital (Equity)
+    const capitalAccounts = accounts.filter(a => a.group === "capital");
+    let capitalExtra = capitalAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
+    vouchers.forEach(v => {
+      if (capitalAccounts.some(c => c.id === v.credit_account_id)) capitalExtra += Number(v.amount || 0);
+      if (capitalAccounts.some(c => c.id === v.debit_account_id)) capitalExtra -= Number(v.amount || 0);
+    });
+    const capitalCats = ["opening", "capital", "investment", "owner_investment"];
+    const cashCapital = cashDocs
+      .filter((c: any) => c.direction === "in" && (capitalCats.includes((c.category || "").toLowerCase()) || c.account_group === "capital"))
+      .reduce((s, r: any) => s + +r.amount, 0);
+    const totalCapital = cashCapital + capitalExtra;
+
+    // 10. Drawings
+    const drawingsAccounts = accounts.filter(a => a.group === "drawings");
+    let drawingsExtra = drawingsAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
+    vouchers.forEach(v => {
+      if (drawingsAccounts.some(d => d.id === v.debit_account_id)) drawingsExtra += Number(v.amount || 0);
+      if (drawingsAccounts.some(d => d.id === v.credit_account_id)) drawingsExtra -= Number(v.amount || 0);
+    });
+    const cashDrawings = cashDocs
+      .filter((c: any) => c.direction === "out" && ((c.category || "").toLowerCase() === "personal" || c.account_group === "drawings"))
+      .reduce((s, r: any) => s + +r.amount, 0);
+    const totalDrawings = cashDrawings + drawingsExtra;
+
+    // 11. Expenses
+    const nonExpenseCats = [
+      "purchase", "purchases", "supplier_payment", "payment", "personal",
+      "contra_bank_deposit", "contra_bank_withdrawal", "voucher_payment", "voucher_receipt",
+      "fixed_asset", "loan_repayment"
+    ];
+    const cashExpenses = cashDocs.filter((c: any) => {
+      if (c.direction !== "out") return false;
+      const cat = (c.category || "").toLowerCase();
+      if (nonExpenseCats.includes(cat)) return false;
+      if (c.account_group && ["fixed_asset", "loan", "loan_repayment", "drawings", "capital"].includes(c.account_group)) return false;
+      return true;
+    }).reduce((s, r: any) => s + +r.amount, 0);
+
+    const wastageAdjustments = stockAdjDocs.filter(d => d.responsibility === "loss");
+    const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
+
+    const expAccounts = accounts.filter(a => a.type === "expense");
+    let voucherExpenses = 0;
+    vouchers.forEach(v => {
+      if (expAccounts.some(e => e.id === v.debit_account_id)) voucherExpenses += Number(v.amount || 0);
+    });
+    const totalExpenses = cashExpenses + wastageExpenses + voucherExpenses;
+
+    // Construct unified Trial Balance Ledger Rows
+    const rows: { id: string; name: string; group: string; debit: number; credit: number }[] = [];
+
+    // Cash
+    if (cashBal !== 0) {
+      rows.push({
+        id: "cash_in_hand",
+        name: lang === "NEP" ? "नगद मौज्दात (Cash in Hand)" : "Cash in Hand",
+        group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
+        debit: cashBal > 0 ? cashBal : 0,
+        credit: cashBal < 0 ? Math.abs(cashBal) : 0
+      });
+    }
+
+    // Bank accounts
+    bankRows.forEach(b => rows.push({
+      ...b,
+      group: lang === "NEP" ? "बैंक खाता" : "Bank Accounts"
+    }));
+
+    // Closing Stock
+    if (stockVal > 0) {
+      rows.push({
+        id: "closing_stock",
+        name: lang === "NEP" ? "स्टक मौज्दात (Closing Stock)" : "Closing Stock",
+        group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
+        debit: stockVal,
+        credit: 0
+      });
+    }
+
+    // Debtors / Receivables
+    if (receivable > 0) {
+      rows.push({
+        id: "sundry_debtors",
+        name: lang === "NEP" ? "ग्राहकबाट उठ्न बाँकी (Sundry Debtors)" : "Sundry Debtors (Receivables)",
+        group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
+        debit: receivable,
+        credit: 0
+      });
+    }
+
+    // Fixed Assets
+    fixedAssetRows.forEach(a => rows.push({
+      ...a,
+      group: lang === "NEP" ? "स्थिर सम्पत्ति" : "Fixed Assets"
+    }));
+
+    // Cost of Goods Sold (COGS)
+    if (cogs > 0) {
+      rows.push({
+        id: "cogs",
+        name: lang === "NEP" ? "बिकेको सामानको लागत (Cost of Goods Sold)" : "Cost of Goods Sold",
+        group: lang === "NEP" ? "प्रत्यक्ष खर्च" : "Direct Expenses",
+        debit: cogs,
+        credit: 0
+      });
+    }
+
+    // Operating & Voucher Expenses
+    if (totalExpenses > 0) {
+      rows.push({
+        id: "operating_expenses",
+        name: lang === "NEP" ? "सञ्चालन तथा अन्य खर्चहरू (Operating Expenses)" : "Operating & Admin Expenses",
+        group: lang === "NEP" ? "अप्रत्यक्ष खर्च" : "Indirect Expenses",
+        debit: totalExpenses,
+        credit: 0
+      });
+    }
+
+    // Drawings
+    if (totalDrawings > 0) {
+      rows.push({
+        id: "drawings",
+        name: lang === "NEP" ? "साहुको व्यक्तिगत खर्च (Owner's Drawings)" : "Owner's Drawings",
+        group: lang === "NEP" ? "पुँजी (कट्टी)" : "Equity (Debit)",
+        debit: totalDrawings,
+        credit: 0
+      });
+    }
+
+    // Creditors / Payables
+    if (payable > 0) {
+      rows.push({
+        id: "sundry_creditors",
+        name: lang === "NEP" ? "सप्लायरलाई तिर्न बाँकी (Sundry Creditors)" : "Sundry Creditors (Payables)",
+        group: lang === "NEP" ? "चालू दायित्व" : "Current Liabilities",
+        debit: 0,
+        credit: payable
+      });
+    }
+
+    // Loans
+    loanRows.forEach(l => rows.push({
+      ...l,
+      group: lang === "NEP" ? "ऋण तथा दायित्व" : "Loans & Liabilities"
+    }));
+
+    // Current Liabilities
+    currLiabRows.forEach(c => rows.push({
+      ...c,
+      group: lang === "NEP" ? "चालू दायित्व" : "Current Liabilities"
+    }));
+
+    // Capital
+    if (totalCapital > 0) {
+      rows.push({
+        id: "capital",
+        name: lang === "NEP" ? "मालिकको पुँजी (Owner's Capital)" : "Owner's Capital",
+        group: lang === "NEP" ? "पुँजी खाता" : "Capital Account",
+        debit: 0,
+        credit: totalCapital
+      });
+    }
+
+    // Sales Revenue
+    if (revenue > 0) {
+      rows.push({
+        id: "sales_revenue",
+        name: lang === "NEP" ? "बिक्री आम्दानी (Sales Revenue)" : "Sales Revenue",
+        group: lang === "NEP" ? "प्रत्यक्ष आम्दानी" : "Direct Incomes",
+        debit: 0,
+        credit: revenue
+      });
+    }
+
+    const totalDebits = Math.round(rows.reduce((s, r) => s + r.debit, 0) * 100) / 100;
+    const totalCredits = Math.round(rows.reduce((s, r) => s + r.credit, 0) * 100) / 100;
+    const difference = Math.round(Math.abs(totalDebits - totalCredits) * 100) / 100;
+
+    return {
+      rows,
+      totalDebits,
+      totalCredits,
+      difference,
+      isBalanced: difference < 0.05
+    };
+  }, [cashDocs, productDocs, ledgerDocs, salesDocs, accounts, vouchers, stockAdjDocs, lang]);
+
+  const handlePrintTrialBalance = () => {
+    if (!shopInfo) return;
+    const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
+    const reportDateBS = formatNepaliDate(new Date());
+    const reportDateAD = new Date().toLocaleDateString("en-GB");
+
+    const rowsHtml = trialBalanceData.rows.map((r, i) => `
+      <tr style="${i % 2 === 1 ? 'background-color: #f9fafb;' : ''}">
+        <td style="padding: 7px 10px; border: 1px solid #cbd5e1; text-align: center;">${i + 1}</td>
+        <td style="padding: 7px 10px; border: 1px solid #cbd5e1; font-weight: 500;">${escapeHtml(r.name)}</td>
+        <td style="padding: 7px 10px; border: 1px solid #cbd5e1; color: #4b5563;">${escapeHtml(r.group)}</td>
+        <td style="padding: 7px 10px; border: 1px solid #cbd5e1; text-align: right; font-weight: 600;">
+          ${r.debit > 0 ? fmt(r.debit) : '-'}
+        </td>
+        <td style="padding: 7px 10px; border: 1px solid #cbd5e1; text-align: right; font-weight: 600;">
+          ${r.credit > 0 ? fmt(r.credit) : '-'}
+        </td>
+      </tr>
+    `).join("");
+
+    const body = `
+      <div style="font-family: 'Inter', -apple-system, sans-serif; color: #111827; padding: 10px;">
+        <div style="text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px;">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; color: #0f172a;">
+            ${escapeHtml(shopInfo.shop_name || shopInfo.name || "KhataPlus Shop")}
+          </h1>
+          <div style="font-size: 11.5px; color: #475569; margin-top: 3px;">
+            ${escapeHtml(shopInfo.shop_address || shopInfo.address || "")} ${shopInfo.shop_phone ? `| Ph: ${escapeHtml(shopInfo.shop_phone)}` : ""}
+            ${shopInfo.pan_number || shopInfo.pan ? `| PAN/VAT: <strong>${escapeHtml(shopInfo.pan_number || shopInfo.pan)}</strong>` : ""}
+          </div>
+          <div style="margin-top: 8px; display: inline-block; padding: 3px 14px; background-color: #0f172a; color: #ffffff; border-radius: 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">
+            TRIAL BALANCE (सन्तुलन परीक्षण)
+          </div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
+            विवरण मिति (As of): ${reportDateBS} BS (${reportDateAD} AD)
+          </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; margin-bottom: 16px;">
+          <thead>
+            <tr style="background-color: #f1f5f9; color: #1e293b;">
+              <th style="padding: 7px 10px; border: 1px solid #94a3b8; width: 40px; text-align: center;">क्र.सं.</th>
+              <th style="padding: 7px 10px; border: 1px solid #94a3b8; text-align: left;">खाताको नाम (Particulars)</th>
+              <th style="padding: 7px 10px; border: 1px solid #94a3b8; text-align: left; width: 160px;">समूह (Group)</th>
+              <th style="padding: 7px 10px; border: 1px solid #94a3b8; text-align: right; width: 130px;">डेबिट (Dr. Rs.)</th>
+              <th style="padding: 7px 10px; border: 1px solid #94a3b8; text-align: right; width: 130px;">क्रेडिट (Cr. Rs.)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr style="background-color: #f8fafc; font-weight: 800; border-top: 2px solid #0f172a; border-bottom: 4px double #0f172a;">
+              <td colspan="3" style="padding: 9px 10px; text-align: right; border: 1px solid #94a3b8; font-size: 12.5px;">
+                कुल जोड (TOTAL):
+              </td>
+              <td style="padding: 9px 10px; text-align: right; border: 1px solid #94a3b8; font-size: 12.5px; color: #047857;">
+                Rs. ${trialBalanceData.totalDebits.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+              <td style="padding: 9px 10px; text-align: right; border: 1px solid #94a3b8; font-size: 12.5px; color: #1d4ed8;">
+                Rs. ${trialBalanceData.totalCredits.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-bottom: 30px; padding: 8px 12px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; font-size: 11px; color: #166534; font-weight: 600; display: flex; justify-content: space-between;">
+          <span>✓ सन्तुलन स्थिति: ${trialBalanceData.isBalanced ? "पूर्ण सन्तुलित (Difference: Rs. 0.00)" : `फरक: Rs. ${trialBalanceData.difference}`}</span>
+          <span>प्रमाणीकरण मिति: ${reportDateBS} BS</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 45px; font-size: 11px; color: #374151;">
+          <div style="text-align: center; width: 180px;">
+            <div style="border-bottom: 1px dashed #6b7280; height: 35px; margin-bottom: 6px;"></div>
+            <strong>तयार गर्ने (Prepared By)</strong><br />
+            ${escapeHtml(preparedByName || "Accountant")}
+          </div>
+          <div style="text-align: center; width: 180px;">
+            <div style="border-bottom: 1px dashed #6b7280; height: 35px; margin-bottom: 6px;"></div>
+            <strong>जाँच गर्ने (Checked By)</strong><br />
+            Internal Auditor
+          </div>
+          <div style="text-align: center; width: 180px;">
+            <div style="border-bottom: 1px dashed #6b7280; height: 35px; margin-bottom: 6px;"></div>
+            <strong>लेखापरीक्षक (Auditor / CA)</strong><br />
+            Seal & Signature
+          </div>
+        </div>
+      </div>
+    `;
+
+    printHTML(`Trial_Balance_${reportDateBS.replace(/[\s\/]+/g, '_')}`, body, { paperSize: "a4" });
+  };
+
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
       <PageHeader
@@ -302,18 +741,22 @@ export default function Accounting() {
       />
 
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-4">
-        <TabsList className="grid grid-cols-3 w-full sm:w-[450px]">
+        <TabsList className="grid grid-cols-4 w-full sm:w-[620px]">
           <TabsTrigger value="vouchers" className="gap-2 text-xs font-semibold">
             <CreditCard className="h-3.5 w-3.5" />
             {lang === "NEP" ? "भाउचर इन्ट्री" : "Voucher Entry"}
           </TabsTrigger>
           <TabsTrigger value="daybook" className="gap-2 text-xs font-semibold">
             <BookOpenCheck className="h-3.5 w-3.5" />
-            {lang === "NEP" ? "भाउचर सूची (Daybook)" : "Day Book"}
+            {lang === "NEP" ? "भाउचर सूची" : "Day Book"}
+          </TabsTrigger>
+          <TabsTrigger value="trial" className="gap-2 text-xs font-semibold">
+            <Scale className="h-3.5 w-3.5" />
+            {lang === "NEP" ? "सन्तुलन परीक्षण" : "Trial Balance"}
           </TabsTrigger>
           <TabsTrigger value="chart" className="gap-2 text-xs font-semibold">
             <FolderTree className="h-3.5 w-3.5" />
-            {lang === "NEP" ? "लेखा समूह (Accounts)" : "Chart of Accounts"}
+            {lang === "NEP" ? "लेखा समूह" : "Chart of Accounts"}
           </TabsTrigger>
         </TabsList>
 
@@ -549,7 +992,128 @@ export default function Accounting() {
           </div>
         </TabsContent>
 
-        {/* TAB 3: CHART OF ACCOUNTS */}
+        {/* TAB 3: TRIAL BALANCE */}
+        <TabsContent value="trial" className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-foreground">
+                  {lang === "NEP" ? "सन्तुलन परीक्षण (Trial Balance)" : "Trial Balance"}
+                </h3>
+                {trialBalanceData.isBalanced ? (
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    {lang === "NEP" ? "सन्तुलित (Difference: ०.००)" : "Balanced (0.00 Diff)"}
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" className="text-[10px] font-bold">
+                    {lang === "NEP" ? `फरक: Rs. ${trialBalanceData.difference}` : `Diff: Rs. ${trialBalanceData.difference}`}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {lang === "NEP"
+                  ? `विवरण मिति: ${formatNepaliDate(new Date())} BS (${new Date().toLocaleDateString("en-GB")}) · कुल खाताहरू: ${trialBalanceData.rows.length}`
+                  : `As of: ${formatNepaliDate(new Date())} BS (${new Date().toLocaleDateString("en-GB")}) · Total Accounts: ${trialBalanceData.rows.length}`}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handlePrintTrialBalance}
+              >
+                <Printer className="h-4 w-4 text-primary" />
+                {lang === "NEP" ? "अडिट रिपोर्ट प्रिन्ट" : "Print Report"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card className="p-4 bg-gradient-to-br from-emerald-500/5 via-card to-card border-emerald-500/20">
+              <div className="text-xs text-muted-foreground uppercase font-semibold">
+                {lang === "NEP" ? "कुल डेबिट (Total Debits)" : "Total Debits (Dr)"}
+              </div>
+              <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+                {fmt(trialBalanceData.totalDebits)}
+              </div>
+            </Card>
+
+            <Card className="p-4 bg-gradient-to-br from-blue-500/5 via-card to-card border-blue-500/20">
+              <div className="text-xs text-muted-foreground uppercase font-semibold">
+                {lang === "NEP" ? "कुल क्रेडिट (Total Credits)" : "Total Credits (Cr)"}
+              </div>
+              <div className="text-xl font-bold font-mono text-blue-600 dark:text-blue-400 mt-1">
+                {fmt(trialBalanceData.totalCredits)}
+              </div>
+            </Card>
+
+            <Card className={`p-4 bg-gradient-to-br ${trialBalanceData.isBalanced ? "from-emerald-500/10 border-emerald-500/30" : "from-destructive/10 border-destructive/30"} via-card to-card`}>
+              <div className="text-xs text-muted-foreground uppercase font-semibold">
+                {lang === "NEP" ? "सन्तुलन फरक (Difference)" : "Balance Difference"}
+              </div>
+              <div className={`text-xl font-bold font-mono mt-1 ${trialBalanceData.isBalanced ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                {fmt(trialBalanceData.difference)}
+              </div>
+            </Card>
+          </div>
+
+          {/* Trial Balance Table */}
+          <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+            <table className="w-full text-xs">
+              <thead className="bg-muted/70 text-muted-foreground border-b uppercase font-bold text-[11px]">
+                <tr>
+                  <th className="py-3 px-4 text-center w-12">#</th>
+                  <th className="py-3 px-4 text-left">{lang === "NEP" ? "खाताको नाम (Particulars)" : "Particulars"}</th>
+                  <th className="py-3 px-4 text-left w-48">{lang === "NEP" ? "समूह (Group)" : "Group"}</th>
+                  <th className="py-3 px-4 text-right w-36 text-emerald-700 dark:text-emerald-400">{lang === "NEP" ? "डेबिट (Dr Rs.)" : "Debit (Dr Rs.)"}</th>
+                  <th className="py-3 px-4 text-right w-36 text-blue-700 dark:text-blue-400">{lang === "NEP" ? "क्रेडिट (Cr Rs.)" : "Credit (Cr Rs.)"}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {trialBalanceData.rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                      {lang === "NEP" ? "कुनै खाता फेला परेन" : "No accounts recorded"}
+                    </td>
+                  </tr>
+                ) : (
+                  trialBalanceData.rows.map((row, idx) => (
+                    <tr key={row.id || idx} className="hover:bg-muted/30 transition-colors">
+                      <td className="py-2.5 px-4 text-center text-muted-foreground">{idx + 1}</td>
+                      <td className="py-2.5 px-4 font-medium text-foreground">{row.name}</td>
+                      <td className="py-2.5 px-4 text-muted-foreground">{row.group}</td>
+                      <td className="py-2.5 px-4 text-right font-mono font-semibold text-foreground">
+                        {row.debit > 0 ? fmt(row.debit) : <span className="text-muted-foreground/40">-</span>}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono font-semibold text-foreground">
+                        {row.credit > 0 ? fmt(row.credit) : <span className="text-muted-foreground/40">-</span>}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              <tfoot className="border-t-2 border-foreground/30 bg-muted/40 font-bold text-sm">
+                <tr>
+                  <td colSpan={3} className="py-3 px-4 text-right">
+                    {lang === "NEP" ? "कुल जोड (TOTAL):" : "TOTAL:"}
+                  </td>
+                  <td className="py-3 px-4 text-right font-mono text-emerald-600 dark:text-emerald-400 border-b-4 border-double border-foreground/40">
+                    {fmt(trialBalanceData.totalDebits)}
+                  </td>
+                  <td className="py-3 px-4 text-right font-mono text-blue-600 dark:text-blue-400 border-b-4 border-double border-foreground/40">
+                    {fmt(trialBalanceData.totalCredits)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </TabsContent>
+
+        {/* TAB 4: CHART OF ACCOUNTS */}
         <TabsContent value="chart" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Assets Group */}

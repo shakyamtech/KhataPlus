@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,7 +10,7 @@ import { fmt } from "@/lib/format";
 import { format } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Landmark } from "lucide-react";
+import { Printer, Landmark, Scale } from "lucide-react";
 import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
 
 const Row = ({ label, value, bold }: { label: string; value: number; bold?: boolean }) => (
@@ -21,6 +22,7 @@ const Row = ({ label, value, bold }: { label: string; value: number; bold?: bool
 
 const BalanceSheet = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [d, setD] = useState({
     cash: 0,
@@ -418,6 +420,10 @@ const BalanceSheet = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <Button onClick={() => navigate("/accounting?tab=trial")} variant="outline" size="sm" className="gap-2 shrink-0">
+            <Scale className="h-4 w-4 text-emerald-600" />
+            सन्तुलन परीक्षण (Trial Balance)
+          </Button>
           <Button onClick={handlePrintBalanceSheet} variant="outline" size="sm" className="gap-2 shrink-0">
             <Printer className="h-4 w-4 text-primary" />
             प्रिन्ट / PDF
