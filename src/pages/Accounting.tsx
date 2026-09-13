@@ -49,9 +49,10 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Scale,
-  CheckCircle2
+  CheckCircle2,
+  Pencil
 } from "lucide-react";
-import { collection, query, where, getDocs, doc, setDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function Accounting() {
@@ -103,6 +104,12 @@ export default function Accounting() {
   const [newAccGroup, setNewAccGroup] = useState<AccountGroup>("bank_accounts");
   const [newAccOpening, setNewAccOpening] = useState("0");
   const [savingAccount, setSavingAccount] = useState(false);
+
+  // Edit Account Opening Balance Modal
+  const [editAccModalOpen, setEditAccModalOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [editOpeningBal, setEditOpeningBal] = useState("0");
+  const [savingEditAccount, setSavingEditAccount] = useState(false);
 
   const loadData = async () => {
     if (!user) return;
@@ -270,6 +277,32 @@ export default function Accounting() {
       toast.error(err.message || "Failed to create account");
     } finally {
       setSavingAccount(false);
+    }
+  };
+
+  const handleOpenEditAccount = (acc: Account) => {
+    setEditingAccount(acc);
+    setEditOpeningBal(String(acc.opening_balance || 0));
+    setEditAccModalOpen(true);
+  };
+
+  const handleSaveEditAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAccount) return;
+    setSavingEditAccount(true);
+    try {
+      await updateDoc(doc(db, "accounts", editingAccount.id), {
+        opening_balance: Number(editOpeningBal) || 0,
+        updated_at: new Date().toISOString()
+      });
+      toast.success(lang === "NEP" ? "सुरुवाती ब्यालेन्स सुरक्षित भयो!" : "Opening balance updated!");
+      setEditAccModalOpen(false);
+      setEditingAccount(null);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update opening balance");
+    } finally {
+      setSavingEditAccount(false);
     }
   };
 
@@ -1133,17 +1166,30 @@ export default function Accounting() {
                   .map(acc => (
                     <div
                       key={acc.id}
-                      className="p-3 rounded-lg border bg-card/60 flex items-center justify-between text-xs"
+                      className="p-3 rounded-lg border bg-card/60 hover:border-primary/40 transition-colors flex items-center justify-between text-xs group"
                     >
                       <div>
                         <div className="font-semibold text-foreground">{acc.name}</div>
                         <div className="text-[10px] text-muted-foreground">{groupLabel(acc.group)}</div>
                       </div>
-                      <div className="text-right font-mono font-bold">
-                        {acc.is_system && acc.group === "cash" ? (
-                          <span className="text-[11px] text-primary">Live Shop Cash</span>
-                        ) : (
-                          <span>{fmt(acc.opening_balance || 0)}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right font-mono font-bold">
+                          {acc.is_system && acc.group === "cash" ? (
+                            <span className="text-[11px] text-primary">Live Shop Cash</span>
+                          ) : (
+                            <span>{fmt(acc.opening_balance || 0)}</span>
+                          )}
+                        </div>
+                        {!(acc.is_system && acc.group === "cash") && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-60 group-hover:opacity-100 hover:text-primary transition-opacity"
+                            onClick={() => handleOpenEditAccount(acc)}
+                            title={lang === "NEP" ? "सुरुवाती मौज्दात सम्पादन" : "Edit Opening Balance"}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -1168,14 +1214,25 @@ export default function Accounting() {
                   .map(acc => (
                     <div
                       key={acc.id}
-                      className="p-3 rounded-lg border bg-card/60 flex items-center justify-between text-xs"
+                      className="p-3 rounded-lg border bg-card/60 hover:border-primary/40 transition-colors flex items-center justify-between text-xs group"
                     >
                       <div>
                         <div className="font-semibold text-foreground">{acc.name}</div>
                         <div className="text-[10px] text-muted-foreground">{groupLabel(acc.group)}</div>
                       </div>
-                      <div className="text-right font-mono font-bold">
-                        <span>{fmt(acc.opening_balance || 0)}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right font-mono font-bold">
+                          <span>{fmt(acc.opening_balance || 0)}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-60 group-hover:opacity-100 hover:text-primary transition-opacity"
+                          onClick={() => handleOpenEditAccount(acc)}
+                          title={lang === "NEP" ? "सुरुवाती मौज्दात सम्पादन" : "Edit Opening Balance"}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1199,16 +1256,25 @@ export default function Accounting() {
                   .map(acc => (
                     <div
                       key={acc.id}
-                      className="p-3 rounded-lg border bg-card/60 flex items-center justify-between text-xs"
+                      className="p-3 rounded-lg border bg-card/60 hover:border-primary/40 transition-colors flex items-center justify-between text-xs group"
                     >
                       <div>
                         <div className="font-semibold text-foreground">{acc.name}</div>
                         <div className="text-[10px] text-muted-foreground">{groupLabel(acc.group)}</div>
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[10px]">
                           {acc.type.toUpperCase()}
                         </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-60 group-hover:opacity-100 hover:text-primary transition-opacity"
+                          onClick={() => handleOpenEditAccount(acc)}
+                          title={lang === "NEP" ? "सुरुवाती मौज्दात सम्पादन" : "Edit Opening Balance"}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1619,6 +1685,54 @@ export default function Accounting() {
                 className="h-9 text-xs bg-primary font-bold"
               >
                 {savingAccount ? "Saving..." : lang === "NEP" ? "खाता थप्नुहोस्" : "Create Account"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDIT ACCOUNT OPENING BALANCE MODAL */}
+      <Dialog open={editAccModalOpen} onOpenChange={setEditAccModalOpen}>
+        <DialogContent className="max-w-sm w-[95vw] sm:w-full">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold">
+              {lang === "NEP" ? "सुरुवाती मौज्दात सम्पादन" : "Edit Opening Balance"}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {editingAccount?.name} ({editingAccount && groupLabel(editingAccount.group)})
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveEditAccount} className="space-y-3 pt-2">
+            <div>
+              <Label className="text-xs">{lang === "NEP" ? "सुरुवाती मौज्दात (Opening Balance Rs.)" : "Opening Balance (Rs.)"}</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={editOpeningBal}
+                onChange={e => setEditOpeningBal(e.target.value)}
+                className="h-9 text-xs mt-1 font-mono font-bold"
+                required
+                autoFocus
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditAccModalOpen(false)}
+                disabled={savingEditAccount}
+                className="h-9 text-xs"
+              >
+                {lang === "NEP" ? "रद्द" : "Cancel"}
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingEditAccount}
+                className="h-9 text-xs bg-primary font-bold"
+              >
+                {savingEditAccount ? "Saving..." : lang === "NEP" ? "सुरक्षित गर्नुहोस्" : "Save Changes"}
               </Button>
             </DialogFooter>
           </form>
