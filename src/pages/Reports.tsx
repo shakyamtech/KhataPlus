@@ -449,7 +449,8 @@ const Reports = () => {
     if (isVatShop) {
       // Once VAT Registered, business is LEGALLY a Regular Taxpayer (D-03) under Nepal Income Tax Act
       category = "D-03";
-      progressPercent = 100;
+      // Dynamic progress towards 1 Crore milestone (100% at 1 Crore)
+      progressPercent = Math.min(100, Math.round((annualSales / 10000000) * 100));
       categoryTitle = "D-03 (नियमित भ्याट करदाता / Regular VAT)";
       categoryDesc = "भ्याट दर्ता भएकाले D-01/D-02 लागू हुँदैन। मासिक भ्याट दाखिला तथा वर्षको अन्त्यमा P&L खुद नाफामा आयकर लाग्नेछ।";
       filingPeriod = "मासिक भ्याट (प्रत्येक २५ गते) + वार्षिक आयकर (असोज मसान्त)";
@@ -1745,18 +1746,20 @@ const Reports = () => {
                   <div className="text-[11px] font-semibold text-muted-foreground uppercase">वार्षिक कारोबार (12-Month Sales)</div>
                   <div className="font-bold text-base text-foreground mt-1">{fmt(taxCompliance.annualSales)}</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {taxCompliance.category === "D-01" 
-                      ? "D-01 अधिकतम सीमा रु ३०,००,००० सम्म"
-                      : taxCompliance.category === "D-02"
-                        ? "D-02 अधिकतम सीमा रु १,००,००,००० सम्म"
-                        : "१ करोड भन्दा माथि (नियमित करदाता)"}
+                    {taxCompliance.annualSales >= 10000000
+                      ? "१ करोड भन्दा माथि (नियमित अडिट करदाता)"
+                      : taxCompliance.isVatShop
+                        ? `१ करोड कारोबार सीमासम्म (हाल ${taxCompliance.progressPercent}%)`
+                        : taxCompliance.category === "D-01" 
+                          ? "D-01 अधिकतम सीमा रु ३०,००,००० सम्म"
+                          : "D-02 अधिकतम सीमा रु १,००,००,००० सम्म"}
                   </div>
                   <div className="w-full bg-secondary rounded-full h-1.5 mt-2.5 overflow-hidden">
                     <div 
                       className={`h-full rounded-full transition-all duration-500 ${
                         taxCompliance.annualSales >= 5000000 ? "bg-amber-500" : "bg-primary"
                       }`}
-                      style={{ width: `${taxCompliance.progressPercent}%` }}
+                      style={{ width: `${Math.max(taxCompliance.annualSales > 0 ? 1 : 0, taxCompliance.progressPercent)}%` }}
                     />
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-1.5 flex justify-between">
