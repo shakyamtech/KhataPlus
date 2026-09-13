@@ -446,35 +446,71 @@ const BalanceSheet = () => {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card className="p-5 shadow-card border border-border/40">
-          <div className="font-display text-xl mb-2 text-primary">Profit & Loss</div>
-          <Row label="Sales Revenue" value={d.revenue} />
-          <Row label="Cost of Goods Sold" value={-d.cogs} />
-          <Row label="Gross Profit" value={grossProfit} bold />
-          <Row label="Operating Expenses & Depreciation" value={-d.expenses} />
-          <Row label="Net Profit" value={netProfit} bold />
+      <div className="grid md:grid-cols-2 gap-6 items-stretch">
+        {/* Left Column: Assets */}
+        <Card className="p-6 shadow-card border border-border/50 bg-card flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-border/60">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-xs tracking-wider">
+                  ASSETS
+                </span>
+                <div>
+                  <h3 className="font-display text-lg font-bold text-foreground">सम्पत्ति (Assets)</h3>
+                  <p className="text-[11px] text-muted-foreground">Cash, Bank, Stock & Fixed Assets</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1 divide-y divide-border/20">
+              <Row label="नगद मौज्दात (Cash in Hand)" value={d.cash} />
+              {d.bank > 0 && <Row label="बैंक मौज्दात (Bank Balances)" value={d.bank} />}
+              <Row label="मौज्दात स्टक (Stock at cost)" value={d.stock} />
+              <Row label="ग्राहकबाट उठ्न बाँकी (Customer Receivables)" value={d.receivable} />
+              {d.fixedAssets > 0 && <Row label="स्थिर सम्पत्ति (Fixed Assets)" value={d.fixedAssets} />}
+            </div>
+          </div>
+
+          <div className="mt-6 pt-3 border-t-2 border-border/80">
+            <div className="flex justify-between items-center py-2.5 px-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+              <span className="font-display font-bold text-sm text-foreground">कुल सम्पत्ति (Total Assets)</span>
+              <span className="font-mono font-extrabold text-base text-emerald-600 dark:text-emerald-400">{fmt(totalAssets)}</span>
+            </div>
+          </div>
         </Card>
 
-        <Card className="p-5 shadow-card border border-border/40">
-          <div className="font-display text-xl mb-2 text-primary">Balance Sheet</div>
-          <div className="text-xs uppercase text-muted-foreground mt-2">Assets</div>
-          <Row label="Cash in Hand" value={d.cash} />
-          {d.bank > 0 && <Row label="Bank Balances" value={d.bank} />}
-          <Row label="Stock (at cost)" value={d.stock} />
-          <Row label="Customer Receivables" value={d.receivable} />
-          {d.fixedAssets > 0 && <Row label="Fixed Assets (सम्पत्ति)" value={d.fixedAssets} />}
-          <Row label="Total Assets" value={totalAssets} bold />
+        {/* Right Column: Liabilities & Equity */}
+        <Card className="p-6 shadow-card border border-border/50 bg-card flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-border/60">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-xs tracking-wider">
+                  LIABILITIES
+                </span>
+                <div>
+                  <h3 className="font-display text-lg font-bold text-foreground">दायित्व तथा पुँजी (Liabilities & Equity)</h3>
+                  <p className="text-[11px] text-muted-foreground">Payables, Tax Due, Capital & Profits</p>
+                </div>
+              </div>
+            </div>
 
-          <div className="text-xs uppercase text-muted-foreground mt-4">Liabilities & Equity</div>
-          <Row label="Supplier Payables" value={d.payable} />
-          {d.loans > 0 && <Row label="Bank Loans & Liabilities" value={d.loans} />}
-          {d.outstanding > 0 && <Row label="Outstanding Liabilities" value={d.outstanding} />}
-          {d.vatPayable > 0 && <Row label="VAT Payable (तिर्न बाँकी भ्याट)" value={d.vatPayable} />}
-          <Row label="Owner's Capital (सुरुवाती पुँजी)" value={d.capital} />
-          <Row label="Retained Earnings (खुद नाफा)" value={netProfit} />
-          {d.drawings > 0 && <Row label="Less: Drawings (निजी खर्च)" value={-d.drawings} />}
-          <Row label="Total Liabilities & Equity" value={totalLiabilitiesAndEquity} bold />
+            <div className="space-y-1 divide-y divide-border/20">
+              <Row label="सप्लायरलाई तिर्न बाँकी (Supplier Payables)" value={d.payable} />
+              {d.loans > 0 && <Row label="बैंक ऋण दायित्व (Bank Loans & Borrowings)" value={d.loans} />}
+              {d.outstanding > 0 && <Row label="तिर्न बाँकी खर्च (Outstanding Liabilities)" value={d.outstanding} />}
+              {d.vatPayable > 0 && <Row label="सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)" value={d.vatPayable} />}
+              <Row label="साहुको पुँजी (Owner's Capital)" value={d.capital} />
+              <Row label="खुद व्यापारिक नाफा (Retained Earnings)" value={netProfit} />
+              {d.drawings > 0 && <Row label="घटाउनुहोस्: निजी खर्च (Less: Drawings)" value={-d.drawings} />}
+            </div>
+          </div>
+
+          <div className="mt-6 pt-3 border-t-2 border-border/80">
+            <div className="flex justify-between items-center py-2.5 px-3.5 rounded-xl bg-blue-500/10 border border-blue-500/30">
+              <span className="font-display font-bold text-sm text-foreground">कुल दायित्व तथा पुँजी (Total)</span>
+              <span className="font-mono font-extrabold text-base text-blue-600 dark:text-blue-400">{fmt(totalLiabilitiesAndEquity)}</span>
+            </div>
+          </div>
         </Card>
       </div>
 
