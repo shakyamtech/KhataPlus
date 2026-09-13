@@ -585,7 +585,7 @@ export const AppShell = () => {
         }
     };
 
-    const renderUserProfileDropdown = (triggerSizeClass: string = "h-9 w-9") => {
+    const renderUserProfileDropdown = (triggerSizeClass: string = "h-9 w-9", isMobile: boolean = false) => {
         const isPro = subscription?.isPro ?? false;
         const isExpired = subscription?.isExpired ?? false;
 
@@ -671,45 +671,47 @@ export const AppShell = () => {
                     </DropdownMenuPortal>
                 </DropdownMenuSub>
 
-                {/* Language Switcher Row */}
-                <div className="flex items-center justify-between px-2 py-1.5 text-xs font-medium text-foreground">
-                    <div className="flex items-center gap-2">
-                        <Languages className="h-4 w-4 text-primary" />
-                        <span>{lang === "NEP" ? "भाषा (Language)" : "Language"}</span>
+                {/* Language Switcher Row (Mobile only) */}
+                {isMobile && (
+                    <div className="flex items-center justify-between px-2 py-1.5 text-xs font-medium text-foreground">
+                        <div className="flex items-center gap-2">
+                            <Languages className="h-4 w-4 text-primary" />
+                            <span>{lang === "NEP" ? "भाषा (Language)" : "Language"}</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/50">
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setLang("ENG");
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-200 ${
+                                    lang === "ENG"
+                                        ? "bg-primary text-primary-foreground shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                }`}
+                            >
+                                ENG
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setLang("NEP");
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-200 ${
+                                    lang === "NEP"
+                                        ? "bg-primary text-primary-foreground shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                }`}
+                            >
+                                नेपाली
+                            </button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/50">
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setLang("ENG");
-                            }}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-200 ${
-                                lang === "ENG"
-                                    ? "bg-primary text-primary-foreground shadow-xs"
-                                    : "text-muted-foreground hover:text-foreground"
-                            }`}
-                        >
-                            ENG
-                        </button>
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setLang("NEP");
-                            }}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-200 ${
-                                lang === "NEP"
-                                    ? "bg-primary text-primary-foreground shadow-xs"
-                                    : "text-muted-foreground hover:text-foreground"
-                            }`}
-                        >
-                            नेपाली
-                        </button>
-                    </div>
-                </div>
+                )}
 
                 <DropdownMenuItem onClick={() => setAboutOpen(true)} className="cursor-pointer font-medium gap-2">
                     <Info className="h-4 w-4 text-primary" /> {lang === "NEP" ? "हाम्रो बारेमा" : "About App"}
@@ -805,7 +807,7 @@ export const AppShell = () => {
 
             {/* Desktop top-right profile corner */}
             <div className="hidden md:flex fixed top-4 right-6 z-50 items-center gap-2">
-                {renderUserProfileDropdown("h-10 w-10")}
+                {renderUserProfileDropdown("h-10 w-10", false)}
             </div>
 
             {/* Mobile top bar */}
@@ -869,7 +871,7 @@ export const AppShell = () => {
                         <QrCode className="h-4 w-4" />
                     </Button>
 
-                    {renderUserProfileDropdown("h-9 w-9")}
+                    {renderUserProfileDropdown("h-9 w-9", true)}
                 </div>
             </div>
 
