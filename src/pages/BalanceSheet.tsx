@@ -9,7 +9,8 @@ import { fmt } from "@/lib/format";
 import { format } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer } from "lucide-react";
+import { Printer, Landmark } from "lucide-react";
+import { getFiscalYearInfo } from "@/lib/fiscalYear";
 
 const Row = ({ label, value, bold }: { label: string; value: number; bold?: boolean }) => (
   <div className={`flex justify-between py-2 ${bold ? "font-display text-base border-t pt-3 mt-2" : "text-sm"}`}>
@@ -98,6 +99,7 @@ const BalanceSheet = () => {
     const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
     const currentDate = format(new Date(), "dd/MM/yyyy, hh:mm a");
     const asOfDateLabel = format(new Date(), "dd MMMM yyyy");
+    const currentFY = getFiscalYearInfo(new Date());
 
     const body = `
       <div class="a4-container" style="background:#ffffff; color:#000000; padding:24px 28px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
@@ -112,8 +114,11 @@ const BalanceSheet = () => {
           <div style="display:inline-block; margin-top:8px; padding:3px 14px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
             अन्तिम हिसाब तथा वासलात (Final Account & Balance Sheet)
           </div>
-          <div style="font-size:11.5px; color:#4b5563; margin-top:4px;">
-            स्थिति (As on Date): <strong>${asOfDateLabel}</strong> · प्रिन्ट मिति: <strong>${currentDate}</strong>
+          <div style="font-size:11.5px; color:#111; margin-top:5px; font-weight:600;">
+            आर्थिक वर्ष (Fiscal Year): <strong>${currentFY.fullLabel}</strong>
+          </div>
+          <div style="font-size:11px; color:#4b5563; margin-top:2px;">
+            स्थिति (As on Date): <strong>${asOfDateLabel}</strong> · तयार मिति (Report Date): <strong>${currentDate}</strong>
           </div>
         </div>
 
@@ -260,14 +265,14 @@ const BalanceSheet = () => {
       {/* Action & Details Header Card matching VAT / P&L style */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-lg font-bold text-foreground">अन्तिम हिसाब तथा वासलात (Financial Position)</h2>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
-              As on Date
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+              <Landmark className="h-3 w-3" /> {getFiscalYearInfo(new Date()).labelNp} ({getFiscalYearInfo(new Date()).labelEn})
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            पसल: <strong className="text-foreground">{shopInfo?.name || "Shop"}</strong> {shopInfo?.pan ? <>· PAN: <strong className="text-foreground">{shopInfo.pan}</strong></> : null} · विवरण मिति: <strong className="text-foreground">{format(new Date(), "dd MMMM yyyy")}</strong>
+            पसल: <strong className="text-foreground">{shopInfo?.name || "Shop"}</strong> {shopInfo?.pan ? <>· PAN: <strong className="text-foreground">{shopInfo.pan}</strong></> : null} · आर्थिक वर्ष: <strong className="text-foreground">{getFiscalYearInfo(new Date()).labelNp}</strong> · विवरण मिति: <strong className="text-foreground">{format(new Date(), "dd MMMM yyyy")}</strong>
           </p>
         </div>
 

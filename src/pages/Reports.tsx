@@ -11,10 +11,11 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { format, startOfDay, subDays } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar } from "lucide-react";
+import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
+import { getFiscalYearInfo, getFiscalYearForMonth } from "@/lib/fiscalYear";
 
 const Reports = () => {
   const { user } = useAuth();
@@ -320,6 +321,11 @@ const Reports = () => {
   const regMonthLabel = regPeriodMode === "all"
     ? "सबै समय (All Records)"
     : `${MONTHS_EN[regMonth.month]} ${regMonth.year}`;
+
+  const currentFY = useMemo(() => getFiscalYearInfo(new Date()), []);
+  const plFiscalYear = useMemo(() => getFiscalYearForMonth(plMonth.year, plMonth.month), [plMonth]);
+  const vatFiscalYear = useMemo(() => getFiscalYearForMonth(vatMonth.year, vatMonth.month), [vatMonth]);
+  const regFiscalYear = useMemo(() => getFiscalYearForMonth(regMonth.year, regMonth.month), [regMonth]);
 
   const regMonthlyTotals = useMemo(() => {
     const sMap = new Map(suppliers.map(s => [s.id, s]));
@@ -961,7 +967,10 @@ const Reports = () => {
           <div style="display:inline-block; margin-top:8px; padding:3px 14px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
             खरिद तथा बिक्री खाता (Monthly Purchase & Sales Register Book)
           </div>
-          <div style="font-size:11px; color:#333; margin-top:4px;">
+          <div style="font-size:11.5px; color:#111; margin-top:5px; font-weight:600;">
+            आर्थिक वर्ष (Fiscal Year): <strong>${regPeriodMode === "month" ? regFiscalYear.fullLabel : currentFY.fullLabel}</strong>
+          </div>
+          <div style="font-size:11px; color:#333; margin-top:2px;">
             अवधि (Period): <strong>${regMonthLabel}</strong> · तयार मिति (Report Date): <strong>${dateFormatted}</strong>
           </div>
         </div>
@@ -1146,7 +1155,10 @@ const Reports = () => {
           <div style="display:inline-block; margin-top:10px; padding:4px 18px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
             नाफा-नोक्सान हिसाब विवरण (Profit & Loss Statement)
           </div>
-          <div style="font-size:11px; color:#333; margin-top:6px;">
+          <div style="font-size:11.5px; color:#111; margin-top:5px; font-weight:600;">
+            आर्थिक वर्ष (Fiscal Year): <strong>${plPeriodMode === "month" ? plFiscalYear.fullLabel : currentFY.fullLabel}</strong>
+          </div>
+          <div style="font-size:11px; color:#333; margin-top:2px;">
             अवधि (Period): <strong>${escapeHtml(periodLabel)}</strong> · तयार मिति (Report Date): <strong>${dateFormatted}</strong>
           </div>
         </div>
@@ -1311,7 +1323,10 @@ const Reports = () => {
           <div style="display:inline-block; margin-top:8px; padding:3px 14px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
             मूल्य अभिवृद्धि कर मासिक विवरण तथा खाताहरू (Monthly VAT Return & Registers)
           </div>
-          <div style="font-size:11px; color:#333; margin-top:4px;">
+          <div style="font-size:11.5px; color:#111; margin-top:5px; font-weight:600;">
+            आर्थिक वर्ष (Fiscal Year): <strong>${vatFiscalYear.fullLabel}</strong>
+          </div>
+          <div style="font-size:11px; color:#333; margin-top:2px;">
             कर अवधि (Tax Period): <strong>${vatMonthLabel}</strong> · तयार मिति (Report Date): <strong>${dateFormatted}</strong>
           </div>
         </div>
@@ -1477,6 +1492,14 @@ const Reports = () => {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
+          <div className="flex items-center justify-between text-xs text-muted-foreground px-1 flex-wrap gap-2">
+            <span className="flex items-center gap-1.5 font-medium">
+              <Landmark className="h-3.5 w-3.5 text-primary" />
+              चालु आर्थिक वर्ष: <strong className="text-foreground">{currentFY.labelNp} ({currentFY.labelEn})</strong>
+            </span>
+            <span>विगत {range} दिनको कारोबार विवरण</span>
+          </div>
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Card className="p-4 shadow-card border-0"><div className="text-xs uppercase text-muted-foreground">Revenue</div><div className="font-display text-xl mt-1">{fmt(totals.revenue)}</div></Card>
             <Card className="p-4 shadow-card border-0"><div className="text-xs uppercase text-muted-foreground">Cost of Goods</div><div className="font-display text-xl mt-1">{fmt(totals.cogs)}</div></Card>
@@ -1506,11 +1529,14 @@ const Reports = () => {
         <TabsContent value="pl" className="space-y-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg font-bold text-foreground">Profit & Loss Statement (नाफा-नोक्सान विवरण)</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <Landmark className="h-3 w-3" /> {plFiscalYear.labelNp} ({plFiscalYear.labelEn})
+                </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                अवधि: <strong className="text-foreground">{plPeriodMode === "month" ? plMonthLabel : `अघिल्लो ${range} दिन (Last ${range} Days)`}</strong>
+                आर्थिक वर्ष: <strong className="text-foreground">{plFiscalYear.labelNp}</strong> · अवधि: <strong className="text-foreground">{plPeriodMode === "month" ? plMonthLabel : `अघिल्लो ${range} दिन (Last ${range} Days)`}</strong>
               </p>
             </div>
 
@@ -1704,12 +1730,15 @@ const Reports = () => {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base sm:text-lg font-bold text-foreground">खरिद तथा बिक्री खाता (Purchase & Sales Registers)</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <Landmark className="h-3 w-3" /> {regFiscalYear.labelNp} ({regFiscalYear.labelEn})
+                </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
                   {isVatShop ? "VAT Registered" : "PAN Registered"}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                सबै ग्राहक तथा सप्लायरहरूका मासिक बिलहरूको अभिलेख (All Sales & Inward Purchases)
+                आर्थिक वर्ष: <strong className="text-foreground">{regFiscalYear.labelNp}</strong> · सबै ग्राहक तथा सप्लायरहरूका मासिक बिलहरूको अभिलेख
               </p>
             </div>
 
@@ -2295,14 +2324,17 @@ const Reports = () => {
             {/* Header, Month Navigation & Print Actions */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-lg font-bold text-foreground">मूल्य अभिवृद्धि कर मासिक विवरण (Monthly VAT Return)</h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                    <Landmark className="h-3 w-3" /> {vatFiscalYear.labelNp} ({vatFiscalYear.labelEn})
+                  </span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
                     Nepal IRD Standards
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  पसलको नाम: <strong className="text-foreground">{shopInfo?.name}</strong> · VAT/PAN: <strong className="text-foreground">{shopInfo?.pan || "N/A"}</strong>
+                  पसलको नाम: <strong className="text-foreground">{shopInfo?.name}</strong> · VAT/PAN: <strong className="text-foreground">{shopInfo?.pan || "N/A"}</strong> · आर्थिक वर्ष: <strong className="text-foreground">{vatFiscalYear.labelNp}</strong> · कर अवधि: <strong className="text-foreground">{vatMonthLabel}</strong>
                 </p>
               </div>
 
