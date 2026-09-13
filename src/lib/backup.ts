@@ -242,12 +242,13 @@ export async function exportUserDataToExcel(
   const productRows = products.map(p => ({
     "Barcode": p.barcode || "",
     "Product Name": p.name || "",
-    "Category": p.category || "",
-    "Cost Price (Rs.)": p.cost_price ?? p.purchase_price ?? 0,
-    "Selling Price (Rs.)": p.selling_price ?? p.price ?? 0,
-    "Stock Qty": p.stock_qty ?? 0,
+    "HS Code": p.hs_code || "",
+    "Cost Price (Rs.)": Number(p.cost_price ?? p.purchase_price ?? 0),
+    "Selling Price (Rs.)": Number(p.sell_price ?? p.selling_price ?? p.price ?? 0),
+    "Stock Qty": Number(p.stock_qty ?? 0),
     "Unit": p.unit || "pcs",
-    "Min Stock Alert": p.min_stock_alert ?? 0
+    "Low Stock Alert": Number(p.low_stock_threshold ?? p.min_stock_alert ?? 0),
+    "Taxable (VAT)": p.is_taxable !== false ? "Yes (13%)" : "No (0%)"
   }));
   const wsProducts = XLSX.utils.json_to_sheet(
     productRows.length > 0 ? productRows : [{ "Status": "No products recorded" }]
@@ -259,7 +260,7 @@ export async function exportUserDataToExcel(
   const batchRows = batches.map(b => {
     const parentProd = prodMap.get(b.product_id);
     const prodName = parentProd?.name || b.product_name || b.product_id || "";
-    const sellingPrice = Number(parentProd?.selling_price ?? parentProd?.price ?? b.selling_price ?? 0);
+    const sellingPrice = Number(parentProd?.sell_price ?? parentProd?.selling_price ?? parentProd?.price ?? b.sell_price ?? b.selling_price ?? 0);
     const costPrice = Number(b.cost_price ?? parentProd?.cost_price ?? 0);
     const initialQty = Number(b.original_qty ?? b.initial_qty ?? 0);
     const currentStock = Number(b.remaining_qty ?? b.current_qty ?? 0);
