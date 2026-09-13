@@ -2455,7 +2455,7 @@ const Reports = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-card p-4 rounded-xl shadow-card border border-border/40">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base sm:text-lg font-bold text-foreground">मूल्य अभिवृद्धि कर मासिक विवरण (Monthly VAT Return)</h2>
+                  <h2 className="text-base sm:text-lg font-bold text-foreground">मासिक भ्याट विवरण (Monthly VAT Return)</h2>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -2493,13 +2493,15 @@ const Reports = () => {
                       })}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
+                </div>
+                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
+                  <span>
+                    पसलको नाम: <strong className="text-foreground">{shopInfo?.name}</strong> · VAT/PAN: <strong className="text-foreground">{shopInfo?.pan || "N/A"}</strong>
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-primary/15 text-primary border border-primary/30">
                     Nepal IRD Standards
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  पसलको नाम: <strong className="text-foreground">{shopInfo?.name}</strong> · VAT/PAN: <strong className="text-foreground">{shopInfo?.pan || "N/A"}</strong>
-                </p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
