@@ -1636,9 +1636,44 @@ const Reports = () => {
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="font-semibold text-xs px-3 min-w-[110px] text-center select-none text-foreground">
-                  {plMonthLabel}
-                </span>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="font-semibold text-xs px-2.5 py-1 min-w-[110px] text-center select-none text-foreground hover:bg-background/80 rounded transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      title="महिना छान्नुहोस् (Select Month)"
+                    >
+                      <span>{plMonthLabel}</span>
+                      <ChevronDown className="h-3 w-3 opacity-60" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="center" className="w-48 max-h-72 overflow-y-auto">
+                    <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                      <span>महिना छान्नुहोस्</span>
+                      <span className="font-bold text-foreground">{plMonth.year}</span>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {MONTHS_EN.map((mName, mIdx) => {
+                      const isFuture = plMonth.year === new Date().getFullYear() && mIdx > new Date().getMonth();
+                      const isSelected = mIdx === plMonth.month;
+                      return (
+                        <DropdownMenuItem
+                          key={mIdx}
+                          disabled={isFuture}
+                          onClick={() => setPlMonth({ year: plMonth.year, month: mIdx })}
+                          className={`cursor-pointer text-xs flex items-center justify-between py-1.5 ${
+                            isSelected ? "bg-primary/10 text-primary font-bold" : ""
+                          } ${isFuture ? "opacity-35 cursor-not-allowed" : ""}`}
+                        >
+                          <span>{mName}</span>
+                          {isSelected && <span className="text-[10px] font-bold text-primary">✓</span>}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <Button
                   type="button"
                   variant="ghost"
@@ -1839,9 +1874,48 @@ const Reports = () => {
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="font-semibold text-xs px-2.5 min-w-[110px] text-center select-none text-foreground">
-                  {MONTHS_EN[regMonth.month]} {regMonth.year}
-                </span>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="font-semibold text-xs px-2.5 py-1 min-w-[110px] text-center select-none text-foreground hover:bg-background/80 rounded transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      title="महिना छान्नुहोस् (Select Month)"
+                    >
+                      <span>{MONTHS_EN[regMonth.month]} {regMonth.year}</span>
+                      <ChevronDown className="h-3 w-3 opacity-60" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="center" className="w-48 max-h-72 overflow-y-auto">
+                    <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                      <span>महिना छान्नुहोस्</span>
+                      <span className="font-bold text-foreground">{regMonth.year}</span>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {MONTHS_EN.map((mName, mIdx) => {
+                      const isFuture = regMonth.year === new Date().getFullYear() && mIdx > new Date().getMonth();
+                      const isSelected = mIdx === regMonth.month;
+                      return (
+                        <DropdownMenuItem
+                          key={mIdx}
+                          disabled={isFuture}
+                          onClick={() => {
+                            setRegPagePurchases(1);
+                            setRegPageSales(1);
+                            setRegMonth({ year: regMonth.year, month: mIdx });
+                          }}
+                          className={`cursor-pointer text-xs flex items-center justify-between py-1.5 ${
+                            isSelected ? "bg-primary/10 text-primary font-bold" : ""
+                          } ${isFuture ? "opacity-35 cursor-not-allowed" : ""}`}
+                        >
+                          <span>{mName}</span>
+                          {isSelected && <span className="text-[10px] font-bold text-primary">✓</span>}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <Button
                   type="button"
                   variant="ghost"
@@ -2441,9 +2515,44 @@ const Reports = () => {
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <span className="font-semibold text-xs px-2.5 min-w-[110px] text-center select-none text-foreground">
-                    {vatMonthLabel}
-                  </span>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="font-semibold text-xs px-2.5 py-1 min-w-[110px] text-center select-none text-foreground hover:bg-background/80 rounded transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        title="महिना छान्नुहोस् (Select Month)"
+                      >
+                        <span>{vatMonthLabel}</span>
+                        <ChevronDown className="h-3 w-3 opacity-60" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="center" className="w-48 max-h-72 overflow-y-auto">
+                      <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                        <span>महिना छान्नुहोस्</span>
+                        <span className="font-bold text-foreground">{vatMonth.year}</span>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {MONTHS_EN.map((mName, mIdx) => {
+                        const isFuture = vatMonth.year === new Date().getFullYear() && mIdx > new Date().getMonth();
+                        const isSelected = mIdx === vatMonth.month;
+                        return (
+                          <DropdownMenuItem
+                            key={mIdx}
+                            disabled={isFuture}
+                            onClick={() => setVatMonth({ year: vatMonth.year, month: mIdx })}
+                            className={`cursor-pointer text-xs flex items-center justify-between py-1.5 ${
+                              isSelected ? "bg-primary/10 text-primary font-bold" : ""
+                            } ${isFuture ? "opacity-35 cursor-not-allowed" : ""}`}
+                          >
+                            <span>{mName}</span>
+                            {isSelected && <span className="text-[10px] font-bold text-primary">✓</span>}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
                   <Button
                     type="button"
                     variant="ghost"
