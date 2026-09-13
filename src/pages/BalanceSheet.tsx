@@ -33,6 +33,7 @@ const BalanceSheet = () => {
     payable: 0,
     loans: 0,
     outstanding: 0,
+    vatPayable: 0,
     capital: 0,
     drawings: 0,
     revenue: 0,
@@ -159,7 +160,15 @@ const BalanceSheet = () => {
         const receivable = Object.entries(partyBalances).filter(([k]) => k.startsWith("customer_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
         const payable = Object.entries(partyBalances).filter(([k]) => k.startsWith("supplier_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
 
-        const revenue = sales.reduce((s, r: any) => s + +r.total, 0);
+        const outputVat = sales.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
+        let vatPaid = 0;
+        vouchers.forEach((v: any) => {
+          if ((v.debit_account_name || "").toLowerCase().includes("vat")) {
+            vatPaid += Number(v.amount || 0);
+          }
+        });
+        const vatPayable = Math.max(0, outputVat - vatPaid);
+        const revenue = sales.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
         const cogs = sales.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
         const capitalCats = ["opening", "capital", "investment", "owner_investment"];
@@ -197,6 +206,7 @@ const BalanceSheet = () => {
           payable,
           loans: loansTotal,
           outstanding: outstandingTotal,
+          vatPayable,
           capital: totalCapital,
           drawings: totalDrawings,
           revenue,
@@ -213,7 +223,7 @@ const BalanceSheet = () => {
   const grossProfit = d.revenue - d.cogs;
   const netProfit = grossProfit - d.expenses;
   const totalEquity = d.capital + netProfit - d.drawings;
-  const totalLiabilitiesAndEquity = d.payable + d.loans + d.outstanding + totalEquity;
+  const totalLiabilitiesAndEquity = d.payable + d.loans + d.outstanding + d.vatPayable + totalEquity;
 
   const handlePrintBalanceSheet = () => {
     if (!shopInfo) return;
@@ -349,6 +359,11 @@ const BalanceSheet = () => {
                     <td style="padding:6px 8px; border:1px solid #111;">तिर्न बाँकी खर्च (Outstanding Liabilities)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.outstanding.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>` : ''}
+                  ${d.vatPayable > 0 ? `
+                  <tr>
+                    <td style="padding:6px 8px; border:1px solid #111;">सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111; color:#c00;">Rs. ${d.vatPayable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>` : ''}
                   <tr>
                     <td style="padding:6px 8px; border:1px solid #111;">साहुको पुँजी (Owner's Capital)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.capital.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -455,6 +470,7 @@ const BalanceSheet = () => {
           <Row label="Supplier Payables" value={d.payable} />
           {d.loans > 0 && <Row label="Bank Loans & Liabilities" value={d.loans} />}
           {d.outstanding > 0 && <Row label="Outstanding Liabilities" value={d.outstanding} />}
+          {d.vatPayable > 0 && <Row label="VAT Payable (तिर्न बाँकी भ्याट)" value={d.vatPayable} />}
           <Row label="Owner's Capital (सुरुवाती पुँजी)" value={d.capital} />
           <Row label="Retained Earnings (खुद नाफा)" value={netProfit} />
           {d.drawings > 0 && <Row label="Less: Drawings (निजी खर्च)" value={-d.drawings} />}

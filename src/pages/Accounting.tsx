@@ -365,7 +365,15 @@ export default function Accounting() {
     const payable = Object.entries(partyBalances).filter(([k]) => k.startsWith("supplier_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
 
     // 4. Sales Revenue & Cost of Goods Sold
-    const revenue = salesDocs.reduce((s, r: any) => s + +r.total, 0);
+    const outputVat = salesDocs.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
+    let vatPaid = 0;
+    vouchers.forEach(v => {
+      if ((v.debit_account_name || "").toLowerCase().includes("vat")) {
+        vatPaid += Number(v.amount || 0);
+      }
+    });
+    const vatPayable = Math.max(0, outputVat - vatPaid);
+    const revenue = salesDocs.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
     const cogs = salesDocs.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
     // 5. Bank Accounts
@@ -621,6 +629,17 @@ export default function Accounting() {
       ...c,
       group: lang === "NEP" ? "चालू दायित्व" : "Current Liabilities"
     }));
+
+    // VAT Payable (Current Liabilities)
+    if (vatPayable > 0) {
+      rows.push({
+        id: "vat_payable",
+        name: lang === "NEP" ? "सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)" : "VAT Payable (Tax Due)",
+        group: lang === "NEP" ? "चालू दायित्व" : "Current Liabilities",
+        debit: 0,
+        credit: vatPayable
+      });
+    }
 
     // Capital
     if (totalCapital > 0) {
