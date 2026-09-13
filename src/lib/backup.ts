@@ -8,6 +8,7 @@ import {
   getDoc,
   writeBatch
 } from "firebase/firestore";
+import { formatNepaliDate } from "./fiscalYear";
 
 export interface BackupMetadata {
   version: string;
@@ -295,33 +296,60 @@ export async function exportUserDataToExcel(
   );
   XLSX.utils.book_append_sheet(wb, wsSuppliers, "Suppliers");
 
+  const custNameMap = new Map(customers.map(c => [c.id, c.name]));
+  const suppNameMap = new Map(suppliers.map(s => [s.id, s.name]));
+
   // 5. Sales Sheet
-  const salesRows = sales.map(s => ({
-    "Invoice No": s.invoice_number || s.id,
-    "Date": s.created_at ? s.created_at.slice(0, 10) : "",
-    "Customer": s.customer_name || "Walk-in",
-    "Payment Mode": s.payment_mode || s.payment_type || "Cash",
-    "Subtotal (Rs.)": s.subtotal ?? 0,
-    "Discount (Rs.)": s.discount ?? 0,
-    "Tax (Rs.)": s.tax ?? 0,
-    "Grand Total (Rs.)": s.total_amount ?? s.total ?? 0,
-    "Paid Amount (Rs.)": s.paid_amount ?? 0,
-    "Due Amount (Rs.)": (s.total_amount ?? 0) - (s.paid_amount ?? 0)
-  }));
+  const salesRows = sales.map(s => {
+    const totalAmt = Number(s.total ?? s.total_amount ?? 0);
+    const paidAmt = Number(s.amount_paid ?? s.paid_amount ?? 0);
+    const dueAmt = Math.max(0, totalAmt - paidAmt);
+    const billNumber = s.bill_no || s.invoice_number || s.id;
+    const custName = custNameMap.get(s.customer_id) || s.customer_name || "Walk-in";
+
+    return {
+      "Invoice / Bill No": billNumber,
+      "Date (AD)": s.created_at ? s.created_at.slice(0, 10) : "",
+      "Date (BS)": formatNepaliDate(s.created_at),
+      "Customer": custName,
+      "Payment Mode": s.payment_mode || s.payment_type || "Cash",
+      "Subtotal (Rs.)": Number(s.subtotal ?? totalAmt),
+      "Discount (Rs.)": Number(s.discount ?? 0),
+      "Tax / VAT (Rs.)": Number(s.vat_amount ?? s.tax ?? 0),
+      "Grand Total (Rs.)": totalAmt,
+      "Paid Amount (Rs.)": paidAmt,
+      "Due Amount (Rs.)": dueAmt
+    };
+  });
   const wsSales = XLSX.utils.json_to_sheet(
     salesRows.length > 0 ? salesRows : [{ "Status": "No sales recorded" }]
   );
   XLSX.utils.book_append_sheet(wb, wsSales, "Sales");
 
   // 6. Purchases Sheet
-  const purchaseRows = purchases.map(p => ({
-    "Bill No": p.bill_number || p.id,
-    "Date": p.created_at ? p.created_at.slice(0, 10) : "",
-    "Supplier": p.supplier_name || "",
-    "Total Amount (Rs.)": p.total_amount ?? p.total ?? 0,
-    "Paid (Rs.)": p.paid_amount ?? 0,
-    "Due (Rs.)": (p.total_amount ?? 0) - (p.paid_amount ?? 0)
-  }));
+  const purchaseRows = purchases.map(p => {
+    const totalAmt = Number(p.total ?? p.total_amount ?? 0);
+    const paidAmt = Number(p.amount_paid ?? p.paid_amount ?? 0);
+    const dueAmt = Math.max(0, totalAmt - paidAmt);
+    const voucherNumber = p.voucher_no || p.voucherNo || p.id;
+    const suppBillNumber = p.supplier_bill_no || p.bill_number || "N/A";
+    const suppName = suppNameMap.get(p.supplier_id) || p.supplier_name || "General / Direct";
+
+    return {
+      "Inward Voucher No": voucherNumber,
+      "Supplier Bill No": suppBillNumber,
+      "Date (AD)": p.created_at ? p.created_at.slice(0, 10) : "",
+      "Date (BS)": formatNepaliDate(p.created_at),
+      "Supplier": suppName,
+      "Bill Type": p.is_vat_bill ? "VAT Bill (13%)" : "Non-VAT",
+      "Payment Mode": p.payment_mode || "Cash",
+      "Taxable (Rs.)": Number(p.taxable_amount ?? (p.is_vat_bill ? totalAmt / 1.13 : totalAmt)),
+      "13% VAT (Rs.)": Number(p.vat_amount ?? (p.is_vat_bill ? totalAmt - (totalAmt / 1.13) : 0)),
+      "Total Amount (Rs.)": totalAmt,
+      "Paid (Rs.)": paidAmt,
+      "Due (Rs.)": dueAmt
+    };
+  });
   const wsPurchases = XLSX.utils.json_to_sheet(
     purchaseRows.length > 0 ? purchaseRows : [{ "Status": "No purchases recorded" }]
   );
@@ -329,11 +357,12 @@ export async function exportUserDataToExcel(
 
   // 7. Cashbook Sheet
   const cashRows = cashTransactions.map(c => ({
-    "Date": c.created_at ? c.created_at.slice(0, 10) : "",
-    "Type": c.type === "in" ? "Cash In (आम्दानी)" : "Cash Out (खर्च)",
+    "Date (AD)": c.created_at ? c.created_at.slice(0, 10) : "",
+    "Date (BS)": formatNepaliDate(c.created_at),
+    "Type": c.type === "in" || c.direction === "in" ? "Cash In (आम्दानी)" : "Cash Out (खर्च)",
     "Category": c.category || "",
-    "Amount (Rs.)": c.amount ?? 0,
-    "Description": c.description || c.notes || ""
+    "Amount (Rs.)": Number(c.amount ?? 0),
+    "Description": c.description || c.notes || c.note || ""
   }));
   const wsCash = XLSX.utils.json_to_sheet(
     cashRows.length > 0 ? cashRows : [{ "Status": "No cashbook transactions recorded" }]
