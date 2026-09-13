@@ -11,7 +11,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { format, startOfDay, subDays } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles } from "lucide-react";
+import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
@@ -43,8 +43,11 @@ const Reports = () => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
+  const [regPeriodMode, setRegPeriodMode] = useState<"month" | "all">("month");
   const [regSearch, setRegSearch] = useState("");
   const [regViewFilter, setRegViewFilter] = useState<"all" | "purchases" | "sales">("all");
+  const [regPagePurchases, setRegPagePurchases] = useState(1);
+  const [regPageSales, setRegPageSales] = useState(1);
   const [showTaxDetails, setShowTaxDetails] = useState(false);
 
   const loadData = async () => {
@@ -300,15 +303,23 @@ const Reports = () => {
   };
   const plMonthLabel = `${MONTHS_EN[plMonth.month]} ${plMonth.year}`;
 
-  const goToPrevRegMonth = () => setRegMonth(prev =>
-    prev.month === 0 ? { year: prev.year - 1, month: 11 } : { ...prev, month: prev.month - 1 }
-  );
+  const goToPrevRegMonth = () => {
+    setRegPagePurchases(1);
+    setRegPageSales(1);
+    setRegMonth(prev =>
+      prev.month === 0 ? { year: prev.year - 1, month: 11 } : { ...prev, month: prev.month - 1 }
+    );
+  };
   const goToNextRegMonth = () => {
     const now = new Date();
     if (regMonth.year === now.getFullYear() && regMonth.month === now.getMonth()) return;
+    setRegPagePurchases(1);
+    setRegPageSales(1);
     setRegMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { ...prev, month: prev.month + 1 });
   };
-  const regMonthLabel = `${MONTHS_EN[regMonth.month]} ${regMonth.year}`;
+  const regMonthLabel = regPeriodMode === "all"
+    ? "सबै समय (All Records)"
+    : `${MONTHS_EN[regMonth.month]} ${regMonth.year}`;
 
   const regMonthlyTotals = useMemo(() => {
     const sMap = new Map(suppliers.map(s => [s.id, s]));
@@ -326,7 +337,7 @@ const Reports = () => {
     let totalPurchasesAmount = 0;
 
     allSales.forEach(s => {
-      if (!isInMonth(s.created_at, regMonth.year, regMonth.month)) return;
+      if (regPeriodMode === "month" && !isInMonth(s.created_at, regMonth.year, regMonth.month)) return;
       const cust = s.customer_id ? cMap.get(s.customer_id) : null;
       const customerName = s.customer_name || cust?.name || "Walk-in Customer";
       const customerPan = s.buyer_pan || cust?.pan || "—";
@@ -343,7 +354,7 @@ const Reports = () => {
     });
 
     allPurchases.forEach(p => {
-      if (!isInMonth(p.created_at, regMonth.year, regMonth.month)) return;
+      if (regPeriodMode === "month" && !isInMonth(p.created_at, regMonth.year, regMonth.month)) return;
       const supp = p.supplier_id ? sMap.get(p.supplier_id) : null;
       const supplierName = p.supplier_name || supp?.name || "—";
       const supplierPan = p.supplier_pan || supp?.pan || "—";
@@ -370,7 +381,7 @@ const Reports = () => {
       totalSalesAmount,
       totalPurchasesAmount
     };
-  }, [allSales, allPurchases, suppliers, customers, regMonth]);
+  }, [allSales, allPurchases, suppliers, customers, regMonth, regPeriodMode]);
 
   const filteredRegSales = useMemo(() => {
     const q = regSearch.trim().toLowerCase();
@@ -379,7 +390,8 @@ const Reports = () => {
       (s.billNo && s.billNo.toLowerCase().includes(q)) ||
       (s.customerName && s.customerName.toLowerCase().includes(q)) ||
       (s.customerPan && s.customerPan.toLowerCase().includes(q)) ||
-      (s.payment_mode && s.payment_mode.toLowerCase().includes(q))
+      (s.payment_mode && s.payment_mode.toLowerCase().includes(q)) ||
+      (s.id && s.id.toLowerCase().includes(q))
     );
   }, [regMonthlyTotals.salesList, regSearch]);
 
@@ -391,9 +403,24 @@ const Reports = () => {
       (p.billNo && p.billNo.toLowerCase().includes(q)) ||
       (p.supplierName && p.supplierName.toLowerCase().includes(q)) ||
       (p.supplierPan && p.supplierPan.toLowerCase().includes(q)) ||
-      (p.payment_mode && p.payment_mode.toLowerCase().includes(q))
+      (p.payment_mode && p.payment_mode.toLowerCase().includes(q)) ||
+      (p.id && p.id.toLowerCase().includes(q))
     );
   }, [regMonthlyTotals.purchasesList, regSearch]);
+
+  const REG_PAGE_SIZE = 25;
+  const pagedRegPurchases = useMemo(() => {
+    const start = (regPagePurchases - 1) * REG_PAGE_SIZE;
+    return filteredRegPurchases.slice(start, start + REG_PAGE_SIZE);
+  }, [filteredRegPurchases, regPagePurchases]);
+
+  const pagedRegSales = useMemo(() => {
+    const start = (regPageSales - 1) * REG_PAGE_SIZE;
+    return filteredRegSales.slice(start, start + REG_PAGE_SIZE);
+  }, [filteredRegSales, regPageSales]);
+
+  const totalPurPages = Math.max(1, Math.ceil(filteredRegPurchases.length / REG_PAGE_SIZE));
+  const totalSalePages = Math.max(1, Math.ceil(filteredRegSales.length / REG_PAGE_SIZE));
 
   const taxCompliance = useMemo(() => {
     const now = new Date();
@@ -1687,45 +1714,61 @@ const Reports = () => {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
-              {/* Search input */}
-              <div className="relative w-full sm:w-48 md:w-56">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="बिल नं., ग्राहक वा सप्लायर..."
-                  value={regSearch}
-                  onChange={(e) => setRegSearch(e.target.value)}
-                  className="h-8 pl-8 text-xs bg-background/80"
-                />
+              {/* Period Mode Toggle: Monthly vs All Records */}
+              <div className="flex items-center p-0.5 bg-muted/60 border border-border/60 rounded-lg text-xs shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setRegPeriodMode("month"); setRegPagePurchases(1); setRegPageSales(1); }}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                    regPeriodMode === "month"
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  महिना अनुसार
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRegPeriodMode("all"); setRegPagePurchases(1); setRegPageSales(1); }}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                    regPeriodMode === "all"
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  सबै महिना
+                </button>
               </div>
 
-              {/* Month Picker Navigation */}
-              <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-0.5 shrink-0">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={goToPrevRegMonth}
-                  title="Previous Month"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="font-semibold text-xs px-2.5 min-w-[110px] text-center select-none text-foreground">
-                  {regMonthLabel}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={goToNextRegMonth}
-                  disabled={regMonth.year === new Date().getFullYear() && regMonth.month === new Date().getMonth()}
-                  title="Next Month"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              {/* Month Picker Navigation (when in monthly mode) */}
+              {regPeriodMode === "month" && (
+                <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-0.5 shrink-0">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={goToPrevRegMonth}
+                    title="Previous Month"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="font-semibold text-xs px-2.5 min-w-[110px] text-center select-none text-foreground">
+                    {regMonthLabel}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={goToNextRegMonth}
+                    disabled={regMonth.year === new Date().getFullYear() && regMonth.month === new Date().getMonth()}
+                    title="Next Month"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
 
               <Button onClick={handlePrintRegistersReport} variant="outline" size="sm" className="h-8 gap-1.5 shrink-0">
                 <Printer className="h-3.5 w-3.5 text-primary" />
@@ -1924,53 +1967,153 @@ const Reports = () => {
             </Card>
           )}
 
-          {/* Quick Register Switcher */}
-          <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
-            <div className="flex items-center gap-1.5 p-1 bg-muted/60 border border-border/60 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setRegViewFilter("all")}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  regViewFilter === "all"
-                    ? "bg-background text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                सबै खाताहरू (All)
-              </button>
-              <button
-                type="button"
-                onClick={() => setRegViewFilter("purchases")}
-                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  regViewFilter === "purchases"
-                    ? "bg-background text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <ShoppingBag className="h-3 w-3 text-blue-500" />
-                <span>१. खरिद खाता ({filteredRegPurchases.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setRegViewFilter("sales")}
-                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  regViewFilter === "sales"
-                    ? "bg-background text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Receipt className="h-3 w-3 text-emerald-500" />
-                <span>२. बिक्री खाता ({filteredRegSales.length})</span>
-              </button>
+          {/* Dedicated Register Control Bar (Direct Search & Period Controls) */}
+          <div className="bg-card p-3.5 rounded-xl shadow-card border border-border/50 space-y-3">
+            {/* Top row: Register Tabs & Monthly / All-Time Navigation */}
+            <div className="flex items-center justify-between gap-2.5 flex-wrap">
+              {/* Register Tabs */}
+              <div className="flex items-center gap-1.5 p-1 bg-muted/60 border border-border/60 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => { setRegViewFilter("all"); setRegPagePurchases(1); setRegPageSales(1); }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                    regViewFilter === "all"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  सबै खाताहरू (All)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRegViewFilter("purchases"); setRegPagePurchases(1); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                    regViewFilter === "purchases"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <ShoppingBag className="h-3.5 w-3.5 text-blue-500" />
+                  <span>१. खरिद खाता ({filteredRegPurchases.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRegViewFilter("sales"); setRegPageSales(1); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                    regViewFilter === "sales"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Receipt className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>२. बिक्री खाता ({filteredRegSales.length})</span>
+                </button>
+              </div>
+
+              {/* Monthly vs All-Time Switcher & Navigation */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center p-0.5 bg-muted/60 border border-border/60 rounded-lg text-xs">
+                  <button
+                    type="button"
+                    onClick={() => { setRegPeriodMode("month"); setRegPagePurchases(1); setRegPageSales(1); }}
+                    className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                      regPeriodMode === "month"
+                        ? "bg-background text-foreground shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    महिना अनुसार
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setRegPeriodMode("all"); setRegPagePurchases(1); setRegPageSales(1); }}
+                    className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                      regPeriodMode === "all"
+                        ? "bg-background text-foreground shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    सबै महिना (All Time)
+                  </button>
+                </div>
+
+                {regPeriodMode === "month" && (
+                  <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-0.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={goToPrevRegMonth}
+                      title="Previous Month"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="font-semibold text-xs px-2.5 min-w-[115px] text-center select-none text-foreground">
+                      {regMonthLabel}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={goToNextRegMonth}
+                      disabled={regMonth.year === new Date().getFullYear() && regMonth.month === new Date().getMonth()}
+                      title="Next Month"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <span className="text-[11px] text-muted-foreground">
-              {regViewFilter === "purchases"
-                ? "खरिद खाता मात्र देखाइएको छ"
-                : regViewFilter === "sales"
-                  ? "बिक्री खाता मात्र देखाइएको छ"
-                  : "दुवै खाताहरू देखाइएको छ"}
-            </span>
+            {/* Bottom row: Direct Search Input with clear button and live count */}
+            <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap pt-0.5">
+              <div className="relative flex-1 min-w-[260px]">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="बिल नं., भौचर नं., ग्राहक/सप्लायरको नाम वा PAN खोज्नुहोस् (Search)..."
+                  value={regSearch}
+                  onChange={(e) => {
+                    setRegSearch(e.target.value);
+                    setRegPagePurchases(1);
+                    setRegPageSales(1);
+                  }}
+                  className="h-9 pl-9 pr-8 text-xs bg-background/90 font-medium"
+                />
+                {regSearch && (
+                  <button
+                    type="button"
+                    onClick={() => { setRegSearch(""); setRegPagePurchases(1); setRegPageSales(1); }}
+                    className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground p-0.5 rounded-full"
+                    title="खोजी खाली गर्नुहोस् (Clear)"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {regSearch.trim() && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary font-medium border border-primary/20">
+                    "{regSearch}": {filteredRegPurchases.length + filteredRegSales.length} वटा फेला पर्यो
+                  </span>
+                  {regPeriodMode === "month" && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-primary underline px-1.5"
+                      onClick={() => { setRegPeriodMode("all"); setRegPagePurchases(1); setRegPageSales(1); }}
+                    >
+                      सबै महिनामा खोज्नुहोस् &rarr;
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Section 1: Purchase Register */}
@@ -2000,7 +2143,7 @@ const Reports = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {filteredRegPurchases.map((p: any) => (
+                    {pagedRegPurchases.map((p: any) => (
                       <tr key={p.id} className="hover:bg-secondary/20 transition-colors">
                         <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
                           {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
@@ -2063,6 +2206,38 @@ const Reports = () => {
                   )}
                 </table>
               </div>
+
+              {/* Purchase Table Pagination */}
+              {totalPurPages > 1 && (
+                <div className="p-3 border-t bg-muted/20 flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
+                  <span>
+                    देखाउँदै: {(regPagePurchases - 1) * REG_PAGE_SIZE + 1} - {Math.min(filteredRegPurchases.length, regPagePurchases * REG_PAGE_SIZE)} / कुल {filteredRegPurchases.length}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs px-2.5"
+                      disabled={regPagePurchases <= 1}
+                      onClick={() => setRegPagePurchases(p => Math.max(1, p - 1))}
+                    >
+                      &larr; अघिल्लो
+                    </Button>
+                    <span className="font-semibold px-2 text-foreground">
+                      {regPagePurchases} / {totalPurPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs px-2.5"
+                      disabled={regPagePurchases >= totalPurPages}
+                      onClick={() => setRegPagePurchases(p => Math.min(totalPurPages, p + 1))}
+                    >
+                      पछिल्लो &rarr;
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 
@@ -2085,74 +2260,106 @@ const Reports = () => {
                       <th className="p-3">मिति (Date)</th>
                       <th className="p-3">बिल / भौचर नं. (Bill / Voucher No)</th>
                       <th className="p-3">ग्राहकको नाम (Customer)</th>
-                    <th className="p-3">ग्राहक PAN</th>
-                    <th className="p-3">भुक्तानी</th>
-                    <th className="p-3 text-right">कुल रकम</th>
-                    <th className="p-3 text-center">प्रिन्ट</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {filteredRegSales.map((s: any) => (
-                    <tr key={s.id} className="hover:bg-secondary/20 transition-colors">
-                      <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
-                        {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
-                      </td>
-                      <td className="p-3 font-mono font-semibold text-primary">
-                        {s.billNo}
-                      </td>
-                      <td className="p-3 font-semibold text-foreground truncate max-w-[160px]">
-                        {s.customerName}
-                      </td>
-                      <td className="p-3 text-muted-foreground font-mono">
-                        {s.customerPan}
-                      </td>
-                      <td className="p-3">
-                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                          s.payment_mode === "credit" ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        }`}>
-                          {s.payment_mode || "cash"}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right font-bold text-foreground">
-                        {fmt(s.total)}
-                      </td>
-                      <td className="p-3 text-center">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-primary"
-                          onClick={() => handleReprintSale(s)}
-                          title="बिल प्रिन्ट (Print Sales Invoice)"
-                        >
-                          <Printer className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
+                      <th className="p-3">ग्राहक PAN</th>
+                      <th className="p-3">भुक्तानी</th>
+                      <th className="p-3 text-right">कुल रकम</th>
+                      <th className="p-3 text-center">प्रिन्ट</th>
                     </tr>
-                  ))}
-                  {filteredRegSales.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="p-6 text-center text-muted-foreground">
-                        {regSearch.trim() ? "खोजेको विवरणसँग मिल्ने कुनै बिक्री फेला परेन।" : `${regMonthLabel} मा कुनै बिक्री बिल फेला परेन।`}
-                      </td>
-                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {pagedRegSales.map((s: any) => (
+                      <tr key={s.id} className="hover:bg-secondary/20 transition-colors">
+                        <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
+                          {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
+                        </td>
+                        <td className="p-3 font-mono font-semibold text-primary">
+                          {s.billNo}
+                        </td>
+                        <td className="p-3 font-semibold text-foreground truncate max-w-[160px]">
+                          {s.customerName}
+                        </td>
+                        <td className="p-3 text-muted-foreground font-mono">
+                          {s.customerPan}
+                        </td>
+                        <td className="p-3">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                            s.payment_mode === "credit" ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          }`}>
+                            {s.payment_mode || "cash"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right font-bold text-foreground">
+                          {fmt(s.total)}
+                        </td>
+                        <td className="p-3 text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => handleReprintSale(s)}
+                            title="बिल प्रिन्ट (Print Sales Invoice)"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredRegSales.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                          {regSearch.trim() ? "खोजेको विवरणसँग मिल्ने कुनै बिक्री फेला परेन।" : `${regMonthLabel} मा कुनै बिक्री बिल फेला परेन।`}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                  {filteredRegSales.length > 0 && (
+                    <tfoot>
+                      <tr className="bg-muted/40 font-bold border-t border-border">
+                        <td colSpan={5} className="p-3 uppercase text-muted-foreground">
+                          कुल जम्मा (Total Sales):
+                        </td>
+                        <td className="p-3 text-right text-primary">
+                          {fmt(filteredRegSales.reduce((s: number, r: any) => s + Number(r.total || 0), 0))}
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
                   )}
-                </tbody>
-                {filteredRegSales.length > 0 && (
-                  <tfoot>
-                    <tr className="bg-muted/40 font-bold border-t border-border">
-                      <td colSpan={5} className="p-3 uppercase text-muted-foreground">
-                        कुल जम्मा (Total Sales):
-                      </td>
-                      <td className="p-3 text-right text-primary">
-                        {fmt(filteredRegSales.reduce((s: number, r: any) => s + Number(r.total || 0), 0))}
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
-          </Card>
+                </table>
+              </div>
+
+              {/* Sales Table Pagination */}
+              {totalSalePages > 1 && (
+                <div className="p-3 border-t bg-muted/20 flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
+                  <span>
+                    देखाउँदै: {(regPageSales - 1) * REG_PAGE_SIZE + 1} - {Math.min(filteredRegSales.length, regPageSales * REG_PAGE_SIZE)} / कुल {filteredRegSales.length}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs px-2.5"
+                      disabled={regPageSales <= 1}
+                      onClick={() => setRegPageSales(p => Math.max(1, p - 1))}
+                    >
+                      &larr; अघिल्लो
+                    </Button>
+                    <span className="font-semibold px-2 text-foreground">
+                      {regPageSales} / {totalSalePages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs px-2.5"
+                      disabled={regPageSales >= totalSalePages}
+                      onClick={() => setRegPageSales(p => Math.min(totalSalePages, p + 1))}
+                    >
+                      पछिल्लो &rarr;
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
           )}
         </TabsContent>
 
