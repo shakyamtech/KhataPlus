@@ -117,6 +117,7 @@ const Reports = () => {
   const totals = useMemo(() => {
     const grossRevenue = sales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
     const discountAllowed = sales.reduce((s, r) => s + Number(r.discount || 0), 0);
+    const vatCollected = sales.reduce((s, r) => s + Number(r.vat_amount || 0), 0);
     const discountReceived = purchases.reduce((s, r) => s + Number(r.discount || 0), 0);
     const revenue = sales.reduce((s, r) => s + (Number(r.total || 0) - Number(r.vat_amount || 0)), 0);
     const cogs = sales.reduce((s, r) => s + Number(r.cost_total), 0);
@@ -124,7 +125,7 @@ const Reports = () => {
     const totalExp = exp + wastage;
     const gross = revenue - cogs;
     const net = gross + discountReceived - totalExp;
-    return { grossRevenue, discountAllowed, discountReceived, revenue, cogs, gross, exp: totalExp, storeExp: exp, wastage, net };
+    return { grossRevenue, discountAllowed, vatCollected, discountReceived, revenue, cogs, gross, exp: totalExp, storeExp: exp, wastage, net };
   }, [sales, purchases, expenses, wastage]);
 
   const vatTotals = useMemo(() => {
@@ -1169,6 +1170,7 @@ const Reports = () => {
 
     const grossRevenue = targetSales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
     const discountAllowed = targetSales.reduce((s, r) => s + Number(r.discount || 0), 0);
+    const vatCollected = targetSales.reduce((s, r) => s + Number(r.vat_amount || 0), 0);
     const discountReceived = targetPurchases.reduce((s, r) => s + Number(r.discount || 0), 0);
     const revenue = targetSales.reduce((s, r) => s + (Number(r.total || 0) - Number(r.vat_amount || 0)), 0);
     const cogs = targetSales.reduce((s, r) => s + Number(r.cost_total), 0);
@@ -1180,6 +1182,7 @@ const Reports = () => {
     return {
       grossRevenue,
       discountAllowed,
+      vatCollected,
       discountReceived,
       revenue,
       cogs,
@@ -1236,6 +1239,12 @@ const Reports = () => {
               <tr>
                 <td style="padding:7px 10px; border:1px solid #111; color:#c00;">Less: Discount Allowed (ग्राहकलाई दिएको छुट)</td>
                 <td style="padding:7px 10px; text-align:right; font-weight:600; color:#c00; border:1px solid #111;">(Rs. ${(plTotals.discountAllowed).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
+              </tr>
+              ` : ''}
+              ${plTotals.vatCollected > 0 ? `
+              <tr>
+                <td style="padding:7px 10px; border:1px solid #111; color:#b45309;">Less: Government VAT (उठेको भ्याट कर)</td>
+                <td style="padding:7px 10px; text-align:right; font-weight:600; color:#b45309; border:1px solid #111;">(Rs. ${(plTotals.vatCollected).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
               </tr>
               ` : ''}
               <tr style="background:#f9fafb; font-weight:700;">
@@ -1721,6 +1730,12 @@ const Reports = () => {
                         <div className="flex justify-between items-center py-1">
                           <span className="text-sm text-destructive font-medium">Less: Discount Allowed (छुट दिइएको)</span>
                           <span className="font-medium text-destructive">({fmt(plTotals.discountAllowed)})</span>
+                        </div>
+                      )}
+                      {plTotals.vatCollected > 0 && (
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-sm text-amber-600 dark:text-amber-400 font-medium">Less: Government VAT (उठेको भ्याट कर)</span>
+                          <span className="font-medium text-amber-600 dark:text-amber-400">({fmt(plTotals.vatCollected)})</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center py-2 border-t font-semibold">
