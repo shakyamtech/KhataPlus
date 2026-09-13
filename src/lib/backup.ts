@@ -232,11 +232,27 @@ export async function exportUserDataToExcel(
 
   const full = await fetchFullUserDatabase(userId, customShopName);
   const {
-    products, batches, customers, suppliers, sales,
-    purchases, cashTransactions, shopName, counts
+    products, batches, customers, suppliers, sales, saleItems,
+    purchases, purchaseItems, cashTransactions, ledgerEntries, shopName, counts
   } = full;
 
   const wb = XLSX.utils.book_new();
+
+  // Helper to format columns nicely with auto-width
+  const autoWidth = (ws: any, rows: any[]) => {
+    if (!rows || rows.length === 0) return;
+    const colNames = Object.keys(rows[0]);
+    ws["!cols"] = colNames.map(key => {
+      let maxLen = key.length;
+      for (let r = 0; r < Math.min(rows.length, 300); r++) {
+        const val = rows[r][key];
+        if (val !== undefined && val !== null) {
+          maxLen = Math.max(maxLen, String(val).length);
+        }
+      }
+      return { wch: Math.min(Math.max(maxLen + 3, 12), 40) };
+    });
+  };
 
   // 1. Products Sheet
   const productRows = products.map(p => ({
@@ -253,6 +269,7 @@ export async function exportUserDataToExcel(
   const wsProducts = XLSX.utils.json_to_sheet(
     productRows.length > 0 ? productRows : [{ "Status": "No products recorded" }]
   );
+  if (productRows.length > 0) autoWidth(wsProducts, productRows);
   XLSX.utils.book_append_sheet(wb, wsProducts, "Products");
 
   // 2. Batches Sheet
@@ -279,36 +296,73 @@ export async function exportUserDataToExcel(
   const wsBatches = XLSX.utils.json_to_sheet(
     batchRows.length > 0 ? batchRows : [{ "Status": "No batches recorded" }]
   );
+  if (batchRows.length > 0) autoWidth(wsBatches, batchRows);
   XLSX.utils.book_append_sheet(wb, wsBatches, "Batches");
 
+  // Compute live balances from ledger_entries matching PartiesPage logic
+  const custLedgerMap = new Map<string, any[]>();
+  const suppLedgerMap = new Map<string, any[]>();
+  ledgerEntries.forEach((e: any) => {
+    if (e.party_type === "customer" || (!e.party_type && customers.some(c => c.id === e.party_id))) {
+      const arr = custLedgerMap.get(e.party_id) || [];
+      arr.push(e);
+      custLedgerMap.set(e.party_id, arr);
+    } else if (e.party_type === "supplier" || (!e.party_type && suppliers.some(s => s.id === e.party_id))) {
+      const arr = suppLedgerMap.get(e.party_id) || [];
+      arr.push(e);
+      suppLedgerMap.set(e.party_id, arr);
+    }
+  });
+
+  const calcPartyBalance = (partyId: string, partyEntries: any[] | undefined, defaultBal: any) => {
+    if (!partyEntries || partyEntries.length === 0) return Number(defaultBal ?? 0);
+    return partyEntries.reduce((acc: number, e: any) => {
+      const isDebt = ["sale", "purchase", "debit", "credit"].includes(e.entry_type);
+      const isPayment = ["payment_in", "payment_out", "payment"].includes(e.entry_type);
+      if (isDebt) return acc + Number(e.amount || 0);
+      if (isPayment) return acc - Number(e.amount || 0);
+      return acc;
+    }, 0);
+  };
+
   // 3. Customers Sheet
-  const customerRows = customers.map(c => ({
-    "Customer Name": c.name || "",
-    "Phone": c.phone || "",
-    "Address": c.address || "",
-    "PAN / Vat": c.pan || "",
-    "Credit Balance (Rs.)": c.balance ?? 0
-  }));
+  const customerRows = customers.map(c => {
+    const liveBal = calcPartyBalance(c.id, custLedgerMap.get(c.id), c.balance);
+    return {
+      "Customer Name": c.name || "",
+      "Phone": c.phone || "",
+      "Address": c.address || "",
+      "PAN / Vat": c.pan || "",
+      "Credit Balance (Rs.)": Math.round(liveBal * 100) / 100
+    };
+  });
   const wsCustomers = XLSX.utils.json_to_sheet(
     customerRows.length > 0 ? customerRows : [{ "Status": "No customers recorded" }]
   );
+  if (customerRows.length > 0) autoWidth(wsCustomers, customerRows);
   XLSX.utils.book_append_sheet(wb, wsCustomers, "Customers");
 
   // 4. Suppliers Sheet
-  const supplierRows = suppliers.map(s => ({
-    "Supplier Name": s.name || "",
-    "Phone": s.phone || "",
-    "Address": s.address || "",
-    "PAN / Vat": s.pan || "",
-    "Payable Balance (Rs.)": s.balance ?? 0
-  }));
+  const supplierRows = suppliers.map(s => {
+    const liveBal = calcPartyBalance(s.id, suppLedgerMap.get(s.id), s.balance);
+    return {
+      "Supplier Name": s.name || "",
+      "Phone": s.phone || "",
+      "Address": s.address || "",
+      "PAN / Vat": s.pan || "",
+      "Payable Balance (Rs.)": Math.round(liveBal * 100) / 100
+    };
+  });
   const wsSuppliers = XLSX.utils.json_to_sheet(
     supplierRows.length > 0 ? supplierRows : [{ "Status": "No suppliers recorded" }]
   );
+  if (supplierRows.length > 0) autoWidth(wsSuppliers, supplierRows);
   XLSX.utils.book_append_sheet(wb, wsSuppliers, "Suppliers");
 
   const custNameMap = new Map(customers.map(c => [c.id, c.name]));
+  const custPanMap = new Map(customers.map(c => [c.id, c.pan]));
   const suppNameMap = new Map(suppliers.map(s => [s.id, s.name]));
+  const suppPanMap = new Map(suppliers.map(s => [s.id, s.pan]));
 
   // 5. Sales Sheet
   const salesRows = sales.map(s => {
@@ -317,12 +371,15 @@ export async function exportUserDataToExcel(
     const dueAmt = Math.max(0, totalAmt - paidAmt);
     const billNumber = s.bill_no || s.invoice_number || s.id;
     const custName = custNameMap.get(s.customer_id) || s.customer_name || "Walk-in";
+    const custPan = s.buyer_pan || (s.customer_id ? custPanMap.get(s.customer_id) : "") || "";
 
     return {
       "Invoice / Bill No": billNumber,
       "Date (AD)": s.created_at ? s.created_at.slice(0, 10) : "",
       "Date (BS)": formatNepaliDate(s.created_at),
       "Customer": custName,
+      "Customer PAN": custPan,
+      "Invoice Type": s.invoice_type || "Tax Invoice",
       "Payment Mode": s.payment_mode || s.payment_type || "Cash",
       "Subtotal (Rs.)": Number(s.subtotal ?? totalAmt),
       "Discount (Rs.)": Number(s.discount ?? 0),
@@ -335,6 +392,7 @@ export async function exportUserDataToExcel(
   const wsSales = XLSX.utils.json_to_sheet(
     salesRows.length > 0 ? salesRows : [{ "Status": "No sales recorded" }]
   );
+  if (salesRows.length > 0) autoWidth(wsSales, salesRows);
   XLSX.utils.book_append_sheet(wb, wsSales, "Sales");
 
   // 6. Purchases Sheet
@@ -345,6 +403,7 @@ export async function exportUserDataToExcel(
     const voucherNumber = p.voucher_no || p.voucherNo || p.id;
     const suppBillNumber = p.supplier_bill_no || p.bill_number || "N/A";
     const suppName = suppNameMap.get(p.supplier_id) || p.supplier_name || "General / Direct";
+    const suppPan = p.supplier_id ? (suppPanMap.get(p.supplier_id) || "") : "";
 
     return {
       "Inward Voucher No": voucherNumber,
@@ -352,6 +411,7 @@ export async function exportUserDataToExcel(
       "Date (AD)": p.created_at ? p.created_at.slice(0, 10) : "",
       "Date (BS)": formatNepaliDate(p.created_at),
       "Supplier": suppName,
+      "Supplier PAN": suppPan,
       "Bill Type": p.is_vat_bill ? "VAT Bill (13%)" : "Non-VAT",
       "Payment Mode": p.payment_mode || "Cash",
       "Taxable (Rs.)": Number(p.taxable_amount ?? (p.is_vat_bill ? totalAmt / 1.13 : totalAmt)),
@@ -364,6 +424,7 @@ export async function exportUserDataToExcel(
   const wsPurchases = XLSX.utils.json_to_sheet(
     purchaseRows.length > 0 ? purchaseRows : [{ "Status": "No purchases recorded" }]
   );
+  if (purchaseRows.length > 0) autoWidth(wsPurchases, purchaseRows);
   XLSX.utils.book_append_sheet(wb, wsPurchases, "Purchases");
 
   // 7. Cashbook Sheet
@@ -372,13 +433,78 @@ export async function exportUserDataToExcel(
     "Date (BS)": formatNepaliDate(c.created_at),
     "Type": c.type === "in" || c.direction === "in" ? "Cash In (आम्दानी)" : "Cash Out (खर्च)",
     "Category": c.category || "",
+    "Payment Mode": c.payment_mode || "Cash",
     "Amount (Rs.)": Number(c.amount ?? 0),
     "Description": c.description || c.notes || c.note || ""
   }));
   const wsCash = XLSX.utils.json_to_sheet(
     cashRows.length > 0 ? cashRows : [{ "Status": "No cashbook transactions recorded" }]
   );
+  if (cashRows.length > 0) autoWidth(wsCash, cashRows);
   XLSX.utils.book_append_sheet(wb, wsCash, "Cashbook");
+
+  // 8. Sale Items Sheet (Itemized breakdown)
+  const saleMap = new Map(sales.map(s => [s.id, s]));
+  const saleItemRows = saleItems.map(si => {
+    const parentSale = saleMap.get(si.sale_id);
+    const billNumber = parentSale?.bill_no || parentSale?.invoice_number || si.sale_id || "N/A";
+    const dateStr = parentSale?.created_at || si.created_at || "";
+    const parentProd = prodMap.get(si.product_id);
+    const prodName = si.product_name || parentProd?.name || "Product";
+    const rate = Number(si.sell_price ?? si.price ?? 0);
+    const qty = Number(si.qty ?? 0);
+    const total = Number(si.total ?? (qty * rate));
+
+    return {
+      "Invoice / Bill No": billNumber,
+      "Date (AD)": dateStr ? dateStr.slice(0, 10) : "",
+      "Date (BS)": formatNepaliDate(dateStr),
+      "Product Name": prodName,
+      "Batch No": si.batch_name || "N/A",
+      "Quantity": qty,
+      "Unit": si.unit || parentProd?.unit || "pcs",
+      "Rate (Rs.)": rate,
+      "Line Total (Rs.)": total
+    };
+  });
+  if (saleItemRows.length > 0) {
+    const wsSaleItems = XLSX.utils.json_to_sheet(saleItemRows);
+    autoWidth(wsSaleItems, saleItemRows);
+    XLSX.utils.book_append_sheet(wb, wsSaleItems, "Sale Items");
+  }
+
+  // 9. Purchase Items Sheet (Itemized breakdown)
+  const purchaseMap = new Map(purchases.map(p => [p.id, p]));
+  const purchaseItemRows = purchaseItems.map(pi => {
+    const parentPur = purchaseMap.get(pi.purchase_id);
+    const voucherNo = parentPur?.voucher_no || parentPur?.voucherNo || pi.purchase_id || "N/A";
+    const suppBill = parentPur?.supplier_bill_no || parentPur?.bill_number || "N/A";
+    const dateStr = parentPur?.created_at || pi.created_at || "";
+    const parentProd = prodMap.get(pi.product_id);
+    const prodName = pi.product_name || parentProd?.name || "Product";
+    const cost = Number(pi.cost_price ?? pi.price ?? 0);
+    const qty = Number(pi.qty ?? 0);
+    const total = Number(qty * cost);
+
+    return {
+      "Inward Voucher No": voucherNo,
+      "Supplier Bill No": suppBill,
+      "Date (AD)": dateStr ? dateStr.slice(0, 10) : "",
+      "Date (BS)": formatNepaliDate(dateStr),
+      "Product Name": prodName,
+      "Batch No": pi.batch_name || "N/A",
+      "Expiry Date": pi.expiry_date || "N/A",
+      "Quantity": qty,
+      "Unit": pi.unit || parentProd?.unit || "pcs",
+      "Cost Price (Rs.)": cost,
+      "Line Total (Rs.)": total
+    };
+  });
+  if (purchaseItemRows.length > 0) {
+    const wsPurchaseItems = XLSX.utils.json_to_sheet(purchaseItemRows);
+    autoWidth(wsPurchaseItems, purchaseItemRows);
+    XLSX.utils.book_append_sheet(wb, wsPurchaseItems, "Purchase Items");
+  }
 
   // File naming
   const dateStr = new Date().toISOString().slice(0, 10);
