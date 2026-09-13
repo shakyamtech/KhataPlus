@@ -19,6 +19,7 @@ import { getShopInfo } from "@/lib/shop";
 import { format, subDays } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
+import { formatNepaliDate } from "@/lib/fiscalYear";
 
 const inCategories = [
   "sale", 
@@ -493,7 +494,7 @@ const Cashbook = () => {
 
       return `<tr>
         <td style="text-align:center; width:35px; border:1px solid #111; padding:6px 5px;">${idx + 1}</td>
-        <td style="white-space:nowrap; border:1px solid #111; padding:6px 8px; font-size:11px; color:#374151;">${r.created_at ? format(new Date(r.created_at), "dd/MM/yyyy, hh:mm a") : "—"}</td>
+        <td style="white-space:nowrap; border:1px solid #111; padding:6px 8px; font-size:11px; color:#374151;">${r.created_at ? `${formatNepaliDate(r.created_at) || format(new Date(r.created_at), "dd/MM/yyyy")}` : "—"}</td>
         <td style="border:1px solid #111; padding:6px 8px;">
           <strong style="text-transform:capitalize;">${escapeHtml(title)}</strong>
           ${sDetail?.products ? `<div style="font-size:11px; color:#4b5563; margin-top:2px;">📦 ${escapeHtml(sDetail.products)}</div>` : ""}
@@ -524,7 +525,7 @@ const Cashbook = () => {
             रोकड तथा कारोबार खाता विवरण (Cashbook Financial Statement)
           </div>
           <div style="font-size:11px; color:#333; margin-top:6px;">
-            कारोबार प्रकार: <strong>${paymentFilter === "all" ? "सबै माध्यम (All Payment Modes)" : paymentFilter.toUpperCase() + " Transactions"}</strong> · तयार मिति: <strong>${format(new Date(), "dd/MM/yyyy, hh:mm a")}</strong>
+            कारोबार प्रकार: <strong>${paymentFilter === "all" ? "सबै माध्यम (All Payment Modes)" : paymentFilter.toUpperCase() + " Transactions"}</strong> · तयार मिति: <strong>${formatNepaliDate(new Date())} (${format(new Date(), "dd/MM/yyyy, hh:mm a")})</strong>
           </div>
         </div>
 

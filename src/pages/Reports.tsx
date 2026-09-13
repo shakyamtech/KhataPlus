@@ -15,7 +15,7 @@ import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, 
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
-import { getFiscalYearInfo, getFiscalYearForMonth, getRecentFiscalYears, isDateInFiscalYear, FiscalYearInfo } from "@/lib/fiscalYear";
+import { getFiscalYearInfo, getFiscalYearForMonth, getRecentFiscalYears, isDateInFiscalYear, FiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -975,12 +975,14 @@ const Reports = () => {
   const handlePrintRegistersReport = () => {
     if (!shopInfo) return;
     const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
-    const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
+    const reportDateBS = formatNepaliDate(new Date());
+    const reportDateAD = format(new Date(), "dd/MM/yyyy, hh:mm a");
+    const dateFormatted = `${reportDateBS} (${reportDateAD})`;
 
     const purchaseRows = regMonthlyTotals.purchasesList.map((p, idx) => `
       <tr>
         <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
-        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}</td>
+        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${p.created_at ? (formatNepaliDate(p.created_at) || format(new Date(p.created_at), "dd/MM/yyyy")) : "—"}</td>
         <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(p.voucherNo)}</td>
         <td style="border:1px solid #111; padding:5px 6px;"><strong>${escapeHtml(p.supplierName)}</strong></td>
         <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(p.supplierPan)}</td>
@@ -993,7 +995,7 @@ const Reports = () => {
     const salesRows = regMonthlyTotals.salesList.map((s, idx) => `
       <tr>
         <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
-        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</td>
+        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${s.created_at ? (formatNepaliDate(s.created_at) || format(new Date(s.created_at), "dd/MM/yyyy")) : "—"}</td>
         <td style="text-align:center; font-family:monospace; font-weight:600; border:1px solid #111; padding:5px 6px;">${escapeHtml(s.billNo)}</td>
         <td style="border:1px solid #111; padding:5px 6px;"><strong>${escapeHtml(s.customerName)}</strong></td>
         <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(s.customerPan)}</td>
@@ -1193,7 +1195,9 @@ const Reports = () => {
   const handlePrintPlReport = () => {
     if (!shopInfo) return;
     const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
-    const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
+    const reportDateBS = formatNepaliDate(new Date());
+    const reportDateAD = format(new Date(), "dd/MM/yyyy, hh:mm a");
+    const dateFormatted = `${reportDateBS} (${reportDateAD})`;
     const periodLabel = plPeriodLabel;
 
     const body = `
@@ -1329,7 +1333,9 @@ const Reports = () => {
   const handlePrintVatReport = () => {
     if (!shopInfo) return;
     const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
-    const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
+    const reportDateBS = formatNepaliDate(new Date());
+    const reportDateAD = format(new Date(), "dd/MM/yyyy, hh:mm a");
+    const dateFormatted = `${reportDateBS} (${reportDateAD})`;
     const isPayable = vatMonthlyTotals.netPayable > 0;
     const netStatusText = isPayable
       ? "सरकारलाई तिर्नुपर्ने खुद भ्याट (Net VAT Payable to IRD)"
@@ -1341,7 +1347,7 @@ const Reports = () => {
     const purchaseRows = vatMonthlyTotals.purchasesList.map((p, idx) => `
       <tr>
         <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
-        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}</td>
+        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${p.created_at ? (formatNepaliDate(p.created_at) || format(new Date(p.created_at), "dd/MM/yyyy")) : "—"}</td>
         <td style="border:1px solid #111; padding:5px 6px;"><strong>${escapeHtml(p.supplierName)}</strong></td>
         <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(p.supplierPan)}</td>
         <td style="text-align:center; border:1px solid #111; padding:5px 6px;">${escapeHtml(p.billNo)}</td>
@@ -1354,7 +1360,7 @@ const Reports = () => {
     const salesRows = vatMonthlyTotals.salesList.map((s, idx) => `
       <tr>
         <td style="text-align:center; width:35px; border:1px solid #111; padding:5px 6px;">${idx + 1}</td>
-        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</td>
+        <td style="white-space:nowrap; border:1px solid #111; padding:5px 6px;">${s.created_at ? (formatNepaliDate(s.created_at) || format(new Date(s.created_at), "dd/MM/yyyy")) : "—"}</td>
         <td style="text-align:center; font-family:monospace; font-weight:600; border:1px solid #111; padding:5px 6px;">${escapeHtml(s.bill_no || s.id.slice(-6).toUpperCase())}</td>
         <td style="border:1px solid #111; padding:5px 6px;"><strong>${escapeHtml(s.customerName)}</strong></td>
         <td style="text-align:center; font-family:monospace; border:1px solid #111; padding:5px 6px;">${escapeHtml(s.customerPan)}</td>

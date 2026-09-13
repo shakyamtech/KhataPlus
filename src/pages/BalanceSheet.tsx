@@ -10,7 +10,7 @@ import { format } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { Printer, Landmark } from "lucide-react";
-import { getFiscalYearInfo } from "@/lib/fiscalYear";
+import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
 
 const Row = ({ label, value, bold }: { label: string; value: number; bold?: boolean }) => (
   <div className={`flex justify-between py-2 ${bold ? "font-display text-base border-t pt-3 mt-2" : "text-sm"}`}>
@@ -97,8 +97,10 @@ const BalanceSheet = () => {
   const handlePrintBalanceSheet = () => {
     if (!shopInfo) return;
     const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
-    const currentDate = format(new Date(), "dd/MM/yyyy, hh:mm a");
-    const asOfDateLabel = format(new Date(), "dd MMMM yyyy");
+    const reportDateBS = formatNepaliDate(new Date());
+    const reportDateAD = format(new Date(), "dd/MM/yyyy, hh:mm a");
+    const currentDate = `${reportDateBS} (${reportDateAD})`;
+    const asOfDateLabel = `${reportDateBS} (${format(new Date(), "dd MMMM yyyy")})`;
     const currentFY = getFiscalYearInfo(new Date());
 
     const body = `

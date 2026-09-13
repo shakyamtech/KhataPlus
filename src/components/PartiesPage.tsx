@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo } from "@/lib/shop";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
+import { formatNepaliDate } from "@/lib/fiscalYear";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1035,7 +1036,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             </div>
             <div class="bill-info-item" style="text-align:right;">
               <span class="bill-info-label">Voucher Date</span>
-              <span class="bill-info-value">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}</span>
+              <span class="bill-info-value">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}${formatNepaliDate(e.created_at) ? `<br/><span style="font-size:10px; color:#4b5563;">Date (BS): ${formatNepaliDate(e.created_at)}</span>` : ""}</span>
             </div>
             <div class="bill-info-item" style="margin-top:4px;">
               <span class="bill-info-label">Payment Mode</span>
@@ -1439,7 +1440,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                     <tr>
                       <td style="text-align:center; border:1px solid #111; padding:6px 5px; vertical-align:top;">${idx + 1}</td>
                       <td style="white-space:nowrap; border:1px solid #111; padding:6px 8px; font-size:11px; color:#374151; vertical-align:top;">
-                        ${format(new Date(e.created_at), "dd/MM/yyyy, hh:mm a")}
+                        ${formatNepaliDate(e.created_at) || format(new Date(e.created_at), "dd/MM/yyyy")}
                       </td>
                       <td style="border:1px solid #111; padding:6px 8px; vertical-align:top;">
                         <div style="font-weight:700; color:#111827;">
@@ -1482,7 +1483,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                         ${type === "customer" ? "ग्राहक खाता हिसाब विवरण (Customer Ledger Statement)" : "सप्लायर खाता हिसाब विवरण (Supplier Ledger Statement)"}
                       </div>
                       <div style="font-size:11px; color:#333; margin-top:6px;">
-                        तयार मिति (Statement Date): <strong>${format(new Date(), "dd/MM/yyyy, hh:mm a")}</strong>
+                        तयार मिति (Statement Date): <strong>${formatNepaliDate(new Date())} (${format(new Date(), "dd/MM/yyyy, hh:mm a")})</strong>
                       </div>
                     </div>
 
