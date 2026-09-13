@@ -118,7 +118,7 @@ const Reports = () => {
     const grossRevenue = sales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
     const discountAllowed = sales.reduce((s, r) => s + Number(r.discount || 0), 0);
     const discountReceived = purchases.reduce((s, r) => s + Number(r.discount || 0), 0);
-    const revenue = sales.reduce((s, r) => s + Number(r.total), 0);
+    const revenue = sales.reduce((s, r) => s + (Number(r.total || 0) - Number(r.vat_amount || 0)), 0);
     const cogs = sales.reduce((s, r) => s + Number(r.cost_total), 0);
     const exp = expenses.reduce((s, r) => s + Number(r.amount), 0);
     const totalExp = exp + wastage;
@@ -480,7 +480,7 @@ const Reports = () => {
     const now = new Date();
     const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
     const annualSalesList = allSales.filter(s => s.created_at && new Date(s.created_at) >= oneYearAgo);
-    const annualSales = annualSalesList.reduce((sum, s) => sum + Number(s.total || 0), 0);
+    const annualSales = annualSalesList.reduce((sum, s) => sum + (Number(s.total || 0) - Number(s.vat_amount || 0)), 0);
     const annualCogs = annualSalesList.reduce((sum, s) => sum + Number(s.cost_total || 0), 0);
     const annualExp = allExpenses
       .filter(e => e.created_at && new Date(e.created_at) >= oneYearAgo)
@@ -1170,7 +1170,7 @@ const Reports = () => {
     const grossRevenue = targetSales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
     const discountAllowed = targetSales.reduce((s, r) => s + Number(r.discount || 0), 0);
     const discountReceived = targetPurchases.reduce((s, r) => s + Number(r.discount || 0), 0);
-    const revenue = targetSales.reduce((s, r) => s + Number(r.total), 0);
+    const revenue = targetSales.reduce((s, r) => s + (Number(r.total || 0) - Number(r.vat_amount || 0)), 0);
     const cogs = targetSales.reduce((s, r) => s + Number(r.cost_total), 0);
     const exp = targetExpenses.reduce((s, r) => s + Number(r.amount), 0);
     const totalExp = exp + targetWastageVal;
@@ -1325,7 +1325,7 @@ const Reports = () => {
     sales.forEach((s) => {
       const d = format(new Date(s.created_at), "dd MMM");
       const ex = map.get(d); if (!ex) return;
-      ex.sales += Number(s.total); ex.profit += Number(s.total) - Number(s.cost_total);
+      ex.sales += Number(s.total); ex.profit += (Number(s.total || 0) - Number(s.vat_amount || 0)) - Number(s.cost_total || 0);
     });
     return Array.from(map.values());
   }, [sales, range]);

@@ -69,7 +69,11 @@ const Dashboard = () => {
       });
 
       const todaySales = (sales ?? []).reduce((s, r: any) => s + Number(r.total), 0);
-      const todayProfit = (sales ?? []).reduce((s, r: any) => s + (Number(r.total) - Number(r.cost_total)), 0);
+      const todayProfit = (sales ?? []).reduce((s, r: any) => {
+        const netRevenue = Number(r.total || 0) - Number(r.vat_amount || 0);
+        const cost = Number(r.cost_total || 0);
+        return s + (netRevenue - cost);
+      }, 0);
       const cashBalance = (cash ?? []).reduce((s, r: any) => s + (r.direction === "in" ? Number(r.amount) : -Number(r.amount)), 0);
       const stockValue = (products ?? []).reduce((s, r: any) => s + Number(r.stock_qty) * Number(r.cost_price), 0);
       const lowStock = (products ?? []).filter((r: any) => Number(r.stock_qty) <= Number(r.low_stock_threshold)).length;
