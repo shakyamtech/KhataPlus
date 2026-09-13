@@ -17,6 +17,7 @@ import Suppliers from "./pages/Suppliers";
 import Purchases from "./pages/Purchases";
 import Cashbook from "./pages/Cashbook";
 import Reports from "./pages/Reports";
+import Accounting from "./pages/Accounting";
 import BalanceSheet from "./pages/BalanceSheet";
 import Admin from "./pages/Admin";
 import ResetPassword from "./pages/ResetPassword";
@@ -62,6 +63,7 @@ const App = () => {
                       <Route path="/suppliers" element={<Suppliers />} />
                       <Route path="/purchases" element={<Purchases />} />
                       <Route path="/cashbook" element={<Cashbook />} />
+                      <Route path="/accounting" element={<Accounting />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/balance-sheet" element={<BalanceSheet />} />
                       <Route path="/admin" element={<Admin />} />

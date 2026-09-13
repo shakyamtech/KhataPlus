@@ -33,6 +33,8 @@ export interface BackupPayload {
     cash_transactions?: any[];
     ledger_entries?: any[];
     stock_adjustments?: any[];
+    accounts?: any[];
+    vouchers?: any[];
     custom_units?: any[];
     profile?: any;
   };
@@ -80,6 +82,8 @@ export async function fetchFullUserDatabase(userId: string, customShopName?: str
     cashSnap,
     ledgerSnap,
     adjSnap,
+    accountsSnap,
+    vouchersSnap,
     profileSnap
   ] = await Promise.all([
     getDocs(query(collection(db, "products"), where("user_id", "==", userId))),
@@ -91,6 +95,8 @@ export async function fetchFullUserDatabase(userId: string, customShopName?: str
     getDocs(query(collection(db, "cash_transactions"), where("user_id", "==", userId))),
     getDocs(query(collection(db, "ledger_entries"), where("user_id", "==", userId))),
     getDocs(query(collection(db, "stock_adjustments"), where("user_id", "==", userId))),
+    getDocs(query(collection(db, "accounts"), where("user_id", "==", userId))),
+    getDocs(query(collection(db, "vouchers"), where("user_id", "==", userId))),
     getDoc(doc(db, "profiles", userId))
   ]);
 
@@ -106,6 +112,8 @@ export async function fetchFullUserDatabase(userId: string, customShopName?: str
   const cashTransactions = cashSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const ledgerEntries = ledgerSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const stockAdjustments = adjSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const accounts = accountsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const vouchers = vouchersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   // 2. Fetch related sale_items and purchase_items in chunks
   const saleIds = sales.map(s => s.id);
@@ -140,7 +148,9 @@ export async function fetchFullUserDatabase(userId: string, customShopName?: str
     purchase_items: purchaseItems.length,
     cash_transactions: cashTransactions.length,
     ledger_entries: ledgerEntries.length,
-    stock_adjustments: stockAdjustments.length
+    stock_adjustments: stockAdjustments.length,
+    accounts: accounts.length,
+    vouchers: vouchers.length
   };
 
   return {
@@ -155,6 +165,8 @@ export async function fetchFullUserDatabase(userId: string, customShopName?: str
     cashTransactions,
     ledgerEntries,
     stockAdjustments,
+    accounts,
+    vouchers,
     profileData,
     shopName,
     counts
@@ -207,6 +219,8 @@ export async function exportUserDataAsJson(
       cash_transactions: cashTransactions,
       ledger_entries: ledgerEntries,
       stock_adjustments: stockAdjustments,
+      accounts: accounts || [],
+      vouchers: vouchers || [],
       custom_units: profileData?.custom_units || [],
       profile: profileData
     }
@@ -233,7 +247,8 @@ export async function exportUserDataToExcel(
   const full = await fetchFullUserDatabase(userId, customShopName);
   const {
     products, batches, customers, suppliers, sales, saleItems,
-    purchases, purchaseItems, cashTransactions, ledgerEntries, shopName, counts
+    purchases, purchaseItems, cashTransactions, ledgerEntries,
+    accounts, vouchers, shopName, counts
   } = full;
 
   const wb = XLSX.utils.book_new();
@@ -506,6 +521,39 @@ export async function exportUserDataToExcel(
     XLSX.utils.book_append_sheet(wb, wsPurchaseItems, "Purchase Items");
   }
 
+  // 10. Vouchers Sheet (Double-Entry Accounting)
+  const voucherRows = (vouchers || []).map(v => ({
+    "Voucher No": v.voucher_no || "",
+    "Type": (v.type || "").toUpperCase(),
+    "Date (AD)": v.created_at ? v.created_at.slice(0, 10) : "",
+    "Date (BS)": v.nepali_date || formatNepaliDate(v.created_at),
+    "Debit Account": v.debit_account_name || "",
+    "Credit Account": v.credit_account_name || "",
+    "Amount (Rs.)": Number(v.amount ?? 0),
+    "Narration": v.narration || "",
+    "Ref No": v.ref_no || ""
+  }));
+  if (voucherRows.length > 0) {
+    const wsVouchers = XLSX.utils.json_to_sheet(voucherRows);
+    autoWidth(wsVouchers, voucherRows);
+    XLSX.utils.book_append_sheet(wb, wsVouchers, "Vouchers");
+  }
+
+  // 11. Chart of Accounts Sheet
+  const accountRows = (accounts || []).map(a => ({
+    "Account Code": a.code || "",
+    "Account Name": a.name || "",
+    "Group": a.group || "",
+    "Type": a.type || "",
+    "Opening Balance (Rs.)": Number(a.opening_balance ?? 0),
+    "Is System Account": a.is_system ? "Yes" : "No"
+  }));
+  if (accountRows.length > 0) {
+    const wsAccounts = XLSX.utils.json_to_sheet(accountRows);
+    autoWidth(wsAccounts, accountRows);
+    XLSX.utils.book_append_sheet(wb, wsAccounts, "Accounts");
+  }
+
   // File naming
   const dateStr = new Date().toISOString().slice(0, 10);
   const cleanShop = shopName.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -544,7 +592,9 @@ export async function parseAndValidateBackupFile(file: File): Promise<Validation
       purchase_items: Array.isArray(data.purchase_items) ? data.purchase_items.length : 0,
       cash_transactions: Array.isArray(data.cash_transactions) ? data.cash_transactions.length : 0,
       ledger_entries: Array.isArray(data.ledger_entries) ? data.ledger_entries.length : 0,
-      stock_adjustments: Array.isArray(data.stock_adjustments) ? data.stock_adjustments.length : 0
+      stock_adjustments: Array.isArray(data.stock_adjustments) ? data.stock_adjustments.length : 0,
+      accounts: Array.isArray(data.accounts) ? data.accounts.length : 0,
+      vouchers: Array.isArray(data.vouchers) ? data.vouchers.length : 0
     };
 
     const totalEntities = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -630,7 +680,9 @@ export async function restoreUserDataFromJson(
       "purchase_items",
       "cash_transactions",
       "ledger_entries",
-      "stock_adjustments"
+      "stock_adjustments",
+      "accounts",
+      "vouchers"
     ];
 
     const deleteOps: { ref: any; data: any; action: "delete" }[] = [];
@@ -691,6 +743,8 @@ export async function restoreUserDataFromJson(
   importCollection("cash_transactions", data.cash_transactions);
   importCollection("ledger_entries", data.ledger_entries);
   importCollection("stock_adjustments", data.stock_adjustments);
+  importCollection("accounts", data.accounts);
+  importCollection("vouchers", data.vouchers);
 
   // Update profile / shop info if provided
   if (data.profile || payload.metadata.shop_info) {

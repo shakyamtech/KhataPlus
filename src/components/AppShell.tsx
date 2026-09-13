@@ -5,7 +5,7 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, Check, Loader2, Scale, Languages
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, Check, Loader2, Scale, Languages, Landmark
 } from "lucide-react";
 import { generateBatchSamplePreview, getNepaliFiscalYear } from "@/lib/batch";
 import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
@@ -58,6 +58,7 @@ const nav = [
     { to: "/suppliers", label: "Suppliers", icon: Truck },
     { to: "/purchases", label: "Purchases", icon: BookOpen },
     { to: "/cashbook", label: "Cashbook", icon: Wallet },
+    { to: "/accounting", label: "Accounting", icon: Landmark },
     { to: "/reports", label: "Reports", icon: BarChart3 },
     { to: "/balance-sheet", label: "Balance Sheet", icon: FileSpreadsheet },
 ];
@@ -260,6 +261,7 @@ export const AppShell = () => {
         "Suppliers": t.suppliers,
         "Purchases": t.purchases,
         "Cashbook": t.cashbook,
+        "Accounting": lang === "NEP" ? "लेखा (Accounting)" : "Accounting",
         "Reports": t.reports,
         "Balance Sheet": t.balanceSheet,
         "Admin": t.admin,

@@ -22,7 +22,21 @@ const Row = ({ label, value, bold }: { label: string; value: number; bold?: bool
 const BalanceSheet = () => {
   const { user } = useAuth();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
-  const [d, setD] = useState({ cash: 0, stock: 0, receivable: 0, payable: 0, capital: 0, drawings: 0, revenue: 0, cogs: 0, expenses: 0 });
+  const [d, setD] = useState({
+    cash: 0,
+    bank: 0,
+    stock: 0,
+    receivable: 0,
+    fixedAssets: 0,
+    payable: 0,
+    loans: 0,
+    outstanding: 0,
+    capital: 0,
+    drawings: 0,
+    revenue: 0,
+    cogs: 0,
+    expenses: 0
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -33,9 +47,18 @@ const BalanceSheet = () => {
         const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
         const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid));
         const wQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
+        const accQ = query(collection(db, "accounts"), where("user_id", "==", user.uid));
+        const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
 
-        const [cSnap, pSnap, lSnap, sSnap, wSnap, sInfo] = await Promise.all([
-          getDocs(cQ), getDocs(pQ), getDocs(lQ), getDocs(sQ), getDocs(wQ), getShopInfo()
+        const [cSnap, pSnap, lSnap, sSnap, wSnap, accSnap, vSnap, sInfo] = await Promise.all([
+          getDocs(cQ),
+          getDocs(pQ),
+          getDocs(lQ),
+          getDocs(sQ),
+          getDocs(wQ),
+          getDocs(accQ),
+          getDocs(vQ),
+          getShopInfo()
         ]);
 
         setShopInfo(sInfo);
@@ -45,9 +68,66 @@ const BalanceSheet = () => {
         const ledger = lSnap.docs.map(d => d.data());
         const sales = sSnap.docs.map(d => d.data());
         const wastageAdjustments = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
+        const accounts = accSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const vouchers = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         const cashBal = cash.reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
         const stock = products.reduce((s, r: any) => s + +r.stock_qty * +r.cost_price, 0);
+
+        // 1. Calculate Bank Balances
+        const bankAccounts = accounts.filter((a: any) => a.group === "bank_accounts");
+        let bankTotal = bankAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
+        vouchers.forEach((v: any) => {
+          if (bankAccounts.some((b: any) => b.id === v.debit_account_id)) bankTotal += Number(v.amount || 0);
+          if (bankAccounts.some((b: any) => b.id === v.credit_account_id)) bankTotal -= Number(v.amount || 0);
+        });
+
+        // 2. Calculate Fixed Assets (Vehicles, Computers, Furniture, etc.)
+        const assetAccounts = accounts.filter((a: any) => a.group === "fixed_assets");
+        let fixedAssetsTotal = assetAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
+        vouchers.forEach((v: any) => {
+          if (assetAccounts.some((a: any) => a.id === v.debit_account_id)) fixedAssetsTotal += Number(v.amount || 0);
+          if (assetAccounts.some((a: any) => a.id === v.credit_account_id)) fixedAssetsTotal -= Number(v.amount || 0);
+        });
+
+        // 3. Calculate Loans & Borrowings (Liabilities)
+        const loanAccounts = accounts.filter((a: any) => a.group === "loans_liabilities");
+        let loansTotal = loanAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
+        vouchers.forEach((v: any) => {
+          if (loanAccounts.some((l: any) => l.id === v.credit_account_id)) loansTotal += Number(v.amount || 0);
+          if (loanAccounts.some((l: any) => l.id === v.debit_account_id)) loansTotal -= Number(v.amount || 0);
+        });
+
+        // 4. Calculate Current Liabilities / Outstanding Expenses
+        const currLiabAccounts = accounts.filter((a: any) => a.group === "current_liabilities");
+        let outstandingTotal = currLiabAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
+        vouchers.forEach((v: any) => {
+          if (currLiabAccounts.some((l: any) => l.id === v.credit_account_id)) outstandingTotal += Number(v.amount || 0);
+          if (currLiabAccounts.some((l: any) => l.id === v.debit_account_id)) outstandingTotal -= Number(v.amount || 0);
+        });
+
+        // 5. Capital adjustments from Accounts & Vouchers
+        const capitalAccounts = accounts.filter((a: any) => a.group === "capital");
+        let capitalExtra = capitalAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
+        vouchers.forEach((v: any) => {
+          if (capitalAccounts.some((c: any) => c.id === v.credit_account_id)) capitalExtra += Number(v.amount || 0);
+          if (capitalAccounts.some((c: any) => c.id === v.debit_account_id)) capitalExtra -= Number(v.amount || 0);
+        });
+
+        // 6. Drawings adjustments from Vouchers
+        const drawingsAccounts = accounts.filter((a: any) => a.group === "drawings");
+        let drawingsExtra = drawingsAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
+        vouchers.forEach((v: any) => {
+          if (drawingsAccounts.some((d: any) => d.id === v.debit_account_id)) drawingsExtra += Number(v.amount || 0);
+          if (drawingsAccounts.some((d: any) => d.id === v.credit_account_id)) drawingsExtra -= Number(v.amount || 0);
+        });
+
+        // 7. Non-cash voucher expenses (like Depreciation)
+        const expAccounts = accounts.filter((a: any) => a.type === "expense");
+        let voucherExpenses = 0;
+        vouchers.forEach((v: any) => {
+          if (expAccounts.some((e: any) => e.id === v.debit_account_id)) voucherExpenses += Number(v.amount || 0);
+        });
 
         const partyBalances: Record<string, number> = {};
         ledger.forEach((e: any) => {
@@ -68,31 +148,47 @@ const BalanceSheet = () => {
         const cogs = sales.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
         const capitalCats = ["opening", "capital", "investment", "owner_investment"];
-        const capital = cash
+        const cashCapital = cash
           .filter((c: any) => c.direction === "in" && capitalCats.includes((c.category || "").toLowerCase()))
           .reduce((s, r: any) => s + +r.amount, 0);
+        const totalCapital = cashCapital + capitalExtra;
 
-        const drawings = cash
+        const cashDrawings = cash
           .filter((c: any) => c.direction === "out" && (c.category || "").toLowerCase() === "personal")
           .reduce((s, r: any) => s + +r.amount, 0);
+        const totalDrawings = cashDrawings + drawingsExtra;
 
-        const nonExpenseCats = ["purchase", "purchases", "supplier_payment", "payment", "personal"];
+        const nonExpenseCats = ["purchase", "purchases", "supplier_payment", "payment", "personal", "contra_bank_deposit", "contra_bank_withdrawal", "voucher_payment", "voucher_receipt"];
         const cashExpenses = cash.filter((c: any) => c.direction === "out" && !nonExpenseCats.includes(c.category)).reduce((s, r: any) => s + +r.amount, 0);
         const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
-        const expenses = cashExpenses + wastageExpenses;
+        const totalExpenses = cashExpenses + wastageExpenses + voucherExpenses;
 
-        setD({ cash: cashBal, stock, receivable, payable, capital, drawings, revenue, cogs, expenses });
+        setD({
+          cash: cashBal,
+          bank: bankTotal,
+          stock,
+          receivable,
+          fixedAssets: fixedAssetsTotal,
+          payable,
+          loans: loansTotal,
+          outstanding: outstandingTotal,
+          capital: totalCapital,
+          drawings: totalDrawings,
+          revenue,
+          cogs,
+          expenses: totalExpenses
+        });
       } catch (err: any) {
         console.error("BalanceSheet error:", err);
       }
     })();
   }, [user]);
 
-  const totalAssets = d.cash + d.stock + d.receivable;
+  const totalAssets = d.cash + d.bank + d.stock + d.receivable + d.fixedAssets;
   const grossProfit = d.revenue - d.cogs;
   const netProfit = grossProfit - d.expenses;
   const totalEquity = d.capital + netProfit - d.drawings;
-  const totalLiabilitiesAndEquity = d.payable + totalEquity;
+  const totalLiabilitiesAndEquity = d.payable + d.loans + d.outstanding + totalEquity;
 
   const handlePrintBalanceSheet = () => {
     if (!shopInfo) return;
@@ -125,7 +221,7 @@ const BalanceSheet = () => {
         </div>
 
         <!-- Section 1: Profit & Loss Statement Summary -->
-        <div style="margin-bottom:16px; page-break-inside:avoid;">
+        <div style="margin-bottom:18px;">
           <div style="font-size:12px; font-weight:700; text-transform:uppercase; background:#e5e7eb; padding:5px 10px; border:1px solid #111; border-bottom:none; display:flex; justify-content:space-between;">
             <span>१. नाफा-नोक्सान हिसाब (Profit & Loss Summary)</span>
             <span style="font-size:11px; font-weight:normal;">संचित आम्दानी तथा खर्च</span>
@@ -145,7 +241,7 @@ const BalanceSheet = () => {
                 <td style="padding:7px 10px; text-align:right; border:1.5px solid #111;">Rs. ${grossProfit.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
               <tr>
-                <td style="padding:7px 10px; border:1px solid #111; color:#c00;">Less: Operating Expenses (सञ्चालन खर्च तथा टुटफुट नोक्सान)</td>
+                <td style="padding:7px 10px; border:1px solid #111; color:#c00;">Less: Operating Expenses & Depreciation (सञ्चालन खर्च, ह्रासकट्टी तथा नोक्सान)</td>
                 <td style="padding:7px 10px; text-align:right; font-weight:600; color:#c00; border:1px solid #111;">(Rs. ${d.expenses.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
               </tr>
               <tr style="background:#edf2f7; font-weight:800; font-size:12.5px;">
@@ -177,6 +273,11 @@ const BalanceSheet = () => {
                     <td style="padding:6px 8px; border:1px solid #111;">नगद मौज्दात (Cash in Hand)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.cash.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
+                  ${d.bank > 0 ? `
+                  <tr>
+                    <td style="padding:6px 8px; border:1px solid #111;">बैंक मौज्दात (Bank Balances)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.bank.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>` : ''}
                   <tr>
                     <td style="padding:6px 8px; border:1px solid #111;">मौज्दात स्टक (Stock at cost)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.stock.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -185,6 +286,11 @@ const BalanceSheet = () => {
                     <td style="padding:6px 8px; border:1px solid #111;">ग्राहकबाट उठ्न बाँकी (Receivables)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.receivable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
+                  ${d.fixedAssets > 0 ? `
+                  <tr>
+                    <td style="padding:6px 8px; border:1px solid #111;">स्थिर सम्पत्ति (Fixed Assets - Vehicle/Equip)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.fixedAssets.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>` : ''}
                 </tbody>
                 <tfoot>
                   <tr style="background:#edf2f7; font-weight:800; font-size:12px;">
@@ -208,8 +314,18 @@ const BalanceSheet = () => {
                     <td style="padding:6px 8px; border:1px solid #111;">सप्लायरलाई तिर्न बाँकी (Payables)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.payable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
+                  ${d.loans > 0 ? `
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">सुरुवाती पुँजी (Owner's Capital)</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">बैंक तथा वित्तीय ऋण (Bank Loans)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.loans.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>` : ''}
+                  ${d.outstanding > 0 ? `
+                  <tr>
+                    <td style="padding:6px 8px; border:1px solid #111;">तिर्न बाँकी खर्च (Outstanding Liabilities)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.outstanding.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>` : ''}
+                  <tr>
+                    <td style="padding:6px 8px; border:1px solid #111;">साहुको पुँजी (Owner's Capital)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.capital.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
@@ -235,7 +351,7 @@ const BalanceSheet = () => {
 
         <!-- Note / Disclaimer -->
         <div style="border:1px solid #e5e7eb; background:#f9fafb; padding:10px 12px; border-radius:4px; font-size:10.5px; color:#4b5563; margin-bottom:24px; page-break-inside:avoid;">
-          <strong>* Note:</strong> This is a simplified account derived from your recorded sales, purchases, cash and stock. For official tax filing or audit compliance, consult a certified accountant or auditor.
+          <strong>* Note:</strong> This statement reflects all recorded sales, purchases, cash transactions, bank contra movements, fixed asset investments, and accounting vouchers.
         </div>
 
         <!-- Signatures -->
@@ -292,7 +408,7 @@ const BalanceSheet = () => {
           <Row label="Sales Revenue" value={d.revenue} />
           <Row label="Cost of Goods Sold" value={-d.cogs} />
           <Row label="Gross Profit" value={grossProfit} bold />
-          <Row label="Operating Expenses" value={-d.expenses} />
+          <Row label="Operating Expenses & Depreciation" value={-d.expenses} />
           <Row label="Net Profit" value={netProfit} bold />
         </Card>
 
@@ -300,12 +416,16 @@ const BalanceSheet = () => {
           <div className="font-display text-xl mb-2 text-primary">Balance Sheet</div>
           <div className="text-xs uppercase text-muted-foreground mt-2">Assets</div>
           <Row label="Cash in Hand" value={d.cash} />
+          {d.bank > 0 && <Row label="Bank Balances" value={d.bank} />}
           <Row label="Stock (at cost)" value={d.stock} />
           <Row label="Customer Receivables" value={d.receivable} />
+          {d.fixedAssets > 0 && <Row label="Fixed Assets (सम्पत्ति)" value={d.fixedAssets} />}
           <Row label="Total Assets" value={totalAssets} bold />
 
           <div className="text-xs uppercase text-muted-foreground mt-4">Liabilities & Equity</div>
           <Row label="Supplier Payables" value={d.payable} />
+          {d.loans > 0 && <Row label="Bank Loans & Liabilities" value={d.loans} />}
+          {d.outstanding > 0 && <Row label="Outstanding Liabilities" value={d.outstanding} />}
           <Row label="Owner's Capital (सुरुवाती पुँजी)" value={d.capital} />
           <Row label="Retained Earnings (खुद नाफा)" value={netProfit} />
           {d.drawings > 0 && <Row label="Less: Drawings (निजी खर्च)" value={-d.drawings} />}
