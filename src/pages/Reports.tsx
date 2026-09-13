@@ -1967,114 +1967,54 @@ const Reports = () => {
             </Card>
           )}
 
-          {/* Dedicated Register Control Bar (Direct Search & Period Controls) */}
-          <div className="bg-card p-3.5 rounded-xl shadow-card border border-border/50 space-y-3">
-            {/* Top row: Register Tabs & Monthly / All-Time Navigation */}
-            <div className="flex items-center justify-between gap-2.5 flex-wrap">
-              {/* Register Tabs */}
-              <div className="flex items-center gap-1.5 p-1 bg-muted/60 border border-border/60 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => { setRegViewFilter("all"); setRegPagePurchases(1); setRegPageSales(1); }}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                    regViewFilter === "all"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  सबै खाताहरू (All)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setRegViewFilter("purchases"); setRegPagePurchases(1); }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                    regViewFilter === "purchases"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <ShoppingBag className="h-3.5 w-3.5 text-blue-500" />
-                  <span>१. खरिद खाता ({filteredRegPurchases.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setRegViewFilter("sales"); setRegPageSales(1); }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                    regViewFilter === "sales"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Receipt className="h-3.5 w-3.5 text-emerald-500" />
-                  <span>२. बिक्री खाता ({filteredRegSales.length})</span>
-                </button>
-              </div>
-
-              {/* Monthly vs All-Time Switcher & Navigation */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center p-0.5 bg-muted/60 border border-border/60 rounded-lg text-xs">
-                  <button
-                    type="button"
-                    onClick={() => { setRegPeriodMode("month"); setRegPagePurchases(1); setRegPageSales(1); }}
-                    className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                      regPeriodMode === "month"
-                        ? "bg-background text-foreground shadow-xs font-semibold"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    महिना अनुसार
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setRegPeriodMode("all"); setRegPagePurchases(1); setRegPageSales(1); }}
-                    className={`px-2.5 py-1 rounded-md font-medium transition-all ${
-                      regPeriodMode === "all"
-                        ? "bg-background text-foreground shadow-xs font-semibold"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    सबै महिना (All Time)
-                  </button>
-                </div>
-
-                {regPeriodMode === "month" && (
-                  <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-0.5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={goToPrevRegMonth}
-                      title="Previous Month"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="font-semibold text-xs px-2.5 min-w-[115px] text-center select-none text-foreground">
-                      {regMonthLabel}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={goToNextRegMonth}
-                      disabled={regMonth.year === new Date().getFullYear() && regMonth.month === new Date().getMonth()}
-                      title="Next Month"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
+          {/* Dedicated Register Control Bar (Direct Search & Register Tabs) */}
+          <div className="bg-card p-3 rounded-xl shadow-card border border-border/50 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {/* Register Tabs */}
+            <div className="flex items-center gap-1.5 p-1 bg-muted/60 border border-border/60 rounded-lg shrink-0 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => { setRegViewFilter("all"); setRegPagePurchases(1); setRegPageSales(1); }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
+                  regViewFilter === "all"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                सबै खाताहरू (All)
+              </button>
+              <button
+                type="button"
+                onClick={() => { setRegViewFilter("purchases"); setRegPagePurchases(1); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
+                  regViewFilter === "purchases"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <ShoppingBag className="h-3.5 w-3.5 text-blue-500" />
+                <span>१. खरिद खाता ({filteredRegPurchases.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setRegViewFilter("sales"); setRegPageSales(1); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
+                  regViewFilter === "sales"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Receipt className="h-3.5 w-3.5 text-emerald-500" />
+                <span>२. बिक्री खाता ({filteredRegSales.length})</span>
+              </button>
             </div>
 
-            {/* Bottom row: Direct Search Input with clear button and live count */}
-            <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap pt-0.5">
-              <div className="relative flex-1 min-w-[260px]">
+            {/* Direct Search Input with clear button and live count */}
+            <div className="flex items-center gap-2 flex-1 max-w-md md:justify-end">
+              <div className="relative w-full">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="बिल नं., भौचर नं., ग्राहक/सप्लायरको नाम वा PAN खोज्नुहोस् (Search)..."
+                  placeholder="बिल नं., भौचर नं., ग्राहक/सप्लायर वा PAN खोज्नुहोस्..."
                   value={regSearch}
                   onChange={(e) => {
                     setRegSearch(e.target.value);
@@ -2096,22 +2036,9 @@ const Reports = () => {
               </div>
 
               {regSearch.trim() && (
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary font-medium border border-primary/20">
-                    "{regSearch}": {filteredRegPurchases.length + filteredRegSales.length} वटा फेला पर्यो
-                  </span>
-                  {regPeriodMode === "month" && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs text-primary underline px-1.5"
-                      onClick={() => { setRegPeriodMode("all"); setRegPagePurchases(1); setRegPageSales(1); }}
-                    >
-                      सबै महिनामा खोज्नुहोस् &rarr;
-                    </Button>
-                  )}
-                </div>
+                <span className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary font-medium border border-primary/20 shrink-0 whitespace-nowrap">
+                  {filteredRegPurchases.length + filteredRegSales.length} भेटियो
+                </span>
               )}
             </div>
           </div>
