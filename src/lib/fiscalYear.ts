@@ -43,6 +43,75 @@ export function formatNepaliDate(dateStrOrDate?: string | Date | null, separator
   }
 }
 
+export const NEPALI_MONTHS = [
+  { index: 0, nepali: "बैशाख", english: "Baisakh", number: "01" },
+  { index: 1, nepali: "जेठ", english: "Jestha", number: "02" },
+  { index: 2, nepali: "असार", english: "Ashadh", number: "03" },
+  { index: 3, nepali: "साउन", english: "Shrawan", number: "04" },
+  { index: 4, nepali: "भाद्र", english: "Bhadra", number: "05" },
+  { index: 5, nepali: "असोज", english: "Ashwin", number: "06" },
+  { index: 6, nepali: "कार्तिक", english: "Kartik", number: "07" },
+  { index: 7, nepali: "मंसिर", english: "Mangsir", number: "08" },
+  { index: 8, nepali: "पुस", english: "Poush", number: "09" },
+  { index: 9, nepali: "माघ", english: "Magh", number: "10" },
+  { index: 10, nepali: "फागुन", english: "Falgun", number: "11" },
+  { index: 11, nepali: "चैत", english: "Chaitra", number: "12" },
+];
+
+/**
+ * Returns the maximum days in a given Nepali BS month of a given BS year (typically 29 to 32).
+ */
+export function getDaysInBSMonth(year: number, monthIndex: number): number {
+  try {
+    const NepaliDateCtor = (NepaliDate as any)?.default || NepaliDate;
+    for (let d = 32; d >= 29; d--) {
+      if (new NepaliDateCtor(year, monthIndex, d).getMonth() === monthIndex) {
+        return d;
+      }
+    }
+    return 30;
+  } catch {
+    return 30;
+  }
+}
+
+/**
+ * Converts BS Year, Month (0-11), and Day (1-32) to AD Date string (YYYY-MM-DD).
+ */
+export function bsToAdDateString(year: number, monthIndex: number, day: number): string {
+  try {
+    const NepaliDateCtor = (NepaliDate as any)?.default || NepaliDate;
+    const np = new NepaliDateCtor(year, monthIndex, day);
+    const d = np.toJsDate();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dt = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dt}`;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Converts an AD date string or Date object into BS parts { year, monthIndex, day }.
+ */
+export function adToBsDateParts(dateStrOrDate?: string | Date | null): { year: number; monthIndex: number; day: number } | null {
+  if (!dateStrOrDate) return null;
+  try {
+    const d = typeof dateStrOrDate === "string" ? new Date(dateStrOrDate) : dateStrOrDate;
+    if (isNaN(d.getTime())) return null;
+    const NepaliDateCtor = (NepaliDate as any)?.default || NepaliDate;
+    const np = new NepaliDateCtor(d);
+    return {
+      year: np.getYear(),
+      monthIndex: np.getMonth(),
+      day: np.getDate()
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Computes the Nepali Fiscal Year info for a given Date.
  */

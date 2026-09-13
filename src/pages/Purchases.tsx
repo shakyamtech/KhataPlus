@@ -22,7 +22,7 @@ import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { ProductFormModal } from "@/components/ProductFormModal";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printPurchaseVoucher } from "@/lib/invoicePrinter";
-import { formatNepaliDate } from "@/lib/fiscalYear";
+import { formatNepaliDate, NEPALI_MONTHS, getDaysInBSMonth, bsToAdDateString, adToBsDateParts } from "@/lib/fiscalYear";
 
 type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null; has_expiry?: boolean; hs_code?: string | null };
 type Supplier = { id: string; name: string; phone?: string; pan?: string; address?: string };
@@ -380,6 +380,39 @@ const Purchases = () => {
   const [purchaseType, setPurchaseType] = useState<"vat_bill" | "non_vat">("vat_bill");
   const [supplierBillNo, setSupplierBillNo] = useState<string>("");
   const [purchaseDate, setPurchaseDate] = useState<string>("");
+  const [dateMode, setDateMode] = useState<"bs" | "ad">("bs");
+  const [bsYear, setBsYear] = useState<number>(() => adToBsDateParts(new Date())?.year || 2083);
+  const [bsMonth, setBsMonth] = useState<number>(() => adToBsDateParts(new Date())?.monthIndex ?? 4);
+  const [bsDay, setBsDay] = useState<number>(() => adToBsDateParts(new Date())?.day || 1);
+
+  // Sync BS parts whenever purchaseDate changes (e.g. edit mode, reset, or AD input)
+  useEffect(() => {
+    if (purchaseDate) {
+      const parts = adToBsDateParts(purchaseDate);
+      if (parts) {
+        setBsYear(parts.year);
+        setBsMonth(parts.monthIndex);
+        setBsDay(parts.day);
+      }
+    } else {
+      const todayParts = adToBsDateParts(new Date());
+      if (todayParts) {
+        setBsYear(todayParts.year);
+        setBsMonth(todayParts.monthIndex);
+        setBsDay(todayParts.day);
+      }
+    }
+  }, [purchaseDate]);
+
+  const handleBsChange = (newYear: number, newMonth: number, newDay: number) => {
+    const maxDays = getDaysInBSMonth(newYear, newMonth);
+    const clampedDay = Math.min(newDay, maxDays);
+    setBsYear(newYear);
+    setBsMonth(newMonth);
+    setBsDay(clampedDay);
+    const adStr = bsToAdDateString(newYear, newMonth, clampedDay);
+    setPurchaseDate(adStr);
+  };
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [history, setHistory] = useState<any[]>([]);
@@ -1071,7 +1104,7 @@ const Purchases = () => {
                   <span className="text-[10px] text-muted-foreground ml-0.5">▾</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-3 space-y-2.5" align="end">
+              <PopoverContent className="w-80 p-3 space-y-3" align="end">
                 <div className="flex items-center justify-between pb-1.5 border-b">
                   <span className="text-xs font-bold text-foreground">दाखिला मिति (Inward Date)</span>
                   {purchaseDate && (
@@ -1084,20 +1117,116 @@ const Purchases = () => {
                     </button>
                   )}
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">मिति छान्नुहोस् वा टाइप गर्नुहोस्:</Label>
-                  <Input
-                    type="date"
-                    value={purchaseDate}
-                    onChange={(e) => setPurchaseDate(e.target.value)}
-                    className="h-8 text-xs bg-background font-medium"
-                  />
+
+                {/* Tabs: वि.सं. (नेपाली) vs ई.सं. (AD) */}
+                <div className="grid grid-cols-2 p-0.5 bg-muted/70 rounded-md text-[11px] font-semibold border">
+                  <button
+                    type="button"
+                    onClick={() => setDateMode("bs")}
+                    className={cn(
+                      "py-1 rounded text-center transition-all",
+                      dateMode === "bs"
+                        ? "bg-background text-foreground shadow-2xs font-bold"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    वि.सं. (नेपाली मिति)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDateMode("ad")}
+                    className={cn(
+                      "py-1 rounded text-center transition-all",
+                      dateMode === "ad"
+                        ? "bg-background text-foreground shadow-2xs font-bold"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    ई.सं. (English AD)
+                  </button>
                 </div>
-                <p className="text-[10.5px] text-muted-foreground leading-tight">
-                  {purchaseDate
-                    ? `यस खरिद बिलको मिति ${purchaseDate} (वि.सं. ${formatNepaliDate(purchaseDate)}) हुनेछ।`
-                    : `खाली छोड्दा यो खरिद स्वतः आजको मिति (वि.सं. ${formatNepaliDate(new Date())}) मा दाखिला हुनेछ।`}
-                </p>
+
+                {dateMode === "bs" ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[11px] font-semibold text-foreground">नेपाली मिति छान्नुहोस्:</Label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const todayParts = adToBsDateParts(new Date());
+                          if (todayParts) {
+                            handleBsChange(todayParts.year, todayParts.monthIndex, todayParts.day);
+                          }
+                        }}
+                        className="text-[10px] text-primary hover:underline font-medium"
+                      >
+                        आज (Today)
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block mb-0.5 font-medium">वर्ष (Year)</span>
+                        <select
+                          value={bsYear}
+                          onChange={(e) => handleBsChange(Number(e.target.value), bsMonth, bsDay)}
+                          className="w-full h-8 px-1.5 text-xs rounded-md border border-input bg-background font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {Array.from({ length: 8 }, (_, i) => (adToBsDateParts(new Date())?.year || 2083) + 1 - i).map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block mb-0.5 font-medium">महिना (Month)</span>
+                        <select
+                          value={bsMonth}
+                          onChange={(e) => handleBsChange(bsYear, Number(e.target.value), bsDay)}
+                          className="w-full h-8 px-1 text-xs rounded-md border border-input bg-background font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {NEPALI_MONTHS.map((m) => (
+                            <option key={m.index} value={m.index}>{m.nepali} ({m.number})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block mb-0.5 font-medium">गते (Day)</span>
+                        <select
+                          value={bsDay}
+                          onChange={(e) => handleBsChange(bsYear, bsMonth, Number(e.target.value))}
+                          className="w-full h-8 px-1.5 text-xs rounded-md border border-input bg-background font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {Array.from({ length: getDaysInBSMonth(bsYear, bsMonth) }, (_, i) => i + 1).map((d) => (
+                            <option key={d} value={d}>{String(d).padStart(2, "0")}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">ई.सं. (AD) क्यालेन्डर छान्नुहोस्:</Label>
+                    <Input
+                      type="date"
+                      value={purchaseDate}
+                      onChange={(e) => setPurchaseDate(e.target.value)}
+                      className="h-8 text-xs bg-background font-medium"
+                    />
+                  </div>
+                )}
+
+                <div className="pt-1.5 border-t border-border/70">
+                  <p className="text-[11px] text-muted-foreground leading-tight">
+                    {purchaseDate ? (
+                      <>
+                        <span className="font-semibold text-foreground">दाखिला हुने मिति:</span> वि.सं. <strong className="text-primary">{formatNepaliDate(purchaseDate)}</strong> (ई.सं. {purchaseDate})
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-muted-foreground">खाली छोड्दा यो खरिद स्वतः आजको मिति (वि.सं. <strong>{formatNepaliDate(new Date())}</strong>) मा दाखिला हुनेछ।</span>
+                      </>
+                    )}
+                  </p>
+                </div>
               </PopoverContent>
             </Popover>
           </div>
