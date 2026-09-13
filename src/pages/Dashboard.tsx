@@ -7,9 +7,11 @@ import { Card } from "@/components/ui/card";
 import { fmt } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wallet, Package, AlertTriangle, ShoppingCart, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getShopInfo, ShopInfo } from "@/lib/shop";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [stats, setStats] = useState({
     todaySales: 0, todayNetSales: 0, todayVat: 0, todayProfit: 0, cashBalance: 0,
     stockValue: 0, lowStock: 0, customerDues: 0, supplierDues: 0, productCount: 0,
@@ -33,9 +35,10 @@ const Dashboard = () => {
       const cQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
       const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
 
-      const [sSnap, pSnap, cSnap, lSnap] = await Promise.all([
-        getDocs(sQ), getDocs(pQ), getDocs(cQ), getDocs(lQ)
+      const [sSnap, pSnap, cSnap, lSnap, sInfo] = await Promise.all([
+        getDocs(sQ), getDocs(pQ), getDocs(cQ), getDocs(lQ), getShopInfo()
       ]);
+      setShopInfo(sInfo);
 
       const salesAll = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const products = pSnap.docs.map(d => d.data());
@@ -159,11 +162,12 @@ const Dashboard = () => {
 
   const isProfit = stats.todayProfit >= 0;
   const isCashPositive = stats.cashBalance >= 0;
+  const isVatShop = shopInfo?.is_vat_registered === true || shopInfo?.tax_type === "vat";
   const cards = [
     { 
       label: "Today's Sales", 
       value: fmt(stats.todaySales), 
-      subText: stats.todayVat > 0 ? `Net: ${fmt(stats.todayNetSales)} · VAT: ${fmt(stats.todayVat)}` : undefined,
+      subText: (isVatShop && stats.todayVat > 0) ? `Net: ${fmt(stats.todayNetSales)} · VAT: ${fmt(stats.todayVat)}` : undefined,
       icon: ShoppingCart, 
       accent: "bg-primary text-primary-foreground shadow-[0_4px_14px_0_hsl(var(--primary)/0.39)]" 
     },
