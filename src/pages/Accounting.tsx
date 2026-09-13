@@ -50,8 +50,11 @@ import {
   ArrowUpRight,
   Scale,
   CheckCircle2,
-  Pencil
+  Pencil,
+  Package,
+  Boxes
 } from "lucide-react";
+import { StockSummaryView } from "@/components/StockSummaryView";
 import { collection, query, where, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -60,7 +63,7 @@ export default function Accounting() {
   const { lang } = useLanguage();
   const [searchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<"vouchers" | "daybook" | "trial" | "chart">("vouchers");
+  const [activeTab, setActiveTab] = useState<"vouchers" | "daybook" | "stock" | "trial" | "chart">("vouchers");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +79,7 @@ export default function Accounting() {
   // Sync tab with URL search params
   useEffect(() => {
     const t = searchParams.get("tab");
-    if (t === "trial" || t === "daybook" || t === "chart" || t === "vouchers") {
+    if (t === "trial" || t === "daybook" || t === "chart" || t === "vouchers" || t === "stock") {
       setActiveTab(t as any);
     }
   }, [searchParams]);
@@ -134,7 +137,7 @@ export default function Accounting() {
       setCashDocs(cSnap.docs.map(d => d.data()));
       setSalesDocs(sSnap.docs.map(d => d.data()));
       setLedgerDocs(lSnap.docs.map(d => d.data()));
-      setProductDocs(pSnap.docs.map(d => d.data()));
+      setProductDocs(pSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setStockAdjDocs(wSnap.docs.map(d => d.data()));
     } catch (err: any) {
       console.error(err);
@@ -793,24 +796,30 @@ export default function Accounting() {
       />
 
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-4">
-        <TabsList className="grid grid-cols-4 w-full sm:w-[620px]">
-          <TabsTrigger value="vouchers" className="gap-2 text-xs font-semibold">
-            <CreditCard className="h-3.5 w-3.5" />
-            {lang === "NEP" ? "भाउचर इन्ट्री" : "Voucher Entry"}
-          </TabsTrigger>
-          <TabsTrigger value="daybook" className="gap-2 text-xs font-semibold">
-            <BookOpenCheck className="h-3.5 w-3.5" />
-            {lang === "NEP" ? "भाउचर सूची" : "Day Book"}
-          </TabsTrigger>
-          <TabsTrigger value="trial" className="gap-2 text-xs font-semibold">
-            <Scale className="h-3.5 w-3.5" />
-            {lang === "NEP" ? "सन्तुलन परीक्षण" : "Trial Balance"}
-          </TabsTrigger>
-          <TabsTrigger value="chart" className="gap-2 text-xs font-semibold">
-            <FolderTree className="h-3.5 w-3.5" />
-            {lang === "NEP" ? "लेखा समूह" : "Chart of Accounts"}
-          </TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto pb-1 no-scrollbar">
+          <TabsList className="inline-flex sm:grid sm:grid-cols-5 w-auto sm:w-[780px] h-10 p-1">
+            <TabsTrigger value="vouchers" className="gap-2 text-xs font-semibold px-3">
+              <CreditCard className="h-3.5 w-3.5" />
+              {lang === "NEP" ? "भाउचर इन्ट्री" : "Voucher Entry"}
+            </TabsTrigger>
+            <TabsTrigger value="daybook" className="gap-2 text-xs font-semibold px-3">
+              <BookOpenCheck className="h-3.5 w-3.5" />
+              {lang === "NEP" ? "भाउचर सूची" : "Day Book"}
+            </TabsTrigger>
+            <TabsTrigger value="stock" className="gap-2 text-xs font-semibold px-3">
+              <Package className="h-3.5 w-3.5 text-amber-500" />
+              {lang === "NEP" ? "स्टक सारांश" : "Stock Summary"}
+            </TabsTrigger>
+            <TabsTrigger value="trial" className="gap-2 text-xs font-semibold px-3">
+              <Scale className="h-3.5 w-3.5 text-emerald-500" />
+              {lang === "NEP" ? "सन्तुलन परीक्षण" : "Trial Balance"}
+            </TabsTrigger>
+            <TabsTrigger value="chart" className="gap-2 text-xs font-semibold px-3">
+              <FolderTree className="h-3.5 w-3.5 text-blue-500" />
+              {lang === "NEP" ? "लेखा समूह" : "Chart of Accounts"}
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* TAB 1: VOUCHER ENTRY CARDS */}
         <TabsContent value="vouchers" className="space-y-6">
@@ -1044,7 +1053,25 @@ export default function Accounting() {
           </div>
         </TabsContent>
 
-        {/* TAB 3: TRIAL BALANCE */}
+        {/* TAB 3: STOCK SUMMARY */}
+        <TabsContent value="stock" className="space-y-6">
+          <StockSummaryView
+            products={productDocs.map((d: any) => ({
+              id: d.id || "",
+              name: d.name || "",
+              unit: d.unit || "pcs",
+              cost_price: Number(d.cost_price || 0),
+              sell_price: Number(d.sell_price || 0),
+              stock_qty: Number(d.stock_qty || 0),
+              low_stock_threshold: Number(d.low_stock_threshold || 5),
+              barcode: d.barcode || null,
+              category: d.category || null
+            }))}
+            shopInfo={shopInfo}
+          />
+        </TabsContent>
+
+        {/* TAB 4: TRIAL BALANCE */}
         <TabsContent value="trial" className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
             <div>
