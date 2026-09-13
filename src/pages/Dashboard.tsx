@@ -11,7 +11,7 @@ import { Link } from "react-router-dom";
 const Dashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({
-    todaySales: 0, todayProfit: 0, cashBalance: 0,
+    todaySales: 0, todayNetSales: 0, todayVat: 0, todayProfit: 0, cashBalance: 0,
     stockValue: 0, lowStock: 0, customerDues: 0, supplierDues: 0, productCount: 0,
   });
   const [salesForTopItems, setSalesForTopItems] = useState<any[]>([]);
@@ -68,7 +68,9 @@ const Dashboard = () => {
         };
       });
 
-      const todaySales = (sales ?? []).reduce((s, r: any) => s + Number(r.total), 0);
+      const todaySales = (sales ?? []).reduce((s, r: any) => s + Number(r.total || 0), 0);
+      const todayVat = (sales ?? []).reduce((s, r: any) => s + Number(r.vat_amount || 0), 0);
+      const todayNetSales = todaySales - todayVat;
       const todayProfit = (sales ?? []).reduce((s, r: any) => {
         const netRevenue = Number(r.total || 0) - Number(r.vat_amount || 0);
         const cost = Number(r.cost_total || 0);
@@ -101,7 +103,7 @@ const Dashboard = () => {
         .reduce((s, [_, b]) => s + Math.max(0, b), 0);
 
       setStats({
-        todaySales, todayProfit, cashBalance, stockValue, lowStock,
+        todaySales, todayNetSales, todayVat, todayProfit, cashBalance, stockValue, lowStock,
         customerDues, supplierDues, productCount: products?.length ?? 0,
       });
       if (topSales) {
@@ -158,7 +160,13 @@ const Dashboard = () => {
   const isProfit = stats.todayProfit >= 0;
   const isCashPositive = stats.cashBalance >= 0;
   const cards = [
-    { label: "Today's Sales", value: fmt(stats.todaySales), icon: ShoppingCart, accent: "bg-primary text-primary-foreground shadow-[0_4px_14px_0_hsl(var(--primary)/0.39)]" },
+    { 
+      label: "Today's Sales", 
+      value: fmt(stats.todaySales), 
+      subText: stats.todayVat > 0 ? `Net: ${fmt(stats.todayNetSales)} · VAT: ${fmt(stats.todayVat)}` : undefined,
+      icon: ShoppingCart, 
+      accent: "bg-primary text-primary-foreground shadow-[0_4px_14px_0_hsl(var(--primary)/0.39)]" 
+    },
     { 
       label: isProfit ? "Today's Profit" : "Today's Loss", 
       value: fmt(Math.abs(stats.todayProfit)), 
@@ -187,6 +195,11 @@ const Dashboard = () => {
             </div>
             <div className="mt-3 text-xs uppercase tracking-wide text-muted-foreground font-medium group-hover:text-foreground transition-colors duration-300">{c.label}</div>
             <div className={`mt-1 text-xl md:text-2xl font-display ${c.valueColor || "text-foreground"}`}>{c.value}</div>
+            {c.subText && (
+              <div className="mt-1 text-[11px] font-medium text-muted-foreground/80 truncate" title={c.subText}>
+                {c.subText}
+              </div>
+            )}
           </Card>
         ))}
       </div>
