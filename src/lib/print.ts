@@ -124,10 +124,12 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
     .a4-box-row {
       display: flex;
       justify-content: space-between;
+      align-items: baseline;
     }
     .a4-box-row span:first-child {
       font-weight: 600;
-      width: 80px;
+      min-width: 125px;
+      white-space: nowrap;
     }
     .a4-box-row span:last-child {
       font-weight: 600;
