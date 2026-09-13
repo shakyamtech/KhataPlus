@@ -338,6 +338,12 @@ const Reports = () => {
       ? `पूरा ${regFiscalYear.labelNp} (${regFiscalYear.labelEn})`
       : `${MONTHS_EN[regMonth.month]} ${regMonth.year}`;
 
+  const plPeriodLabel = plPeriodMode === "month"
+    ? plMonthLabel
+    : plPeriodMode === "fy"
+      ? `पूरा ${plFiscalYear.labelNp} (${plFiscalYear.labelEn})`
+      : `अघिल्लो ${range} दिन (Last ${range} Days)`;
+
   const handleSelectRegFiscalYear = (fy: FiscalYearInfo) => {
     setRegPagePurchases(1);
     setRegPageSales(1);
@@ -1188,11 +1194,7 @@ const Reports = () => {
     if (!shopInfo) return;
     const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
     const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
-    const periodLabel = plPeriodMode === "month"
-      ? plMonthLabel
-      : plPeriodMode === "fy"
-        ? `पूरा ${plFiscalYear.labelNp} (${plFiscalYear.labelEn})`
-        : `अघिल्लो ${range} दिन (Last ${range} Days)`;
+    const periodLabel = plPeriodLabel;
 
     const body = `
       <div class="a4-container" style="background:#ffffff; color:#000000; padding:28px 32px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.5;">
@@ -1622,7 +1624,7 @@ const Reports = () => {
                 </DropdownMenu>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                आर्थिक वर्ष: <strong className="text-foreground">{plFiscalYear.labelNp}</strong> · अवधि: <strong className="text-foreground">{periodLabel}</strong>
+                आर्थिक वर्ष: <strong className="text-foreground">{plFiscalYear.labelNp}</strong> · अवधि: <strong className="text-foreground">{plPeriodLabel}</strong>
               </p>
             </div>
 
