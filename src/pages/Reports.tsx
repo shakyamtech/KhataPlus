@@ -643,11 +643,23 @@ const Reports = () => {
       const customerPhone = s.buyer_phone || cust?.phone || null;
       const customerAddress = s.buyer_address || cust?.address || null;
 
-      const rawItems = Array.isArray(s.items) && s.items.length > 0
+      let rawItems = Array.isArray(s.items) && s.items.length > 0
         ? s.items
         : Array.isArray(s.order_items) && s.order_items.length > 0
           ? s.order_items
           : [];
+
+      if (rawItems.length === 0 && s.id) {
+        try {
+          const siQ = query(collection(db, "sale_items"), where("sale_id", "==", s.id));
+          const siSnap = await getDocs(siQ);
+          if (!siSnap.empty) {
+            rawItems = siSnap.docs.map(d => d.data());
+          }
+        } catch (err) {
+          console.error("Error fetching sale_items", err);
+        }
+      }
 
       // Resolve HS Code from items or fetch from products collection
       const missingSaleHsProductIds = new Set<string>();
@@ -703,12 +715,16 @@ const Reports = () => {
         const pName = (it.product_name || it.name || "Item").trim();
         const resolvedHs = (it.hs_code || (it.product_id ? saleProductHsMap[it.product_id] : "") || saleProductHsMap[pName.toLowerCase()] || "").trim() || undefined;
 
+        const price = Number(it.sell_price ?? it.price ?? it.rate ?? 0);
+        const qty = Number(it.qty ?? it.quantity ?? 1);
+        const total = Number(it.total ?? (qty * price));
+
         return {
           product_name: pName,
-          qty: Number(it.qty || it.quantity || 1),
+          qty,
           unit: it.unit || "pcs",
-          price: Number(it.price || it.sell_price || it.rate || 0),
-          total: Number(it.total ?? (Number(it.qty || 1) * Number(it.price || it.sell_price || 0))),
+          price,
+          total,
           hs_code: resolvedHs
         };
       });
