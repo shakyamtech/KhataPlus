@@ -20,7 +20,12 @@ const Row = ({ label, value, bold }: { label: string; value: number; bold?: bool
   </div>
 );
 
-const BalanceSheet = () => {
+interface BalanceSheetProps {
+  hideHeader?: boolean;
+  onNavigateToTrial?: () => void;
+}
+
+const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {}) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
@@ -417,8 +422,10 @@ const BalanceSheet = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4">
-      <PageHeader title="Final Account & Balance Sheet" subtitle="A snapshot of your shop's finances" />
+    <div className={hideHeader ? "space-y-4" : "p-4 md:p-8 max-w-5xl mx-auto space-y-4"}>
+      {!hideHeader && (
+        <PageHeader title="Final Account & Balance Sheet" subtitle="A snapshot of your shop's finances" />
+      )}
 
       {/* Action & Details Header Card matching VAT / P&L style */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
@@ -435,7 +442,7 @@ const BalanceSheet = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Button onClick={() => navigate("/accounting?tab=trial")} variant="outline" size="sm" className="gap-2 shrink-0">
+          <Button onClick={() => onNavigateToTrial ? onNavigateToTrial() : navigate("/reports?tab=trial")} variant="outline" size="sm" className="gap-2 shrink-0">
             <Scale className="h-4 w-4 text-emerald-600" />
             सन्तुलन परीक्षण (Trial Balance)
           </Button>

@@ -60,7 +60,6 @@ const nav = [
     { to: "/cashbook", label: "Cashbook", icon: Wallet },
     { to: "/accounting", label: "Accounting", icon: Landmark },
     { to: "/reports", label: "Reports", icon: BarChart3 },
-    { to: "/balance-sheet", label: "Balance Sheet", icon: FileSpreadsheet },
 ];
 
 function getUserInitials(name?: string, email?: string): string {

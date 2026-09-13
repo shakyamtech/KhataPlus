@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,11 +12,13 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { format, startOfDay, subDays } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark, ChevronDown } from "lucide-react";
+import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark, ChevronDown, FileSpreadsheet } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
 import { getFiscalYearInfo, getFiscalYearForMonth, getRecentFiscalYears, isDateInFiscalYear, FiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
+import BalanceSheet from "@/pages/BalanceSheet";
+import { TrialBalanceView } from "@/components/TrialBalanceView";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -58,6 +61,24 @@ const Reports = () => {
   const [regPagePurchases, setRegPagePurchases] = useState(1);
   const [regPageSales, setRegPageSales] = useState(1);
   const [showTaxDetails, setShowTaxDetails] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "overview");
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t && t !== activeTab) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (v: string) => {
+    setActiveTab(v);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", v);
+      return next;
+    }, { replace: true });
+  };
 
   const loadData = async () => {
     if (!user) return;
@@ -1544,21 +1565,31 @@ const Reports = () => {
         </Tabs>
       } />
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className={`grid ${isVatShop ? "grid-cols-4 max-w-xl" : "grid-cols-3 max-w-md"} w-full mx-auto`}>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="pl">Profit & Loss</TabsTrigger>
-          <TabsTrigger value="registers" className="flex items-center gap-1.5">
-            <BookOpen className="h-3.5 w-3.5" />
-            <span>Registers (खाताहरू)</span>
-          </TabsTrigger>
-          {isVatShop && (
-            <TabsTrigger value="vat" className="flex items-center gap-1.5">
-              <Receipt className="h-3.5 w-3.5" />
-              <span>VAT Reports</span>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+        <div className="flex justify-start sm:justify-center w-full overflow-x-auto pb-1.5 no-scrollbar">
+          <TabsList className="inline-flex h-10 items-center justify-start sm:justify-center rounded-lg bg-muted p-1 text-muted-foreground w-auto sm:w-full max-w-5xl gap-1">
+            <TabsTrigger value="overview" className="text-xs px-3 py-1.5 font-medium">Overview</TabsTrigger>
+            <TabsTrigger value="pl" className="text-xs px-3 py-1.5 font-medium">Profit & Loss</TabsTrigger>
+            <TabsTrigger value="balancesheet" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+              <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" />
+              <span>Balance Sheet (वासलात)</span>
             </TabsTrigger>
-          )}
-        </TabsList>
+            <TabsTrigger value="trial" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+              <Scale className="h-3.5 w-3.5 text-emerald-500" />
+              <span>Trial Balance (सन्तुलन)</span>
+            </TabsTrigger>
+            <TabsTrigger value="registers" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+              <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
+              <span>Registers (खाताहरू)</span>
+            </TabsTrigger>
+            {isVatShop && (
+              <TabsTrigger value="vat" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+                <Receipt className="h-3.5 w-3.5 text-amber-500" />
+                <span>VAT Reports</span>
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1 flex-wrap gap-2">
@@ -1832,6 +1863,19 @@ const Reports = () => {
               </section>
             </div>
           </Card>
+        </TabsContent>
+
+        {/* Balance Sheet Tab */}
+        <TabsContent value="balancesheet" className="space-y-4">
+          <BalanceSheet
+            hideHeader
+            onNavigateToTrial={() => handleTabChange("trial")}
+          />
+        </TabsContent>
+
+        {/* Trial Balance Tab */}
+        <TabsContent value="trial" className="space-y-4">
+          <TrialBalanceView />
         </TabsContent>
 
         {/* Registers Tab: Available for both PAN & VAT Shops */}
