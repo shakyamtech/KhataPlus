@@ -94,3 +94,18 @@ export function getRecentFiscalYears(count: number = 4): FiscalYearInfo[] {
 
   return list;
 }
+
+/**
+ * Checks if a given date string or Date falls within a specific Nepali Fiscal Year (by bsStartYear, e.g. 2081)
+ */
+export function isDateInFiscalYear(dateStrOrDate: string | Date | undefined | null, bsStartYear: number): boolean {
+  if (!dateStrOrDate) return false;
+  try {
+    const d = typeof dateStrOrDate === "string" ? new Date(dateStrOrDate) : dateStrOrDate;
+    if (isNaN(d.getTime())) return false;
+    const fy = getFiscalYearInfo(d);
+    return fy.bsStartYear === bsStartYear;
+  } catch {
+    return false;
+  }
+}

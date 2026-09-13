@@ -11,11 +11,19 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { format, startOfDay, subDays } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark } from "lucide-react";
+import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
-import { getFiscalYearInfo, getFiscalYearForMonth } from "@/lib/fiscalYear";
+import { getFiscalYearInfo, getFiscalYearForMonth, getRecentFiscalYears, isDateInFiscalYear, FiscalYearInfo } from "@/lib/fiscalYear";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 const Reports = () => {
   const { user } = useAuth();
@@ -31,7 +39,7 @@ const Reports = () => {
   const [allPurchases, setAllPurchases] = useState<any[]>([]);
   const [allExpenses, setAllExpenses] = useState<any[]>([]);
   const [allWastage, setAllWastage] = useState<any[]>([]);
-  const [plPeriodMode, setPlPeriodMode] = useState<"month" | "days">("month");
+  const [plPeriodMode, setPlPeriodMode] = useState<"month" | "days" | "fy">("month");
   const [plMonth, setPlMonth] = useState<{ year: number; month: number }>(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
@@ -44,7 +52,7 @@ const Reports = () => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
-  const [regPeriodMode, setRegPeriodMode] = useState<"month" | "all">("month");
+  const [regPeriodMode, setRegPeriodMode] = useState<"month" | "fy" | "all">("month");
   const [regSearch, setRegSearch] = useState("");
   const [regViewFilter, setRegViewFilter] = useState<"all" | "purchases" | "sales">("all");
   const [regPagePurchases, setRegPagePurchases] = useState(1);
@@ -318,14 +326,46 @@ const Reports = () => {
     setRegPageSales(1);
     setRegMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { ...prev, month: prev.month + 1 });
   };
-  const regMonthLabel = regPeriodMode === "all"
-    ? "सबै समय (All Records)"
-    : `${MONTHS_EN[regMonth.month]} ${regMonth.year}`;
-
   const currentFY = useMemo(() => getFiscalYearInfo(new Date()), []);
+  const fyOptions = useMemo(() => getRecentFiscalYears(5), []);
   const plFiscalYear = useMemo(() => getFiscalYearForMonth(plMonth.year, plMonth.month), [plMonth]);
   const vatFiscalYear = useMemo(() => getFiscalYearForMonth(vatMonth.year, vatMonth.month), [vatMonth]);
   const regFiscalYear = useMemo(() => getFiscalYearForMonth(regMonth.year, regMonth.month), [regMonth]);
+
+  const regMonthLabel = regPeriodMode === "all"
+    ? "सबै समय (All Records)"
+    : regPeriodMode === "fy"
+      ? `पूरा ${regFiscalYear.labelNp} (${regFiscalYear.labelEn})`
+      : `${MONTHS_EN[regMonth.month]} ${regMonth.year}`;
+
+  const handleSelectRegFiscalYear = (fy: FiscalYearInfo) => {
+    setRegPagePurchases(1);
+    setRegPageSales(1);
+    if (fy.bsStartYear === currentFY.bsStartYear) {
+      const now = new Date();
+      setRegMonth({ year: now.getFullYear(), month: now.getMonth() });
+    } else {
+      setRegMonth({ year: fy.startDate.getFullYear(), month: 7 });
+    }
+  };
+
+  const handleSelectPlFiscalYear = (fy: FiscalYearInfo) => {
+    if (fy.bsStartYear === currentFY.bsStartYear) {
+      const now = new Date();
+      setPlMonth({ year: now.getFullYear(), month: now.getMonth() });
+    } else {
+      setPlMonth({ year: fy.startDate.getFullYear(), month: 7 });
+    }
+  };
+
+  const handleSelectVatFiscalYear = (fy: FiscalYearInfo) => {
+    if (fy.bsStartYear === currentFY.bsStartYear) {
+      const now = new Date();
+      setVatMonth({ year: now.getFullYear(), month: now.getMonth() });
+    } else {
+      setVatMonth({ year: fy.startDate.getFullYear(), month: 7 });
+    }
+  };
 
   const regMonthlyTotals = useMemo(() => {
     const sMap = new Map(suppliers.map(s => [s.id, s]));
@@ -344,6 +384,7 @@ const Reports = () => {
 
     allSales.forEach(s => {
       if (regPeriodMode === "month" && !isInMonth(s.created_at, regMonth.year, regMonth.month)) return;
+      if (regPeriodMode === "fy" && !isDateInFiscalYear(s.created_at, regFiscalYear.bsStartYear)) return;
       const cust = s.customer_id ? cMap.get(s.customer_id) : null;
       const customerName = s.customer_name || cust?.name || "Walk-in Customer";
       const customerPan = s.buyer_pan || cust?.pan || "—";
@@ -361,6 +402,7 @@ const Reports = () => {
 
     allPurchases.forEach(p => {
       if (regPeriodMode === "month" && !isInMonth(p.created_at, regMonth.year, regMonth.month)) return;
+      if (regPeriodMode === "fy" && !isDateInFiscalYear(p.created_at, regFiscalYear.bsStartYear)) return;
       const supp = p.supplier_id ? sMap.get(p.supplier_id) : null;
       const supplierName = p.supplier_name || supp?.name || "—";
       const supplierPan = p.supplier_pan || supp?.pan || "—";
@@ -387,7 +429,7 @@ const Reports = () => {
       totalSalesAmount,
       totalPurchasesAmount
     };
-  }, [allSales, allPurchases, suppliers, customers, regMonth, regPeriodMode]);
+  }, [allSales, allPurchases, suppliers, customers, regMonth, regPeriodMode, regFiscalYear]);
 
   const filteredRegSales = useMemo(() => {
     const q = regSearch.trim().toLowerCase();
@@ -968,7 +1010,7 @@ const Reports = () => {
             खरिद तथा बिक्री खाता (Monthly Purchase & Sales Register Book)
           </div>
           <div style="font-size:11.5px; color:#111; margin-top:5px; font-weight:600;">
-            आर्थिक वर्ष (Fiscal Year): <strong>${regPeriodMode === "month" ? regFiscalYear.fullLabel : currentFY.fullLabel}</strong>
+            आर्थिक वर्ष (Fiscal Year): <strong>${(regPeriodMode === "month" || regPeriodMode === "fy") ? regFiscalYear.fullLabel : currentFY.fullLabel}</strong>
           </div>
           <div style="font-size:11px; color:#333; margin-top:2px;">
             अवधि (Period): <strong>${regMonthLabel}</strong> · तयार मिति (Report Date): <strong>${dateFormatted}</strong>
@@ -1109,6 +1151,12 @@ const Reports = () => {
       targetExpenses = allExpenses.filter(e => isInMonth(e.created_at));
       const wLoss = allWastage.filter(w => isInMonth(w.created_at));
       targetWastageVal = wLoss.reduce((sum, r) => sum + Number(r.total_value || 0), 0);
+    } else if (plPeriodMode === "fy") {
+      targetSales = allSales.filter(s => isDateInFiscalYear(s.created_at, plFiscalYear.bsStartYear));
+      targetPurchases = allPurchases.filter(p => isDateInFiscalYear(p.created_at, plFiscalYear.bsStartYear));
+      targetExpenses = allExpenses.filter(e => isDateInFiscalYear(e.created_at, plFiscalYear.bsStartYear));
+      const wLoss = allWastage.filter(w => isDateInFiscalYear(w.created_at, plFiscalYear.bsStartYear));
+      targetWastageVal = wLoss.reduce((sum, r) => sum + Number(r.total_value || 0), 0);
     }
 
     const grossRevenue = targetSales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
@@ -1134,13 +1182,17 @@ const Reports = () => {
       net,
       salesCount: targetSales.length
     };
-  }, [plPeriodMode, plMonth, allSales, allPurchases, allExpenses, allWastage, sales, purchases, expenses, wastage]);
+  }, [plPeriodMode, plMonth, plFiscalYear, allSales, allPurchases, allExpenses, allWastage, sales, purchases, expenses, wastage]);
 
   const handlePrintPlReport = () => {
     if (!shopInfo) return;
     const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
     const dateFormatted = format(new Date(), "dd/MM/yyyy, hh:mm a");
-    const periodLabel = plPeriodMode === "month" ? plMonthLabel : `अघिल्लो ${range} दिन (Last ${range} Days)`;
+    const periodLabel = plPeriodMode === "month"
+      ? plMonthLabel
+      : plPeriodMode === "fy"
+        ? `पूरा ${plFiscalYear.labelNp} (${plFiscalYear.labelEn})`
+        : `अघिल्लो ${range} दिन (Last ${range} Days)`;
 
     const body = `
       <div class="a4-container" style="background:#ffffff; color:#000000; padding:28px 32px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.5;">
@@ -1156,7 +1208,7 @@ const Reports = () => {
             नाफा-नोक्सान हिसाब विवरण (Profit & Loss Statement)
           </div>
           <div style="font-size:11.5px; color:#111; margin-top:5px; font-weight:600;">
-            आर्थिक वर्ष (Fiscal Year): <strong>${plPeriodMode === "month" ? plFiscalYear.fullLabel : currentFY.fullLabel}</strong>
+            आर्थिक वर्ष (Fiscal Year): <strong>${(plPeriodMode === "month" || plPeriodMode === "fy") ? plFiscalYear.fullLabel : currentFY.fullLabel}</strong>
           </div>
           <div style="font-size:11px; color:#333; margin-top:2px;">
             अवधि (Period): <strong>${escapeHtml(periodLabel)}</strong> · तयार मिति (Report Date): <strong>${dateFormatted}</strong>
@@ -1531,17 +1583,51 @@ const Reports = () => {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg font-bold text-foreground">Profit & Loss Statement (नाफा-नोक्सान विवरण)</h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                  <Landmark className="h-3 w-3" /> {plFiscalYear.labelNp} ({plFiscalYear.labelEn})
-                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                      title="आर्थिक वर्ष परिवर्तन गर्नुहोस्"
+                    >
+                      <Landmark className="h-3 w-3" />
+                      <span>{plFiscalYear.labelNp} ({plFiscalYear.labelEn})</span>
+                      <ChevronDown className="h-3 w-3 opacity-70" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                      आर्थिक वर्ष छान्नुहोस् (Select Fiscal Year)
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {fyOptions.map((fy) => {
+                      const isSelected = fy.bsStartYear === plFiscalYear.bsStartYear;
+                      return (
+                        <DropdownMenuItem
+                          key={fy.bsStartYear}
+                          onClick={() => handleSelectPlFiscalYear(fy)}
+                          className={`cursor-pointer text-xs font-medium flex items-center justify-between ${
+                            isSelected ? "bg-primary/10 text-primary font-bold" : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Landmark className="h-3.5 w-3.5 text-primary" />
+                            <span>{fy.labelNp} ({fy.labelEn})</span>
+                          </div>
+                          {isSelected && <span className="text-[10px] font-bold text-primary">✓</span>}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                आर्थिक वर्ष: <strong className="text-foreground">{plFiscalYear.labelNp}</strong> · अवधि: <strong className="text-foreground">{plPeriodMode === "month" ? plMonthLabel : `अघिल्लो ${range} दिन (Last ${range} Days)`}</strong>
+                आर्थिक वर्ष: <strong className="text-foreground">{plFiscalYear.labelNp}</strong> · अवधि: <strong className="text-foreground">{periodLabel}</strong>
               </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Period Mode Selector: Monthly vs Days */}
+              {/* Period Mode Selector: Monthly vs FY vs Days */}
               <div className="flex items-center bg-muted/60 border border-border/60 rounded-lg p-1 text-xs">
                 <button
                   type="button"
@@ -1553,6 +1639,17 @@ const Reports = () => {
                   }`}
                 >
                   मासिक (Monthly)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlPeriodMode("fy")}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                    plPeriodMode === "fy"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  पूरा आ.व. ({plFiscalYear.shortCode})
                 </button>
                 <button
                   type="button"
@@ -1730,20 +1827,54 @@ const Reports = () => {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base sm:text-lg font-bold text-foreground">खरिद तथा बिक्री खाता (Purchase & Sales Registers)</h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                  <Landmark className="h-3 w-3" /> {regFiscalYear.labelNp} ({regFiscalYear.labelEn})
-                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                      title="आर्थिक वर्ष परिवर्तन गर्नुहोस्"
+                    >
+                      <Landmark className="h-3 w-3" />
+                      <span>{regFiscalYear.labelNp} ({regFiscalYear.labelEn})</span>
+                      <ChevronDown className="h-3 w-3 opacity-70" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                      आर्थिक वर्ष छान्नुहोस् (Select Fiscal Year)
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {fyOptions.map((fy) => {
+                      const isSelected = fy.bsStartYear === regFiscalYear.bsStartYear;
+                      return (
+                        <DropdownMenuItem
+                          key={fy.bsStartYear}
+                          onClick={() => handleSelectRegFiscalYear(fy)}
+                          className={`cursor-pointer text-xs font-medium flex items-center justify-between ${
+                            isSelected ? "bg-primary/10 text-primary font-bold" : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Landmark className="h-3.5 w-3.5 text-primary" />
+                            <span>{fy.labelNp} ({fy.labelEn})</span>
+                          </div>
+                          {isSelected && <span className="text-[10px] font-bold text-primary">✓</span>}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
                   {isVatShop ? "VAT Registered" : "PAN Registered"}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                आर्थिक वर्ष: <strong className="text-foreground">{regFiscalYear.labelNp}</strong> · सबै ग्राहक तथा सप्लायरहरूका मासिक बिलहरूको अभिलेख
+                आर्थिक वर्ष: <strong className="text-foreground">{regFiscalYear.labelNp}</strong> · अवधि: <strong className="text-foreground">{regMonthLabel}</strong>
               </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
-              {/* Period Mode Toggle: Monthly vs All Records */}
+              {/* Period Mode Toggle: Monthly vs FY vs All Records */}
               <div className="flex items-center p-0.5 bg-muted/60 border border-border/60 rounded-lg text-xs shrink-0">
                 <button
                   type="button"
@@ -1758,6 +1889,17 @@ const Reports = () => {
                 </button>
                 <button
                   type="button"
+                  onClick={() => { setRegPeriodMode("fy"); setRegPagePurchases(1); setRegPageSales(1); }}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                    regPeriodMode === "fy"
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  पूरा आ.व. ({regFiscalYear.shortCode})
+                </button>
+                <button
+                  type="button"
                   onClick={() => { setRegPeriodMode("all"); setRegPagePurchases(1); setRegPageSales(1); }}
                   className={`px-2.5 py-1 rounded-md font-medium transition-all ${
                     regPeriodMode === "all"
@@ -1765,7 +1907,7 @@ const Reports = () => {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  सबै महिना
+                  सबै समय
                 </button>
               </div>
 
@@ -2326,9 +2468,43 @@ const Reports = () => {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-lg font-bold text-foreground">मूल्य अभिवृद्धि कर मासिक विवरण (Monthly VAT Return)</h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                    <Landmark className="h-3 w-3" /> {vatFiscalYear.labelNp} ({vatFiscalYear.labelEn})
-                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                        title="आर्थिक वर्ष परिवर्तन गर्नुहोस्"
+                      >
+                        <Landmark className="h-3 w-3" />
+                        <span>{vatFiscalYear.labelNp} ({vatFiscalYear.labelEn})</span>
+                        <ChevronDown className="h-3 w-3 opacity-70" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                      <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                        आर्थिक वर्ष छान्नुहोस् (Select Fiscal Year)
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {fyOptions.map((fy) => {
+                        const isSelected = fy.bsStartYear === vatFiscalYear.bsStartYear;
+                        return (
+                          <DropdownMenuItem
+                            key={fy.bsStartYear}
+                            onClick={() => handleSelectVatFiscalYear(fy)}
+                            className={`cursor-pointer text-xs font-medium flex items-center justify-between ${
+                              isSelected ? "bg-primary/10 text-primary font-bold" : ""
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Landmark className="h-3.5 w-3.5 text-primary" />
+                              <span>{fy.labelNp} ({fy.labelEn})</span>
+                            </div>
+                            {isSelected && <span className="text-[10px] font-bold text-primary">✓</span>}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
                     Nepal IRD Standards
                   </span>
