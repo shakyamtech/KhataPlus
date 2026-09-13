@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "./print";
 import { fmt, fmtQty, numberToWords } from "./format";
+import { formatNepaliDate } from "./fiscalYear";
 
 export interface InvoiceItem {
   product_name: string;
@@ -71,6 +72,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
 
   const dateObj = typeof date === "string" ? new Date(date) : date;
   const formattedDate = format(dateObj, "dd/MM/yyyy");
+  const nepaliDateStr = formatNepaliDate(dateObj);
   const formattedTime = format(dateObj, "hh:mm:ss a");
 
   // Calculate items subtotal if not provided
@@ -187,6 +189,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
             <div class="a4-box-content">
               <div class="a4-box-row"><span>Bill No :</span><span>${escapeHtml(billNo)}</span></div>
               <div class="a4-box-row"><span>Bill Date :</span><span>${formattedDate}</span></div>
+              ${nepaliDateStr ? `<div class="a4-box-row"><span>मिति (BS) :</span><span>${nepaliDateStr}</span></div>` : ""}
               <div class="a4-box-row"><span>Time :</span><span>${formattedTime}</span></div>
               <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode === "credit" ? (paidAmt > 0 && hasDue ? `CREDIT (${(data.paidVia || "CASH").toUpperCase()})` : "CREDIT") : (paymentMode || "Cash"))}</span></div>
             </div>
@@ -228,7 +231,7 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
         <div class="a4-summary-grid">
           <div class="a4-summary-left">
             <div class="a4-print-date">
-              <strong>BILL PRINT DATE & TIME:</strong> &nbsp;${formattedTime}&nbsp;&nbsp;${formattedDate}
+              <strong>BILL PRINT DATE & TIME:</strong> &nbsp;${formattedTime}&nbsp;&nbsp;${formattedDate}${nepaliDateStr ? `&nbsp;&nbsp;(वि.सं. ${nepaliDateStr})` : ""}
             </div>
             <div class="a4-total-badge-box">
               <div class="a4-total-label">TOTAL :</div>
@@ -366,8 +369,8 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
             <span class="bill-info-value">#${escapeHtml(billNo)}</span>
           </div>
           <div class="bill-info-item" style="text-align:right;">
-            <span class="bill-info-label">Date & Time</span>
-            <span class="bill-info-value">${format(dateObj, "dd MMM yyyy, hh:mm a")}</span>
+            <span class="bill-info-label">Date (Miti)</span>
+            <span class="bill-info-value">${format(dateObj, "dd MMM yyyy, hh:mm a")}${nepaliDateStr ? `<br/><span style="font-size:10px; color:#4b5563;">मिति: ${nepaliDateStr}</span>` : ""}</span>
           </div>
           <div class="bill-info-item">
             <span class="bill-info-label">Customer</span>
@@ -471,6 +474,7 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
 
   const dateObj = typeof date === "string" ? new Date(date) : date;
   const formattedDate = format(dateObj, "dd/MM/yyyy");
+  const nepaliDateStr = formatNepaliDate(dateObj);
   const formattedTime = format(dateObj, "hh:mm:ss a");
 
   let discountNum = Number(data.discount || 0);
@@ -555,6 +559,7 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
             <div class="a4-box-row"><span>Inward No :</span><span>#${escapeHtml(voucherNo)}</span></div>
             <div class="a4-box-row"><span>Supplier Bill No :</span><span>${escapeHtml(supplierBillNo || "N/A")}</span></div>
             <div class="a4-box-row"><span>Date :</span><span>${formattedDate}</span></div>
+            ${nepaliDateStr ? `<div class="a4-box-row"><span>मिति (BS) :</span><span>${nepaliDateStr}</span></div>` : ""}
             <div class="a4-box-row"><span>Pay Mode :</span><span style="text-transform:uppercase;">${escapeHtml(paymentMode === "credit" ? (paidAmt > 0 && dueAmt > 0 ? `CREDIT (${(data.paidVia || "CASH").toUpperCase()})` : "CREDIT") : (paymentMode || "Cash"))}</span></div>
           </div>
         </div>
@@ -595,7 +600,7 @@ export const printPurchaseVoucher = (data: PurchaseVoucherData) => {
       <div class="a4-summary-grid">
         <div class="a4-summary-left">
           <div class="a4-print-date">
-            <strong>INWARD DATE & TIME:</strong> &nbsp;${formattedTime}&nbsp;&nbsp;${formattedDate}
+            <strong>INWARD DATE & TIME:</strong> &nbsp;${formattedTime}&nbsp;&nbsp;${formattedDate}${nepaliDateStr ? `&nbsp;&nbsp;(वि.सं. ${nepaliDateStr})` : ""}
           </div>
           <div class="a4-total-badge-box">
             <div class="a4-total-label">TOTAL :</div>

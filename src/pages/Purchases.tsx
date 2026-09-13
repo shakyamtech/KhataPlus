@@ -22,6 +22,7 @@ import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { ProductFormModal } from "@/components/ProductFormModal";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printPurchaseVoucher } from "@/lib/invoicePrinter";
+import { formatNepaliDate } from "@/lib/fiscalYear";
 
 type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null; has_expiry?: boolean; hs_code?: string | null };
 type Supplier = { id: string; name: string; phone?: string; pan?: string; address?: string };
@@ -1066,7 +1067,7 @@ const Purchases = () => {
                   title="खरिद / दाखिला मिति परिवर्तन गर्नुहोस्"
                 >
                   <CalendarIcon className={cn("h-3.5 w-3.5", purchaseDate ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")} />
-                  <span>{purchaseDate ? `दाखिला मिति: ${purchaseDate}` : "दाखिला मिति: आज (Today)"}</span>
+                  <span>{purchaseDate ? `दाखिला मिति: ${purchaseDate} (${formatNepaliDate(purchaseDate)})` : `दाखिला: आज (${formatNepaliDate(new Date())})`}</span>
                   <span className="text-[10px] text-muted-foreground ml-0.5">▾</span>
                 </button>
               </PopoverTrigger>
@@ -1094,8 +1095,8 @@ const Purchases = () => {
                 </div>
                 <p className="text-[10.5px] text-muted-foreground leading-tight">
                   {purchaseDate
-                    ? `यस खरिद बिलको मिति ${purchaseDate} हुनेछ।`
-                    : "खाली छोड्दा यो खरिद स्वतः आजको समयमा दाखिला हुनेछ।"}
+                    ? `यस खरिद बिलको मिति ${purchaseDate} (वि.सं. ${formatNepaliDate(purchaseDate)}) हुनेछ।`
+                    : `खाली छोड्दा यो खरिद स्वतः आजको मिति (वि.सं. ${formatNepaliDate(new Date())}) मा दाखिला हुनेछ।`}
                 </p>
               </PopoverContent>
             </Popover>

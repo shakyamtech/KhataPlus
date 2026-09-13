@@ -16,12 +16,31 @@ export interface FiscalYearInfo {
   endDate: Date;             // approx July 15 of AD end year
 }
 
+import NepaliDate from "nepali-date-converter";
+
 /**
  * Converts Western digits (0-9) to Nepali Unicode numerals (०-९)
  */
 export function toNepaliDigits(input: string | number): string {
   const nepaliDigits = ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"];
   return String(input).replace(/[0-9]/g, (digit) => nepaliDigits[Number(digit)]);
+}
+
+/**
+ * Formats an English AD date (Date or string) into Nepali Bikram Sambat date string (English digits).
+ * e.g., '2083/05/27'
+ */
+export function formatNepaliDate(dateStrOrDate?: string | Date | null, separator: string = "/"): string {
+  if (!dateStrOrDate) return "";
+  try {
+    const d = typeof dateStrOrDate === "string" ? new Date(dateStrOrDate) : dateStrOrDate;
+    if (isNaN(d.getTime())) return "";
+    const NepaliDateCtor = (NepaliDate as any)?.default || NepaliDate;
+    const np = new NepaliDateCtor(d);
+    return np.format(`YYYY${separator}MM${separator}DD`);
+  } catch {
+    return "";
+  }
 }
 
 /**
