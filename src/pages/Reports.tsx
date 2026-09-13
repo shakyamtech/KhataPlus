@@ -649,14 +649,69 @@ const Reports = () => {
           ? s.order_items
           : [];
 
-      const itemsList = rawItems.map((it: any) => ({
-        product_name: it.product_name || it.name || "Item",
-        qty: Number(it.qty || it.quantity || 1),
-        unit: it.unit || "pcs",
-        price: Number(it.price || it.sell_price || it.rate || 0),
-        total: Number(it.total ?? (Number(it.qty || 1) * Number(it.price || it.sell_price || 0))),
-        hs_code: it.hs_code
-      }));
+      // Resolve HS Code from items or fetch from products collection
+      const missingSaleHsProductIds = new Set<string>();
+      const missingSaleHsProductNames = new Set<string>();
+
+      rawItems.forEach((it: any) => {
+        const hs = (it.hs_code || "").trim();
+        if (!hs) {
+          if (it.product_id) missingSaleHsProductIds.add(it.product_id);
+          const pName = (it.product_name || it.name || "").trim();
+          if (pName) missingSaleHsProductNames.add(pName);
+        }
+      });
+
+      const saleProductHsMap: Record<string, string> = {};
+
+      if (missingSaleHsProductIds.size > 0) {
+        const prodIdArr = Array.from(missingSaleHsProductIds);
+        for (let i = 0; i < prodIdArr.length; i += 10) {
+          const chunk = prodIdArr.slice(i, i + 10);
+          try {
+            const pQuery = query(collection(db, "products"), where("__name__", "in", chunk));
+            const pSnap = await getDocs(pQuery);
+            pSnap.docs.forEach(pd => {
+              const d = pd.data();
+              if (d.hs_code) {
+                saleProductHsMap[pd.id] = d.hs_code.trim();
+                if (d.name) saleProductHsMap[d.name.trim().toLowerCase()] = d.hs_code.trim();
+              }
+            });
+          } catch (e) {
+            console.error("Error fetching product hs_code by ID for sale", e);
+          }
+        }
+      }
+
+      for (const name of Array.from(missingSaleHsProductNames)) {
+        if (!saleProductHsMap[name.toLowerCase()]) {
+          try {
+            const pQuery = query(collection(db, "products"), where("name", "==", name));
+            const pSnap = await getDocs(pQuery);
+            if (!pSnap.empty) {
+              const d = pSnap.docs[0].data();
+              if (d.hs_code) {
+                saleProductHsMap[name.toLowerCase()] = d.hs_code.trim();
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      const itemsList = rawItems.map((it: any) => {
+        const pName = (it.product_name || it.name || "Item").trim();
+        const resolvedHs = (it.hs_code || (it.product_id ? saleProductHsMap[it.product_id] : "") || saleProductHsMap[pName.toLowerCase()] || "").trim() || undefined;
+
+        return {
+          product_name: pName,
+          qty: Number(it.qty || it.quantity || 1),
+          unit: it.unit || "pcs",
+          price: Number(it.price || it.sell_price || it.rate || 0),
+          total: Number(it.total ?? (Number(it.qty || 1) * Number(it.price || it.sell_price || 0))),
+          hs_code: resolvedHs
+        };
+      });
 
       const isTaxInv = s.invoice_type === "tax_invoice" || s.is_vat_invoice === true || Number(s.vat_amount) > 0;
 
@@ -722,14 +777,69 @@ const Reports = () => {
         }
       }
 
-      const itemsList = rawItems.map((it: any) => ({
-        product_name: it.product_name || it.name || "Item",
-        qty: Number(it.qty ?? it.quantity ?? 1),
-        unit: it.unit || "pcs",
-        price: Number(it.cost_price ?? it.price ?? it.buy_price ?? 0),
-        total: Number(it.total ?? (Number(it.qty ?? it.quantity ?? 1) * Number(it.cost_price ?? it.price ?? 0))),
-        hs_code: it.hs_code
-      }));
+      // Resolve HS Code from items or fetch from products collection
+      const missingHsProductIds = new Set<string>();
+      const missingHsProductNames = new Set<string>();
+
+      rawItems.forEach((it: any) => {
+        const hs = (it.hs_code || "").trim();
+        if (!hs) {
+          if (it.product_id) missingHsProductIds.add(it.product_id);
+          const pName = (it.product_name || it.name || "").trim();
+          if (pName) missingHsProductNames.add(pName);
+        }
+      });
+
+      const productHsMap: Record<string, string> = {};
+
+      if (missingHsProductIds.size > 0) {
+        const prodIdArr = Array.from(missingHsProductIds);
+        for (let i = 0; i < prodIdArr.length; i += 10) {
+          const chunk = prodIdArr.slice(i, i + 10);
+          try {
+            const pQuery = query(collection(db, "products"), where("__name__", "in", chunk));
+            const pSnap = await getDocs(pQuery);
+            pSnap.docs.forEach(pd => {
+              const d = pd.data();
+              if (d.hs_code) {
+                productHsMap[pd.id] = d.hs_code.trim();
+                if (d.name) productHsMap[d.name.trim().toLowerCase()] = d.hs_code.trim();
+              }
+            });
+          } catch (e) {
+            console.error("Error fetching product hs_code by ID", e);
+          }
+        }
+      }
+
+      for (const name of Array.from(missingHsProductNames)) {
+        if (!productHsMap[name.toLowerCase()]) {
+          try {
+            const pQuery = query(collection(db, "products"), where("name", "==", name));
+            const pSnap = await getDocs(pQuery);
+            if (!pSnap.empty) {
+              const d = pSnap.docs[0].data();
+              if (d.hs_code) {
+                productHsMap[name.toLowerCase()] = d.hs_code.trim();
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      const itemsList = rawItems.map((it: any) => {
+        const pName = (it.product_name || it.name || "Item").trim();
+        const resolvedHs = (it.hs_code || (it.product_id ? productHsMap[it.product_id] : "") || productHsMap[pName.toLowerCase()] || "").trim() || undefined;
+
+        return {
+          product_name: pName,
+          qty: Number(it.qty ?? it.quantity ?? 1),
+          unit: it.unit || "pcs",
+          price: Number(it.cost_price ?? it.price ?? it.buy_price ?? 0),
+          total: Number(it.total ?? (Number(it.qty ?? it.quantity ?? 1) * Number(it.cost_price ?? it.price ?? 0))),
+          hs_code: resolvedHs
+        };
+      });
 
       const isVatBill = p.is_vat_bill === true || Number(p.vat_amount) > 0;
 
