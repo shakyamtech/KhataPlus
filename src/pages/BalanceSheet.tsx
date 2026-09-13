@@ -89,6 +89,11 @@ const BalanceSheet = () => {
           if (assetAccounts.some((a: any) => a.id === v.debit_account_id)) fixedAssetsTotal += Number(v.amount || 0);
           if (assetAccounts.some((a: any) => a.id === v.credit_account_id)) fixedAssetsTotal -= Number(v.amount || 0);
         });
+        // Include Cashbook fixed asset purchases (e.g. vehicle, computer, furniture bought via Cash)
+        const cashFixedAssets = cash
+          .filter((c: any) => c.direction === "out" && (c.category === "fixed_asset" || c.account_group === "fixed_asset"))
+          .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+        fixedAssetsTotal += cashFixedAssets;
 
         // 3. Calculate Loans & Borrowings (Liabilities)
         const loanAccounts = accounts.filter((a: any) => a.group === "loans_liabilities");
@@ -97,6 +102,14 @@ const BalanceSheet = () => {
           if (loanAccounts.some((l: any) => l.id === v.credit_account_id)) loansTotal += Number(v.amount || 0);
           if (loanAccounts.some((l: any) => l.id === v.debit_account_id)) loansTotal -= Number(v.amount || 0);
         });
+        // Include Cashbook loans (In = loan taken, Out = loan repayment)
+        const cashLoansTaken = cash
+          .filter((c: any) => c.direction === "in" && (c.category === "loan" || c.account_group === "loan"))
+          .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+        const cashLoansRepaid = cash
+          .filter((c: any) => c.direction === "out" && (c.category === "loan_repayment" || c.account_group === "loan" || c.account_group === "loan_repayment"))
+          .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+        loansTotal = Math.max(0, loansTotal + cashLoansTaken - cashLoansRepaid);
 
         // 4. Calculate Current Liabilities / Outstanding Expenses
         const currLiabAccounts = accounts.filter((a: any) => a.group === "current_liabilities");
@@ -149,17 +162,27 @@ const BalanceSheet = () => {
 
         const capitalCats = ["opening", "capital", "investment", "owner_investment"];
         const cashCapital = cash
-          .filter((c: any) => c.direction === "in" && capitalCats.includes((c.category || "").toLowerCase()))
+          .filter((c: any) => c.direction === "in" && (capitalCats.includes((c.category || "").toLowerCase()) || c.account_group === "capital"))
           .reduce((s, r: any) => s + +r.amount, 0);
         const totalCapital = cashCapital + capitalExtra;
 
         const cashDrawings = cash
-          .filter((c: any) => c.direction === "out" && (c.category || "").toLowerCase() === "personal")
+          .filter((c: any) => c.direction === "out" && ((c.category || "").toLowerCase() === "personal" || c.account_group === "drawings"))
           .reduce((s, r: any) => s + +r.amount, 0);
         const totalDrawings = cashDrawings + drawingsExtra;
 
-        const nonExpenseCats = ["purchase", "purchases", "supplier_payment", "payment", "personal", "contra_bank_deposit", "contra_bank_withdrawal", "voucher_payment", "voucher_receipt"];
-        const cashExpenses = cash.filter((c: any) => c.direction === "out" && !nonExpenseCats.includes(c.category)).reduce((s, r: any) => s + +r.amount, 0);
+        const nonExpenseCats = [
+          "purchase", "purchases", "supplier_payment", "payment", "personal",
+          "contra_bank_deposit", "contra_bank_withdrawal", "voucher_payment", "voucher_receipt",
+          "fixed_asset", "loan_repayment"
+        ];
+        const cashExpenses = cash.filter((c: any) => {
+          if (c.direction !== "out") return false;
+          const cat = (c.category || "").toLowerCase();
+          if (nonExpenseCats.includes(cat)) return false;
+          if (c.account_group && ["fixed_asset", "loan", "loan_repayment", "drawings", "capital"].includes(c.account_group)) return false;
+          return true;
+        }).reduce((s, r: any) => s + +r.amount, 0);
         const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
         const totalExpenses = cashExpenses + wastageExpenses + voucherExpenses;
 

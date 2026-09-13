@@ -26,6 +26,7 @@ const inCategories = [
   "customer_payment", 
   "opening", 
   "capital",
+  "loan",
   "other"
 ];
 
@@ -36,8 +37,10 @@ const outCategories = [
   "rent", 
   "electricity", 
   "maintenance", 
+  "fixed_asset",
+  "loan_repayment",
   "supplier_payment", 
-  "payment",
+  "payment", 
   "personal", 
   "other"
 ];
@@ -45,6 +48,10 @@ const outCategories = [
 const categoryLabel: Record<string, string> = {
   opening: "Opening Balance (सुरुवाती मौज्दात)",
   capital: "Owner's Investment (साहुको थप लगानी)",
+  loan: "Bank / Personal Loan (ऋण लिएको)",
+  fixed_asset: "Fixed Asset (सम्पत्ति खरिद: गाडी, फर्निचर, मेसिन)",
+  loan_repayment: "Loan Repayment (ऋण भुक्तानी)",
+  personal: "Owner's Personal / Drawings (व्यक्तिगत खर्च)"
 };
 
 const getCategoryLabel = (c: string) =>
@@ -78,10 +85,13 @@ const Cashbook = () => {
   interface CustomCategory {
     id: string;
     name: string;
+    group?: "expense" | "income" | "fixed_asset" | "loan" | "capital" | "drawings";
+    direction?: "in" | "out";
   }
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  const [newCatGroup, setNewCatGroup] = useState<string>("expense");
   const [savingCat, setSavingCat] = useState(false);
 
   const load = async () => {
@@ -261,7 +271,7 @@ const Cashbook = () => {
 
   const resetForm = () => { 
     setEditId(null); setAmount(""); setNote(""); setCategory(""); setDirection("in"); setPartyId(null); setPaymentMode("cash");
-    setCategoryDialogOpen(false); setNewCatName("");
+    setCategoryDialogOpen(false); setNewCatName(""); setNewCatGroup(direction === "in" ? "income" : "expense");
     setEntryDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   };
 
@@ -306,6 +316,8 @@ const Cashbook = () => {
       const newCat: CustomCategory = {
         id: catRef.id,
         name: trimmed,
+        group: newCatGroup as any,
+        direction
       };
       await setDoc(catRef, {
         ...newCat,
@@ -341,11 +353,35 @@ const Cashbook = () => {
       if (p) pName = p.name;
     }
 
+    // Determine account group automatically for Balance Sheet
+    let determinedGroup: string = direction === "in" ? "income" : "expense";
+    if (category === "capital" || category === "opening") {
+      determinedGroup = "capital";
+    } else if (category === "loan") {
+      determinedGroup = "loan";
+    } else if (category === "fixed_asset") {
+      determinedGroup = "fixed_asset";
+    } else if (category === "loan_repayment") {
+      determinedGroup = "loan_repayment";
+    } else if (category === "personal") {
+      determinedGroup = "drawings";
+    } else if (category === "sale" || category === "customer_payment") {
+      determinedGroup = "sale";
+    } else if (category === "purchase" || category === "supplier_payment") {
+      determinedGroup = "purchase";
+    } else {
+      const matchedCustom = customCategories.find(c => c.name.toLowerCase() === category.toLowerCase());
+      if (matchedCustom?.group) {
+        determinedGroup = matchedCustom.group;
+      }
+    }
+
     setBusy(true);
     try {
       const payload = {
         direction, amount: Number(amount), category, note: note || null,
         party_id: partyId, party_name: pName, payment_mode: paymentMode,
+        account_group: determinedGroup,
         created_at: entryDate ? new Date(entryDate).toISOString() : new Date().toISOString()
       };
 
@@ -632,9 +668,18 @@ const Cashbook = () => {
                             <div className="text-[10px] uppercase font-bold text-primary px-2 py-1 mt-1 border-t border-border/50">
                               {lang === "NEP" ? "कस्टम क्याटेगोरी" : "Custom Categories"}
                             </div>
-                            {customCategories.map((c) => (
-                              <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                            ))}
+                            {customCategories.map((c) => {
+                              let groupTag = "";
+                              if (c.group === "fixed_asset") groupTag = " (सम्पत्ति/Asset)";
+                              else if (c.group === "loan") groupTag = " (ऋण/Loan)";
+                              else if (c.group === "capital") groupTag = " (पुँजी/Capital)";
+                              else if (c.group === "drawings") groupTag = " (व्यक्तिगत/Drawings)";
+                              return (
+                                <SelectItem key={c.id} value={c.name}>
+                                  {c.name}{groupTag}
+                                </SelectItem>
+                              );
+                            })}
                           </>
                         )}
 
@@ -649,7 +694,10 @@ const Cashbook = () => {
                       type="button" 
                       size="icon" 
                       variant="outline" 
-                      onClick={() => setCategoryDialogOpen(true)} 
+                      onClick={() => {
+                        setNewCatGroup(direction === "in" ? "income" : "expense");
+                        setCategoryDialogOpen(true);
+                      }} 
                       title={lang === "NEP" ? "नयाँ क्याटेगोरी थप्नुहोस्" : "Add New Category"} 
                       className="shrink-0"
                     >
@@ -995,7 +1043,7 @@ const Cashbook = () => {
               <Input
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
-                placeholder={lang === "NEP" ? "जस्तै: इन्टरनेट, पेट्रोल, चिया खाजा, ढुवानी..." : "e.g. Internet, Fuel, Tea/Snacks..."}
+                placeholder={lang === "NEP" ? (direction === "in" ? "जस्तै: घरभाडा आम्दानी, कमिसन, ऋण..." : "जस्तै: इन्टरनेट, पेट्रोल, बाइक खरिद, फर्निचर...") : "e.g. Internet, Fuel, Bike, Furniture..."}
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -1005,6 +1053,37 @@ const Cashbook = () => {
                 }}
               />
             </div>
+
+            <div>
+              <Label className="text-xs">{lang === "NEP" ? "खाता समूह (Account Group) *" : "Account Group *"}</Label>
+              <Select value={newCatGroup} onValueChange={setNewCatGroup}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[80]">
+                  {direction === "in" ? (
+                    <>
+                      <SelectItem value="income">{lang === "NEP" ? "व्यापारिक आम्दानी (Revenue / Income)" : "Revenue / Income"}</SelectItem>
+                      <SelectItem value="capital">{lang === "NEP" ? "साहुको पुँजी लगानी (Capital / Equity)" : "Capital / Equity"}</SelectItem>
+                      <SelectItem value="loan">{lang === "NEP" ? "ऋण लिएको (Bank / Personal Loan)" : "Bank / Personal Loan"}</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="expense">{lang === "NEP" ? "व्यापारिक खर्च (Business Expense)" : "Business Expense"}</SelectItem>
+                      <SelectItem value="fixed_asset">{lang === "NEP" ? "सम्पत्ति खरिद (Fixed Asset: गाडी, फर्निचर, मेसिन)" : "Fixed Asset (Vehicle, Furniture)"}</SelectItem>
+                      <SelectItem value="loan">{lang === "NEP" ? "ऋण भुक्तानी (Loan Repayment)" : "Loan Repayment"}</SelectItem>
+                      <SelectItem value="drawings">{lang === "NEP" ? "साहुको व्यक्तिगत खर्च (Personal / Drawings)" : "Personal / Drawings"}</SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {lang === "NEP" 
+                  ? "💡 यसले गर्दा गाडी वा फर्निचर किन्दा ब्यालेन्स सिटमा घाटा नदेखिई सिधै सम्पत्ति (Fixed Asset) मा जोडिन्छ।" 
+                  : "💡 Ensures Balance Sheet correctly classifies this as Asset, Liability, or Expense."}
+              </p>
+            </div>
+
             <Button
               type="button"
               onClick={saveCategory}
