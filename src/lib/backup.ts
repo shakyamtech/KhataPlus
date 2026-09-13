@@ -539,9 +539,12 @@ export async function parseAndValidateBackupFile(file: File): Promise<Validation
       customers: Array.isArray(data.customers) ? data.customers.length : 0,
       suppliers: Array.isArray(data.suppliers) ? data.suppliers.length : 0,
       sales: Array.isArray(data.sales) ? data.sales.length : 0,
+      sale_items: Array.isArray(data.sale_items) ? data.sale_items.length : 0,
       purchases: Array.isArray(data.purchases) ? data.purchases.length : 0,
+      purchase_items: Array.isArray(data.purchase_items) ? data.purchase_items.length : 0,
       cash_transactions: Array.isArray(data.cash_transactions) ? data.cash_transactions.length : 0,
-      ledger_entries: Array.isArray(data.ledger_entries) ? data.ledger_entries.length : 0
+      ledger_entries: Array.isArray(data.ledger_entries) ? data.ledger_entries.length : 0,
+      stock_adjustments: Array.isArray(data.stock_adjustments) ? data.stock_adjustments.length : 0
     };
 
     const totalEntities = Object.values(counts).reduce((a, b) => a + b, 0);
