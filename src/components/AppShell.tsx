@@ -5,7 +5,7 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, Check, Loader2, Scale
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, Check, Loader2, Scale, Languages
 } from "lucide-react";
 import { generateBatchSamplePreview, getNepaliFiscalYear } from "@/lib/batch";
 import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
@@ -671,6 +671,46 @@ export const AppShell = () => {
                     </DropdownMenuPortal>
                 </DropdownMenuSub>
 
+                {/* Language Switcher Row */}
+                <div className="flex items-center justify-between px-2 py-1.5 text-xs font-medium text-foreground">
+                    <div className="flex items-center gap-2">
+                        <Languages className="h-4 w-4 text-primary" />
+                        <span>{lang === "NEP" ? "भाषा (Language)" : "Language"}</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/50">
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setLang("ENG");
+                            }}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-200 ${
+                                lang === "ENG"
+                                    ? "bg-primary text-primary-foreground shadow-xs"
+                                    : "text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            ENG
+                        </button>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setLang("NEP");
+                            }}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all duration-200 ${
+                                lang === "NEP"
+                                    ? "bg-primary text-primary-foreground shadow-xs"
+                                    : "text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            नेपाली
+                        </button>
+                    </div>
+                </div>
+
                 <DropdownMenuItem onClick={() => setAboutOpen(true)} className="cursor-pointer font-medium gap-2">
                     <Info className="h-4 w-4 text-primary" /> {lang === "NEP" ? "हाम्रो बारेमा" : "About App"}
                 </DropdownMenuItem>
@@ -806,27 +846,6 @@ export const AppShell = () => {
                                     );
                                 })}
                             </nav>
-
-                            {/* Mobile Language Switcher Row */}
-                            <div className="px-6 py-4 border-t border-sidebar-border/60">
-                                <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
-                                    <span>{t.language}</span>
-                                    <div className="flex items-center gap-1 bg-sidebar-accent/50 p-0.5 rounded-lg border border-sidebar-border/40">
-                                        <button
-                                            onClick={() => setLang("ENG")}
-                                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all duration-200 ${lang === "ENG" ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"}`}
-                                        >
-                                            ENG
-                                        </button>
-                                        <button
-                                            onClick={() => setLang("NEP")}
-                                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all duration-200 ${lang === "NEP" ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"}`}
-                                        >
-                                            नेपाली
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
 
                             <div className="p-6 border-t border-sidebar-border mt-auto">
                                 <div className="px-1 mb-4 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} {lang === "NEP" ? APP_VERSION_NEP : APP_VERSION}</div>
