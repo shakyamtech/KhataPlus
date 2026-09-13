@@ -200,7 +200,7 @@ export async function createVoucher(
     credit_account_id: data.credit_account_id,
     credit_account_name: data.credit_account_name,
     narration: data.narration.trim(),
-    reference_no: data.reference_no?.trim() || undefined,
+    reference_no: data.reference_no?.trim() || "",
     created_at: new Date().toISOString()
   };
 
@@ -211,6 +211,9 @@ export async function createVoucher(
   // so the simple Cashbook stays in sync automatically!
   const isDebitCash = data.debit_account_name.toLowerCase().includes("cash");
   const isCreditCash = data.credit_account_name.toLowerCase().includes("cash");
+
+  const txTime = new Date();
+  const txCreatedAt = data.date ? `${data.date}T${txTime.toTimeString().slice(0, 8)}` : txTime.toISOString();
 
   if (isDebitCash && !isCreditCash) {
     // Money came into Cash
@@ -224,7 +227,7 @@ export async function createVoucher(
       payment_mode: "cash",
       note: `${voucherNo}: ${data.narration}`,
       reference_id: voucherRef.id,
-      created_at: data.date
+      created_at: txCreatedAt
     });
   } else if (isCreditCash && !isDebitCash) {
     // Money went out of Cash
@@ -238,7 +241,7 @@ export async function createVoucher(
       payment_mode: "cash",
       note: `${voucherNo}: ${data.narration}`,
       reference_id: voucherRef.id,
-      created_at: data.date
+      created_at: txCreatedAt
     });
   }
 
