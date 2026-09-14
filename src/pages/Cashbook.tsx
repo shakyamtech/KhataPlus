@@ -81,6 +81,8 @@ const Cashbook = () => {
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
+  const [deletingRowId, setDeletingRowId] = useState<string | null>(null);
+  const [confirmDeleteRow, setConfirmDeleteRow] = useState<any | null>(null);
 
   // Custom Categories
   interface CustomCategory {
@@ -525,6 +527,11 @@ const Cashbook = () => {
   };
 
   const remove = async (row: any) => {
+    if (deletingRowId) return;
+    setDeletingRowId(row.id);
+    const toastId = toast.loading(
+      lang === "NEP" ? "रेकर्ड र स्टक मिलाउँदै मेटिँदैछ..." : "Deleting & syncing records..."
+    );
     try {
       if (row.reference_id) {
         if (row.category === "sale" || row.category === "sales") {
@@ -598,9 +605,16 @@ const Cashbook = () => {
       } else {
         await deleteDoc(doc(db, "cash_transactions", row.id));
       }
-      toast.success("Entry deleted and records synced"); load();
+      toast.success(
+        lang === "NEP" ? "रेकर्ड मेटियो र हिसाब मिलान भयो" : "Entry deleted and records synced",
+        { id: toastId }
+      );
+      setConfirmDeleteRow(null);
+      await load();
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message, { id: toastId });
+    } finally {
+      setDeletingRowId(null);
     }
   };
 
@@ -1200,8 +1214,16 @@ const Cashbook = () => {
           return sortedAndFiltered.map((r) => {
             const sDetail = (r.category === "sale" || r.category === "sales") && r.reference_id ? salesDetails[r.reference_id] : null;
             const pDetail = (r.category === "purchase" || r.category === "purchases") && r.reference_id ? purchaseDetails[r.reference_id] : null;
+            const isDeletingThis = deletingRowId === r.id;
             return (
-            <div key={r.id} className="p-3 flex items-center gap-3 hover:bg-secondary/35 transition-colors cursor-pointer" onClick={() => openEdit(r)}>
+            <div 
+              key={r.id} 
+              className={cn(
+                "p-3 flex items-center gap-3 hover:bg-secondary/35 transition-all cursor-pointer",
+                isDeletingThis && "opacity-40 pointer-events-none bg-muted/40"
+              )} 
+              onClick={() => openEdit(r)}
+            >
             {r.direction === "in" ? <ArrowDownCircle className="h-5 w-5 text-success shrink-0" /> : <ArrowUpCircle className="h-5 w-5 text-destructive shrink-0" />}
             <div className="flex-1 min-w-0">
               <div className="font-medium flex items-center gap-2">
@@ -1242,31 +1264,20 @@ const Cashbook = () => {
                 {r.reference_id && (
                   <span className="text-[10px] text-muted-foreground italic px-1 select-none">auto</span>
                 )}
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10 active:scale-95" title="डिलिट गर्नुहोस्">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete entry?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {(r.category === "sale" || r.category === "sales")
-                          ? "Are you sure? This will delete the Sale, return the sold items to Stock, remove the customer's ledger entry, and deduct the cash balance."
-                          : (r.category === "purchase" || r.category === "purchases")
-                            ? "Are you sure? This will delete the Purchase, remove the purchased items from Stock, remove the supplier's ledger entry, and restore the cash balance."
-                            : "This cash entry will be permanently removed. The cash balance will be updated accordingly."
-                        }
-                        <div className="mt-2 font-semibold text-destructive">Warning: This action cannot be undone!</div>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => remove(r)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  disabled={deletingRowId === r.id}
+                  onClick={() => setConfirmDeleteRow(r)}
+                  className="h-7 w-7 text-destructive hover:bg-destructive/10 active:scale-95"
+                  title="डिलिट गर्नुहोस्"
+                >
+                  {deletingRowId === r.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-destructive" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
               </div>
             </div>
             </div>
@@ -1279,6 +1290,60 @@ const Cashbook = () => {
           <div className="p-6 text-center text-muted-foreground text-sm">No entries found matching "{search}"</div>
         ) : null}
       </Card>
+
+      {/* Controlled Confirm Delete Dialog */}
+      <AlertDialog
+        open={!!confirmDeleteRow}
+        onOpenChange={(open) => {
+          if (!open && !deletingRowId) setConfirmDeleteRow(null);
+        }}
+      >
+        <AlertDialogContent className="z-[85]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {lang === "NEP" ? "रेकर्ड डिलिट गर्ने?" : "Delete entry?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDeleteRow && (
+                confirmDeleteRow.category === "sale" || confirmDeleteRow.category === "sales"
+                  ? (lang === "NEP" 
+                      ? "के तपाईं पक्का हुनुहुन्छ? यसले बिक्री बिल मेटाउनेछ, बिक्री भएको सामान स्टकमा फिर्ता गर्नेछ, ग्राहकको खाताबाट हिसाब हटाउनेछ र क्यास ब्यालेन्स घटाउनेछ।" 
+                      : "Are you sure? This will delete the Sale, return the sold items to Stock, remove the customer's ledger entry, and deduct the cash balance.")
+                  : (confirmDeleteRow.category === "purchase" || confirmDeleteRow.category === "purchases")
+                    ? (lang === "NEP" 
+                        ? "के तपाईं पक्का हुनुहुन्छ? यसले खरिद बिल मेटाउनेछ, खरिद गरिएको सामान स्टकबाट घटाउनेछ, सप्लायरको खाताबाट हिसाब हटाउनेछ र तिरेको क्यास फिर्ता जोड्नेछ।" 
+                        : "Are you sure? This will delete the Purchase, remove the purchased items from Stock, remove the supplier's ledger entry, and restore the cash balance.")
+                    : (lang === "NEP" 
+                        ? "यो क्यास रेकर्ड मेटिनेछ र क्यास ब्यालेन्स स्वतः मिलान हुनेछ।" 
+                        : "This cash entry will be permanently removed. The cash balance will be updated accordingly.")
+              )}
+              <div className="mt-2 font-semibold text-destructive">
+                {lang === "NEP" ? "चेतावनी: यो काम फेरि उल्टाउन सकिँदैन!" : "Warning: This action cannot be undone!"}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingRowId}>
+              {lang === "NEP" ? "रद्द गर्नुहोस्" : "Cancel"}
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={!!deletingRowId}
+              onClick={() => confirmDeleteRow && remove(confirmDeleteRow)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 min-w-[100px]"
+            >
+              {deletingRowId ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {lang === "NEP" ? "मेटिँदैछ..." : "Deleting..."}
+                </>
+              ) : (
+                lang === "NEP" ? "डिलिट गर्नुहोस्" : "Delete"
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* New Category Dialog */}
       <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
