@@ -531,17 +531,17 @@ export default function StockSummaryView({ products: propProducts, shopInfo: pro
                         )}
                       </div>
                     </td>
-                    <td className="py-2.5 px-3 text-center">
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       {isOutOfStock ? (
-                        <Badge variant="outline" className="text-[10px] py-0 font-bold bg-destructive/10 text-destructive border-destructive/30">
+                        <Badge variant="outline" className="text-[10.5px] py-0.5 px-2 rounded-md font-semibold bg-destructive/10 text-destructive border-destructive/30 whitespace-nowrap shadow-xs">
                           सकिएको (Out)
                         </Badge>
                       ) : isLowStock ? (
-                        <Badge variant="outline" className="text-[10px] py-0 font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                        <Badge variant="outline" className="text-[10.5px] py-0.5 px-2 rounded-md font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 whitespace-nowrap shadow-xs">
                           कम (Low)
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] py-0 font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                        <Badge variant="outline" className="text-[10.5px] py-0.5 px-2 rounded-md font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 whitespace-nowrap shadow-xs">
                           बाँकी (In Stock)
                         </Badge>
                       )}
@@ -666,15 +666,15 @@ export default function StockSummaryView({ products: propProducts, shopInfo: pro
                   {/* Status Badge */}
                   <div className="shrink-0">
                     {isOutOfStock ? (
-                      <Badge variant="outline" className="text-[10px] py-0.5 px-2 font-bold bg-destructive/10 text-destructive border-destructive/30">
+                      <Badge variant="outline" className="text-[10.5px] py-0.5 px-2 rounded-md font-semibold bg-destructive/10 text-destructive border-destructive/30 whitespace-nowrap shadow-xs">
                         सकिएको (Out)
                       </Badge>
                     ) : isLowStock ? (
-                      <Badge variant="outline" className="text-[10px] py-0.5 px-2 font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                      <Badge variant="outline" className="text-[10.5px] py-0.5 px-2 rounded-md font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 whitespace-nowrap shadow-xs">
                         कम (Low)
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-[10px] py-0.5 px-2 font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                      <Badge variant="outline" className="text-[10.5px] py-0.5 px-2 rounded-md font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 whitespace-nowrap shadow-xs">
                         बाँकी (In Stock)
                       </Badge>
                     )}
