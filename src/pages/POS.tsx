@@ -188,8 +188,37 @@ const POS = () => {
           return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
         });
 
+        // Group lots that share the exact same batch_name and expiry_date
+        const getBatchKey = (b: any) => `${(b.batch_name || "N/A").trim().toLowerCase()}___${b.expiry_date || "none"}`;
+
+        const groupedValidMap = new Map<string, any>();
+        validBatches.forEach((b: any) => {
+          const key = getBatchKey(b);
+          if (!groupedValidMap.has(key)) {
+            groupedValidMap.set(key, { ...b, remaining_qty: Number(b.remaining_qty) || 0 });
+          } else {
+            const existing = groupedValidMap.get(key);
+            existing.remaining_qty += Number(b.remaining_qty) || 0;
+          }
+        });
+        const groupedValidBatches = Array.from(groupedValidMap.values());
+
+        const groupedInvalidMap = new Map<string, any>();
+        invalidBatches.forEach((b: any) => {
+          const key = getBatchKey(b);
+          if (!groupedValidMap.has(key)) {
+            if (!groupedInvalidMap.has(key)) {
+              groupedInvalidMap.set(key, { ...b, remaining_qty: Number(b.remaining_qty) || 0 });
+            } else {
+              const existing = groupedInvalidMap.get(key);
+              existing.remaining_qty += Number(b.remaining_qty) || 0;
+            }
+          }
+        });
+        const groupedInvalidBatches = Array.from(groupedInvalidMap.values());
+
         // Keep all active batches, and limit 0-stock/expired historical batches to the 5 most recent in POS
-        const combinedBatches = [...validBatches, ...invalidBatches.slice(0, 5)];
+        const combinedBatches = [...groupedValidBatches, ...groupedInvalidBatches.slice(0, 5)];
 
         activeBatchesMap[productId] = combinedBatches.map((b: any) => ({
           id: b.id,
@@ -199,7 +228,7 @@ const POS = () => {
           cost_price: Number(b.cost_price) || 0
         }));
 
-        const batchesWithExpiry = validBatches.filter((b: any) => !!b.expiry_date);
+        const batchesWithExpiry = groupedValidBatches.filter((b: any) => !!b.expiry_date);
         if (batchesWithExpiry.length > 0) {
           const earliest = batchesWithExpiry[0];
           const expDate = new Date(earliest.expiry_date);
@@ -598,7 +627,10 @@ const POS = () => {
         if (item.selected_batch_id && item.selected_batch_id !== "auto") {
           const specific = pBatches.find(b => b.id === item.selected_batch_id);
           if (specific) {
-            pBatches = [specific, ...pBatches.filter(b => b.id !== item.selected_batch_id)];
+            const specificKey = `${(specific.batch_name || "").trim().toLowerCase()}___${specific.expiry_date || ""}`;
+            const matchingBatches = pBatches.filter(b => `${(b.batch_name || "").trim().toLowerCase()}___${b.expiry_date || ""}` === specificKey);
+            const otherBatches = pBatches.filter(b => `${(b.batch_name || "").trim().toLowerCase()}___${b.expiry_date || ""}` !== specificKey);
+            pBatches = [...matchingBatches, ...otherBatches];
           }
         }
         

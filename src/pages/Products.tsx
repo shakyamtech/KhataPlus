@@ -213,7 +213,31 @@ const Products = () => {
       activeBatches.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
       emptyBatches.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
       
-      setBatchesList([...activeBatches, ...emptyBatches]);
+      // Smart Grouping: merge lots having identical (batch_name + expiry_date)
+      const getBatchKey = (b: any) => `${(b.batch_name || "N/A").trim().toLowerCase()}___${b.expiry_date || "none"}`;
+      const groupedActiveMap = new Map<string, any>();
+      activeBatches.forEach(b => {
+        const key = getBatchKey(b);
+        if (!groupedActiveMap.has(key)) {
+          groupedActiveMap.set(key, { ...b, remaining_qty: Number(b.remaining_qty) || 0 });
+        } else {
+          groupedActiveMap.get(key).remaining_qty += Number(b.remaining_qty) || 0;
+        }
+      });
+      const groupedActive = Array.from(groupedActiveMap.values());
+
+      const groupedEmptyMap = new Map<string, any>();
+      emptyBatches.forEach(b => {
+        const key = getBatchKey(b);
+        if (!groupedActiveMap.has(key)) {
+          if (!groupedEmptyMap.has(key)) {
+            groupedEmptyMap.set(key, { ...b, remaining_qty: 0 });
+          }
+        }
+      });
+      const groupedEmpty = Array.from(groupedEmptyMap.values());
+
+      setBatchesList([...groupedActive, ...groupedEmpty]);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
