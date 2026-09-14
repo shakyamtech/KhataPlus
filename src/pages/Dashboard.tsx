@@ -53,12 +53,16 @@ const Dashboard = () => {
       const salesMap = new Map(salesAll.map((s: any) => [s.id, s.payment_mode || "cash"]));
       const purchasesMap = new Map(purchasesAll.map((p: any) => [p.id, p.payment_mode || "cash"]));
 
-      const getRowPaymentMode = (r: any): string => {
+      const getRowPaymentMode = (r: any): "cash" | "esewa" | "khalti" | "bank" => {
         const rawMode = r.payment_mode ||
           ((r.category === "sale" || r.category === "sales") && r.reference_id && salesMap.get(r.reference_id)) ||
           ((r.category === "purchase" || r.category === "purchases") && r.reference_id && purchasesMap.get(r.reference_id)) ||
           "cash";
-        return String(rawMode).toLowerCase();
+        const mode = String(rawMode).toLowerCase();
+        if (mode === "esewa") return "esewa";
+        if (mode === "khalti") return "khalti";
+        if (mode === "bank") return "bank";
+        return "cash";
       };
 
       const sales = salesAll.filter(s => s.created_at >= iso);

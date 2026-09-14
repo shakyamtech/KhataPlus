@@ -77,7 +77,7 @@ const Cashbook = () => {
   const { lang, t } = useLanguage();
   const [salesDetails, setSalesDetails] = useState<Record<string, { customer: string; products: string; mode: string }>>({});
   const [purchaseDetails, setPurchaseDetails] = useState<Record<string, { supplier: string; products: string; mode: string }>>({});
-  const [paymentFilter, setPaymentFilter] = useState<"all" | "cash" | "esewa" | "khalti" | "bank" | "credit">("all");
+  const [paymentFilter, setPaymentFilter] = useState<"all" | "cash" | "esewa" | "khalti" | "bank">("all");
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
@@ -211,15 +211,19 @@ const Cashbook = () => {
   const totalIn = Math.round(dateFilteredRows.filter((r) => r.direction === "in").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
   const totalOut = Math.round(dateFilteredRows.filter((r) => r.direction === "out").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
 
-  const getRowPaymentMode = (r: any): string => {
+  const getRowPaymentMode = (r: any): "cash" | "esewa" | "khalti" | "bank" => {
     const rawMode = r.payment_mode ||
       ((r.category === "sale" || r.category === "sales") && r.reference_id && salesDetails[r.reference_id]?.mode) ||
       ((r.category === "purchase" || r.category === "purchases") && r.reference_id && purchaseDetails[r.reference_id]?.mode) ||
       "cash";
-    return String(rawMode).toLowerCase();
+    const mode = String(rawMode).toLowerCase();
+    if (mode === "esewa") return "esewa";
+    if (mode === "khalti") return "khalti";
+    if (mode === "bank") return "bank";
+    return "cash";
   };
 
-  const paymentModes = ["cash", "esewa", "khalti", "bank", "credit"] as const;
+  const paymentModes = ["cash", "esewa", "khalti", "bank"] as const;
   const paymentModeTotals = paymentModes.reduce((acc, mode) => {
     const modeRows = dateFilteredRows.filter(r => getRowPaymentMode(r) === mode);
     acc[mode] = {
@@ -240,9 +244,8 @@ const Cashbook = () => {
     const esewa = getNet("esewa");
     const khalti = getNet("khalti");
     const bank = getNet("bank");
-    const credit = getNet("credit");
     const liquidTotal = Math.round((cash + esewa + khalti + bank) * 100) / 100;
-    return { cash, esewa, khalti, bank, credit, liquidTotal };
+    return { cash, esewa, khalti, bank, liquidTotal };
   }, [paymentModeTotals]);
 
   // Active filter summary amounts for top cards
@@ -299,14 +302,6 @@ const Cashbook = () => {
         outEn: "Bank Out",
         balNp: "बैंक मौज्दात (Bank Balance)",
         balEn: "Bank Balance"
-      },
-      credit: {
-        inNp: "उधारो बिक्री (Credit Sales)",
-        inEn: "Credit Sales",
-        outNp: "उधारो खरिद (Credit Purchases)",
-        outEn: "Credit Purchases",
-        balNp: "खुद उधारो (Net Credit)",
-        balEn: "Net Credit"
       }
     };
 
@@ -817,7 +812,6 @@ const Cashbook = () => {
                       <SelectItem value="esewa">eSewa</SelectItem>
                       <SelectItem value="khalti">Khalti</SelectItem>
                       <SelectItem value="bank">Bank</SelectItem>
-                      <SelectItem value="credit">Credit</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -891,6 +885,34 @@ const Cashbook = () => {
         </Card>
       </div>
 
+      {/* Multi-Channel Balance Strip Header */}
+      <div className="flex items-center justify-between gap-2 mb-2 px-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[11.5px] font-bold text-muted-foreground uppercase tracking-wider">
+            {lang === "NEP" ? "तरल मौज्दात खाताहरू (Liquid Accounts)" : "Liquid Accounts"}
+          </span>
+          <span className="text-[11px] font-semibold text-muted-foreground">
+            · {dateFilteredRows.length} {lang === "NEP" ? "कुल कारोबार" : "total txns"}
+          </span>
+        </div>
+        {paymentFilter !== "all" ? (
+          <button
+            type="button"
+            onClick={() => setPaymentFilter("all")}
+            className="text-[11.5px] font-bold text-primary hover:underline flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+          >
+            <span>{lang === "NEP" ? "सबै कारोबार देखाउनुहोस्" : "Show All Transactions"}</span>
+            <span className="bg-primary text-primary-foreground text-[10px] font-mono px-1.5 py-0.2 rounded-full">
+              {dateFilteredRows.length}
+            </span>
+          </button>
+        ) : (
+          <span className="text-[11px] font-medium text-muted-foreground">
+            {lang === "NEP" ? "खाता छानेर फिल्टर गर्नुहोस्" : "Click card to filter"}
+          </span>
+        )}
+      </div>
+
       {/* Multi-Channel Balance Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
         {/* Cash in Hand */}
@@ -898,21 +920,29 @@ const Cashbook = () => {
           type="button"
           onClick={() => setPaymentFilter(paymentFilter === "cash" ? "all" : "cash")}
           className={cn(
-            "p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs",
+            "p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs cursor-pointer",
             paymentFilter === "cash"
               ? "bg-emerald-500/15 border-emerald-500/50 ring-2 ring-emerald-500/30"
               : "bg-card hover:bg-muted/60 border-border/50"
           )}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-9 w-9 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
               <Banknote className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10.5px] font-semibold text-muted-foreground truncate">
-                {lang === "NEP" ? "गल्लाको नगद" : "Cash in Hand"}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-muted-foreground truncate">
+                  {lang === "NEP" ? "गल्लाको नगद" : "Cash in Hand"}
+                </span>
+                <span className={cn(
+                  "text-[9.5px] font-bold px-1.5 py-0.2 rounded-full font-mono",
+                  paymentFilter === "cash" ? "bg-emerald-600 text-white" : "bg-secondary text-muted-foreground"
+                )}>
+                  {paymentModeTotals.cash?.count || 0}
+                </span>
               </div>
-              <div className="text-xs font-bold text-foreground font-mono truncate">
+              <div className="text-xs sm:text-sm font-bold text-foreground font-mono truncate mt-0.5">
                 {fmt(channelBalances.cash)}
               </div>
             </div>
@@ -929,21 +959,29 @@ const Cashbook = () => {
           type="button"
           onClick={() => setPaymentFilter(paymentFilter === "esewa" ? "all" : "esewa")}
           className={cn(
-            "p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs",
+            "p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs cursor-pointer",
             paymentFilter === "esewa"
               ? "bg-green-500/15 border-green-500/50 ring-2 ring-green-500/30"
               : "bg-card hover:bg-muted/60 border-border/50"
           )}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="h-8 w-8 rounded-lg bg-green-500/15 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-9 w-9 rounded-lg bg-green-500/15 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
               <Smartphone className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10.5px] font-semibold text-muted-foreground truncate">
-                eSewa वालेट
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-muted-foreground truncate">
+                  eSewa वालेट
+                </span>
+                <span className={cn(
+                  "text-[9.5px] font-bold px-1.5 py-0.2 rounded-full font-mono",
+                  paymentFilter === "esewa" ? "bg-green-600 text-white" : "bg-secondary text-muted-foreground"
+                )}>
+                  {paymentModeTotals.esewa?.count || 0}
+                </span>
               </div>
-              <div className="text-xs font-bold text-foreground font-mono truncate">
+              <div className="text-xs sm:text-sm font-bold text-foreground font-mono truncate mt-0.5">
                 {fmt(channelBalances.esewa)}
               </div>
             </div>
@@ -960,21 +998,29 @@ const Cashbook = () => {
           type="button"
           onClick={() => setPaymentFilter(paymentFilter === "khalti" ? "all" : "khalti")}
           className={cn(
-            "p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs",
+            "p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs cursor-pointer",
             paymentFilter === "khalti"
               ? "bg-purple-500/15 border-purple-500/50 ring-2 ring-purple-500/30"
               : "bg-card hover:bg-muted/60 border-border/50"
           )}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="h-8 w-8 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-9 w-9 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
               <Smartphone className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10.5px] font-semibold text-muted-foreground truncate">
-                Khalti वालेट
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-muted-foreground truncate">
+                  Khalti वालेट
+                </span>
+                <span className={cn(
+                  "text-[9.5px] font-bold px-1.5 py-0.2 rounded-full font-mono",
+                  paymentFilter === "khalti" ? "bg-purple-600 text-white" : "bg-secondary text-muted-foreground"
+                )}>
+                  {paymentModeTotals.khalti?.count || 0}
+                </span>
               </div>
-              <div className="text-xs font-bold text-foreground font-mono truncate">
+              <div className="text-xs sm:text-sm font-bold text-foreground font-mono truncate mt-0.5">
                 {fmt(channelBalances.khalti)}
               </div>
             </div>
@@ -991,21 +1037,29 @@ const Cashbook = () => {
           type="button"
           onClick={() => setPaymentFilter(paymentFilter === "bank" ? "all" : "bank")}
           className={cn(
-            "p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs",
+            "p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs cursor-pointer",
             paymentFilter === "bank"
               ? "bg-blue-500/15 border-blue-500/50 ring-2 ring-blue-500/30"
               : "bg-card hover:bg-muted/60 border-border/50"
           )}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="h-8 w-8 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-9 w-9 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
               <Building2 className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10.5px] font-semibold text-muted-foreground truncate">
-                {lang === "NEP" ? "बैंक खाता" : "Bank Account"}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-muted-foreground truncate">
+                  {lang === "NEP" ? "बैंक खाता" : "Bank Account"}
+                </span>
+                <span className={cn(
+                  "text-[9.5px] font-bold px-1.5 py-0.2 rounded-full font-mono",
+                  paymentFilter === "bank" ? "bg-blue-600 text-white" : "bg-secondary text-muted-foreground"
+                )}>
+                  {paymentModeTotals.bank?.count || 0}
+                </span>
               </div>
-              <div className="text-xs font-bold text-foreground font-mono truncate">
+              <div className="text-xs sm:text-sm font-bold text-foreground font-mono truncate mt-0.5">
                 {fmt(channelBalances.bank)}
               </div>
             </div>
@@ -1102,51 +1156,6 @@ const Cashbook = () => {
         </div>
       </Card>
 
-      {/* Payment Mode Breakdown */}
-      <Card className="p-3 mb-4 shadow-card border-0 bg-card">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
-          {lang === "NEP" ? "भुक्तानी माध्यम (Payment Mode)" : "Payment Mode"}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setPaymentFilter("all")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border flex items-center gap-1.5 ${
-              paymentFilter === "all" ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
-            }`}
-          >
-            <span>{lang === "NEP" ? "सबै" : "All"}</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${paymentFilter === "all" ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background/80 text-muted-foreground"}`}>
-              {dateFilteredRows.length}
-            </span>
-          </button>
-          {([
-            { id: "cash", label: "Cash" },
-            { id: "esewa", label: "eSewa" },
-            { id: "khalti", label: "Khalti" },
-            { id: "bank", label: "Bank" },
-            { id: "credit", label: "Credit" }
-          ] as const).map(({ id, label }) => {
-            const totals = paymentModeTotals[id];
-            const isActive = paymentFilter === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setPaymentFilter(id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border flex items-center gap-1.5 ${
-                  isActive ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
-                }`}
-              >
-                <span>{label}</span>
-                {totals?.count > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background/80 text-muted-foreground"}`}>
-                    {totals.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </Card>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1207,11 +1216,11 @@ const Cashbook = () => {
                 {pDetail?.products ? <span className="font-medium text-foreground/80 block mt-0.5 truncate">📦 {pDetail.products}</span> : null}
                 {sDetail ? (
                   <span className="italic block text-[11px] mt-0.5 truncate capitalize">
-                    💬 Payment through {sDetail.mode}
+                    💬 Payment through {getRowPaymentMode(r)}
                   </span>
                 ) : pDetail ? (
                   <span className="italic block text-[11px] mt-0.5 truncate capitalize">
-                    💬 Payment through {pDetail.mode}
+                    💬 Payment through {getRowPaymentMode(r)}
                   </span>
                 ) : r.note ? (
                   <span className="italic block text-[11px] mt-0.5 truncate">💬 {r.note}</span>
