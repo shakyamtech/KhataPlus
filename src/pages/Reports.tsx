@@ -1678,13 +1678,15 @@ const Reports = () => {
   return (
     <div className="p-3 sm:p-4 md:p-8 max-w-6xl mx-auto space-y-4 pb-12">
       <PageHeader title="Reports" subtitle="Sales, profit and tax registers" actions={
-        <Tabs value={range} onValueChange={(v: any) => setRange(v)}>
-          <TabsList className="h-8 sm:h-9 bg-muted/80 p-0.5 shadow-xs">
-            <TabsTrigger value="7" className="text-xs px-2.5 py-1">7d</TabsTrigger>
-            <TabsTrigger value="30" className="text-xs px-2.5 py-1">30d</TabsTrigger>
-            <TabsTrigger value="90" className="text-xs px-2.5 py-1">90d</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        activeTab === "overview" ? (
+          <Tabs value={range} onValueChange={(v: any) => setRange(v)}>
+            <TabsList className="h-8 sm:h-9 bg-muted/80 p-0.5 shadow-xs">
+              <TabsTrigger value="7" className="text-xs px-2.5 py-1">7d</TabsTrigger>
+              <TabsTrigger value="30" className="text-xs px-2.5 py-1">30d</TabsTrigger>
+              <TabsTrigger value="90" className="text-xs px-2.5 py-1">90d</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        ) : null
       } />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
