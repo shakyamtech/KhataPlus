@@ -942,28 +942,47 @@ const POS = () => {
               const totalAvailable = getTotalAvailable(p.id);
               const isLow = totalAvailable > 0 && totalAvailable <= (p.low_stock_threshold || 5);
               const isOut = totalAvailable <= 0;
+              const cartItem = cart.find((i) => i.product_id === p.id);
+              const inCartQty = cartItem ? Number(cartItem.qty) || 0 : 0;
 
               return (
                 <button
                   key={p.id}
                   onClick={() => addToCart(p)}
                   disabled={isOut}
-                  className={`text-left p-3 rounded-xl shadow-card hover:shadow-elegant hover:-translate-y-1 transition-all duration-300 border outline-none flex flex-col justify-between ${isOut
+                  className={`text-left p-3 rounded-xl shadow-card hover:shadow-elegant hover:-translate-y-1 transition-all duration-300 border outline-none flex flex-col justify-between relative overflow-hidden ${isOut
                       ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/30 opacity-80 cursor-not-allowed"
-                      : isLow
-                        ? "bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/30 active:scale-95 hover:border-orange-300 dark:hover:border-orange-500/50"
-                        : "bg-card border-transparent dark:border-white/5 active:scale-95 hover:border-primary/40 dark:hover:border-primary/40"
+                      : inCartQty > 0
+                        ? "bg-primary/5 border-primary/50 dark:border-primary/60 active:scale-95 shadow-sm ring-1 ring-primary/30"
+                        : isLow
+                          ? "bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/30 active:scale-95 hover:border-orange-300 dark:hover:border-orange-500/50"
+                          : "bg-card border-transparent dark:border-white/5 active:scale-95 hover:border-primary/40 dark:hover:border-primary/40"
                     }`}>
+                  {/* In Cart Indicator Badge */}
+                  {inCartQty > 0 && (
+                    <div className="absolute top-1.5 right-1.5 flex items-center gap-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-xs animate-in zoom-in-75 duration-200">
+                      <Check className="h-2.5 w-2.5 stroke-[3]" />
+                      <span>{inCartQty}</span>
+                    </div>
+                  )}
+
                   <div>
-                    <div className={`font-display text-base truncate ${isOut ? "text-red-900 dark:text-red-300" : isLow ? "text-orange-900 dark:text-orange-300" : ""
+                    <div className={`font-display text-base truncate pr-6 ${isOut ? "text-red-900 dark:text-red-300" : inCartQty > 0 ? "text-primary font-bold" : isLow ? "text-orange-900 dark:text-orange-300" : ""
                       }`}>{p.name}</div>
                     <div className={`text-xs ${isOut ? "text-red-600 dark:text-red-400 font-bold" : isLow ? "text-orange-600 dark:text-orange-400 font-medium" : "text-muted-foreground"
                       }`}>
                       {isOut ? (p.has_expired_stock ? "ALL STOCK EXPIRED" : "OUT OF STOCK") : `${fmtQty(totalAvailable)} ${p.unit} in stock`}
                     </div>
                   </div>
-                  <div className={`mt-2 font-semibold ${isOut ? "text-red-700 dark:text-red-400" : isLow ? "text-orange-700 dark:text-orange-400" : "text-primary dark:text-primary-glow"
-                    }`}>{fmt(p.sell_price)}</div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className={`font-semibold ${isOut ? "text-red-700 dark:text-red-400" : isLow ? "text-orange-700 dark:text-orange-400" : "text-primary dark:text-primary-glow"
+                      }`}>{fmt(p.sell_price)}</span>
+                    {inCartQty > 0 && (
+                      <span className="text-[10.5px] font-semibold text-primary/90 bg-primary/10 px-1.5 py-0.5 rounded">
+                        In Cart
+                      </span>
+                    )}
+                  </div>
                 </button>
               );
             })}
@@ -1543,29 +1562,6 @@ const POS = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {/* Mobile Floating Cart Indicator / Jump to Cart Button */}
-      {cart.length > 0 && (
-        <div className="lg:hidden fixed bottom-16 left-4 right-4 z-40 animate-in fade-in slide-in-from-bottom-3 duration-300">
-          <button
-            type="button"
-            onClick={scrollToCartMobile}
-            className="w-full bg-primary text-primary-foreground shadow-2xl rounded-xl py-3 px-4 flex items-center justify-between font-semibold active:scale-[0.98] transition-transform border border-primary-foreground/20 backdrop-blur"
-          >
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
-              </span>
-              <ShoppingCart className="h-4 w-4" />
-              <span className="text-sm">{cart.length} item(s) in Cart</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-sm font-bold">
-              <span>{fmt(total)}</span>
-              <ArrowDown className="h-4 w-4 animate-bounce" />
-            </div>
-          </button>
-        </div>
-      )}
     </div>
   );
 };
