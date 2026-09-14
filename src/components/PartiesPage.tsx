@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil, CheckCircle2, Receipt, Landmark } from "lucide-react";
+import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil, CheckCircle2, Receipt, Landmark, Coins, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
@@ -153,6 +154,7 @@ function PartyAvatarRing({
 
 export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const { user } = useAuth();
+  const { lang } = useLanguage();
   const table = type === "customer" ? "customers" : "suppliers";
   const labelPlural = type === "customer" ? "Customers" : "Suppliers";
   const dueLabel = type === "customer" ? "Receivable (Udhaar)" : "Payable";
@@ -173,6 +175,14 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [payPaymentMode, setPayPaymentMode] = useState<string>("cash");
   const [bankAccounts, setBankAccounts] = useState<Account[]>([]);
   const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>("");
+  const [liquidBalances, setLiquidBalances] = useState<{
+    cash: number;
+    esewa: number;
+    khalti: number;
+    bank: number;
+    total: number;
+  }>({ cash: 0, esewa: 0, khalti: 0, bank: 0, total: 0 });
+  const [bankBalances, setBankBalances] = useState<Record<string, number>>({});
   const [busyAdd, setBusyAdd] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
@@ -201,10 +211,92 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     return entries;
   }, [entries, ledgerFilter]);
 
+  const selectedModeBalance = useMemo(() => {
+    if (payPaymentMode === "cash") return liquidBalances.cash;
+    if (payPaymentMode === "esewa") return liquidBalances.esewa;
+    if (payPaymentMode === "khalti") return liquidBalances.khalti;
+    if (payPaymentMode === "bank") {
+      if (selectedBankAccountId && bankBalances[selectedBankAccountId] !== undefined) {
+        return bankBalances[selectedBankAccountId];
+      }
+      return liquidBalances.bank;
+    }
+    return liquidBalances.cash;
+  }, [payPaymentMode, selectedBankAccountId, liquidBalances, bankBalances]);
+
+  const loadLiquidBalances = async () => {
+    if (!user) return;
+    try {
+      const [cSnap, sSnap, purSnap, accs] = await Promise.all([
+        getDocs(query(collection(db, "cash_transactions"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "sales"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "purchases"), where("user_id", "==", user.uid))),
+        getAccounts(user.uid),
+      ]);
+
+      const banks = accs.filter(a => a.group === "bank_accounts");
+      setBankAccounts(banks);
+      if (banks.length > 0) {
+        setSelectedBankAccountId(prev => prev || banks[0].id);
+      }
+
+      const salesMap = new Map(sSnap.docs.map(d => [d.id, d.data().payment_mode || "cash"]));
+      const purchasesMap = new Map(purSnap.docs.map(d => [d.id, d.data().payment_mode || "cash"]));
+
+      const getMode = (r: any): "cash" | "esewa" | "khalti" | "bank" => {
+        const rawMode = r.payment_mode ||
+          ((r.category === "sale" || r.category === "sales") && r.reference_id && salesMap.get(r.reference_id)) ||
+          ((r.category === "purchase" || r.category === "purchases") && r.reference_id && purchasesMap.get(r.reference_id)) ||
+          "cash";
+        const m = String(rawMode).toLowerCase();
+        if (m === "esewa") return "esewa";
+        if (m === "khalti") return "khalti";
+        if (m === "bank") return "bank";
+        return "cash";
+      };
+
+      const bals = { cash: 0, esewa: 0, khalti: 0, bank: 0 };
+      const perBank: Record<string, number> = {};
+
+      banks.forEach(b => {
+        const op = Number(b.opening_balance) || 0;
+        if (op !== 0) {
+          perBank[b.id] = (perBank[b.id] || 0) + op;
+        }
+      });
+
+      cSnap.docs.forEach(docSnap => {
+        const r = docSnap.data();
+        const mode = getMode(r);
+        const amt = Number(r.amount) || 0;
+        const delta = r.direction === "in" ? amt : -amt;
+        bals[mode] += delta;
+
+        if (r.bank_account_id) {
+          perBank[r.bank_account_id] = (perBank[r.bank_account_id] || 0) + delta;
+        }
+      });
+
+      const rounded = {
+        cash: Math.round(bals.cash * 100) / 100,
+        esewa: Math.round(bals.esewa * 100) / 100,
+        khalti: Math.round(bals.khalti * 100) / 100,
+        bank: Math.round(bals.bank * 100) / 100,
+        total: Math.round((bals.cash + bals.esewa + bals.khalti + bals.bank) * 100) / 100,
+      };
+
+      setLiquidBalances(rounded);
+      setBankBalances(perBank);
+    } catch (err) {
+      console.error("Error loading liquid balances:", err);
+    }
+  };
+
   const load = async () => {
     if (!user) return;
     try {
       getShopInfo().then(setShopInfo);
+      loadLiquidBalances();
       getAccounts(user.uid).then(accs => {
         const banks = accs.filter(a => a.group === "bank_accounts");
         setBankAccounts(banks);
@@ -246,6 +338,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     }
   };
   useEffect(() => { if (user) load(); }, [user]);
+  useEffect(() => { if (payOpen) loadLiquidBalances(); }, [payOpen]);
   useEffect(() => { if (open) { setBalanceType(type === "customer" ? "receivable" : "payable"); } }, [open, type]);
 
   const filtered = items.filter((p) => {
@@ -1166,18 +1259,159 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
   const renderPaymentDialog = () => (
     <Dialog open={payOpen} onOpenChange={setPayOpen}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Wallet className="h-5 w-5 text-primary" />
             <span>
-              {type === "customer" ? "Record Payment Received (उधारो असुली)" : "Record Payment Made (खरिद भुक्तानी)"}
+              {type === "customer" 
+                ? (lang === "NEP" ? "उधारो असुली (Payment Received)" : "Record Payment Received") 
+                : (lang === "NEP" ? "खरिद भुक्तानी (Payment Made)" : "Record Payment Made")}
             </span>
           </DialogTitle>
-          <DialogDescription>
-            {selected ? `Party: ${selected.name} (Current Balance: ${fmt(selected.balance)})` : "Process a payment entry"}
+          <DialogDescription className="flex items-center justify-between text-xs pt-0.5">
+            <span>{selected ? `Party: ${selected.name}` : "Process a payment entry"}</span>
+            {selected && (
+              <span className="font-semibold text-foreground">
+                {type === "customer" ? (lang === "NEP" ? "बाँकी लिनुपर्ने: " : "Receivable: ") : (lang === "NEP" ? "बाँकी तिर्नुपर्ने: " : "Payable: ")}
+                <span className={cn(selected.balance > 0 ? (type === "customer" ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400") : "text-emerald-600 dark:text-emerald-400 font-mono")}>
+                  {fmt(selected.balance)}
+                </span>
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Live Liquid Balances Strip (Top Only) */}
+        <div className="rounded-xl border border-border/70 bg-secondary/30 p-2.5 space-y-1.5 mt-1">
+          <div className="flex items-center justify-between px-0.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <Coins className="h-3.5 w-3.5 text-primary" />
+              <span>{lang === "NEP" ? "उपलब्ध मौज्दात (Available Balance)" : "Available Balances"}</span>
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {lang === "NEP" ? "जम्मा: " : "Total: "}
+              <span className={cn("font-mono font-bold", liquidBalances.total >= 0 ? "text-foreground" : "text-rose-600 dark:text-rose-400")}>
+                {fmt(liquidBalances.total)}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+            {/* Cash */}
+            <button
+              type="button"
+              onClick={() => setPayPaymentMode("cash")}
+              className={cn(
+                "flex flex-col p-2 rounded-lg border text-left transition-all duration-150 relative",
+                payPaymentMode === "cash"
+                  ? "border-emerald-500/70 bg-emerald-500/10 dark:bg-emerald-500/15 shadow-xs ring-1 ring-emerald-500/50"
+                  : "border-border/60 bg-background/80 hover:bg-muted/60"
+              )}
+            >
+              <div className="flex items-center justify-between w-full mb-0.5">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                  💵 {lang === "NEP" ? "नगद" : "Cash"}
+                </span>
+                {payPaymentMode === "cash" && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                )}
+              </div>
+              <span className={cn("text-xs font-mono font-bold truncate", liquidBalances.cash < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400")}>
+                {fmt(liquidBalances.cash)}
+              </span>
+            </button>
+
+            {/* eSewa */}
+            <button
+              type="button"
+              onClick={() => setPayPaymentMode("esewa")}
+              className={cn(
+                "flex flex-col p-2 rounded-lg border text-left transition-all duration-150 relative",
+                payPaymentMode === "esewa"
+                  ? "border-green-500/70 bg-green-500/10 dark:bg-green-500/15 shadow-xs ring-1 ring-green-500/50"
+                  : "border-border/60 bg-background/80 hover:bg-muted/60"
+              )}
+            >
+              <div className="flex items-center justify-between w-full mb-0.5">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                  🟢 eSewa
+                </span>
+                {payPaymentMode === "esewa" && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                )}
+              </div>
+              <span className={cn("text-xs font-mono font-bold truncate", liquidBalances.esewa < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>
+                {fmt(liquidBalances.esewa)}
+              </span>
+            </button>
+
+            {/* Khalti */}
+            <button
+              type="button"
+              onClick={() => setPayPaymentMode("khalti")}
+              className={cn(
+                "flex flex-col p-2 rounded-lg border text-left transition-all duration-150 relative",
+                payPaymentMode === "khalti"
+                  ? "border-purple-500/70 bg-purple-500/10 dark:bg-purple-500/15 shadow-xs ring-1 ring-purple-500/50"
+                  : "border-border/60 bg-background/80 hover:bg-muted/60"
+              )}
+            >
+              <div className="flex items-center justify-between w-full mb-0.5">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                  🟣 Khalti
+                </span>
+                {payPaymentMode === "khalti" && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+                )}
+              </div>
+              <span className={cn("text-xs font-mono font-bold truncate", liquidBalances.khalti < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>
+                {fmt(liquidBalances.khalti)}
+              </span>
+            </button>
+
+            {/* Bank */}
+            <button
+              type="button"
+              onClick={() => {
+                setPayPaymentMode("bank");
+                if (bankAccounts.length > 0 && !selectedBankAccountId) {
+                  setSelectedBankAccountId(bankAccounts[0].id);
+                }
+              }}
+              className={cn(
+                "flex flex-col p-2 rounded-lg border text-left transition-all duration-150 relative",
+                payPaymentMode === "bank"
+                  ? "border-blue-500/70 bg-blue-500/10 dark:bg-blue-500/15 shadow-xs ring-1 ring-blue-500/50"
+                  : "border-border/60 bg-background/80 hover:bg-muted/60"
+              )}
+            >
+              <div className="flex items-center justify-between w-full mb-0.5">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                  🏛️ {lang === "NEP" ? "बैंक" : "Bank"}
+                </span>
+                {payPaymentMode === "bank" && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                )}
+              </div>
+              <span className={cn("text-xs font-mono font-bold truncate", liquidBalances.bank < 0 ? "text-rose-600 dark:text-rose-400" : "text-blue-700 dark:text-blue-400")}>
+                {fmt(liquidBalances.bank)}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Soft balance warning if paying a supplier with more than available in selected mode */}
+        {type === "supplier" && Number(payAmount) > 0 && Number(payAmount) > selectedModeBalance && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>
+              {lang === "NEP"
+                ? `सावधानी: छनोट गरिएको माध्यममा मौज्दात (${fmt(selectedModeBalance)}) भन्दा भुक्तानी रकम (${fmt(Number(payAmount))}) बढी छ।`
+                : `Caution: Payment amount (${fmt(Number(payAmount))}) exceeds balance in selected mode (${fmt(selectedModeBalance)}).`}
+            </span>
+          </div>
+        )}
 
         <form onSubmit={recordPayment} className="space-y-4 pt-1">
           {/* Settlement Mode Selection */}
@@ -1325,10 +1559,18 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">Cash (नगद)</SelectItem>
-                  <SelectItem value="esewa">eSewa</SelectItem>
-                  <SelectItem value="khalti">Khalti</SelectItem>
-                  <SelectItem value="bank">Bank Transfer / Cheque</SelectItem>
+                  <SelectItem value="cash">
+                    Cash (नगद) · {fmt(liquidBalances.cash)}
+                  </SelectItem>
+                  <SelectItem value="esewa">
+                    eSewa · {fmt(liquidBalances.esewa)}
+                  </SelectItem>
+                  <SelectItem value="khalti">
+                    Khalti · {fmt(liquidBalances.khalti)}
+                  </SelectItem>
+                  <SelectItem value="bank">
+                    Bank Transfer / Cheque · {fmt(liquidBalances.bank)}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1362,9 +1604,19 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                       <SelectItem key={b.id} value={b.id}>
                         <div className="flex items-center justify-between gap-4 w-full">
                           <span className="font-semibold text-foreground">{b.name}</span>
-                          {b.account_number && (
-                            <span className="text-[11px] text-muted-foreground font-mono">A/C: {b.account_number}</span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {b.account_number && (
+                              <span className="text-[11px] text-muted-foreground font-mono">A/C: {b.account_number}</span>
+                            )}
+                            {bankBalances[b.id] !== undefined && (
+                              <span className={cn(
+                                "text-[11px] font-mono font-semibold",
+                                bankBalances[b.id] < 0 ? "text-rose-600 dark:text-rose-400" : "text-blue-600 dark:text-blue-400"
+                              )}>
+                                {fmt(bankBalances[b.id])}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </SelectItem>
                     ))}
