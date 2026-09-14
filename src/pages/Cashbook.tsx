@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmt } from "@/lib/format";
-import { Plus, ArrowDownCircle, ArrowUpCircle, Wallet, Trash2, Printer, Loader2, Search } from "lucide-react";
+import { Plus, ArrowDownCircle, ArrowUpCircle, Wallet, Trash2, Printer, Loader2, Search, Smartphone, Building2, Banknote } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
@@ -20,6 +20,7 @@ import { format, subDays } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { formatNepaliDate } from "@/lib/fiscalYear";
+import { cn } from "@/lib/utils";
 
 const inCategories = [
   "sale", 
@@ -228,6 +229,105 @@ const Cashbook = () => {
     };
     return acc;
   }, {} as Record<string, { in: number; out: number; count: number }>);
+
+  // Channel net balances
+  const channelBalances = useMemo(() => {
+    const getNet = (mode: string) => {
+      const t = paymentModeTotals[mode as keyof typeof paymentModeTotals];
+      return t ? Math.round((t.in - t.out) * 100) / 100 : 0;
+    };
+    const cash = getNet("cash");
+    const esewa = getNet("esewa");
+    const khalti = getNet("khalti");
+    const bank = getNet("bank");
+    const credit = getNet("credit");
+    const liquidTotal = Math.round((cash + esewa + khalti + bank) * 100) / 100;
+    return { cash, esewa, khalti, bank, credit, liquidTotal };
+  }, [paymentModeTotals]);
+
+  // Active filter summary amounts for top cards
+  const activeSummary = useMemo(() => {
+    if (paymentFilter === "all") {
+      const liquidIn = Math.round(
+        (["cash", "esewa", "khalti", "bank"] as const).reduce((s, m) => s + (paymentModeTotals[m]?.in || 0), 0) * 100
+      ) / 100;
+      const liquidOut = Math.round(
+        (["cash", "esewa", "khalti", "bank"] as const).reduce((s, m) => s + (paymentModeTotals[m]?.out || 0), 0) * 100
+      ) / 100;
+      return {
+        labelIn: lang === "NEP" ? "कुल आम्दानी (Total In)" : "Total In",
+        labelOut: lang === "NEP" ? "कुल खर्च (Total Out)" : "Total Out",
+        labelBal: lang === "NEP" ? "कुल मौज्दात (Liquid Funds)" : "Total Balance",
+        totalIn: liquidIn,
+        totalOut: liquidOut,
+        balance: channelBalances.liquidTotal,
+      };
+    }
+
+    const t = paymentModeTotals[paymentFilter as keyof typeof paymentModeTotals] || { in: 0, out: 0, count: 0 };
+    const net = Math.round((t.in - t.out) * 100) / 100;
+
+    const labels: Record<string, { inNp: string; inEn: string; outNp: string; outEn: string; balNp: string; balEn: string }> = {
+      cash: {
+        inNp: "नगद आम्दानी (Cash In)",
+        inEn: "Cash In",
+        outNp: "नगद खर्च (Cash Out)",
+        outEn: "Cash Out",
+        balNp: "गल्ला मौज्दात (Drawer Cash)",
+        balEn: "Cash Balance"
+      },
+      esewa: {
+        inNp: "eSewa आम्दानी (In)",
+        inEn: "eSewa In",
+        outNp: "eSewa भुक्तानी (Out)",
+        outEn: "eSewa Out",
+        balNp: "eSewa मौज्दात (Balance)",
+        balEn: "eSewa Balance"
+      },
+      khalti: {
+        inNp: "Khalti आम्दानी (In)",
+        inEn: "Khalti In",
+        outNp: "Khalti भुक्तानी (Out)",
+        outEn: "Khalti Out",
+        balNp: "Khalti मौज्दात (Balance)",
+        balEn: "Khalti Balance"
+      },
+      bank: {
+        inNp: "बैंक आम्दानी (Bank In)",
+        inEn: "Bank In",
+        outNp: "बैंक भुक्तानी (Bank Out)",
+        outEn: "Bank Out",
+        balNp: "बैंक मौज्दात (Bank Balance)",
+        balEn: "Bank Balance"
+      },
+      credit: {
+        inNp: "उधारो बिक्री (Credit Sales)",
+        inEn: "Credit Sales",
+        outNp: "उधारो खरिद (Credit Purchases)",
+        outEn: "Credit Purchases",
+        balNp: "खुद उधारो (Net Credit)",
+        balEn: "Net Credit"
+      }
+    };
+
+    const l = labels[paymentFilter] || {
+      inNp: "Inflow",
+      inEn: "Inflow",
+      outNp: "Outflow",
+      outEn: "Outflow",
+      balNp: "Balance",
+      balEn: "Balance"
+    };
+
+    return {
+      labelIn: lang === "NEP" ? l.inNp : l.inEn,
+      labelOut: lang === "NEP" ? l.outNp : l.outEn,
+      labelBal: lang === "NEP" ? l.balNp : l.balEn,
+      totalIn: t.in,
+      totalOut: t.out,
+      balance: net,
+    };
+  }, [paymentFilter, paymentModeTotals, channelBalances, lang]);
 
   const runningBalances = useMemo(() => {
     const chrono = [...rows].sort((a, b) => {
@@ -770,13 +870,149 @@ const Cashbook = () => {
         </div>
       } />
 
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <Card className="p-4 shadow-card border-0"><div className="text-xs text-muted-foreground uppercase">Cash In</div><div className="font-display text-xl text-success mt-1">{fmt(totalIn)}</div></Card>
-        <Card className="p-4 shadow-card border-0"><div className="text-xs text-muted-foreground uppercase">Cash Out</div><div className="font-display text-xl text-destructive mt-1">{fmt(totalOut)}</div></Card>
-        <Card className={`p-4 shadow-elegant border-0 ${balance < 0 ? "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]" : "bg-gradient-primary text-primary-foreground"}`}>
-          <div className="text-xs uppercase opacity-90 flex items-center gap-1 font-semibold"><Wallet className="h-3 w-3" /> {lang === "NEP" ? "कुल ब्यालेन्स" : "Balance"}</div>
-          <div className="font-display text-xl mt-1">{fmt(balance)}</div>
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        <Card className="p-4 shadow-card border-0">
+          <div className="text-xs text-muted-foreground uppercase font-semibold">{activeSummary.labelIn}</div>
+          <div className="font-display text-xl text-success mt-1">{fmt(activeSummary.totalIn)}</div>
         </Card>
+        <Card className="p-4 shadow-card border-0">
+          <div className="text-xs text-muted-foreground uppercase font-semibold">{activeSummary.labelOut}</div>
+          <div className="font-display text-xl text-destructive mt-1">{fmt(activeSummary.totalOut)}</div>
+        </Card>
+        <Card className={`p-4 shadow-elegant border-0 ${activeSummary.balance < 0 ? "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]" : "bg-gradient-primary text-primary-foreground"}`}>
+          <div className="text-xs uppercase opacity-90 flex items-center gap-1 font-semibold">
+            <Wallet className="h-3.5 w-3.5" />
+            <span>{activeSummary.labelBal}</span>
+          </div>
+          <div className="font-display text-xl mt-1">{fmt(activeSummary.balance)}</div>
+        </Card>
+      </div>
+
+      {/* Multi-Channel Balance Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        {/* Cash in Hand */}
+        <button
+          type="button"
+          onClick={() => setPaymentFilter(paymentFilter === "cash" ? "all" : "cash")}
+          className={cn(
+            "p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs",
+            paymentFilter === "cash"
+              ? "bg-emerald-500/15 border-emerald-500/50 ring-2 ring-emerald-500/30"
+              : "bg-card hover:bg-muted/60 border-border/50"
+          )}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-8 w-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Banknote className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10.5px] font-semibold text-muted-foreground truncate">
+                {lang === "NEP" ? "गल्लाको नगद" : "Cash in Hand"}
+              </div>
+              <div className="text-xs font-bold text-foreground font-mono truncate">
+                {fmt(channelBalances.cash)}
+              </div>
+            </div>
+          </div>
+          {paymentFilter === "cash" && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white shrink-0">
+              Active
+            </span>
+          )}
+        </button>
+
+        {/* eSewa */}
+        <button
+          type="button"
+          onClick={() => setPaymentFilter(paymentFilter === "esewa" ? "all" : "esewa")}
+          className={cn(
+            "p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs",
+            paymentFilter === "esewa"
+              ? "bg-green-500/15 border-green-500/50 ring-2 ring-green-500/30"
+              : "bg-card hover:bg-muted/60 border-border/50"
+          )}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-8 w-8 rounded-lg bg-green-500/15 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
+              <Smartphone className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10.5px] font-semibold text-muted-foreground truncate">
+                eSewa वालेट
+              </div>
+              <div className="text-xs font-bold text-foreground font-mono truncate">
+                {fmt(channelBalances.esewa)}
+              </div>
+            </div>
+          </div>
+          {paymentFilter === "esewa" && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-600 text-white shrink-0">
+              Active
+            </span>
+          )}
+        </button>
+
+        {/* Khalti */}
+        <button
+          type="button"
+          onClick={() => setPaymentFilter(paymentFilter === "khalti" ? "all" : "khalti")}
+          className={cn(
+            "p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs",
+            paymentFilter === "khalti"
+              ? "bg-purple-500/15 border-purple-500/50 ring-2 ring-purple-500/30"
+              : "bg-card hover:bg-muted/60 border-border/50"
+          )}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-8 w-8 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <Smartphone className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10.5px] font-semibold text-muted-foreground truncate">
+                Khalti वालेट
+              </div>
+              <div className="text-xs font-bold text-foreground font-mono truncate">
+                {fmt(channelBalances.khalti)}
+              </div>
+            </div>
+          </div>
+          {paymentFilter === "khalti" && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-600 text-white shrink-0">
+              Active
+            </span>
+          )}
+        </button>
+
+        {/* Bank */}
+        <button
+          type="button"
+          onClick={() => setPaymentFilter(paymentFilter === "bank" ? "all" : "bank")}
+          className={cn(
+            "p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2 shadow-xs",
+            paymentFilter === "bank"
+              ? "bg-blue-500/15 border-blue-500/50 ring-2 ring-blue-500/30"
+              : "bg-card hover:bg-muted/60 border-border/50"
+          )}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-8 w-8 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Building2 className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10.5px] font-semibold text-muted-foreground truncate">
+                {lang === "NEP" ? "बैंक खाता" : "Bank Account"}
+              </div>
+              <div className="text-xs font-bold text-foreground font-mono truncate">
+                {fmt(channelBalances.bank)}
+              </div>
+            </div>
+          </div>
+          {paymentFilter === "bank" && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white shrink-0">
+              Active
+            </span>
+          )}
+        </button>
       </div>
       
       {/* Date Range Filter Panel */}
