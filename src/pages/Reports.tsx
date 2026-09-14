@@ -12,13 +12,14 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { format, startOfDay, subDays } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark, ChevronDown, FileSpreadsheet } from "lucide-react";
+import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark, ChevronDown, FileSpreadsheet, BarChart3 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
 import { getFiscalYearInfo, getFiscalYearForMonth, getRecentFiscalYears, isDateInFiscalYear, FiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
 import BalanceSheet from "@/pages/BalanceSheet";
 import { TrialBalanceView } from "@/components/TrialBalanceView";
+import { RatioAnalysisView } from "@/components/RatioAnalysisView";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -1578,6 +1579,10 @@ const Reports = () => {
               <Scale className="h-3.5 w-3.5 text-emerald-500" />
               <span>Trial Balance (सन्तुलन)</span>
             </TabsTrigger>
+            <TabsTrigger value="ratios" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+              <BarChart3 className="h-3.5 w-3.5 text-purple-500" />
+              <span>Ratio Analysis (अनुपात)</span>
+            </TabsTrigger>
             <TabsTrigger value="registers" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
               <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
               <span>Registers (खाताहरू)</span>
@@ -1876,6 +1881,11 @@ const Reports = () => {
         {/* Trial Balance Tab */}
         <TabsContent value="trial" className="space-y-4">
           <TrialBalanceView />
+        </TabsContent>
+
+        {/* Ratio Analysis Tab */}
+        <TabsContent value="ratios" className="space-y-4">
+          <RatioAnalysisView />
         </TabsContent>
 
         {/* Registers Tab: Available for both PAN & VAT Shops */}

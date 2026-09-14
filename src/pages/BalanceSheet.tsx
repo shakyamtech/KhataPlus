@@ -10,7 +10,7 @@ import { fmt } from "@/lib/format";
 import { format } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Landmark, Scale } from "lucide-react";
+import { Printer, Landmark, Scale, BarChart3 } from "lucide-react";
 import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
 
 const Row = ({ label, value, bold }: { label: string; value: number; bold?: boolean }) => (
@@ -445,6 +445,10 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           <Button onClick={() => onNavigateToTrial ? onNavigateToTrial() : navigate("/reports?tab=trial")} variant="outline" size="sm" className="gap-2 shrink-0">
             <Scale className="h-4 w-4 text-emerald-600" />
             सन्तुलन परीक्षण (Trial Balance)
+          </Button>
+          <Button onClick={() => navigate("/reports?tab=ratios")} variant="outline" size="sm" className="gap-2 shrink-0">
+            <BarChart3 className="h-4 w-4 text-purple-600" />
+            अनुपात विश्लेषण (Ratio Analysis)
           </Button>
           <Button onClick={handlePrintBalanceSheet} variant="outline" size="sm" className="gap-2 shrink-0">
             <Printer className="h-4 w-4 text-primary" />
