@@ -35,7 +35,7 @@ const Reports = () => {
   const { user } = useAuth();
   const { lang } = useLanguage();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
-  const [range, setRange] = useState<"7" | "30" | "90">("30");
+  const [range, setRange] = useState<"7" | "30" | "90">("7");
   const [sales, setSales] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
