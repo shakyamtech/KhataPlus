@@ -18,7 +18,9 @@ import {
   Eye,
   SlidersHorizontal,
   Layers,
-  Scissors
+  Scissors,
+  ListChecks,
+  Tag
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -78,6 +80,9 @@ export function BarcodePrintModal({
 
   // Quick generation loader
   const [generatingForId, setGeneratingForId] = useState<string | null>(null);
+
+  // Mobile active tab: 'items' (product list) vs 'preview' (live preview & settings)
+  const [mobileTab, setMobileTab] = useState<"items" | "preview">("items");
 
   // Initialize selection when modal opens or initialSelectedProduct changes
   useEffect(() => {
@@ -306,25 +311,57 @@ export function BarcodePrintModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background rounded-2xl shadow-2xl">
         {/* Header */}
-        <div className="px-6 py-5 border-b bg-secondary/30 flex items-start justify-between pr-14">
-          <div>
-            <DialogTitle className="text-xl font-display flex items-center gap-2.5">
-              <Printer className="h-5 w-5 text-primary" />
-              Barcode Sticker Printing
-            </DialogTitle>
-            <DialogDescription className="mt-1 text-xs text-muted-foreground">
-              Print scannable Code-128 barcode labels for thermal printers or standard A4 sticker paper.
-            </DialogDescription>
+        <div className="px-5 py-4 border-b bg-secondary/30 flex flex-col gap-3 pr-14">
+          <div className="flex items-start justify-between">
+            <div>
+              <DialogTitle className="text-lg sm:text-xl font-display flex items-center gap-2">
+                <Printer className="h-5 w-5 text-primary" />
+                Barcode Sticker Printing
+              </DialogTitle>
+              <DialogDescription className="mt-0.5 text-xs text-muted-foreground">
+                Print scannable Code-128 barcode labels for thermal printers or standard A4 sticker paper.
+              </DialogDescription>
+            </div>
+            <Badge variant="outline" className="hidden sm:inline-flex px-3 py-1 font-semibold text-xs border-primary/20 bg-primary/5 text-primary shrink-0">
+              {totalLabelsCount} Sticker{totalLabelsCount === 1 ? "" : "s"}
+            </Badge>
           </div>
-          <Badge variant="outline" className="px-3.5 py-1.5 font-semibold text-xs border-primary/20 bg-primary/5 text-primary shrink-0">
-            {totalLabelsCount} Sticker{totalLabelsCount === 1 ? "" : "s"} Selected
-          </Badge>
+
+          {/* Mobile View Segment Tabs (Only visible on small mobile screens) */}
+          <div className="md:hidden grid grid-cols-2 p-1 bg-secondary/80 rounded-xl border border-border/60 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setMobileTab("items")}
+              className={`py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                mobileTab === "items"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              <span>१. सामान छान्नुहोस् ({Object.keys(selectedQuantities).length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("preview")}
+              className={`py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                mobileTab === "preview"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Tag className="h-3.5 w-3.5" />
+              <span>२. स्टिकर प्रिभ्यु ({totalLabelsCount})</span>
+            </button>
+          </div>
         </div>
 
         {/* Body Content - Split into 2 columns: Product Table & Settings/Preview */}
-        <div className="grid grid-cols-1 md:grid-cols-12 flex-1 overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-12 flex-1 overflow-hidden min-h-0">
           {/* Left Column: Product Selection (7 cols) */}
-          <div className="md:col-span-7 flex flex-col border-r border-border/60 overflow-hidden h-[480px] md:h-[580px]">
+          <div className={`md:col-span-7 flex flex-col border-r border-border/60 overflow-hidden h-full ${
+            mobileTab === "items" ? "flex" : "hidden md:flex"
+          }`}>
             {/* Search and filter toolbar */}
             <div className="p-4 px-5 border-b bg-secondary/20 space-y-3 shrink-0">
               <div className="relative">
@@ -470,12 +507,25 @@ export function BarcodePrintModal({
             {/* Sticky summary bar at bottom of product table */}
             <div className="px-5 py-3 border-t bg-secondary/15 flex items-center justify-between text-xs text-muted-foreground shrink-0">
               <span className="font-medium">{Object.keys(selectedQuantities).length} items selected</span>
-              <span className="font-bold text-foreground">{totalLabelsCount} stickers total</span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-foreground">{totalLabelsCount} stickers total</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  onClick={() => setMobileTab("preview")}
+                  className="md:hidden h-7 text-[11px] px-2.5 bg-primary text-primary-foreground font-semibold"
+                >
+                  Next: Preview ➔
+                </Button>
+              </div>
             </div>
           </div>
 
           {/* Right Column: Format Settings & Live Preview (5 cols) */}
-          <div className="md:col-span-5 flex flex-col bg-secondary/10 overflow-y-auto p-5 md:p-6 space-y-5">
+          <div className={`md:col-span-5 flex flex-col bg-secondary/10 overflow-y-auto p-4 sm:p-5 md:p-6 space-y-4 sm:space-y-5 h-full ${
+            mobileTab === "preview" ? "flex" : "hidden md:flex"
+          }`}>
             {/* Format Selection */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -656,24 +706,36 @@ export function BarcodePrintModal({
         </div>
 
         {/* Footer actions */}
-        <div className="px-6 py-4 border-t bg-secondary/20 flex items-center justify-between shrink-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="text-xs px-4"
-          >
-            Close
-          </Button>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t bg-secondary/20 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="text-xs px-3 sm:px-4 h-9"
+            >
+              Close
+            </Button>
+            {mobileTab === "preview" && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setMobileTab("items")}
+                className="md:hidden text-xs px-2 text-primary font-medium h-9"
+              >
+                ← Edit Items
+              </Button>
+            )}
+          </div>
 
           <Button
             type="button"
             onClick={handlePrint}
             disabled={totalLabelsCount === 0}
-            className="bg-gradient-primary text-primary-foreground font-semibold text-xs px-6 h-9 shadow-soft hover:shadow-elegant flex items-center gap-2"
+            className="bg-gradient-primary text-primary-foreground font-semibold text-xs px-4 sm:px-6 h-9 shadow-soft hover:shadow-elegant flex items-center gap-1.5 sm:gap-2 truncate"
           >
-            <Printer className="h-4 w-4" />
-            Print {totalLabelsCount} Barcode Sticker{totalLabelsCount === 1 ? "" : "s"}
+            <Printer className="h-4 w-4 shrink-0" />
+            <span>Print {totalLabelsCount} Sticker{totalLabelsCount === 1 ? "" : "s"}</span>
           </Button>
         </div>
       </DialogContent>
