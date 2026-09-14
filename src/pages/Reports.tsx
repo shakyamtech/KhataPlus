@@ -12,7 +12,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { format, startOfDay, subDays } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark, ChevronDown, FileSpreadsheet, BarChart3 } from "lucide-react";
+import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark, ChevronDown, FileSpreadsheet, BarChart3, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
@@ -20,6 +20,7 @@ import { getFiscalYearInfo, getFiscalYearForMonth, getRecentFiscalYears, isDateI
 import BalanceSheet from "@/pages/BalanceSheet";
 import { TrialBalanceView } from "@/components/TrialBalanceView";
 import { RatioAnalysisView } from "@/components/RatioAnalysisView";
+import { StockSummaryView } from "@/components/StockSummaryView";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -1579,6 +1580,10 @@ const Reports = () => {
               <Scale className="h-3.5 w-3.5 text-emerald-500" />
               <span>Trial Balance (सन्तुलन)</span>
             </TabsTrigger>
+            <TabsTrigger value="stock" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+              <Package className="h-3.5 w-3.5 text-amber-500" />
+              <span>Stock Summary (स्टक सारांश)</span>
+            </TabsTrigger>
             <TabsTrigger value="ratios" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
               <BarChart3 className="h-3.5 w-3.5 text-purple-500" />
               <span>Ratio Analysis (अनुपात)</span>
@@ -1881,6 +1886,11 @@ const Reports = () => {
         {/* Trial Balance Tab */}
         <TabsContent value="trial" className="space-y-4">
           <TrialBalanceView />
+        </TabsContent>
+
+        {/* Stock Summary Tab */}
+        <TabsContent value="stock" className="space-y-4">
+          <StockSummaryView />
         </TabsContent>
 
         {/* Ratio Analysis Tab */}
