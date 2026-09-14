@@ -990,38 +990,43 @@ const POS = () => {
           </div>
         </div>
 
-        <Card ref={cartSectionRef} className="p-4 shadow-elegant border-0 lg:sticky lg:top-4 h-fit scroll-mt-20">
-          <div className="flex items-center gap-2 mb-3">
-            <ShoppingCart className="h-5 w-5 text-primary" />
-            <div className="font-display text-xl">Cart</div>
+        <Card ref={cartSectionRef} className="p-3.5 sm:p-4 shadow-elegant border-0 lg:sticky lg:top-4 h-fit scroll-mt-20">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-border/40">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-primary shrink-0" />
+              <div className="font-display text-lg sm:text-xl leading-none">Cart</div>
+              <span className="text-[11px] text-muted-foreground font-medium bg-secondary/80 px-2 py-0.5 rounded-full">
+                {cart.length} {cart.length === 1 ? "item" : "items"}
+              </span>
+            </div>
 
-            {/* Mobile Scroll Back Button */}
-            <button
-              type="button"
-              onClick={scrollToProductsMobile}
-              className="lg:hidden flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded-md active:scale-95 transition-all ml-1"
-              title="माथि सामान छान्ने ठाउँमा फर्कनुहोस्"
-            >
-              <ArrowUp className="h-3 w-3" />
-              <span>+ Add More</span>
-            </button>
+            <div className="flex items-center gap-1.5 ml-auto">
+              {/* Mobile Scroll Back to Products Button */}
+              <button
+                type="button"
+                onClick={scrollToProductsMobile}
+                className="lg:hidden flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded-md active:scale-95 transition-all"
+                title="माथि सामान छान्ने ठाउँमा फर्कनुहोस्"
+              >
+                <ArrowUp className="h-3 w-3" />
+                <span>+ सामान थप्नुहोस्</span>
+              </button>
 
-            <div className="ml-auto flex items-center gap-1.5">
               {/* Compact Date Picker Popover */}
               <Popover>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
                     className={cn(
-                      "flex items-center gap-1 text-xs px-2 py-0.5 rounded-md border font-medium transition-all shadow-2xs",
+                      "flex items-center gap-1 text-xs px-2 py-1 rounded-md border font-medium transition-all shadow-2xs",
                       billDate
                         ? "bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-semibold"
                         : "bg-background hover:bg-muted text-muted-foreground hover:text-foreground border-border"
                     )}
                     title="बिक्री बिल मिति परिवर्तन गर्नुहोस्"
                   >
-                    <CalendarIcon className={cn("h-3.5 w-3.5", billDate ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")} />
-                    <span>{billDate ? `मिति: ${billDate}` : "आज (Today)"}</span>
+                    <CalendarIcon className={cn("h-3.5 w-3.5 shrink-0", billDate ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")} />
+                    <span className="truncate max-w-[90px] sm:max-w-none">{billDate ? billDate : "आज"}</span>
                     <span className="text-[10px] text-muted-foreground">▾</span>
                   </button>
                 </PopoverTrigger>
@@ -1054,10 +1059,6 @@ const POS = () => {
                   </p>
                 </PopoverContent>
               </Popover>
-
-              <div className="text-xs text-muted-foreground font-medium shrink-0 bg-secondary/80 px-2 py-0.5 rounded-md">
-                {cart.length} item(s)
-              </div>
             </div>
           </div>
 
@@ -1274,17 +1275,17 @@ const POS = () => {
 
             {shopInfo?.is_vat_registered && (
               <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5 sm:block">
                     <Label className="text-xs font-semibold text-primary block leading-tight">Invoice Format</Label>
-                    <div className="text-[10px] text-muted-foreground leading-tight">(बिल ढाँचा)</div>
+                    <span className="text-[10px] text-muted-foreground leading-tight">(बिल ढाँचा)</span>
                   </div>
-                  <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border text-xs">
+                  <div className="grid grid-cols-2 sm:flex items-center gap-1 bg-background/80 p-0.5 rounded-md border text-xs w-full sm:w-auto">
                     <button
                       type="button"
                       onClick={() => setInvoiceType("abbreviated")}
                       className={cn(
-                        "px-2 py-1 rounded text-xs font-medium transition-all",
+                        "px-2 py-1.5 sm:py-1 rounded text-[11px] sm:text-xs font-medium transition-all text-center truncate",
                         invoiceType === "abbreviated"
                           ? "bg-primary text-primary-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground"
@@ -1296,7 +1297,7 @@ const POS = () => {
                       type="button"
                       onClick={() => setInvoiceType("tax_invoice")}
                       className={cn(
-                        "px-2 py-1 rounded text-xs font-medium transition-all",
+                        "px-2 py-1.5 sm:py-1 rounded text-[11px] sm:text-xs font-medium transition-all text-center truncate",
                         invoiceType === "tax_invoice"
                           ? "bg-primary text-primary-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground"
@@ -1308,7 +1309,7 @@ const POS = () => {
                 </div>
 
                 {invoiceType === "tax_invoice" && (
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-primary/10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1.5 border-t border-primary/10">
                     <div className="space-y-1">
                       <Label className="text-[10px] text-primary uppercase font-bold flex items-center justify-between">
                         <span>Buyer PAN (B2B)</span>
@@ -1317,7 +1318,7 @@ const POS = () => {
                       <Input
                         placeholder="९-अङ्कको PAN (ऐच्छिक)"
                         maxLength={9}
-                        className="h-7 text-xs bg-background font-medium"
+                        className="h-8 sm:h-7 text-xs bg-background font-medium"
                         value={buyerPan}
                         onChange={(e) => setBuyerPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
                       />
@@ -1329,7 +1330,7 @@ const POS = () => {
                       </Label>
                       <Input
                         placeholder="ठेगाना (ऐच्छिक)"
-                        className="h-7 text-xs bg-background font-medium"
+                        className="h-8 sm:h-7 text-xs bg-background font-medium"
                         value={buyerAddress}
                         onChange={(e) => setBuyerAddress(e.target.value)}
                       />
