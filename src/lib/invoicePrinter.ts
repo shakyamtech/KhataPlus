@@ -323,8 +323,8 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
 
   } else {
     // Standard / Abbreviated Thermal POS Receipt
-    const invoiceTitle = shop.is_vat_registered 
-      ? "संक्षिप्त कर बिजक (Abbreviated Tax Invoice)" 
+    const invoiceTitle = shop.is_vat_registered
+      ? "संक्षिप्त कर बिजक (Abbreviated Tax Invoice)"
       : "बिक्री बिल (Sales Receipt)";
 
     const paidAmt = data.paidAmount ?? total;
@@ -371,8 +371,8 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
           <div class="bill-info-item" style="text-align:right;">
             <span class="bill-info-label">Date (AD / BS)</span>
             <span class="bill-info-value" style="font-size:10px; font-weight:600; line-height:1.35;">
-              <div>Date (AD): ${format(dateObj, "dd MMM yyyy")}</div>
-              ${nepaliDateStr ? `<div style="color:#4b5563;">Date (BS): ${nepaliDateStr}</div>` : ""}
+              <div>(AD): ${format(dateObj, "dd MMM yyyy")}</div>
+              ${nepaliDateStr ? `<div style="color:#4b5563;">(BS): ${nepaliDateStr}</div>` : ""}
             </span>
           </div>
           <div class="bill-info-item">

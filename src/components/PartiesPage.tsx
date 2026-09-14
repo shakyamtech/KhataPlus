@@ -391,7 +391,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                   pSnap.docs.forEach(pd => {
                     if (pd.data().hs_code) productHsMap[pd.id] = pd.data().hs_code;
                   });
-                } catch (_) {}
+                } catch (_) { }
               }
             }
 
@@ -522,7 +522,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                   pSnap.docs.forEach(pd => {
                     if (pd.data().hs_code) productHsMap[pd.id] = pd.data().hs_code;
                   });
-                } catch (_) {}
+                } catch (_) { }
               }
             }
 
@@ -1196,10 +1196,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               <span class="bill-info-value" style="font-size:13px; font-weight:700;">${escapeHtml(selected.name)}</span>
             </div>
             <div class="bill-info-item" style="text-align:right;">
-              <span class="bill-info-label">Voucher Date</span>
+              <span class="bill-info-label">Voucher Date (AD / BS)</span>
               <span class="bill-info-value" style="font-size:10px; font-weight:600; line-height:1.35;">
-                <div>Date (AD): ${format(new Date(e.created_at), "dd MMM yyyy")}</div>
-                ${formatNepaliDate(e.created_at) ? `<div style="color:#4b5563;">Date (BS): ${formatNepaliDate(e.created_at)}</div>` : ""}
+                <div>(AD): ${format(new Date(e.created_at), "dd MMM yyyy")}</div>
+                ${formatNepaliDate(e.created_at) ? `<div style="color:#4b5563;">(BS): ${formatNepaliDate(e.created_at)}</div>` : ""}
               </span>
             </div>
             <div class="bill-info-item" style="margin-top:4px;">
@@ -1267,8 +1267,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Wallet className="h-5 w-5 text-primary" />
             <span>
-              {type === "customer" 
-                ? (lang === "NEP" ? "उधारो असुली (Payment Received)" : "Record Payment Received") 
+              {type === "customer"
+                ? (lang === "NEP" ? "उधारो असुली (Payment Received)" : "Record Payment Received")
                 : (lang === "NEP" ? "खरिद भुक्तानी (Payment Made)" : "Record Payment Made")}
             </span>
           </DialogTitle>
@@ -1990,10 +1990,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           </div>
 
           <div className={`font-display text-3xl mt-1.5 font-extrabold ${Number(selected.balance) > 0
-              ? "text-orange-600 dark:text-orange-400"
-              : Number(selected.balance) < 0
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-muted-foreground"
+            ? "text-orange-600 dark:text-orange-400"
+            : Number(selected.balance) < 0
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-muted-foreground"
             }`}>
             {Number(selected.balance) === 0 ? "Rs. 0" : fmt(Math.abs(Number(selected.balance)))}
           </div>
@@ -2111,10 +2111,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                       <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                         <div className={`font-bold text-base ${!e.is_order
-                            ? "text-blue-600 dark:text-blue-400"
-                            : Number(e.due_amount || 0) > 0
-                              ? "text-orange-600 dark:text-orange-500"
-                              : "text-foreground"
+                          ? "text-blue-600 dark:text-blue-400"
+                          : Number(e.due_amount || 0) > 0
+                            ? "text-orange-600 dark:text-orange-500"
+                            : "text-foreground"
                           }`}>
                           {fmt(e.amount)}
                         </div>
@@ -2294,10 +2294,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                   <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                     <div className={`font-bold text-base ${!e.is_order
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : Number(e.due_amount || 0) > 0
-                          ? "text-orange-600 dark:text-orange-500"
-                          : "text-foreground"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : Number(e.due_amount || 0) > 0
+                        ? "text-orange-600 dark:text-orange-500"
+                        : "text-foreground"
                       }`}>
                       {fmt(e.amount)}
                     </div>
