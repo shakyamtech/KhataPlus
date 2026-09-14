@@ -370,7 +370,10 @@ export const printSaleInvoice = (data: SaleInvoiceData) => {
           </div>
           <div class="bill-info-item" style="text-align:right;">
             <span class="bill-info-label">Date (AD / BS)</span>
-            <span class="bill-info-value">${format(dateObj, "dd MMM yyyy, hh:mm a")}${nepaliDateStr ? `<br/><span style="font-size:10px; color:#4b5563;">Date (BS): ${nepaliDateStr}</span>` : ""}</span>
+            <span class="bill-info-value" style="font-size:10px; font-weight:600; line-height:1.35;">
+              <div>Date (AD): ${format(dateObj, "dd MMM yyyy")}</div>
+              ${nepaliDateStr ? `<div style="color:#4b5563;">Date (BS): ${nepaliDateStr}</div>` : ""}
+            </span>
           </div>
           <div class="bill-info-item">
             <span class="bill-info-label">Customer</span>

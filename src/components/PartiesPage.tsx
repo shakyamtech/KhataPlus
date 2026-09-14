@@ -1197,7 +1197,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             </div>
             <div class="bill-info-item" style="text-align:right;">
               <span class="bill-info-label">Voucher Date</span>
-              <span class="bill-info-value">${format(new Date(e.created_at), "dd MMM yyyy, hh:mm a")}${formatNepaliDate(e.created_at) ? `<br/><span style="font-size:10px; color:#4b5563;">Date (BS): ${formatNepaliDate(e.created_at)}</span>` : ""}</span>
+              <span class="bill-info-value" style="font-size:10px; font-weight:600; line-height:1.35;">
+                <div>Date (AD): ${format(new Date(e.created_at), "dd MMM yyyy")}</div>
+                ${formatNepaliDate(e.created_at) ? `<div style="color:#4b5563;">Date (BS): ${formatNepaliDate(e.created_at)}</div>` : ""}
+              </span>
             </div>
             <div class="bill-info-item" style="margin-top:4px;">
               <span class="bill-info-label">Payment Mode</span>
