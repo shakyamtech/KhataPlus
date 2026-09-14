@@ -13,7 +13,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { format, startOfDay, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark, ChevronDown, FileSpreadsheet, BarChart3, Package } from "lucide-react";
+import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark, ChevronDown, FileSpreadsheet, BarChart3, Package, LayoutDashboard, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
@@ -1781,11 +1781,13 @@ const Reports = () => {
         <div className="relative w-full">
           <div className="flex justify-start lg:justify-center w-full overflow-x-auto pb-2 scroll-smooth no-scrollbar">
             <TabsList className="inline-flex h-11 items-center justify-start lg:justify-center rounded-xl bg-muted/80 p-1 text-muted-foreground w-max gap-1 border border-border/50 shadow-xs">
-              <TabsTrigger value="overview" className="shrink-0 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
-                {lang === "NEP" ? "ओभरभ्यू" : "Overview"}
+              <TabsTrigger value="overview" className="shrink-0 flex items-center gap-1.5 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
+                <LayoutDashboard className="h-3.5 w-3.5 text-sky-500" />
+                <span>{lang === "NEP" ? "ओभरभ्यू" : "Overview"}</span>
               </TabsTrigger>
-              <TabsTrigger value="pl" className="shrink-0 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
-                {lang === "NEP" ? "नाफा-नोक्सान" : "Profit & Loss"}
+              <TabsTrigger value="pl" className="shrink-0 flex items-center gap-1.5 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
+                <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                <span>{lang === "NEP" ? "नाफा-नोक्सान" : "Profit & Loss"}</span>
               </TabsTrigger>
               <TabsTrigger value="balancesheet" className="shrink-0 flex items-center gap-1.5 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
                 <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" />
