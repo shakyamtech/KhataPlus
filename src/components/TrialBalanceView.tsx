@@ -65,10 +65,24 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
   }, [user]);
 
   const trialBalanceData = useMemo(() => {
-    // 1. Cash in hand (excluding transactions settled directly via bank account vouchers)
-    const cashBal = cashDocs
-      .filter((r: any) => !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
+    // 1. Cash in Hand & Digital Wallets (excluding transactions settled directly via bank account vouchers)
+    const pureCashBal = cashDocs
+      .filter((r: any) => (!r.payment_mode || r.payment_mode === "cash") && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
       .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+
+    const esewaBal = cashDocs
+      .filter((r: any) => r.payment_mode === "esewa" && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
+      .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+
+    const khaltiBal = cashDocs
+      .filter((r: any) => r.payment_mode === "khalti" && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
+      .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+
+    const otherCashBal = cashDocs
+      .filter((r: any) => !["cash", "esewa", "khalti"].includes(r.payment_mode) && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
+      .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+
+    const totalCashInHand = pureCashBal + otherCashBal;
 
     // 2. Stock / Inventory
     const stockVal = productDocs.reduce((s, r: any) => s + (+r.stock_qty || 0) * (+r.cost_price || 0), 0);
@@ -253,14 +267,36 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     // Construct unified Trial Balance Ledger Rows
     const rows: { id: string; name: string; group: string; debit: number; credit: number }[] = [];
 
-    // Cash
-    if (cashBal !== 0) {
+    // Cash in Hand (गल्लाको नगद)
+    if (totalCashInHand !== 0) {
       rows.push({
         id: "cash_in_hand",
-        name: lang === "NEP" ? "नगद मौज्दात (Cash In Hand)" : "Cash In Hand",
+        name: lang === "NEP" ? "गल्लाको नगद (Cash in Hand)" : "Cash in Hand",
         group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
-        debit: cashBal > 0 ? cashBal : 0,
-        credit: cashBal < 0 ? Math.abs(cashBal) : 0
+        debit: totalCashInHand > 0 ? totalCashInHand : 0,
+        credit: totalCashInHand < 0 ? Math.abs(totalCashInHand) : 0
+      });
+    }
+
+    // eSewa Wallet (ईसेवा वालेट मौज्दात)
+    if (esewaBal !== 0) {
+      rows.push({
+        id: "wallet_esewa",
+        name: lang === "NEP" ? "ईसेवा वालेट (eSewa Wallet)" : "eSewa Wallet",
+        group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
+        debit: esewaBal > 0 ? esewaBal : 0,
+        credit: esewaBal < 0 ? Math.abs(esewaBal) : 0
+      });
+    }
+
+    // Khalti Wallet (खल्ती वालेट मौज्दात)
+    if (khaltiBal !== 0) {
+      rows.push({
+        id: "wallet_khalti",
+        name: lang === "NEP" ? "खल्ती वालेट (Khalti Wallet)" : "Khalti Wallet",
+        group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
+        debit: khaltiBal > 0 ? khaltiBal : 0,
+        credit: khaltiBal < 0 ? Math.abs(khaltiBal) : 0
       });
     }
 

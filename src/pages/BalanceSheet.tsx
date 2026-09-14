@@ -29,6 +29,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [d, setD] = useState({
     cash: 0,
+    wallet: 0,
     bank: 0,
     stock: 0,
     receivable: 0,
@@ -77,10 +78,20 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const accounts = accSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const vouchers = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Cash in Hand: exclude bank voucher transactions to avoid double-counting with Bank Balances
-        const cashBal = cash
-          .filter((r: any) => !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
+        // Separate Physical Cash in Hand and Digital Wallets (eSewa, Khalti)
+        const pureCashBal = cash
+          .filter((r: any) => (!r.payment_mode || r.payment_mode === "cash") && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
           .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+
+        const walletBal = cash
+          .filter((r: any) => (r.payment_mode === "esewa" || r.payment_mode === "khalti") && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
+          .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+
+        const otherCashBal = cash
+          .filter((r: any) => !["cash", "esewa", "khalti"].includes(r.payment_mode) && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
+          .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+
+        const totalCash = pureCashBal + otherCashBal;
         const stock = products.reduce((s, r: any) => s + +r.stock_qty * +r.cost_price, 0);
 
         // 1. Calculate Bank Balances
@@ -204,7 +215,8 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const totalExpenses = cashExpenses + wastageExpenses + voucherExpenses;
 
         setD({
-          cash: cashBal,
+          cash: totalCash,
+          wallet: walletBal,
           bank: bankTotal,
           stock,
           receivable,
@@ -225,7 +237,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
     })();
   }, [user]);
 
-  const totalAssets = d.cash + d.bank + d.stock + d.receivable + d.fixedAssets;
+  const totalAssets = d.cash + d.wallet + d.bank + d.stock + d.receivable + d.fixedAssets;
   const grossProfit = d.revenue - d.cogs;
   const netProfit = grossProfit - d.expenses;
   const totalEquity = d.capital + netProfit - d.drawings;
@@ -314,6 +326,11 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                     <td style="padding:6px 8px; border:1px solid #111;">नगद मौज्दात (Cash in Hand)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.cash.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
+                  ${d.wallet > 0 ? `
+                  <tr>
+                    <td style="padding:6px 8px; border:1px solid #111;">डिजिटल वालेट (eSewa / Digital Wallets)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.wallet.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>` : ''}
                   ${d.bank > 0 ? `
                   <tr>
                     <td style="padding:6px 8px; border:1px solid #111;">बैंक मौज्दात (Bank Balances)</td>
@@ -468,6 +485,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
 
             <div className="space-y-1 divide-y divide-border/20">
               <Row label="नगद मौज्दात (Cash in Hand)" value={d.cash} />
+              {d.wallet > 0 && <Row label="डिजिटल वालेट (eSewa / Digital Wallets)" value={d.wallet} />}
               {d.bank > 0 && <Row label="बैंक मौज्दात (Bank Balances)" value={d.bank} />}
               <Row label="मौज्दात स्टक (Stock at cost)" value={d.stock} />
               <Row label="ग्राहकबाट उठ्न बाँकी (Customer Receivables)" value={d.receivable} />
