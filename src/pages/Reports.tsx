@@ -1361,7 +1361,18 @@ const Reports = () => {
       const ex = map.get(d); if (!ex) return;
       ex.sales += Number(s.total); ex.profit += (Number(s.total || 0) - Number(s.vat_amount || 0)) - Number(s.cost_total || 0);
     });
-    return Array.from(map.values());
+    const all = Array.from(map.values());
+
+    // Option 1: Trim leading empty days before the first transaction date
+    const firstActiveIdx = all.findIndex(d => d.sales > 0 || d.profit !== 0);
+    if (firstActiveIdx > 0) {
+      return all.slice(firstActiveIdx);
+    }
+    // If no transactions in 30d/90d period, show the last 7 days to avoid a giant empty zero-grid
+    if (firstActiveIdx === -1 && days > 7) {
+      return all.slice(-7);
+    }
+    return all;
   }, [sales, range]);
 
   const handlePrintVatReport = () => {
@@ -1655,14 +1666,14 @@ const Reports = () => {
           <Card className="p-3.5 sm:p-4 shadow-card border-0">
             <div className="flex items-center justify-between mb-3">
               <div className="font-display text-base sm:text-lg font-bold text-foreground">Daily Sales & Profit</div>
-              {range !== "7" && (
+              {chartData.length > 7 && (
                 <span className="text-[10px] sm:hidden text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full border border-border/40 font-medium">
                   दायाँ स्वाइप 👉
                 </span>
               )}
             </div>
             <div className="overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
-              <div className={`h-64 sm:h-72 w-full ${range === "7" ? "min-w-0" : "min-w-[480px] sm:min-w-0"}`}>
+              <div className={`h-64 sm:h-72 w-full ${chartData.length <= 7 ? "min-w-0" : chartData.length <= 14 ? "min-w-[360px] sm:min-w-0" : "min-w-[480px] sm:min-w-0"}`}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -1672,7 +1683,7 @@ const Reports = () => {
                       fontSize={11}
                       tickLine={false}
                       axisLine={{ stroke: "hsl(var(--border))" }}
-                      interval={range === "7" ? 0 : "preserveStartEnd"}
+                      interval={chartData.length <= 10 ? 0 : "preserveStartEnd"}
                     />
                     <YAxis
                       stroke="hsl(var(--muted-foreground))"
@@ -1692,8 +1703,8 @@ const Reports = () => {
                       wrapperStyle={{ zIndex: 50 }}
                       cursor={{ fill: "hsl(var(--muted)/0.4)" }}
                     />
-                    <Bar dataKey="sales" name="Sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={range === "7" ? 36 : 24} />
-                    <Bar dataKey="profit" name="Profit" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={range === "7" ? 36 : 24} />
+                    <Bar dataKey="sales" name="Sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={chartData.length <= 7 ? 36 : chartData.length <= 14 ? 28 : 22} />
+                    <Bar dataKey="profit" name="Profit" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={chartData.length <= 7 ? 36 : chartData.length <= 14 ? 28 : 22} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
