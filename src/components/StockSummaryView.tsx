@@ -342,74 +342,74 @@ export default function StockSummaryView({ products: propProducts, shopInfo: pro
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <Card className="p-4 shadow-card border border-border/50 bg-card">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <Card className="p-3 sm:p-4 shadow-card border border-border/50 bg-card">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+            <span className="text-[10.5px] sm:text-xs uppercase tracking-wide text-muted-foreground font-semibold truncate">
               {lang === "NEP" ? "कुल सामान (Products)" : "Total SKUs"}
             </span>
-            <div className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
-              <Package className="h-4 w-4" />
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+              <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
           </div>
-          <div className="font-display text-2xl font-bold mt-1 text-foreground">
+          <div className="font-display text-lg sm:text-2xl font-bold mt-1 text-foreground">
             {stats.totalItems}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-1">
+          <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
             {stats.totalQty.toLocaleString("en-IN")} units in total
           </div>
         </Card>
 
-        <Card className="p-4 shadow-card border border-border/50 bg-card">
+        <Card className="p-3 sm:p-4 shadow-card border border-border/50 bg-card">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+            <span className="text-[10.5px] sm:text-xs uppercase tracking-wide text-muted-foreground font-semibold truncate">
               {lang === "NEP" ? "स्टक लागत (Cost Value)" : "Stock Value @ Cost"}
             </span>
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-              <Landmark className="h-4 w-4" />
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+              <Landmark className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
           </div>
-          <div className="font-display text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">
+          <div className="font-display text-base sm:text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400 truncate">
             {fmt(stats.totalCostValue)}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-            <span className="font-medium text-foreground">Balance Sheet</span> मौज्दात रकम
+          <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 truncate">
+            <span className="font-medium text-foreground">Balance Sheet</span> रकम
           </div>
         </Card>
 
-        <Card className="p-4 shadow-card border border-border/50 bg-card">
+        <Card className="p-3 sm:p-4 shadow-card border border-border/50 bg-card">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
-              {lang === "NEP" ? "सम्भावित बिक्री (Sales Val.)" : "Potential Revenue"}
+            <span className="text-[10.5px] sm:text-xs uppercase tracking-wide text-muted-foreground font-semibold truncate">
+              {lang === "NEP" ? "सम्भावित बिक्री" : "Potential Revenue"}
             </span>
-            <div className="h-8 w-8 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
-              <BadgeDollarSign className="h-4 w-4" />
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0">
+              <BadgeDollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
           </div>
-          <div className="font-display text-2xl font-bold mt-1 text-indigo-600 dark:text-indigo-400">
+          <div className="font-display text-base sm:text-2xl font-bold mt-1 text-indigo-600 dark:text-indigo-400 truncate">
             {fmt(stats.totalSellValue)}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-            सम्भावित नाफा: <strong className="text-emerald-600 font-semibold">{fmt(stats.potentialGrossProfit)}</strong>
+          <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 truncate">
+            नाफा: <strong className="text-emerald-600 font-semibold">{fmt(stats.potentialGrossProfit)}</strong>
           </div>
         </Card>
 
-        <Card className="p-4 shadow-card border border-border/50 bg-card">
+        <Card className="p-3 sm:p-4 shadow-card border border-border/50 bg-card">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
-              {lang === "NEP" ? "कम / रित्तिएको स्टक" : "Low / Out of Stock"}
+            <span className="text-[10.5px] sm:text-xs uppercase tracking-wide text-muted-foreground font-semibold truncate">
+              {lang === "NEP" ? "कम / रित्तिएको" : "Low / Out of Stock"}
             </span>
-            <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center">
-              <AlertTriangle className="h-4 w-4" />
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+              <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
           </div>
-          <div className="font-display text-2xl font-bold mt-1 text-foreground">
+          <div className="font-display text-lg sm:text-2xl font-bold mt-1 text-foreground">
             <span className="text-amber-600">{stats.lowStockCount}</span>
-            <span className="text-muted-foreground text-base mx-1 font-normal">/</span>
+            <span className="text-muted-foreground text-sm mx-1 font-normal">/</span>
             <span className="text-destructive">{stats.outOfStockCount}</span>
           </div>
-          <div className="text-[11px] text-muted-foreground mt-1">
-            <span className="text-amber-600 font-medium">Low</span> / <span className="text-destructive font-medium">Out of stock</span> items
+          <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
+            <span className="text-amber-600 font-medium">Low</span> / <span className="text-destructive font-medium">Out</span> items
           </div>
         </Card>
       </div>
@@ -487,10 +487,10 @@ export default function StockSummaryView({ products: propProducts, shopInfo: pro
         </div>
       </Card>
 
-      {/* Products Table */}
-      <Card className="shadow-card border border-border/50 bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+      {/* Desktop View: 9-Column Products Table (Hidden on Mobile) */}
+      <Card className="hidden sm:block shadow-card border border-border/50 bg-card overflow-hidden">
+        <div className="overflow-x-auto scrollbar-thin">
+          <table className="w-full text-xs min-w-[760px]">
             <thead>
               <tr className="border-b border-border/60 bg-muted/40 text-muted-foreground font-semibold">
                 <th className="py-3 px-3 text-center w-12">#</th>
@@ -615,6 +615,141 @@ export default function StockSummaryView({ products: propProducts, shopInfo: pro
           </table>
         </div>
       </Card>
+
+      {/* Mobile View: Product Cards List (Visible on Mobile Only) */}
+      <div className="block sm:hidden space-y-2.5 pb-20">
+        {filteredItems.length === 0 ? (
+          <div className="rounded-xl border bg-card p-8 text-center text-muted-foreground">
+            <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="font-semibold text-xs text-foreground">कुनै सामान भेटिएन (No products found)</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              कृपया खोजी शब्द वा फिल्टर परिवर्तन गर्नुहोस्।
+            </p>
+          </div>
+        ) : (
+          filteredItems.map((p, idx) => {
+            const qty = Number(p.stock_qty || 0);
+            const cost = Number(p.cost_price || 0);
+            const sell = Number(p.sell_price || 0);
+            const costVal = qty > 0 ? qty * cost : 0;
+            const sellVal = qty > 0 ? qty * sell : 0;
+            const profit = sellVal - costVal;
+            const marginPercent = sellVal > 0 ? (profit / sellVal) * 100 : 0;
+            const low = Number(p.low_stock_threshold || 5);
+
+            const isOutOfStock = qty <= 0;
+            const isLowStock = qty > 0 && qty <= low;
+
+            return (
+              <div
+                key={p.id || idx}
+                className="rounded-xl border bg-card p-3 shadow-xs hover:border-primary/40 transition-colors space-y-2.5"
+              >
+                {/* Header: #, Name, Barcode & Status Badge */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                    <span className="shrink-0 w-5 h-5 rounded bg-muted flex items-center justify-center text-[10px] font-mono font-medium text-muted-foreground mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-semibold text-xs text-foreground leading-snug">
+                        {p.name}
+                      </h4>
+                      {p.barcode && (
+                        <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                          Barcode: {p.barcode}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className="shrink-0">
+                    {isOutOfStock ? (
+                      <Badge variant="outline" className="text-[10px] py-0.5 px-2 font-bold bg-destructive/10 text-destructive border-destructive/30">
+                        सकिएको (Out)
+                      </Badge>
+                    ) : isLowStock ? (
+                      <Badge variant="outline" className="text-[10px] py-0.5 px-2 font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                        कम (Low)
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] py-0.5 px-2 font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                        बाँकी (In Stock)
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Middle: 2 Info Boxes */}
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/50 text-[11px]">
+                  {/* Left Box: Qty & Cost Rate */}
+                  <div className="bg-muted/40 rounded-lg p-2 flex flex-col justify-between">
+                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                      मौज्दात परिमाण (Qty)
+                    </span>
+                    <div className={`font-bold font-mono text-sm mt-0.5 ${qty <= 0 ? "text-destructive" : isLowStock ? "text-amber-600 font-bold" : "text-foreground"}`}>
+                      {qty.toLocaleString("en-IN")} <span className="text-[10px] font-normal uppercase text-muted-foreground">{p.unit || "pcs"}</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground mt-1">
+                      लागत दर: <strong className="font-mono text-foreground font-semibold">{fmt(cost)}</strong>
+                    </span>
+                  </div>
+
+                  {/* Right Box: Total Cost Value & Sell Rate */}
+                  <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-lg p-2 flex flex-col justify-between">
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase font-medium">
+                      कुल लागत (Value)
+                    </span>
+                    <div className="font-bold font-mono text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">
+                      {fmt(costVal)}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground mt-1">
+                      बिक्री दर: <strong className="font-mono text-foreground font-semibold">{fmt(sell)}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom Line: Potential Sales Value & Margin */}
+                <div className="flex items-center justify-between text-[11px] pt-1 text-muted-foreground border-t border-border/30">
+                  <span>सम्भावित बिक्री: <strong className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">{fmt(sellVal)}</strong></span>
+                  {qty > 0 && profit > 0 ? (
+                    <span className="text-emerald-600 font-semibold font-mono text-[10.5px] bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      नाफा: +{marginPercent.toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-[10px]">मार्जिन: -</span>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        {/* Mobile Summary / Totals Card */}
+        {filteredItems.length > 0 && (
+          <div className="rounded-xl border-2 border-primary/20 bg-muted/60 p-3.5 shadow-sm space-y-2 mt-3 text-xs">
+            <div className="flex justify-between items-center text-muted-foreground font-semibold">
+              <span>जम्मा सामान संख्या:</span>
+              <span className="font-bold text-foreground">{filteredItems.length} सामान ({stats.totalQty.toLocaleString("en-IN")} units)</span>
+            </div>
+            <div className="flex justify-between items-center text-muted-foreground font-semibold">
+              <span>कुल स्टक लागत (Cost Value):</span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">{fmt(stats.totalCostValue)}</span>
+            </div>
+            <div className="flex justify-between items-center text-muted-foreground font-semibold">
+              <span>सम्भावित कुल बिक्री (Sell Value):</span>
+              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm">{fmt(stats.totalSellValue)}</span>
+            </div>
+            <div className="pt-2 border-t border-border/60 flex justify-between items-center font-bold">
+              <span>सम्भावित नाफा (Gross Profit):</span>
+              <span className="font-mono text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                {fmt(stats.potentialGrossProfit)} (+{stats.profitMargin.toFixed(1)}%)
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
