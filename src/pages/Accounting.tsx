@@ -989,8 +989,9 @@ export default function Accounting() {
             </div>
           </div>
 
-          <div className="border rounded-xl overflow-hidden bg-card shadow-sm">
-            <table className="w-full text-xs text-left border-collapse">
+          {/* Desktop View: Full 8-Column Table (Hidden on Mobile) */}
+          <div className="hidden sm:block border rounded-xl overflow-x-auto scrollbar-thin bg-card shadow-sm">
+            <table className="w-full text-xs text-left border-collapse min-w-[720px]">
               <thead>
                 <tr className="bg-muted/50 border-b font-semibold text-muted-foreground">
                   <th className="py-2.5 px-3">Voucher No</th>
@@ -1073,6 +1074,114 @@ export default function Accounting() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile View: Voucher Cards List (Visible on Mobile Only) */}
+          <div className="block sm:hidden space-y-2.5 pb-20">
+            {filteredVouchers.length === 0 ? (
+              <div className="border rounded-xl bg-card p-8 text-center text-muted-foreground shadow-xs">
+                <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="font-semibold text-xs text-foreground">
+                  {lang === "NEP" ? "कुनै भाउचर फेला परेन।" : "No accounting vouchers recorded yet."}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {lang === "NEP" ? "नयाँ भाउचर थप्न 'Voucher Entry' ट्याब प्रयोग गर्नुहोस्।" : "Use 'Voucher Entry' tab to create a new voucher."}
+                </p>
+              </div>
+            ) : (
+              filteredVouchers.map(v => (
+                <div
+                  key={v.id}
+                  className="border rounded-xl bg-card p-3 shadow-xs hover:border-primary/40 transition-colors space-y-2.5"
+                >
+                  {/* Header: Voucher No, Date & Type Badge */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-mono font-bold text-xs text-foreground">
+                        {v.voucher_no}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        • {v.date.slice(0, 10)} {v.date_bs ? `(${v.date_bs})` : ""}
+                      </span>
+                    </div>
+
+                    <Badge
+                      variant="outline"
+                      className={
+                        v.voucher_type === "contra"
+                          ? "border-blue-500/40 text-blue-600 bg-blue-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                          : v.voucher_type === "payment"
+                          ? "border-amber-500/40 text-amber-600 bg-amber-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                          : v.voucher_type === "receipt"
+                          ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                          : "border-purple-500/40 text-purple-600 bg-purple-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                      }
+                    >
+                      {v.voucher_type.toUpperCase()}
+                    </Badge>
+                  </div>
+
+                  {/* Debit & Credit Flow */}
+                  <div className="bg-muted/40 rounded-lg p-2.5 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10.5px] font-semibold uppercase text-emerald-700 dark:text-emerald-400">
+                        Debit (Dr):
+                      </span>
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-400 truncate max-w-[200px]">
+                        {v.debit_account_name}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-border/40 pt-1">
+                      <span className="text-[10.5px] font-semibold uppercase text-amber-700 dark:text-amber-400">
+                        Credit (Cr):
+                      </span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-400 truncate max-w-[200px]">
+                        {v.credit_account_name}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Narration (if any) */}
+                  {v.narration && (
+                    <p className="text-[11px] text-muted-foreground italic px-1 truncate" title={v.narration}>
+                      "{v.narration}"
+                    </p>
+                  )}
+
+                  {/* Footer: Amount & Action Buttons */}
+                  <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase mr-1">Rakam:</span>
+                      <span className="font-mono font-bold text-sm text-foreground">
+                        {fmt(v.amount)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs gap-1"
+                        onClick={() => printVoucherSlip(v, shopInfo)}
+                        title="Print Voucher Slip"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-primary" />
+                        <span>Print</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteVoucher(v.id, v.voucher_no)}
+                        title="Delete Voucher"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </TabsContent>
 
