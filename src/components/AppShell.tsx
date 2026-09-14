@@ -57,7 +57,7 @@ const nav = [
     { to: "/customers", label: "Customers", icon: Users },
     { to: "/suppliers", label: "Suppliers", icon: Truck },
     { to: "/purchases", label: "Purchases", icon: BookOpen },
-    { to: "/cashbook", label: "Cashbook", icon: Wallet },
+    { to: "/cashbook", label: "Cash & Bank", icon: Wallet },
     { to: "/accounting", label: "Accounting", icon: Landmark },
     { to: "/reports", label: "Reports", icon: BarChart3 },
 ];
@@ -259,6 +259,7 @@ export const AppShell = () => {
         "Customers": t.customers,
         "Suppliers": t.suppliers,
         "Purchases": t.purchases,
+        "Cash & Bank": t.cashbook,
         "Cashbook": t.cashbook,
         "Accounting": lang === "NEP" ? "लेखा (Accounting)" : "Accounting",
         "Reports": t.reports,

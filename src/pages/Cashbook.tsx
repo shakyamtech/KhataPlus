@@ -658,7 +658,7 @@ const Cashbook = () => {
             VAT / PAN: <strong>${escapeHtml(shop.pan || 'N/A')}</strong> ${shop.phone ? `· Ph: <strong>${escapeHtml(shop.phone)}</strong>` : ''}
           </div>
           <div style="display:inline-block; margin-top:10px; padding:4px 18px; font-size:13px; font-weight:700; background:#f3f4f6; border:1.5px solid #111; border-radius:4px; text-transform:uppercase;">
-            रोकड तथा कारोबार खाता विवरण (Cashbook Financial Statement)
+            रोकड तथा बैंक खाता विवरण (Cash & Bank Financial Statement)
           </div>
           <div style="font-size:11px; color:#333; margin-top:6px;">
             कारोबार प्रकार: <strong>${paymentFilter === "all" ? "सबै माध्यम (All Payment Modes)" : paymentFilter.toUpperCase() + " Transactions"}</strong> · तयार मिति: <strong>${formatNepaliDate(new Date())} (${format(new Date(), "dd/MM/yyyy, hh:mm a")})</strong>
@@ -720,18 +720,21 @@ const Cashbook = () => {
 
       </div>
     `;
-    printHTML(`Cashbook_Statement_${format(new Date(), "yyyyMMdd")}`, body, { paperSize: "a4" });
+    printHTML(`Cash_Bank_Statement_${format(new Date(), "yyyyMMdd")}`, body, { paperSize: "a4" });
   };
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
-      <PageHeader title="Cashbook" subtitle="All cash in & out" actions={
+      <PageHeader 
+        title={lang === "NEP" ? "रोकड तथा बैंक (Cash & Bank)" : "Cash & Bank"} 
+        subtitle={lang === "NEP" ? "नगद, डिजिटल वालेट तथा बैंक कारोबार" : "All cash, wallets & bank in/out"} 
+        actions={
         <div className="flex gap-2">
         <Button variant="outline" onClick={printBook}><Printer className="h-4 w-4 mr-1" />Print</Button>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
           <DialogTrigger asChild><Button onClick={resetForm} className="bg-gradient-primary text-primary-foreground"><Plus className="h-4 w-4 mr-1" />New Entry</Button></DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>{editId ? "Edit Entry" : "Cash Entry"}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editId ? (lang === "NEP" ? "कारोबार सम्पादन" : "Edit Entry") : (lang === "NEP" ? "नयाँ कारोबार (Cash & Bank Entry)" : "New Cash & Bank Entry")}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               {/* Row 1: Type + Amount */}
               <div className="grid grid-cols-2 gap-3">
