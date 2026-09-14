@@ -346,10 +346,20 @@ export default function Accounting() {
 
   // Trial Balance Data Calculation
   const trialBalanceData = useMemo(() => {
-    // 1. Cash in hand (excluding transactions settled directly via bank account vouchers)
-    const cashBal = cashDocs
-      .filter((r: any) => !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
-      .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+    // 1. Calculate physical Cash in Hand vs Digital Wallets
+    const cashChannelDocs = cashDocs.filter((c: any) => (c.payment_method || "cash").toLowerCase() === "cash");
+    const walletChannelDocs = cashDocs.filter((c: any) => {
+      const pm = (c.payment_method || "").toLowerCase();
+      return pm === "esewa" || pm === "wallet" || pm === "digital" || pm === "khalti" || pm === "fonepay";
+    });
+
+    const cashIn = cashChannelDocs.filter((c: any) => c.direction === "in").reduce((s, r: any) => s + +r.amount, 0);
+    const cashOut = cashChannelDocs.filter((c: any) => c.direction === "out").reduce((s, r: any) => s + +r.amount, 0);
+    const physicalCashBal = cashIn - cashOut;
+
+    const walletIn = walletChannelDocs.filter((c: any) => c.direction === "in").reduce((s, r: any) => s + +r.amount, 0);
+    const walletOut = walletChannelDocs.filter((c: any) => c.direction === "out").reduce((s, r: any) => s + +r.amount, 0);
+    const walletBal = walletIn - walletOut;
 
     // 2. Stock / Inventory
     const stockVal = productDocs.reduce((s, r: any) => s + (+r.stock_qty || 0) * (+r.cost_price || 0), 0);
@@ -534,14 +544,25 @@ export default function Accounting() {
     // Construct unified Trial Balance Ledger Rows
     const rows: { id: string; name: string; group: string; debit: number; credit: number }[] = [];
 
-    // Cash
-    if (cashBal !== 0) {
+    // Physical Cash
+    if (physicalCashBal !== 0) {
       rows.push({
         id: "cash_in_hand",
-        name: lang === "NEP" ? "नगद मौज्दात (Cash in Hand)" : "Cash in Hand",
+        name: lang === "NEP" ? "नगद मौज्दात (गल्लाको नगद)" : "Cash in Hand (गल्लाको नगद)",
         group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
-        debit: cashBal > 0 ? cashBal : 0,
-        credit: cashBal < 0 ? Math.abs(cashBal) : 0
+        debit: physicalCashBal > 0 ? physicalCashBal : 0,
+        credit: physicalCashBal < 0 ? Math.abs(physicalCashBal) : 0
+      });
+    }
+
+    // Digital Wallets / eSewa
+    if (walletBal !== 0) {
+      rows.push({
+        id: "digital_wallet",
+        name: lang === "NEP" ? "डिजिटल वालेट (eSewa / Wallet)" : "eSewa Wallet / Digital Wallets",
+        group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
+        debit: walletBal > 0 ? walletBal : 0,
+        credit: walletBal < 0 ? Math.abs(walletBal) : 0
       });
     }
 
@@ -1113,38 +1134,38 @@ export default function Accounting() {
           </div>
 
           {/* Quick Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="p-4 bg-gradient-to-br from-emerald-500/5 via-card to-card border-emerald-500/20">
-              <div className="text-xs text-muted-foreground uppercase font-semibold">
-                {lang === "NEP" ? "कुल डेबिट (Total Debits)" : "Total Debits (Dr)"}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <Card className="p-2.5 sm:p-4 bg-gradient-to-br from-emerald-500/5 via-card to-card border-emerald-500/20">
+              <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold truncate">
+                {lang === "NEP" ? "कुल डेबिट (Dr)" : "Total Debits (Dr)"}
               </div>
-              <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+              <div className="text-xs sm:text-base md:text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1 truncate">
                 {fmt(trialBalanceData.totalDebits)}
               </div>
             </Card>
 
-            <Card className="p-4 bg-gradient-to-br from-blue-500/5 via-card to-card border-blue-500/20">
-              <div className="text-xs text-muted-foreground uppercase font-semibold">
-                {lang === "NEP" ? "कुल क्रेडिट (Total Credits)" : "Total Credits (Cr)"}
+            <Card className="p-2.5 sm:p-4 bg-gradient-to-br from-blue-500/5 via-card to-card border-blue-500/20">
+              <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold truncate">
+                {lang === "NEP" ? "कुल क्रेडिट (Cr)" : "Total Credits (Cr)"}
               </div>
-              <div className="text-xl font-bold font-mono text-blue-600 dark:text-blue-400 mt-1">
+              <div className="text-xs sm:text-base md:text-xl font-bold font-mono text-blue-600 dark:text-blue-400 mt-1 truncate">
                 {fmt(trialBalanceData.totalCredits)}
               </div>
             </Card>
 
-            <Card className={`p-4 bg-gradient-to-br ${trialBalanceData.isBalanced ? "from-emerald-500/10 border-emerald-500/30" : "from-destructive/10 border-destructive/30"} via-card to-card`}>
-              <div className="text-xs text-muted-foreground uppercase font-semibold">
-                {lang === "NEP" ? "सन्तुलन फरक (Difference)" : "Balance Difference"}
+            <Card className={`p-2.5 sm:p-4 bg-gradient-to-br ${trialBalanceData.isBalanced ? "from-emerald-500/10 border-emerald-500/30" : "from-destructive/10 border-destructive/30"} via-card to-card`}>
+              <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold truncate">
+                {lang === "NEP" ? "फरक (Diff)" : "Difference"}
               </div>
-              <div className={`text-xl font-bold font-mono mt-1 ${trialBalanceData.isBalanced ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+              <div className={`text-xs sm:text-base md:text-xl font-bold font-mono mt-1 truncate ${trialBalanceData.isBalanced ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                 {fmt(trialBalanceData.difference)}
               </div>
             </Card>
           </div>
 
-          {/* Trial Balance Table */}
-          <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
-            <table className="w-full text-xs">
+          {/* Desktop View: Full 5-Column Table (Hidden on Mobile) */}
+          <div className="hidden sm:block rounded-xl border bg-card overflow-x-auto scrollbar-thin shadow-sm">
+            <table className="w-full text-xs min-w-[560px] sm:min-w-0">
               <thead className="bg-muted/70 text-muted-foreground border-b uppercase font-bold text-[11px]">
                 <tr>
                   <th className="py-3 px-4 text-center w-12">#</th>
@@ -1191,6 +1212,96 @@ export default function Accounting() {
                 </tr>
               </tfoot>
             </table>
+          </div>
+
+          {/* Mobile View: Clean Card / List View (Visible on Mobile Only) */}
+          <div className="block sm:hidden space-y-2 pb-20">
+            {trialBalanceData.rows.length === 0 ? (
+              <div className="rounded-xl border bg-card p-6 text-center text-muted-foreground text-xs">
+                {lang === "NEP" ? "कुनै खाता फेला परेन" : "No accounts recorded"}
+              </div>
+            ) : (
+              trialBalanceData.rows.map((row, idx) => {
+                const isDebit = row.debit > 0;
+                const isCredit = row.credit > 0;
+                return (
+                  <div
+                    key={row.id || idx}
+                    className="rounded-xl border bg-card p-3 shadow-sm hover:border-primary/40 transition-colors flex items-center justify-between gap-2.5"
+                  >
+                    {/* Left: Index & Account Info */}
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                      <span className="shrink-0 w-6 h-6 rounded-md bg-muted flex items-center justify-center text-[10px] font-mono font-medium text-muted-foreground mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-semibold text-xs text-foreground truncate leading-snug">
+                          {row.name}
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                          {row.group}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Right: Amount & Dr/Cr Badge */}
+                    <div className="flex flex-col items-end shrink-0 text-right">
+                      {isDebit && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                            {fmt(row.debit)}
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            DR
+                          </span>
+                        </div>
+                      )}
+                      {isCredit && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-xs text-blue-600 dark:text-blue-400">
+                            {fmt(row.credit)}
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                            CR
+                          </span>
+                        </div>
+                      )}
+                      {!isDebit && !isCredit && (
+                        <span className="text-xs text-muted-foreground font-mono">-</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+
+            {/* Mobile Totals / Summary Card */}
+            <div className="rounded-xl border-2 border-primary/20 bg-muted/60 p-3.5 shadow-sm space-y-2 mt-3">
+              <div className="flex justify-between items-center text-xs font-semibold text-muted-foreground">
+                <span>{lang === "NEP" ? "कुल डेबिट (Total DR):" : "TOTAL DEBITS (DR):"}</span>
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                  {fmt(trialBalanceData.totalDebits)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs font-semibold text-muted-foreground">
+                <span>{lang === "NEP" ? "कुल क्रेडिट (Total CR):" : "TOTAL CREDITS (CR):"}</span>
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-xs sm:text-sm">
+                  {fmt(trialBalanceData.totalCredits)}
+                </span>
+              </div>
+              <div className="pt-2 border-t border-border/60 flex justify-between items-center text-xs font-bold">
+                <span>{lang === "NEP" ? "फरक (Difference):" : "DIFFERENCE:"}</span>
+                <span
+                  className={`font-mono text-xs ${
+                    trialBalanceData.isBalanced
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-destructive"
+                  }`}
+                >
+                  {fmt(trialBalanceData.difference)} {trialBalanceData.isBalanced ? "✓ Balanced" : "⚠️ Mismatch"}
+                </span>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
