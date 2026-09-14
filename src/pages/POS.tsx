@@ -905,7 +905,7 @@ const POS = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="p-4 pb-28 md:p-8 max-w-7xl mx-auto">
       <PageHeader title="Point of Sale (POS)" subtitle="Fast billing, instant credit ledger sync & stock management" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1309,33 +1309,44 @@ const POS = () => {
                 </div>
 
                 {invoiceType === "tax_invoice" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1.5 border-t border-primary/10">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center justify-between">
-                        <span>Buyer PAN (B2B)</span>
-                        <span className="text-[9px] font-normal text-muted-foreground lowercase">optional</span>
-                      </Label>
-                      <Input
-                        placeholder="९-अङ्कको PAN (ऐच्छिक)"
-                        maxLength={9}
-                        className="h-8 sm:h-7 text-xs bg-background font-medium"
-                        value={buyerPan}
-                        onChange={(e) => setBuyerPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                      />
+                  <>
+                    {/* Saved PAN Preview on Mobile when customer is selected */}
+                    {buyerPan && (
+                      <div className="sm:hidden flex items-center justify-between text-[11px] bg-background/90 px-2 py-1 rounded border text-muted-foreground">
+                        <span>ग्राहक PAN: <strong className="text-foreground">{buyerPan}</strong></span>
+                        {buyerAddress && <span className="truncate max-w-[120px]">{buyerAddress}</span>}
+                      </div>
+                    )}
+
+                    {/* Detailed input fields shown on Tablet / Laptop / Desktop (hidden on small mobile screens to keep Cart short & clean) */}
+                    <div className="hidden sm:grid sm:grid-cols-2 gap-2 pt-1.5 border-t border-primary/10">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-primary uppercase font-bold flex items-center justify-between">
+                          <span>Buyer PAN (B2B)</span>
+                          <span className="text-[9px] font-normal text-muted-foreground lowercase">optional</span>
+                        </Label>
+                        <Input
+                          placeholder="९-अङ्कको PAN (ऐच्छिक)"
+                          maxLength={9}
+                          className="h-7 text-xs bg-background font-medium"
+                          value={buyerPan}
+                          onChange={(e) => setBuyerPan(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-primary uppercase font-bold flex items-center justify-between">
+                          <span>Buyer Address</span>
+                          <span className="text-[9px] font-normal text-muted-foreground lowercase">optional</span>
+                        </Label>
+                        <Input
+                          placeholder="ठेगाना (ऐच्छिक)"
+                          className="h-7 text-xs bg-background font-medium"
+                          value={buyerAddress}
+                          onChange={(e) => setBuyerAddress(e.target.value)}
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-primary uppercase font-bold flex items-center justify-between">
-                        <span>Buyer Address</span>
-                        <span className="text-[9px] font-normal text-muted-foreground lowercase">optional</span>
-                      </Label>
-                      <Input
-                        placeholder="ठेगाना (ऐच्छिक)"
-                        className="h-8 sm:h-7 text-xs bg-background font-medium"
-                        value={buyerAddress}
-                        onChange={(e) => setBuyerAddress(e.target.value)}
-                      />
-                    </div>
-                  </div>
+                  </>
                 )}
               </div>
             )}
