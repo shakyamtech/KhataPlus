@@ -2364,8 +2364,9 @@ const Reports = () => {
                   {regMonthLabel} का खरिदहरू: {filteredRegPurchases.length}
                 </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+              {/* Desktop View: Full 8-Column Table (Hidden on Mobile) */}
+              <div className="hidden sm:block overflow-x-auto scrollbar-thin">
+                <table className="w-full text-left text-xs border-collapse min-w-[760px]">
                   <thead>
                     <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
                       <th className="p-3">मिति (Date)</th>
@@ -2443,6 +2444,75 @@ const Reports = () => {
                 </table>
               </div>
 
+              {/* Mobile View: Purchase Cards List (Visible on Mobile Only) */}
+              <div className="block sm:hidden p-3 space-y-2.5">
+                {pagedRegPurchases.map((p: any) => (
+                  <div key={p.id} className="rounded-xl border bg-card p-3 shadow-xs space-y-2">
+                    {/* Top: Date, Voucher & Payment Mode */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium text-xs text-muted-foreground">
+                          {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
+                        </span>
+                        <span className="font-mono font-bold text-xs text-foreground truncate">
+                          {p.voucherNo || p.billNo || "Voucher"}
+                        </span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 ${
+                        p.payment_mode === "credit" ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      }`}>
+                        {p.payment_mode || "cash"}
+                      </span>
+                    </div>
+
+                    {/* Middle: Supplier Details */}
+                    <div className="bg-muted/40 rounded-lg p-2.5 text-xs space-y-1">
+                      <div className="font-semibold text-foreground truncate">
+                        {p.supplierName}
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+                        <span>PAN: {p.supplierPan || "—"}</span>
+                        <span>बिल नं: {p.billNo || "—"}</span>
+                      </div>
+                    </div>
+
+                    {/* Bottom: Total & Print Button */}
+                    <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground uppercase mr-1">कुल खरिद:</span>
+                        <span className="font-bold font-mono text-sm text-foreground">{fmt(p.total)}</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs gap-1"
+                        onClick={() => handleReprintPurchase(p)}
+                        title="भौचर प्रिन्ट"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-primary" />
+                        <span>प्रिन्ट</span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {filteredRegPurchases.length === 0 && (
+                  <div className="p-6 text-center text-muted-foreground text-xs rounded-xl border bg-card">
+                    {regSearch.trim() ? "खोजेको विवरणसँग मिल्ने कुनै खरिद फेला परेन।" : `${regMonthLabel} मा कुनै खरिद प्रविष्टि फेला परेन।`}
+                  </div>
+                )}
+
+                {/* Mobile Total Bar */}
+                {filteredRegPurchases.length > 0 && (
+                  <div className="rounded-xl border border-primary/20 bg-muted/60 p-3 flex items-center justify-between text-xs font-bold mt-2">
+                    <span className="uppercase text-muted-foreground">कुल जम्मा:</span>
+                    <span className="font-mono text-sm text-primary">
+                      {fmt(filteredRegPurchases.reduce((s: number, r: any) => s + Number(r.total || 0), 0))}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               {/* Purchase Table Pagination */}
               {totalPurPages > 1 && (
                 <div className="p-3 border-t bg-muted/20 flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
@@ -2489,8 +2559,9 @@ const Reports = () => {
                   {regMonthLabel} का बिलहरू: {filteredRegSales.length}
                 </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+              {/* Desktop View: Full 7-Column Table (Hidden on Mobile) */}
+              <div className="hidden sm:block overflow-x-auto scrollbar-thin">
+                <table className="w-full text-left text-xs border-collapse min-w-[720px]">
                   <thead>
                     <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
                       <th className="p-3">मिति (Date)</th>
@@ -2562,6 +2633,76 @@ const Reports = () => {
                     </tfoot>
                   )}
                 </table>
+              </div>
+
+              {/* Mobile View: Sales Cards List (Visible on Mobile Only) */}
+              <div className="block sm:hidden p-3 space-y-2.5">
+                {pagedRegSales.map((s: any) => (
+                  <div key={s.id} className="rounded-xl border bg-card p-3 shadow-xs space-y-2">
+                    {/* Top: Date, Bill No & Payment Mode */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium text-xs text-muted-foreground">
+                          {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
+                        </span>
+                        <span className="font-mono font-bold text-xs text-primary truncate">
+                          {s.billNo}
+                        </span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 ${
+                        s.payment_mode === "credit" ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      }`}>
+                        {s.payment_mode || "cash"}
+                      </span>
+                    </div>
+
+                    {/* Middle: Customer Details */}
+                    <div className="bg-muted/40 rounded-lg p-2.5 text-xs space-y-1">
+                      <div className="font-semibold text-foreground truncate">
+                        {s.customerName || "सामान्य ग्राहक (General Customer)"}
+                      </div>
+                      {s.customerPan && (
+                        <div className="text-[11px] text-muted-foreground font-mono">
+                          PAN: {s.customerPan}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom: Total & Print Button */}
+                    <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground uppercase mr-1">कुल बिक्री:</span>
+                        <span className="font-bold font-mono text-sm text-foreground">{fmt(s.total)}</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs gap-1"
+                        onClick={() => handleReprintSale(s)}
+                        title="बिल प्रिन्ट"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-primary" />
+                        <span>प्रिन्ट</span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {filteredRegSales.length === 0 && (
+                  <div className="p-6 text-center text-muted-foreground text-xs rounded-xl border bg-card">
+                    {regSearch.trim() ? "खोजेको विवरणसँग मिल्ने कुनै बिक्री फेला परेन।" : `${regMonthLabel} मा कुनै बिक्री बिल फेला परेन।`}
+                  </div>
+                )}
+
+                {/* Mobile Total Bar */}
+                {filteredRegSales.length > 0 && (
+                  <div className="rounded-xl border border-primary/20 bg-muted/60 p-3 flex items-center justify-between text-xs font-bold mt-2">
+                    <span className="uppercase text-muted-foreground">कुल जम्मा:</span>
+                    <span className="font-mono text-sm text-primary">
+                      {fmt(filteredRegSales.reduce((s: number, r: any) => s + Number(r.total || 0), 0))}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Sales Table Pagination */}
@@ -2829,8 +2970,9 @@ const Reports = () => {
                   {vatMonthLabel} का बिलहरू: {vatMonthlyTotals.purchasesList.length}
                 </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+              {/* Desktop View: Full 7-Column Table (Hidden on Mobile) */}
+              <div className="hidden sm:block overflow-x-auto scrollbar-thin">
+                <table className="w-full text-left text-xs border-collapse min-w-[700px]">
                   <thead>
                     <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
                       <th className="p-3">मिति (Date)</th>
@@ -2876,6 +3018,69 @@ const Reports = () => {
                   )}
                 </table>
               </div>
+
+              {/* Mobile View: VAT Purchase Cards List (Visible on Mobile Only) */}
+              <div className="block sm:hidden p-3 space-y-2.5">
+                {vatMonthlyTotals.purchasesList.map((p: any) => (
+                  <div key={p.id} className="rounded-xl border bg-card p-3 shadow-xs space-y-2">
+                    {/* Top: Date & Bill No */}
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-medium text-muted-foreground">
+                        {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
+                      </span>
+                      <span className="font-mono font-bold text-foreground">
+                        बिल नं: {p.billNo || "—"}
+                      </span>
+                    </div>
+
+                    {/* Middle: Supplier & PAN */}
+                    <div className="bg-muted/40 rounded-lg p-2.5 text-xs space-y-1">
+                      <div className="font-semibold text-foreground truncate">{p.supplierName}</div>
+                      <div className="text-[11px] text-muted-foreground font-mono">PAN: {p.supplierPan || "—"}</div>
+                    </div>
+
+                    {/* Bottom Breakdown: Taxable & VAT & Total */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/40 text-[11px]">
+                      <div>
+                        <div className="text-[10px] text-muted-foreground uppercase">करयोग्य रकम</div>
+                        <div className="font-mono font-semibold text-foreground mt-0.5">{fmt(p.taxable)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-blue-600 dark:text-blue-400 uppercase font-medium">१३% भ्याट</div>
+                        <div className="font-mono font-bold text-blue-600 dark:text-blue-400 mt-0.5">{fmt(p.vat)}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-muted-foreground uppercase">कुल रकम</div>
+                        <div className="font-mono font-bold text-foreground mt-0.5">{fmt(p.total)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {vatMonthlyTotals.purchasesList.length === 0 && (
+                  <div className="p-6 text-center text-muted-foreground text-xs rounded-xl border bg-card">
+                    {vatMonthLabel} मा कुनै खरिद बिल फेला परेन।
+                  </div>
+                )}
+
+                {/* Mobile Totals Card */}
+                {vatMonthlyTotals.purchasesList.length > 0 && (
+                  <div className="rounded-xl border border-primary/20 bg-muted/60 p-3 space-y-1.5 text-xs mt-2">
+                    <div className="flex justify-between items-center text-muted-foreground">
+                      <span>करयोग्य खरिद:</span>
+                      <span className="font-mono font-semibold text-foreground">{fmt(vatMonthlyTotals.taxablePurchases)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-blue-600 dark:text-blue-400 font-semibold">
+                      <span>खरिद भ्याट कट्टी (Input VAT):</span>
+                      <span className="font-mono font-bold">{fmt(vatMonthlyTotals.inputVat)}</span>
+                    </div>
+                    <div className="flex justify-between items-center font-bold pt-1 border-t border-border/40">
+                      <span>कुल खरिद (Total):</span>
+                      <span className="font-mono text-primary text-sm">{fmt(vatMonthlyTotals.totalPurchasesWithVat + vatMonthlyTotals.nonTaxablePurchases)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </Card>
 
             {/* Section 3: Sales Register (अनुसूची ९) */}
@@ -2889,8 +3094,9 @@ const Reports = () => {
                   {vatMonthLabel} का बिलहरू: {vatMonthlyTotals.salesList.length}
                 </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+              {/* Desktop View: Full 7-Column Table (Hidden on Mobile) */}
+              <div className="hidden sm:block overflow-x-auto scrollbar-thin">
+                <table className="w-full text-left text-xs border-collapse min-w-[700px]">
                   <thead>
                     <tr className="bg-secondary/60 text-muted-foreground font-semibold border-b border-border/60">
                       <th className="p-3">मिति (Date)</th>
@@ -2935,6 +3141,69 @@ const Reports = () => {
                     </tfoot>
                   )}
                 </table>
+              </div>
+
+              {/* Mobile View: VAT Sales Cards List (Visible on Mobile Only) */}
+              <div className="block sm:hidden p-3 space-y-2.5 pb-20">
+                {vatMonthlyTotals.salesList.map((s: any) => (
+                  <div key={s.id} className="rounded-xl border bg-card p-3 shadow-xs space-y-2">
+                    {/* Top: Date & Invoice No */}
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-medium text-muted-foreground">
+                        {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
+                      </span>
+                      <span className="font-mono font-bold text-primary">
+                        {s.bill_no || s.id.slice(-6).toUpperCase()}
+                      </span>
+                    </div>
+
+                    {/* Middle: Customer & PAN */}
+                    <div className="bg-muted/40 rounded-lg p-2.5 text-xs space-y-1">
+                      <div className="font-semibold text-foreground truncate">{s.customerName || "सामान्य ग्राहक (General Customer)"}</div>
+                      {s.customerPan && <div className="text-[11px] text-muted-foreground font-mono">PAN: {s.customerPan}</div>}
+                    </div>
+
+                    {/* Bottom Breakdown: Taxable & VAT & Total */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/40 text-[11px]">
+                      <div>
+                        <div className="text-[10px] text-muted-foreground uppercase">करयोग्य बिक्री</div>
+                        <div className="font-mono font-semibold text-foreground mt-0.5">{fmt(s.taxable)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-medium">१३% भ्याट</div>
+                        <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{fmt(s.vat)}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-muted-foreground uppercase">कुल रकम</div>
+                        <div className="font-mono font-bold text-foreground mt-0.5">{fmt(s.total)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {vatMonthlyTotals.salesList.length === 0 && (
+                  <div className="p-6 text-center text-muted-foreground text-xs rounded-xl border bg-card">
+                    {vatMonthLabel} मा कुनै बिक्री बिल फेला परेन।
+                  </div>
+                )}
+
+                {/* Mobile Totals Card */}
+                {vatMonthlyTotals.salesList.length > 0 && (
+                  <div className="rounded-xl border border-primary/20 bg-muted/60 p-3 space-y-1.5 text-xs mt-2">
+                    <div className="flex justify-between items-center text-muted-foreground">
+                      <span>करयोग्य बिक्री:</span>
+                      <span className="font-mono font-semibold text-foreground">{fmt(vatMonthlyTotals.taxableSales)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <span>बिक्री भ्याट (Output VAT):</span>
+                      <span className="font-mono font-bold">{fmt(vatMonthlyTotals.outputVat)}</span>
+                    </div>
+                    <div className="flex justify-between items-center font-bold pt-1 border-t border-border/40">
+                      <span>कुल बिक्री (Total):</span>
+                      <span className="font-mono text-primary text-sm">{fmt(vatMonthlyTotals.totalSalesWithVat + vatMonthlyTotals.nonTaxableSales)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           </TabsContent>
