@@ -37,6 +37,7 @@ const Reports = () => {
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [range, setRange] = useState<"7" | "30" | "90">("7");
   const [weekOffset, setWeekOffset] = useState(0);
+  const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [sales, setSales] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
@@ -89,6 +90,22 @@ const Reports = () => {
   const handleRangeChange = (v: "7" | "30" | "90") => {
     setRange(v);
     setWeekOffset(0);
+    setSlideDirection("right");
+  };
+
+  const handlePrevWeek = () => {
+    setSlideDirection("left");
+    setWeekOffset(prev => prev + 1);
+  };
+
+  const handleNextWeek = () => {
+    setSlideDirection("right");
+    setWeekOffset(prev => Math.max(0, prev - 1));
+  };
+
+  const handleResetWeek = () => {
+    setSlideDirection("right");
+    setWeekOffset(0);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -102,11 +119,11 @@ const Reports = () => {
     const diff = touchStartX - touchEndX;
     // Swipe Left: drag right-to-left -> go newer (towards today)
     if (diff > 45 && weekOffset > 0) {
-      setWeekOffset(prev => prev - 1);
+      handleNextWeek();
     }
     // Swipe Right: drag left-to-right -> go older (previous week)
     else if (diff < -45) {
-      setWeekOffset(prev => prev + 1);
+      handlePrevWeek();
     }
     setTouchStartX(null);
   };
@@ -1813,21 +1830,24 @@ const Reports = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
-                  onClick={() => setWeekOffset(prev => prev + 1)}
+                  className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer active:scale-90 transition-transform"
+                  onClick={handlePrevWeek}
                   title="अघिल्लो ७ दिन (Previous 7 days)"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <div className="px-2 text-xs font-semibold text-foreground flex items-center gap-1.5 whitespace-nowrap min-w-[150px] justify-center">
+                <div
+                  key={weekOffset}
+                  className="px-2 text-xs font-semibold text-foreground flex items-center gap-1.5 whitespace-nowrap min-w-[150px] justify-center animate-in fade-in duration-200"
+                >
                   <Calendar className="h-3.5 w-3.5 text-primary" />
                   <span>{weekLabel}</span>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                  onClick={() => setWeekOffset(prev => Math.max(0, prev - 1))}
+                  className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed active:scale-90 transition-transform"
+                  onClick={handleNextWeek}
                   disabled={weekOffset === 0}
                   title="पछिल्लो ७ दिन (Next 7 days)"
                 >
@@ -1836,8 +1856,8 @@ const Reports = () => {
                 {weekOffset > 0 && (
                   <button
                     type="button"
-                    onClick={() => setWeekOffset(0)}
-                    className="ml-1 px-2 py-0.5 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-md border border-primary/25 transition-all cursor-pointer"
+                    onClick={handleResetWeek}
+                    className="ml-1 px-2 py-0.5 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-md border border-primary/25 transition-all cursor-pointer active:scale-95 animate-in fade-in zoom-in-95 duration-150"
                     title="चालु हप्तामा फर्किनुहोस्"
                   >
                     आज (Today)
@@ -1852,7 +1872,7 @@ const Reports = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <div key={weekOffset} className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 animate-in fade-in duration-250">
             <Card className="p-3 sm:p-4 shadow-card border-0">
               <div className="text-[11px] sm:text-xs uppercase text-muted-foreground font-semibold tracking-wider">Revenue</div>
               <div className="font-display text-lg sm:text-xl md:text-2xl mt-1 font-bold text-foreground truncate" title={fmt(totals.revenue)}>
@@ -1918,7 +1938,12 @@ const Reports = () => {
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
-              <div className="h-64 sm:h-72 w-full min-w-0">
+              <div
+                key={`${range}-${weekOffset}`}
+                className={`h-64 sm:h-72 w-full min-w-0 animate-in fade-in-50 duration-300 ease-out ${
+                  slideDirection === "left" ? "slide-in-from-left-6" : "slide-in-from-right-6"
+                }`}
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -1961,6 +1986,9 @@ const Reports = () => {
                       name="sales"
                       fill="hsl(var(--primary))"
                       radius={[4, 4, 0, 0]}
+                      isAnimationActive={true}
+                      animationDuration={350}
+                      animationEasing="ease-out"
                       maxBarSize={range === "90" ? 48 : range === "30" ? 40 : 34}
                     />
                     <Bar
@@ -1968,6 +1996,9 @@ const Reports = () => {
                       name="profit"
                       fill="hsl(var(--accent))"
                       radius={[4, 4, 0, 0]}
+                      isAnimationActive={true}
+                      animationDuration={350}
+                      animationEasing="ease-out"
                       maxBarSize={range === "90" ? 48 : range === "30" ? 40 : 34}
                     />
                   </BarChart>
