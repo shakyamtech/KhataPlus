@@ -36,6 +36,8 @@ const Reports = () => {
   const { lang } = useLanguage();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [range, setRange] = useState<"7" | "30" | "90">("7");
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [sales, setSales] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -82,6 +84,31 @@ const Reports = () => {
       next.set("tab", v);
       return next;
     }, { replace: true });
+  };
+
+  const handleRangeChange = (v: "7" | "30" | "90") => {
+    setRange(v);
+    setWeekOffset(0);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (range !== "7") return;
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (range !== "7" || touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX - touchEndX;
+    // Swipe Left: drag right-to-left -> go newer (towards today)
+    if (diff > 45 && weekOffset > 0) {
+      setWeekOffset(prev => prev - 1);
+    }
+    // Swipe Right: drag left-to-right -> go older (previous week)
+    else if (diff < -45) {
+      setWeekOffset(prev => prev + 1);
+    }
+    setTouchStartX(null);
   };
 
   const loadData = async () => {
@@ -139,19 +166,62 @@ const Reports = () => {
 
   const isVatShop = shopInfo?.is_vat_registered === true;
 
+  const { periodStart, periodEnd, weekLabel } = useMemo(() => {
+    const now = new Date();
+    if (range === "7") {
+      const end = weekOffset === 0
+        ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+        : new Date(now.getFullYear(), now.getMonth(), now.getDate() - (weekOffset * 7), 23, 59, 59, 999);
+      const start = startOfDay(subDays(end, 6));
+      const isCurrentWeek = weekOffset === 0;
+      const label = isCurrentWeek
+        ? `${format(start, "dd MMM")} – ${format(end, "dd MMM")} (चालु हप्ता)`
+        : `${format(start, "dd MMM")} – ${format(end, "dd MMM")}`;
+      return { periodStart: start, periodEnd: end, weekLabel: label };
+    }
+    const start = startOfDay(subDays(now, Number(range)));
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return { periodStart: start, periodEnd: end, weekLabel: "" };
+  }, [range, weekOffset]);
+
+  const overviewSales = useMemo(() => {
+    const startIso = periodStart.toISOString();
+    const endIso = periodEnd.toISOString();
+    return allSales.filter(s => s.created_at >= startIso && s.created_at <= endIso);
+  }, [allSales, periodStart, periodEnd]);
+
+  const overviewPurchases = useMemo(() => {
+    const startIso = periodStart.toISOString();
+    const endIso = periodEnd.toISOString();
+    return allPurchases.filter(p => p.created_at >= startIso && p.created_at <= endIso);
+  }, [allPurchases, periodStart, periodEnd]);
+
+  const overviewExpenses = useMemo(() => {
+    const startIso = periodStart.toISOString();
+    const endIso = periodEnd.toISOString();
+    return allExpenses.filter(e => e.created_at >= startIso && e.created_at <= endIso);
+  }, [allExpenses, periodStart, periodEnd]);
+
+  const overviewWastage = useMemo(() => {
+    const startIso = periodStart.toISOString();
+    const endIso = periodEnd.toISOString();
+    const wList = allWastage.filter(w => w.created_at >= startIso && w.created_at <= endIso);
+    return wList.reduce((sum, r) => sum + Number(r.total_value || 0), 0);
+  }, [allWastage, periodStart, periodEnd]);
+
   const totals = useMemo(() => {
-    const grossRevenue = sales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
-    const discountAllowed = sales.reduce((s, r) => s + Number(r.discount || 0), 0);
-    const vatCollected = sales.reduce((s, r) => s + Number(r.vat_amount || 0), 0);
-    const discountReceived = purchases.reduce((s, r) => s + Number(r.discount || 0), 0);
-    const revenue = sales.reduce((s, r) => s + (Number(r.total || 0) - Number(r.vat_amount || 0)), 0);
-    const cogs = sales.reduce((s, r) => s + Number(r.cost_total), 0);
-    const exp = expenses.reduce((s, r) => s + Number(r.amount), 0);
-    const totalExp = exp + wastage;
+    const grossRevenue = overviewSales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
+    const discountAllowed = overviewSales.reduce((s, r) => s + Number(r.discount || 0), 0);
+    const vatCollected = overviewSales.reduce((s, r) => s + Number(r.vat_amount || 0), 0);
+    const discountReceived = overviewPurchases.reduce((s, r) => s + Number(r.discount || 0), 0);
+    const revenue = overviewSales.reduce((s, r) => s + (Number(r.total || 0) - Number(r.vat_amount || 0)), 0);
+    const cogs = overviewSales.reduce((s, r) => s + Number(r.cost_total || 0), 0);
+    const exp = overviewExpenses.reduce((s, r) => s + Number(r.amount || 0), 0);
+    const totalExp = exp + overviewWastage;
     const gross = revenue - cogs;
     const net = gross + discountReceived - totalExp;
-    return { grossRevenue, discountAllowed, vatCollected, discountReceived, revenue, cogs, gross, exp: totalExp, storeExp: exp, wastage, net };
-  }, [sales, purchases, expenses, wastage]);
+    return { grossRevenue, discountAllowed, vatCollected, discountReceived, revenue, cogs, gross, exp: totalExp, storeExp: exp, wastage: overviewWastage, net };
+  }, [overviewSales, overviewPurchases, overviewExpenses, overviewWastage]);
 
   const vatTotals = useMemo(() => {
     const sMap = new Map(suppliers.map(s => [s.id, s]));
@@ -1351,10 +1421,10 @@ const Reports = () => {
 
   const chartData = useMemo(() => {
     if (range === "7") {
-      // 7 Days: Daily breakdown (7 slots)
+      // 7 Days: Daily breakdown (7 slots based on current weekOffset window)
       const map = new Map<string, { day: string; sales: number; profit: number; periodLabel: string }>();
-      for (let i = 6; i >= 0; i--) {
-        const d = subDays(new Date(), i);
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate() + i);
         const dayKey = format(d, "dd MMM");
         map.set(dayKey, {
           day: dayKey,
@@ -1363,7 +1433,7 @@ const Reports = () => {
           periodLabel: format(d, "dd MMMM yyyy")
         });
       }
-      sales.forEach((s) => {
+      overviewSales.forEach((s) => {
         const d = format(new Date(s.created_at), "dd MMM");
         const ex = map.get(d);
         if (!ex) return;
@@ -1417,7 +1487,7 @@ const Reports = () => {
         },
       ];
 
-      sales.forEach((s) => {
+      overviewSales.forEach((s) => {
         const t = new Date(s.created_at).getTime();
         const saleAmt = Number(s.total || 0);
         const profitAmt = (Number(s.total || 0) - Number(s.vat_amount || 0)) - Number(s.cost_total || 0);
@@ -1457,7 +1527,7 @@ const Reports = () => {
       };
     });
 
-    sales.forEach((s) => {
+    overviewSales.forEach((s) => {
       const t = new Date(s.created_at).getTime();
       const saleAmt = Number(s.total || 0);
       const profitAmt = (Number(s.total || 0) - Number(s.vat_amount || 0)) - Number(s.cost_total || 0);
@@ -1476,7 +1546,7 @@ const Reports = () => {
       profit: m.profit,
       periodLabel: m.label,
     }));
-  }, [sales, range]);
+  }, [overviewSales, range, periodStart]);
 
   const handlePrintVatReport = () => {
     if (!shopInfo) return;
@@ -1679,7 +1749,7 @@ const Reports = () => {
     <div className="p-3 sm:p-4 md:p-8 max-w-6xl mx-auto space-y-4 pb-12">
       <PageHeader title="Reports" subtitle="Sales, profit and tax registers" actions={
         activeTab === "overview" ? (
-          <Tabs value={range} onValueChange={(v: any) => setRange(v)}>
+          <Tabs value={range} onValueChange={handleRangeChange}>
             <TabsList className="h-8 sm:h-9 bg-muted/80 p-0.5 shadow-xs">
               <TabsTrigger value="7" className="text-xs px-2.5 py-1">7d</TabsTrigger>
               <TabsTrigger value="30" className="text-xs px-2.5 py-1">30d</TabsTrigger>
@@ -1733,16 +1803,53 @@ const Reports = () => {
         </div>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground px-1 gap-1.5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground px-1 gap-2">
             <span className="flex items-center gap-1.5 font-medium">
               <Landmark className="h-3.5 w-3.5 text-primary" />
               चालु आर्थिक वर्ष: <strong className="text-foreground">{currentFY.labelNp} ({currentFY.labelEn})</strong>
             </span>
-            <span className="text-[11px] sm:text-xs">
-              {range === "7" && "विगत ७ दिनको दैनिक कारोबार विवरण"}
-              {range === "30" && "विगत ३० दिनको साप्ताहिक कारोबार विवरण"}
-              {range === "90" && "विगत ९० दिनको मासिक कारोबार विवरण"}
-            </span>
+            {range === "7" ? (
+              <div className="flex items-center gap-1 bg-card border border-border/60 rounded-lg p-0.5 shadow-xs self-start sm:self-auto">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                  onClick={() => setWeekOffset(prev => prev + 1)}
+                  title="अघिल्लो ७ दिन (Previous 7 days)"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="px-2 text-xs font-semibold text-foreground flex items-center gap-1.5 whitespace-nowrap min-w-[150px] justify-center">
+                  <Calendar className="h-3.5 w-3.5 text-primary" />
+                  <span>{weekLabel}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  onClick={() => setWeekOffset(prev => Math.max(0, prev - 1))}
+                  disabled={weekOffset === 0}
+                  title="पछिल्लो ७ दिन (Next 7 days)"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                {weekOffset > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setWeekOffset(0)}
+                    className="ml-1 px-2 py-0.5 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-md border border-primary/25 transition-all cursor-pointer"
+                    title="चालु हप्तामा फर्किनुहोस्"
+                  >
+                    आज (Today)
+                  </button>
+                )}
+              </div>
+            ) : (
+              <span className="text-[11px] sm:text-xs">
+                {range === "30" && "विगत ३० दिनको साप्ताहिक कारोबार विवरण"}
+                {range === "90" && "विगत ९० दिनको मासिक कारोबार विवरण"}
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
@@ -1789,6 +1896,11 @@ const Reports = () => {
                       ? "साप्ताहिक (४ हप्ता)"
                       : "मासिक (३ महिना)"}
                 </span>
+                {range === "7" && (
+                  <span className="text-[10px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/40 font-medium sm:hidden">
+                    👈 स्वाइप गर्नुहोस् 👉
+                  </span>
+                )}
               </div>
               <div className="text-[11px] text-muted-foreground flex items-center gap-3">
                 <span className="flex items-center gap-1.5">
@@ -1801,7 +1913,11 @@ const Reports = () => {
                 </span>
               </div>
             </div>
-            <div className="overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+            <div
+              className="overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin select-none touch-pan-y"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
               <div className="h-64 sm:h-72 w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
