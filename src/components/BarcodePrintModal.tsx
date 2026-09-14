@@ -33,6 +33,7 @@ import {
   LabelProductItem
 } from "@/lib/barcode";
 import { getShopInfo } from "@/lib/shop";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Product {
   id: string;
@@ -59,6 +60,7 @@ export function BarcodePrintModal({
   initialSelectedProduct,
   onProductsUpdated
 }: BarcodePrintModalProps) {
+  const { lang } = useLanguage();
   if (!open) return null;
   // Search & Filter
   const [search, setSearch] = useState("");
@@ -339,7 +341,11 @@ export function BarcodePrintModal({
               }`}
             >
               <ListChecks className="h-3.5 w-3.5" />
-              <span>१. सामान छान्नुहोस् ({Object.keys(selectedQuantities).length})</span>
+              <span>
+                {lang === "NEP"
+                  ? `१. सामान छान्नुहोस् (${Object.keys(selectedQuantities).length})`
+                  : `1. Select Items (${Object.keys(selectedQuantities).length})`}
+              </span>
             </button>
             <button
               type="button"
@@ -351,7 +357,11 @@ export function BarcodePrintModal({
               }`}
             >
               <Tag className="h-3.5 w-3.5" />
-              <span>२. स्टिकर प्रिभ्यु ({totalLabelsCount})</span>
+              <span>
+                {lang === "NEP"
+                  ? `२. स्टिकर प्रिभ्यु (${totalLabelsCount})`
+                  : `2. Sticker Preview (${totalLabelsCount})`}
+              </span>
             </button>
           </div>
         </div>
@@ -516,7 +526,7 @@ export function BarcodePrintModal({
                   onClick={() => setMobileTab("preview")}
                   className="md:hidden h-7 text-[11px] px-2.5 bg-primary text-primary-foreground font-semibold"
                 >
-                  Next: Preview ➔
+                  {lang === "NEP" ? "अर्को: प्रिभ्यु ➔" : "Next: Preview ➔"}
                 </Button>
               </div>
             </div>
@@ -723,7 +733,7 @@ export function BarcodePrintModal({
                 onClick={() => setMobileTab("items")}
                 className="md:hidden text-xs px-2 text-primary font-medium h-9"
               >
-                ← Edit Items
+                {lang === "NEP" ? "← सामान फेर्ने" : "← Edit Items"}
               </Button>
             )}
           </div>
