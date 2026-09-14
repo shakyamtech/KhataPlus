@@ -1562,79 +1562,138 @@ const Reports = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-8 max-w-6xl mx-auto space-y-4 pb-12">
       <PageHeader title="Reports" subtitle="Sales, profit and tax registers" actions={
         <Tabs value={range} onValueChange={(v: any) => setRange(v)}>
-          <TabsList><TabsTrigger value="7">7d</TabsTrigger><TabsTrigger value="30">30d</TabsTrigger><TabsTrigger value="90">90d</TabsTrigger></TabsList>
+          <TabsList className="h-8 sm:h-9 bg-muted/80 p-0.5 shadow-xs">
+            <TabsTrigger value="7" className="text-xs px-2.5 py-1">7d</TabsTrigger>
+            <TabsTrigger value="30" className="text-xs px-2.5 py-1">30d</TabsTrigger>
+            <TabsTrigger value="90" className="text-xs px-2.5 py-1">90d</TabsTrigger>
+          </TabsList>
         </Tabs>
       } />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <div className="flex justify-start lg:justify-center w-full overflow-x-auto pb-1.5 no-scrollbar">
-          <TabsList className="inline-flex h-10 items-center justify-start lg:justify-center rounded-xl bg-muted/80 p-1 text-muted-foreground w-auto max-w-full gap-1 border border-border/40 shadow-xs">
-            <TabsTrigger value="overview" className="text-xs px-3 py-1.5 font-medium whitespace-nowrap">
-              {lang === "NEP" ? "ओभरभ्यू" : "Overview"}
-            </TabsTrigger>
-            <TabsTrigger value="pl" className="text-xs px-3 py-1.5 font-medium whitespace-nowrap">
-              {lang === "NEP" ? "नाफा-नोक्सान" : "Profit & Loss"}
-            </TabsTrigger>
-            <TabsTrigger value="balancesheet" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
-              <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" />
-              <span>{lang === "NEP" ? "वासलात" : "Balance Sheet"}</span>
-            </TabsTrigger>
-            <TabsTrigger value="trial" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
-              <Scale className="h-3.5 w-3.5 text-emerald-500" />
-              <span>{lang === "NEP" ? "सन्तुलन" : "Trial Balance"}</span>
-            </TabsTrigger>
-            <TabsTrigger value="stock" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
-              <Package className="h-3.5 w-3.5 text-amber-500" />
-              <span>{lang === "NEP" ? "स्टक सारांश" : "Stock Summary"}</span>
-            </TabsTrigger>
-            <TabsTrigger value="ratios" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
-              <BarChart3 className="h-3.5 w-3.5 text-purple-500" />
-              <span>{lang === "NEP" ? "अनुपात विश्लेषण" : "Ratio Analysis"}</span>
-            </TabsTrigger>
-            <TabsTrigger value="registers" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
-              <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
-              <span>{lang === "NEP" ? "खाताहरू" : "Registers"}</span>
-            </TabsTrigger>
-            {isVatShop && (
-              <TabsTrigger value="vat" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
-                <Receipt className="h-3.5 w-3.5 text-amber-500" />
-                <span>{lang === "NEP" ? "भ्याट रिपोर्ट" : "VAT Reports"}</span>
+        {/* Mobile-optimized scrollable pill strip with smooth swiping and subtle gradient fade indicator */}
+        <div className="relative w-full">
+          <div className="flex justify-start lg:justify-center w-full overflow-x-auto pb-2 scroll-smooth no-scrollbar">
+            <TabsList className="inline-flex h-11 items-center justify-start lg:justify-center rounded-xl bg-muted/80 p-1 text-muted-foreground w-max gap-1 border border-border/50 shadow-xs">
+              <TabsTrigger value="overview" className="shrink-0 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
+                {lang === "NEP" ? "ओभरभ्यू" : "Overview"}
               </TabsTrigger>
-            )}
-          </TabsList>
+              <TabsTrigger value="pl" className="shrink-0 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
+                {lang === "NEP" ? "नाफा-नोक्सान" : "Profit & Loss"}
+              </TabsTrigger>
+              <TabsTrigger value="balancesheet" className="shrink-0 flex items-center gap-1.5 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
+                <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" />
+                <span>{lang === "NEP" ? "वासलात" : "Balance Sheet"}</span>
+              </TabsTrigger>
+              <TabsTrigger value="trial" className="shrink-0 flex items-center gap-1.5 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
+                <Scale className="h-3.5 w-3.5 text-emerald-500" />
+                <span>{lang === "NEP" ? "सन्तुलन" : "Trial Balance"}</span>
+              </TabsTrigger>
+              <TabsTrigger value="stock" className="shrink-0 flex items-center gap-1.5 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
+                <Package className="h-3.5 w-3.5 text-amber-500" />
+                <span>{lang === "NEP" ? "स्टक सारांश" : "Stock Summary"}</span>
+              </TabsTrigger>
+              <TabsTrigger value="ratios" className="shrink-0 flex items-center gap-1.5 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
+                <BarChart3 className="h-3.5 w-3.5 text-purple-500" />
+                <span>{lang === "NEP" ? "अनुपात विश्लेषण" : "Ratio Analysis"}</span>
+              </TabsTrigger>
+              <TabsTrigger value="registers" className="shrink-0 flex items-center gap-1.5 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
+                <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
+                <span>{lang === "NEP" ? "खाताहरू" : "Registers"}</span>
+              </TabsTrigger>
+              {isVatShop && (
+                <TabsTrigger value="vat" className="shrink-0 flex items-center gap-1.5 text-xs px-3.5 py-2 font-medium whitespace-nowrap rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs active:scale-95 transition-all">
+                  <Receipt className="h-3.5 w-3.5 text-amber-500" />
+                  <span>{lang === "NEP" ? "भ्याट रिपोर्ट" : "VAT Reports"}</span>
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
+          {/* Subtle mobile edge fade hint so users see more tabs exist to the right */}
+          <div className="pointer-events-none absolute top-0 bottom-2 right-0 w-8 bg-gradient-to-l from-background to-transparent lg:hidden" />
         </div>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="flex items-center justify-between text-xs text-muted-foreground px-1 flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground px-1 gap-1.5">
             <span className="flex items-center gap-1.5 font-medium">
               <Landmark className="h-3.5 w-3.5 text-primary" />
               चालु आर्थिक वर्ष: <strong className="text-foreground">{currentFY.labelNp} ({currentFY.labelEn})</strong>
             </span>
-            <span>विगत {range} दिनको कारोबार विवरण</span>
+            <span className="text-[11px] sm:text-xs">विगत {range} दिनको कारोबार विवरण</span>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card className="p-4 shadow-card border-0"><div className="text-xs uppercase text-muted-foreground">Revenue</div><div className="font-display text-xl mt-1">{fmt(totals.revenue)}</div></Card>
-            <Card className="p-4 shadow-card border-0"><div className="text-xs uppercase text-muted-foreground">Cost of Goods</div><div className="font-display text-xl mt-1">{fmt(totals.cogs)}</div></Card>
-            <Card className="p-4 shadow-card border-0"><div className="text-xs uppercase text-muted-foreground">Gross Profit</div><div className="font-display text-xl mt-1 text-primary">{fmt(totals.gross)}</div></Card>
-            <Card className="p-4 shadow-elegant border-0 bg-gradient-primary text-primary-foreground"><div className="text-xs uppercase opacity-80">Net Profit</div><div className="font-display text-xl mt-1">{fmt(totals.net)}</div></Card>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+            <Card className="p-3 sm:p-4 shadow-card border-0">
+              <div className="text-[11px] sm:text-xs uppercase text-muted-foreground font-semibold tracking-wider">Revenue</div>
+              <div className="font-display text-lg sm:text-xl md:text-2xl mt-1 font-bold text-foreground truncate" title={fmt(totals.revenue)}>
+                {fmt(totals.revenue)}
+              </div>
+            </Card>
+            <Card className="p-3 sm:p-4 shadow-card border-0">
+              <div className="text-[11px] sm:text-xs uppercase text-muted-foreground font-semibold tracking-wider">Cost of Goods</div>
+              <div className="font-display text-lg sm:text-xl md:text-2xl mt-1 font-bold text-foreground truncate" title={fmt(totals.cogs)}>
+                {fmt(totals.cogs)}
+              </div>
+            </Card>
+            <Card className="p-3 sm:p-4 shadow-card border-0">
+              <div className="text-[11px] sm:text-xs uppercase text-muted-foreground font-semibold tracking-wider">Gross Profit</div>
+              <div className="font-display text-lg sm:text-xl md:text-2xl mt-1 font-bold text-primary truncate" title={fmt(totals.gross)}>
+                {fmt(totals.gross)}
+              </div>
+            </Card>
+            <Card className="p-3 sm:p-4 shadow-elegant border-0 bg-gradient-primary text-primary-foreground">
+              <div className="text-[11px] sm:text-xs uppercase opacity-85 font-semibold tracking-wider">Net Profit</div>
+              <div className="font-display text-lg sm:text-xl md:text-2xl mt-1 font-bold truncate" title={fmt(totals.net)}>
+                {fmt(totals.net)}
+              </div>
+            </Card>
           </div>
 
-          <Card className="p-4 shadow-card border-0">
-            <div className="font-display text-lg mb-3">Daily Sales & Profit</div>
-            <div className="overflow-x-auto pb-1 -mx-1 px-1">
-              <div className="h-72 min-w-[550px] w-full">
+          <Card className="p-3.5 sm:p-4 shadow-card border-0">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-display text-base sm:text-lg font-bold text-foreground">Daily Sales & Profit</div>
+              {range !== "7" && (
+                <span className="text-[10px] sm:hidden text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full border border-border/40 font-medium">
+                  दायाँ स्वाइप 👉
+                </span>
+              )}
+            </div>
+            <div className="overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+              <div className={`h-64 sm:h-72 w-full ${range === "7" ? "min-w-0" : "min-w-[480px] sm:min-w-0"}`}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: "hsl(var(--border))" }} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
-                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} cursor={{ fill: "hsl(var(--muted)/0.4)" }} />
-                    <Bar dataKey="sales" name="Sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                    <Bar dataKey="profit" name="Profit" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                    <XAxis
+                      dataKey="day"
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={{ stroke: "hsl(var(--border))" }}
+                      interval={range === "7" ? 0 : "preserveStartEnd"}
+                    />
+                    <YAxis
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.12)"
+                      }}
+                      wrapperStyle={{ zIndex: 50 }}
+                      cursor={{ fill: "hsl(var(--muted)/0.4)" }}
+                    />
+                    <Bar dataKey="sales" name="Sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={range === "7" ? 36 : 24} />
+                    <Bar dataKey="profit" name="Profit" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={range === "7" ? 36 : 24} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

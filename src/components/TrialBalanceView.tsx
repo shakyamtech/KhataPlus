@@ -565,8 +565,8 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       </div>
 
       {/* Trial Balance Table */}
-      <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
-        <table className="w-full text-xs">
+      <div className="rounded-xl border bg-card overflow-x-auto scrollbar-thin shadow-sm">
+        <table className="w-full text-xs min-w-[560px] sm:min-w-0">
           <thead className="bg-muted/70 text-muted-foreground border-b uppercase font-bold text-[11px]">
             <tr>
               <th className="py-3 px-4 text-center w-12">#</th>

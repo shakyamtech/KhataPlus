@@ -476,16 +476,16 @@ export default function RatioAnalysisView() {
               <Wallet className="h-4 w-4" />
             </div>
           </div>
-          <div className="font-display text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">
+          <div className="font-display text-lg sm:text-2xl font-bold mt-1 text-emerald-600 dark:text-emerald-400 truncate">
             {fmt(workingCapital)}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-1">
+          <div className="text-[11px] text-muted-foreground mt-1 truncate">
             सम्पत्ति - दायित्व (Net Current Assets)
           </div>
         </Card>
 
         {/* Current Ratio */}
-        <Card className="p-4 shadow-card border border-border/50 bg-card">
+        <Card className="p-3.5 sm:p-4 shadow-card border border-border/50 bg-card">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
               {lang === "NEP" ? "तरलता अनुपात (Current Ratio)" : "Current Ratio"}
@@ -495,7 +495,7 @@ export default function RatioAnalysisView() {
             </div>
           </div>
           <div className="flex items-baseline gap-2 mt-1">
-            <div className="font-display text-2xl font-bold text-foreground">
+            <div className="font-display text-lg sm:text-2xl font-bold text-foreground">
               {currentRatio.toFixed(2)} : 1
             </div>
           </div>
@@ -507,7 +507,7 @@ export default function RatioAnalysisView() {
         </Card>
 
         {/* Net Profit Margin */}
-        <Card className="p-4 shadow-card border border-border/50 bg-card">
+        <Card className="p-3.5 sm:p-4 shadow-card border border-border/50 bg-card">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
               {lang === "NEP" ? "खुद नाफा दर (Net Margin)" : "Net Profit Margin"}
@@ -516,16 +516,16 @@ export default function RatioAnalysisView() {
               <TrendingUp className="h-4 w-4" />
             </div>
           </div>
-          <div className={`font-display text-2xl font-bold mt-1 ${netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+          <div className={`font-display text-lg sm:text-2xl font-bold mt-1 ${netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
             {netMarginPercent.toFixed(1)}%
           </div>
-          <div className="text-[11px] text-muted-foreground mt-1">
+          <div className="text-[11px] text-muted-foreground mt-1 truncate">
             खुद नाफा: <strong className="text-foreground">{fmt(netProfit)}</strong>
           </div>
         </Card>
 
         {/* Bank Loan Eligibility */}
-        <Card className="p-4 shadow-card border border-border/50 bg-card bg-gradient-to-br from-indigo-500/5 via-card to-card">
+        <Card className="p-3.5 sm:p-4 shadow-card border border-border/50 bg-card bg-gradient-to-br from-indigo-500/5 via-card to-card">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
               {lang === "NEP" ? "बैंक कर्जा योग्यता (NRB 20-25%)" : "Working Capital Loan Limit"}
@@ -534,10 +534,10 @@ export default function RatioAnalysisView() {
               <Landmark className="h-4 w-4" />
             </div>
           </div>
-          <div className="font-display text-xl font-bold mt-1 text-indigo-600 dark:text-indigo-400 truncate">
+          <div className="font-display text-base sm:text-lg md:text-xl font-bold mt-1 text-indigo-600 dark:text-indigo-400 truncate">
             {fmt(eligibleWcLoanMin)} - {fmt(eligibleWcLoanMax)}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-1">
+          <div className="text-[11px] text-muted-foreground mt-1 truncate">
             वार्षिक बिक्रीको २०%-२५% कर्जा सीमा
           </div>
         </Card>

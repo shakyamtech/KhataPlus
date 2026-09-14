@@ -423,7 +423,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
   };
 
   return (
-    <div className={hideHeader ? "space-y-4" : "p-4 md:p-8 max-w-5xl mx-auto space-y-4"}>
+    <div className={hideHeader ? "space-y-4" : "p-3 sm:p-4 md:p-8 max-w-5xl mx-auto space-y-4 pb-12"}>
       {!hideHeader && (
         <PageHeader title="Final Account & Balance Sheet" subtitle="A snapshot of your shop's finances" />
       )}
@@ -450,9 +450,9 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 items-stretch">
+      <div className="grid md:grid-cols-2 gap-4 sm:gap-6 items-stretch">
         {/* Left Column: Assets */}
-        <Card className="p-6 shadow-card border border-border/50 bg-card flex flex-col justify-between">
+        <Card className="p-4 sm:p-6 shadow-card border border-border/50 bg-card flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-border/60">
               <div className="flex items-center gap-2">
@@ -484,7 +484,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         </Card>
 
         {/* Right Column: Liabilities & Equity */}
-        <Card className="p-6 shadow-card border border-border/50 bg-card flex flex-col justify-between">
+        <Card className="p-4 sm:p-6 shadow-card border border-border/50 bg-card flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-border/60">
               <div className="flex items-center gap-2">
