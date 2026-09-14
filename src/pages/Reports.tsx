@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import {
 
 const Reports = () => {
   const { user } = useAuth();
+  const { lang } = useLanguage();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [range, setRange] = useState<"7" | "30" | "90">("30");
   const [sales, setSales] = useState<any[]>([]);
@@ -1568,34 +1570,38 @@ const Reports = () => {
       } />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <div className="flex justify-start sm:justify-center w-full overflow-x-auto pb-1.5 no-scrollbar">
-          <TabsList className="inline-flex h-10 items-center justify-start sm:justify-center rounded-lg bg-muted p-1 text-muted-foreground w-auto sm:w-full max-w-5xl gap-1">
-            <TabsTrigger value="overview" className="text-xs px-3 py-1.5 font-medium">Overview</TabsTrigger>
-            <TabsTrigger value="pl" className="text-xs px-3 py-1.5 font-medium">Profit & Loss</TabsTrigger>
-            <TabsTrigger value="balancesheet" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+        <div className="flex justify-start lg:justify-center w-full overflow-x-auto pb-1.5 no-scrollbar">
+          <TabsList className="inline-flex h-10 items-center justify-start lg:justify-center rounded-xl bg-muted/80 p-1 text-muted-foreground w-auto max-w-full gap-1 border border-border/40 shadow-xs">
+            <TabsTrigger value="overview" className="text-xs px-3 py-1.5 font-medium whitespace-nowrap">
+              {lang === "NEP" ? "ओभरभ्यू" : "Overview"}
+            </TabsTrigger>
+            <TabsTrigger value="pl" className="text-xs px-3 py-1.5 font-medium whitespace-nowrap">
+              {lang === "NEP" ? "नाफा-नोक्सान" : "Profit & Loss"}
+            </TabsTrigger>
+            <TabsTrigger value="balancesheet" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
               <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" />
-              <span>Balance Sheet (वासलात)</span>
+              <span>{lang === "NEP" ? "वासलात" : "Balance Sheet"}</span>
             </TabsTrigger>
-            <TabsTrigger value="trial" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+            <TabsTrigger value="trial" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
               <Scale className="h-3.5 w-3.5 text-emerald-500" />
-              <span>Trial Balance (सन्तुलन)</span>
+              <span>{lang === "NEP" ? "सन्तुलन" : "Trial Balance"}</span>
             </TabsTrigger>
-            <TabsTrigger value="stock" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+            <TabsTrigger value="stock" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
               <Package className="h-3.5 w-3.5 text-amber-500" />
-              <span>Stock Summary (स्टक सारांश)</span>
+              <span>{lang === "NEP" ? "स्टक सारांश" : "Stock Summary"}</span>
             </TabsTrigger>
-            <TabsTrigger value="ratios" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+            <TabsTrigger value="ratios" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
               <BarChart3 className="h-3.5 w-3.5 text-purple-500" />
-              <span>Ratio Analysis (अनुपात)</span>
+              <span>{lang === "NEP" ? "अनुपात विश्लेषण" : "Ratio Analysis"}</span>
             </TabsTrigger>
-            <TabsTrigger value="registers" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+            <TabsTrigger value="registers" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
               <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
-              <span>Registers (खाताहरू)</span>
+              <span>{lang === "NEP" ? "खाताहरू" : "Registers"}</span>
             </TabsTrigger>
             {isVatShop && (
-              <TabsTrigger value="vat" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium">
+              <TabsTrigger value="vat" className="flex items-center gap-1.5 text-xs px-3 py-1.5 font-medium whitespace-nowrap">
                 <Receipt className="h-3.5 w-3.5 text-amber-500" />
-                <span>VAT Reports</span>
+                <span>{lang === "NEP" ? "भ्याट रिपोर्ट" : "VAT Reports"}</span>
               </TabsTrigger>
             )}
           </TabsList>
