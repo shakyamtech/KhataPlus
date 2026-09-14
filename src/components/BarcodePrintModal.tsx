@@ -384,47 +384,50 @@ export function BarcodePrintModal({
                 />
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-0.5">
-                <div className="flex items-center gap-2">
+              <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-between gap-1.5 pt-0.5">
+                <div className="contents sm:flex sm:items-center sm:gap-2">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     onClick={handleSelectAll}
-                    className="h-7 text-[11px] px-3 font-medium"
+                    className="h-7 text-[11px] px-2 sm:px-3 font-medium justify-center w-full sm:w-auto"
                   >
-                    <CheckSquare className="h-3.5 w-3.5 mr-1.5 text-primary" /> Select All
+                    <CheckSquare className="h-3.5 w-3.5 mr-1 text-primary shrink-0" />
+                    <span className="truncate">{lang === "NEP" ? "सबै छान्नुहोस्" : "Select All"}</span>
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     onClick={handleDeselectAll}
-                    className="h-7 text-[11px] px-3 font-medium"
+                    className="h-7 text-[11px] px-2 sm:px-3 font-medium justify-center w-full sm:w-auto"
                   >
-                    <Square className="h-3.5 w-3.5 mr-1.5" /> Deselect
+                    <Square className="h-3.5 w-3.5 mr-1 text-muted-foreground shrink-0" />
+                    <span className="truncate">{lang === "NEP" ? "हटाउनुहोस्" : "Deselect"}</span>
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="contents sm:flex sm:items-center sm:gap-1.5">
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
                     onClick={handleFillWithLiveStock}
                     title="Set sticker quantity equal to live stock for selected items"
-                    className="h-7 text-[11px] px-2.5 text-muted-foreground hover:text-foreground"
+                    className="h-7 text-[11px] px-2 sm:px-2.5 text-muted-foreground hover:text-foreground bg-secondary/40 sm:bg-transparent justify-center w-full sm:w-auto border sm:border-0 border-border/40"
                   >
-                    <Layers className="h-3.5 w-3.5 mr-1.5" /> Sync Live Stock
+                    <Layers className="h-3.5 w-3.5 mr-1 shrink-0" />
+                    <span className="truncate">{lang === "NEP" ? "स्टक बराबर" : "Sync Live Stock"}</span>
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
                     onClick={handleSetAllToOne}
-                    className="h-7 text-[11px] px-2.5 text-muted-foreground hover:text-foreground"
+                    className="h-7 text-[11px] px-2 sm:px-2.5 text-muted-foreground hover:text-foreground bg-secondary/40 sm:bg-transparent justify-center w-full sm:w-auto border sm:border-0 border-border/40"
                   >
-                    Set All 1
+                    <span className="truncate">{lang === "NEP" ? "सबै १ बनाउने" : "Set All 1"}</span>
                   </Button>
                 </div>
               </div>
