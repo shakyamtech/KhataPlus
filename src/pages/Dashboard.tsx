@@ -8,12 +8,15 @@ import { fmt } from "@/lib/format";
 import { TrendingUp, TrendingDown, Wallet, Package, AlertTriangle, ShoppingCart, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { lang } = useLanguage();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [stats, setStats] = useState({
     todaySales: 0, todayNetSales: 0, todayVat: 0, todayProfit: 0, cashBalance: 0,
+    cashInHand: 0, digitalBankBalance: 0,
     stockValue: 0, lowStock: 0, customerDues: 0, supplierDues: 0, productCount: 0,
   });
   const [salesForTopItems, setSalesForTopItems] = useState<any[]>([]);
@@ -34,9 +37,10 @@ const Dashboard = () => {
       const pQ = query(collection(db, "products"), where("user_id", "==", user.uid));
       const cQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
       const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
+      const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid));
 
-      const [sSnap, pSnap, cSnap, lSnap, sInfo] = await Promise.all([
-        getDocs(sQ), getDocs(pQ), getDocs(cQ), getDocs(lQ), getShopInfo()
+      const [sSnap, pSnap, cSnap, lSnap, purSnap, sInfo] = await Promise.all([
+        getDocs(sQ), getDocs(pQ), getDocs(cQ), getDocs(lQ), getDocs(purQ), getShopInfo()
       ]);
       setShopInfo(sInfo);
 
@@ -44,6 +48,18 @@ const Dashboard = () => {
       const products = pSnap.docs.map(d => d.data());
       const cash = cSnap.docs.map(d => d.data());
       const ledger = lSnap.docs.map(d => d.data());
+      const purchasesAll = purSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      const salesMap = new Map(salesAll.map((s: any) => [s.id, s.payment_mode || "cash"]));
+      const purchasesMap = new Map(purchasesAll.map((p: any) => [p.id, p.payment_mode || "cash"]));
+
+      const getRowPaymentMode = (r: any): string => {
+        const rawMode = r.payment_mode ||
+          ((r.category === "sale" || r.category === "sales") && r.reference_id && salesMap.get(r.reference_id)) ||
+          ((r.category === "purchase" || r.category === "purchases") && r.reference_id && purchasesMap.get(r.reference_id)) ||
+          "cash";
+        return String(rawMode).toLowerCase();
+      };
 
       const sales = salesAll.filter(s => s.created_at >= iso);
       const topSalesBase = salesAll.filter(s => s.created_at >= sinceIso);
@@ -80,6 +96,10 @@ const Dashboard = () => {
         return s + (netRevenue - cost);
       }, 0);
       const cashBalance = (cash ?? []).reduce((s, r: any) => s + (r.direction === "in" ? Number(r.amount) : -Number(r.amount)), 0);
+      const cashInHand = (cash ?? [])
+        .filter((r: any) => getRowPaymentMode(r) === "cash")
+        .reduce((s, r: any) => s + (r.direction === "in" ? Number(r.amount) : -Number(r.amount)), 0);
+      const digitalBankBalance = Math.round((cashBalance - cashInHand) * 100) / 100;
       const stockValue = (products ?? []).reduce((s, r: any) => s + Number(r.stock_qty) * Number(r.cost_price), 0);
       const lowStock = (products ?? []).filter((r: any) => Number(r.stock_qty) <= Number(r.low_stock_threshold)).length;
       
@@ -106,7 +126,11 @@ const Dashboard = () => {
         .reduce((s, [_, b]) => s + Math.max(0, b), 0);
 
       setStats({
-        todaySales, todayNetSales, todayVat, todayProfit, cashBalance, stockValue, lowStock,
+        todaySales, todayNetSales, todayVat, todayProfit,
+        cashBalance: Math.round(cashBalance * 100) / 100,
+        cashInHand: Math.round(cashInHand * 100) / 100,
+        digitalBankBalance,
+        stockValue, lowStock,
         customerDues, supplierDues, productCount: products?.length ?? 0,
       });
       if (topSales) {
@@ -165,47 +189,71 @@ const Dashboard = () => {
   const isVatShop = shopInfo?.is_vat_registered === true || shopInfo?.tax_type === "vat";
   const cards = [
     { 
-      label: "Today's Sales", 
+      label: lang === "NEP" ? "आजको बिक्री (Today's Sales)" : "Today's Sales", 
       value: fmt(stats.todaySales), 
       subText: (isVatShop && stats.todayVat > 0) ? `Net: ${fmt(stats.todayNetSales)} · VAT: ${fmt(stats.todayVat)}` : undefined,
       icon: ShoppingCart, 
-      accent: "bg-primary text-primary-foreground shadow-[0_4px_14px_0_hsl(var(--primary)/0.39)]" 
+      accent: "bg-primary text-primary-foreground shadow-[0_4px_14px_0_hsl(var(--primary)/0.39)]",
+      to: "/pos"
     },
     { 
-      label: isProfit ? "Today's Profit" : "Today's Loss", 
+      label: lang === "NEP" ? (isProfit ? "आजको नाफा (Today's Profit)" : "आजको घाटा (Today's Loss)") : (isProfit ? "Today's Profit" : "Today's Loss"), 
       value: fmt(Math.abs(stats.todayProfit)), 
       icon: isProfit ? TrendingUp : TrendingDown, 
-      accent: isProfit ? "bg-emerald-500 text-white shadow-[0_4px_14px_0_rgba(16,185,129,0.39)]" : "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]" 
+      accent: isProfit ? "bg-emerald-500 text-white shadow-[0_4px_14px_0_rgba(16,185,129,0.39)]" : "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]",
+      to: "/reports"
     },
     { 
-      label: "Cash in Hand", 
+      label: lang === "NEP" ? "रोकड तथा बैंक (Cash & Bank)" : "Cash & Bank", 
       value: fmt(stats.cashBalance), 
       icon: Wallet, 
       accent: isCashPositive ? "bg-sky-500 text-white shadow-[0_4px_14px_0_rgba(14,165,233,0.39)]" : "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]",
-      valueColor: isCashPositive ? "" : "text-destructive"
+      valueColor: isCashPositive ? "" : "text-destructive",
+      subText: lang === "NEP"
+        ? `नगद: ${fmt(stats.cashInHand)} · बैंक/वालेट: ${fmt(stats.digitalBankBalance)}`
+        : `Cash: ${fmt(stats.cashInHand)} · Bank/Wallets: ${fmt(stats.digitalBankBalance)}`,
+      to: "/cashbook"
     },
-    { label: "Stock Value", value: fmt(stats.stockValue), icon: Package, accent: "bg-violet-500 text-white shadow-[0_4px_14px_0_rgba(139,92,246,0.39)]" },
+    { 
+      label: lang === "NEP" ? "स्टक मूल्यांकन (Stock Value)" : "Stock Value", 
+      value: fmt(stats.stockValue), 
+      icon: Package, 
+      accent: "bg-violet-500 text-white shadow-[0_4px_14px_0_rgba(139,92,246,0.39)]",
+      to: "/products"
+    },
   ];
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      <PageHeader title="Dashboard" subtitle="Today at a glance" />
+      <PageHeader 
+        title={lang === "NEP" ? "ड्यासबोर्ड" : "Dashboard"} 
+        subtitle={lang === "NEP" ? "आजको समग्र विवरण" : "Today at a glance"} 
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        {cards.map((c) => (
-          <Card key={c.label} className="p-4 md:p-5 shadow-card border-0 overflow-hidden relative hover:-translate-y-1.5 hover:shadow-elegant transition-all duration-300 ease-out group">
-            <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${c.accent} shadow-soft group-hover:scale-110 transition-transform duration-300`}>
-              <c.icon className="h-5 w-5" />
-            </div>
-            <div className="mt-3 text-xs uppercase tracking-wide text-muted-foreground font-medium group-hover:text-foreground transition-colors duration-300">{c.label}</div>
-            <div className={`mt-1 text-xl md:text-2xl font-display ${c.valueColor || "text-foreground"}`}>{c.value}</div>
-            {c.subText && (
-              <div className="mt-1 text-[11px] font-medium text-muted-foreground/80 truncate" title={c.subText}>
-                {c.subText}
+        {cards.map((c) => {
+          const cardEl = (
+            <Card className="p-4 md:p-5 shadow-card border-0 overflow-hidden relative hover:-translate-y-1.5 hover:shadow-elegant transition-all duration-300 ease-out group h-full cursor-pointer">
+              <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${c.accent} shadow-soft group-hover:scale-110 transition-transform duration-300`}>
+                <c.icon className="h-5 w-5" />
               </div>
-            )}
-          </Card>
-        ))}
+              <div className="mt-3 text-xs uppercase tracking-wide text-muted-foreground font-medium group-hover:text-foreground transition-colors duration-300 truncate">{c.label}</div>
+              <div className={`mt-1 text-xl md:text-2xl font-display ${c.valueColor || "text-foreground"}`}>{c.value}</div>
+              {c.subText && (
+                <div className="mt-1 text-[11px] font-medium text-muted-foreground/80 truncate" title={c.subText}>
+                  {c.subText}
+                </div>
+              )}
+            </Card>
+          );
+          return c.to ? (
+            <Link key={c.label} to={c.to} className="block outline-none h-full">
+              {cardEl}
+            </Link>
+          ) : (
+            <div key={c.label}>{cardEl}</div>
+          );
+        })}
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mt-6">
