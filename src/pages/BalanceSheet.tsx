@@ -77,7 +77,10 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const accounts = accSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const vouchers = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        const cashBal = cash.reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+        // Cash in Hand: exclude bank voucher transactions to avoid double-counting with Bank Balances
+        const cashBal = cash
+          .filter((r: any) => !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
+          .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
         const stock = products.reduce((s, r: any) => s + +r.stock_qty * +r.cost_price, 0);
 
         // 1. Calculate Bank Balances

@@ -9,13 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil, CheckCircle2, Receipt } from "lucide-react";
+import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil, CheckCircle2, Receipt, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo } from "@/lib/shop";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
 import { formatNepaliDate } from "@/lib/fiscalYear";
+import { getAccounts, Account, getNextVoucherNo } from "@/lib/accounting";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -170,6 +171,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState(""); const [payNote, setPayNote] = useState("");
   const [payPaymentMode, setPayPaymentMode] = useState<string>("cash");
+  const [bankAccounts, setBankAccounts] = useState<Account[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>("");
   const [busyAdd, setBusyAdd] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
@@ -202,6 +205,14 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
     if (!user) return;
     try {
       getShopInfo().then(setShopInfo);
+      getAccounts(user.uid).then(accs => {
+        const banks = accs.filter(a => a.group === "bank_accounts");
+        setBankAccounts(banks);
+        if (banks.length > 0) {
+          setSelectedBankAccountId(prev => prev || banks[0].id);
+        }
+      }).catch(err => console.error("Error loading bank accounts:", err));
+
       const pQ = query(collection(db, type === "customer" ? "customers" : "suppliers"), where("user_id", "==", user.uid));
       const pSnap = await getDocs(pQ);
       const p = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -774,6 +785,44 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       const isReceived = type === "customer";
       const now = new Date().toISOString();
 
+      let selectedBank: Account | null = null;
+      let vRef: any = null;
+
+      if (payPaymentMode === "bank") {
+        selectedBank = bankAccounts.find(b => b.id === selectedBankAccountId) || (bankAccounts.length > 0 ? bankAccounts[0] : null);
+        if (!selectedBank && bankAccounts.length > 0) {
+          setBusyPayment(false);
+          return toast.error("कृपया बैंक खाता छान्नुहोस् (Please select a bank account)");
+        }
+
+        if (selectedBank && user) {
+          const vType = isReceived ? "receipt" : "payment";
+          const vNo = await getNextVoucherNo(user.uid, vType);
+          vRef = doc(collection(db, "vouchers"));
+          const dateBs = formatNepaliDate(new Date());
+
+          const voucherData = {
+            id: vRef.id,
+            user_id: user.uid,
+            voucher_no: vNo,
+            voucher_type: vType,
+            date: now.slice(0, 10),
+            date_bs: dateBs,
+            amount: amt,
+            debit_account_id: isReceived ? selectedBank.id : selected.id,
+            debit_account_name: isReceived ? selectedBank.name : `${selected.name} (${type === "supplier" ? "सप्लायर" : "ग्राहक"})`,
+            credit_account_id: isReceived ? selected.id : selectedBank.id,
+            credit_account_name: isReceived ? `${selected.name} (${type === "supplier" ? "सप्लायर" : "ग्राहक"})` : selectedBank.name,
+            narration: isReceived
+              ? `Payment received from customer ${selected.name} into ${selectedBank.name}${payNote ? ' · ' + payNote.trim() : ''}`
+              : `Payment made to supplier ${selected.name} from ${selectedBank.name}${payNote ? ' · ' + payNote.trim() : ''}`,
+            reference_no: settlementMode === "specific" ? (unpaidBills.find(b => b.id === selectedBillId)?.bill_no || "") : "",
+            created_at: now
+          };
+          batch.set(vRef, voucherData);
+        }
+      }
+
       if (settlementMode === "specific") {
         const targetBill = unpaidBills.find(b => b.id === selectedBillId);
         if (!targetBill) {
@@ -788,7 +837,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const lRef = doc(collection(db, "ledger_entries"));
         const billLabel = targetBill.bill_no;
         const noteDetail = (payNote ? payNote.trim() + " · " : "") +
-          (isReceived ? `Payment for Bill #${billLabel}` : `Payment for Bill #${billLabel}` + (targetBill.supplier_bill_no ? ` (Supplier Bill: #${targetBill.supplier_bill_no})` : ""));
+          (isReceived ? `Payment for Bill #${billLabel}` : `Payment for Bill #${billLabel}` + (targetBill.supplier_bill_no ? ` (Supplier Bill: #${targetBill.supplier_bill_no})` : "")) +
+          (selectedBank ? ` · via ${selectedBank.name}` : "");
 
         batch.set(lRef, {
           id: lRef.id,
@@ -799,6 +849,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           party_name: selected.name,
           amount: amt,
           payment_mode: payPaymentMode,
+          bank_account_id: selectedBank ? selectedBank.id : null,
+          bank_account_name: selectedBank ? selectedBank.name : null,
           reference_id: targetBill.id,
           bill_no: billLabel,
           is_settlement: true,
@@ -816,6 +868,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           party_name: selected.name,
           amount: amt,
           payment_mode: payPaymentMode,
+          bank_account_id: selectedBank ? selectedBank.id : null,
+          bank_account_name: selectedBank ? selectedBank.name : null,
+          voucher_id: vRef ? vRef.id : null,
           reference_id: targetBill.id,
           note: noteDetail,
           created_at: now
@@ -833,7 +888,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           const lRef = doc(collection(db, "ledger_entries"));
           const billLabel = bill.bill_no;
           const noteDetail = (payNote ? payNote.trim() + " · " : "") +
-            `Settlement for Bill #${billLabel}` + (bill.supplier_bill_no ? ` (Supplier Bill: #${bill.supplier_bill_no})` : "");
+            `Settlement for Bill #${billLabel}` + (bill.supplier_bill_no ? ` (Supplier Bill: #${bill.supplier_bill_no})` : "") +
+            (selectedBank ? ` · via ${selectedBank.name}` : "");
 
           batch.set(lRef, {
             id: lRef.id,
@@ -844,6 +900,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             party_name: selected.name,
             amount: alloc,
             payment_mode: payPaymentMode,
+            bank_account_id: selectedBank ? selectedBank.id : null,
+            bank_account_name: selectedBank ? selectedBank.name : null,
             reference_id: bill.id,
             bill_no: billLabel,
             is_settlement: true,
@@ -865,8 +923,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             party_name: selected.name,
             amount: remaining,
             payment_mode: payPaymentMode,
+            bank_account_id: selectedBank ? selectedBank.id : null,
+            bank_account_name: selectedBank ? selectedBank.name : null,
             is_settlement: true,
-            note: (payNote ? payNote.trim() + " · " : "") + "Advance / On-Account Balance",
+            note: (payNote ? payNote.trim() + " · " : "") + "Advance / On-Account Balance" + (selectedBank ? ` · via ${selectedBank.name}` : ""),
             created_at: now
           });
         }
@@ -881,7 +941,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           party_name: selected.name,
           amount: amt,
           payment_mode: payPaymentMode,
-          note: (payNote ? payNote.trim() + " · " : "") + (isReceived ? `Payment received from ${selected.name} (FIFO Settlement)` : `Payment made to ${selected.name} (FIFO Settlement)`),
+          bank_account_id: selectedBank ? selectedBank.id : null,
+          bank_account_name: selectedBank ? selectedBank.name : null,
+          voucher_id: vRef ? vRef.id : null,
+          note: (payNote ? payNote.trim() + " · " : "") + (isReceived ? `Payment received from ${selected.name} (FIFO Settlement)` : `Payment made to ${selected.name} (FIFO Settlement)`) + (selectedBank ? ` · via ${selectedBank.name}` : ""),
           created_at: now
         });
 
@@ -896,7 +959,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           party_name: selected.name,
           amount: amt,
           payment_mode: payPaymentMode,
-          note: (payNote ? payNote.trim() + " · " : "") + "(On-Account Payment)",
+          bank_account_id: selectedBank ? selectedBank.id : null,
+          bank_account_name: selectedBank ? selectedBank.name : null,
+          note: (payNote ? payNote.trim() + " · " : "") + "(On-Account Payment)" + (selectedBank ? ` · via ${selectedBank.name}` : ""),
           created_at: now
         });
 
@@ -910,7 +975,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           party_name: selected.name,
           amount: amt,
           payment_mode: payPaymentMode,
-          note: (payNote ? payNote.trim() + " · " : "") + `(On-Account Payment · ${selected.name})`,
+          bank_account_id: selectedBank ? selectedBank.id : null,
+          bank_account_name: selectedBank ? selectedBank.name : null,
+          voucher_id: vRef ? vRef.id : null,
+          note: (payNote ? payNote.trim() + " · " : "") + `(On-Account Payment · ${selected.name})` + (selectedBank ? ` · via ${selectedBank.name}` : ""),
           created_at: now
         });
       }
@@ -1244,7 +1312,15 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             </div>
             <div>
               <Label className="text-xs font-semibold">Payment Mode (माध्यम)</Label>
-              <Select value={payPaymentMode} onValueChange={setPayPaymentMode}>
+              <Select
+                value={payPaymentMode}
+                onValueChange={(val) => {
+                  setPayPaymentMode(val);
+                  if (val === "bank" && bankAccounts.length > 0 && !selectedBankAccountId) {
+                    setSelectedBankAccountId(bankAccounts[0].id);
+                  }
+                }}
+              >
                 <SelectTrigger className="bg-background">
                   <SelectValue />
                 </SelectTrigger>
@@ -1257,6 +1333,46 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               </Select>
             </div>
           </div>
+
+          {/* Bank Account Selection Dropdown */}
+          {payPaymentMode === "bank" && (
+            <div className="space-y-1.5 p-3 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                  <Landmark className="h-3.5 w-3.5 text-blue-600" />
+                  Select Bank Account / बैंक खाता छान्नुहोस् *
+                </Label>
+                {bankAccounts.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {bankAccounts.length} bank account{bankAccounts.length > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+              {bankAccounts.length === 0 ? (
+                <div className="text-xs text-amber-700 dark:text-amber-400 py-1">
+                  ⚠️ Accounting मा कुनै पनि बैंक खाता भेटिएन। पहिले <strong>Accounting &gt; Add Account</strong> मा गएर बैंक खाता (जस्तै NIC Asia Bank) बनाउनुहोला।
+                </div>
+              ) : (
+                <Select value={selectedBankAccountId} onValueChange={setSelectedBankAccountId}>
+                  <SelectTrigger className="w-full bg-background border-blue-300 dark:border-blue-800">
+                    <SelectValue placeholder="बैंक खाता रोज्नुहोस्..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56">
+                    {bankAccounts.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        <div className="flex items-center justify-between gap-4 w-full">
+                          <span className="font-semibold text-foreground">{b.name}</span>
+                          {b.account_number && (
+                            <span className="text-[11px] text-muted-foreground font-mono">A/C: {b.account_number}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
 
           <div>
             <Label className="text-xs font-semibold">Remarks / Note (कैफियत)</Label>

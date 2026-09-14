@@ -346,8 +346,10 @@ export default function Accounting() {
 
   // Trial Balance Data Calculation
   const trialBalanceData = useMemo(() => {
-    // 1. Cash in hand
-    const cashBal = cashDocs.reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
+    // 1. Cash in hand (excluding transactions settled directly via bank account vouchers)
+    const cashBal = cashDocs
+      .filter((r: any) => !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
+      .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
 
     // 2. Stock / Inventory
     const stockVal = productDocs.reduce((s, r: any) => s + (+r.stock_qty || 0) * (+r.cost_price || 0), 0);

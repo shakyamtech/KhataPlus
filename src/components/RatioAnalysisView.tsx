@@ -76,9 +76,10 @@ export default function RatioAnalysisView() {
 
         setShopInfo(sInfo);
 
-        // 1. Cash Balance
+        // 1. Cash Balance (excluding transactions settled directly via bank account vouchers)
         const cashBal = cSnap.docs
           .map(d => d.data())
+          .filter((t: any) => !(t.bank_account_id || (t.payment_mode === "bank" && t.voucher_id)))
           .reduce((sum, t: any) => sum + (t.direction === "in" ? Number(t.amount || 0) : -Number(t.amount || 0)), 0);
 
         // 2. Stock Value at Cost
