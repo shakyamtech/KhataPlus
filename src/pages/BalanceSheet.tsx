@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +9,7 @@ import { fmt } from "@/lib/format";
 import { format } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Landmark, Scale, BarChart3 } from "lucide-react";
+import { Printer, Landmark } from "lucide-react";
 import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
 
 const Row = ({ label, value, bold }: { label: string; value: number; bold?: boolean }) => (
@@ -27,7 +26,6 @@ interface BalanceSheetProps {
 
 const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {}) => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [d, setD] = useState({
     cash: 0,
@@ -442,14 +440,6 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Button onClick={() => onNavigateToTrial ? onNavigateToTrial() : navigate("/reports?tab=trial")} variant="outline" size="sm" className="gap-2 shrink-0">
-            <Scale className="h-4 w-4 text-emerald-600" />
-            सन्तुलन परीक्षण (Trial Balance)
-          </Button>
-          <Button onClick={() => navigate("/reports?tab=ratios")} variant="outline" size="sm" className="gap-2 shrink-0">
-            <BarChart3 className="h-4 w-4 text-purple-600" />
-            अनुपात विश्लेषण (Ratio Analysis)
-          </Button>
           <Button onClick={handlePrintBalanceSheet} variant="outline" size="sm" className="gap-2 shrink-0">
             <Printer className="h-4 w-4 text-primary" />
             प्रिन्ट / PDF
