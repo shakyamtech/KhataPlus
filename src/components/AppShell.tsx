@@ -1725,11 +1725,11 @@ export const AppShell = () => {
                             </div>
 
                             <div className="max-h-60 overflow-y-auto pr-2 space-y-3.5 text-xs divide-y divide-border/40">
-                                {/* Version 2.1.1 */}
+                                {/* Version 2.2.0 */}
                                 <div className="space-y-2 pt-1">
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-foreground text-sm">v2.1.1</span>
+                                            <span className="font-bold text-foreground text-sm">v2.2.0</span>
                                             <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                                 <span>{lang === "NEP" ? "हालको" : "Latest"}</span>
                                                 <span className="relative flex h-2 w-2 shrink-0">
@@ -1738,6 +1738,21 @@ export const AppShell = () => {
                                                 </span>
                                             </span>
                                         </div>
+                                        <span className="text-[10px] text-muted-foreground font-medium shrink-0">14 Sep 2026</span>
+                                    </div>
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1.5 pl-3 list-disc list-outside">
+                                        <li>{lang === "NEP" ? "D-01, D-02, D-03 सीमा सचेतना सहित स्वचालित भ्याट रिपोर्ट" : "Automated VAT Reports with D-01, D-02 & D-03 Threshold Alerts"}</li>
+                                        <li>{lang === "NEP" ? "Tally-शैलीको अनुपात विश्लेषण र स्टक सारांश मूल्यांकन रिपोर्ट" : "Tally-Style Ratio Analysis & Stock Summary Reports"}</li>
+                                        <li>{lang === "NEP" ? "डबल-एन्ट्री भाउचर प्रविष्टि र एकाउन्टिङ अडिट प्रणाली" : "Double-Entry Vouchers & Accounting Audit Trail"}</li>
+                                        <li>{lang === "NEP" ? "पीओएस कार्टमा वि.सं./ई.सं. दुवै मिति बिलिङ र द्रुत चेकआउट" : "Dual BS/AD Date Billing & Quick POS Cart"}</li>
+                                        <li>{lang === "NEP" ? "सम्पूर्ण प्रतिवेदन, खाताहरू र बारकोड स्टुडियो १००% मोबाइल रेस्पोन्सिभ" : "100% Mobile Responsive Reports & Barcode Studio"}</li>
+                                    </ul>
+                                </div>
+
+                                {/* Version 2.1.1 */}
+                                <div className="space-y-2 pt-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="font-bold text-foreground text-sm">v2.1.1</span>
                                         <span className="text-[10px] text-muted-foreground font-medium shrink-0">07 Sep 2026</span>
                                     </div>
                                     <ul className="text-[11.5px] text-muted-foreground space-y-1.5 pl-3 list-disc list-outside">
