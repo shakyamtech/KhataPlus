@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown, Calendar as CalendarIcon, ArrowDown, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
@@ -93,6 +93,25 @@ const POS = () => {
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
   const [busyCustomer, setBusyCustomer] = useState(false);
   const [tempAmount, setTempAmount] = useState<{ id: string; val: string } | null>(null);
+  const cartSectionRef = useRef<HTMLDivElement>(null);
+  const productsSectionRef = useRef<HTMLDivElement>(null);
+
+  const scrollToCartMobile = () => {
+    // Only scroll on mobile/tablet screens (< 1024px) where Cart is below the product grid
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setTimeout(() => {
+        cartSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60);
+    }
+  };
+
+  const scrollToProductsMobile = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setTimeout(() => {
+        productsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 40);
+    }
+  };
 
   const formatDateSafe = (dateStr?: string | null, fmtStr: string = "dd MMM yyyy") => {
     if (!dateStr) return "";
@@ -363,6 +382,7 @@ const POS = () => {
       }];
     });
     
+    scrollToCartMobile();
     return true;
   };
 
@@ -889,7 +909,7 @@ const POS = () => {
       <PageHeader title="Point of Sale (POS)" subtitle="Fast billing, instant credit ledger sync & stock management" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
+        <div ref={productsSectionRef} className="lg:col-span-2 space-y-4 scroll-mt-20">
           <Input 
             placeholder="Search item or barcode... (Press Enter to add)" 
             value={search} 
@@ -951,10 +971,21 @@ const POS = () => {
           </div>
         </div>
 
-        <Card className="p-4 shadow-elegant border-0 lg:sticky lg:top-4 h-fit">
+        <Card ref={cartSectionRef} className="p-4 shadow-elegant border-0 lg:sticky lg:top-4 h-fit scroll-mt-20">
           <div className="flex items-center gap-2 mb-3">
             <ShoppingCart className="h-5 w-5 text-primary" />
             <div className="font-display text-xl">Cart</div>
+
+            {/* Mobile Scroll Back Button */}
+            <button
+              type="button"
+              onClick={scrollToProductsMobile}
+              className="lg:hidden flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded-md active:scale-95 transition-all ml-1"
+              title="माथि सामान छान्ने ठाउँमा फर्कनुहोस्"
+            >
+              <ArrowUp className="h-3 w-3" />
+              <span>+ Add More</span>
+            </button>
 
             <div className="ml-auto flex items-center gap-1.5">
               {/* Compact Date Picker Popover */}
@@ -1512,6 +1543,29 @@ const POS = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Mobile Floating Cart Indicator / Jump to Cart Button */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-16 left-4 right-4 z-40 animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <button
+            type="button"
+            onClick={scrollToCartMobile}
+            className="w-full bg-primary text-primary-foreground shadow-2xl rounded-xl py-3 px-4 flex items-center justify-between font-semibold active:scale-[0.98] transition-transform border border-primary-foreground/20 backdrop-blur"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-accent"></span>
+              </span>
+              <ShoppingCart className="h-4 w-4" />
+              <span className="text-sm">{cart.length} item(s) in Cart</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm font-bold">
+              <span>{fmt(total)}</span>
+              <ArrowDown className="h-4 w-4 animate-bounce" />
+            </div>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
