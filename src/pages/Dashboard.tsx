@@ -104,7 +104,7 @@ const Dashboard = () => {
         .filter((r: any) => getRowPaymentMode(r) === "cash")
         .reduce((s, r: any) => s + (r.direction === "in" ? Number(r.amount) : -Number(r.amount)), 0);
       const digitalBankBalance = Math.round((cashBalance - cashInHand) * 100) / 100;
-      const stockValue = (products ?? []).reduce((s, r: any) => s + Number(r.stock_qty) * Number(r.cost_price), 0);
+      const stockValue = (products ?? []).reduce((s, r: any) => s + (Number(r.stock_qty) > 0 ? Number(r.stock_qty) * Number(r.cost_price || 0) : 0), 0);
       const lowStock = (products ?? []).filter((r: any) => Number(r.stock_qty) <= Number(r.low_stock_threshold)).length;
       
       const partyBalances: Record<string, number> = {};
