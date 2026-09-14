@@ -719,15 +719,15 @@ const Cashbook = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-8 max-w-5xl mx-auto space-y-4 pb-24">
       <PageHeader 
         title={lang === "NEP" ? "रोकड तथा बैंक (Cash & Bank)" : "Cash & Bank"} 
         subtitle={lang === "NEP" ? "नगद, डिजिटल वालेट तथा बैंक कारोबार" : "All cash, wallets & bank in/out"} 
         actions={
-        <div className="flex gap-2">
-        <Button variant="outline" onClick={printBook}><Printer className="h-4 w-4 mr-1" />Print</Button>
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <Button variant="outline" size="sm" onClick={printBook} className="h-9 px-2.5 sm:px-3 text-xs"><Printer className="h-4 w-4 mr-1" />Print</Button>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-          <DialogTrigger asChild><Button onClick={resetForm} className="bg-gradient-primary text-primary-foreground"><Plus className="h-4 w-4 mr-1" />New Entry</Button></DialogTrigger>
+          <DialogTrigger asChild><Button onClick={resetForm} size="sm" className="h-9 px-2.5 sm:px-3 text-xs bg-gradient-primary text-primary-foreground"><Plus className="h-4 w-4 mr-1" />New Entry</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>{editId ? (lang === "NEP" ? "कारोबार सम्पादन" : "Edit Entry") : (lang === "NEP" ? "नयाँ कारोबार (Cash & Bank Entry)" : "New Cash & Bank Entry")}</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -867,21 +867,21 @@ const Cashbook = () => {
         </div>
       } />
 
-      <div className="grid grid-cols-3 gap-3 mb-3">
-        <Card className="p-4 shadow-card border-0">
-          <div className="text-xs text-muted-foreground uppercase font-semibold">{activeSummary.labelIn}</div>
-          <div className="font-display text-xl text-success mt-1">{fmt(activeSummary.totalIn)}</div>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
+        <Card className="p-2.5 sm:p-4 shadow-card border-0">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold tracking-tight truncate">{activeSummary.labelIn}</div>
+          <div className="font-display text-xs sm:text-lg md:text-xl text-success mt-1 font-bold truncate" title={fmt(activeSummary.totalIn)}>{fmt(activeSummary.totalIn)}</div>
         </Card>
-        <Card className="p-4 shadow-card border-0">
-          <div className="text-xs text-muted-foreground uppercase font-semibold">{activeSummary.labelOut}</div>
-          <div className="font-display text-xl text-destructive mt-1">{fmt(activeSummary.totalOut)}</div>
+        <Card className="p-2.5 sm:p-4 shadow-card border-0">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold tracking-tight truncate">{activeSummary.labelOut}</div>
+          <div className="font-display text-xs sm:text-lg md:text-xl text-destructive mt-1 font-bold truncate" title={fmt(activeSummary.totalOut)}>{fmt(activeSummary.totalOut)}</div>
         </Card>
-        <Card className={`p-4 shadow-elegant border-0 ${activeSummary.balance < 0 ? "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]" : "bg-gradient-primary text-primary-foreground"}`}>
-          <div className="text-xs uppercase opacity-90 flex items-center gap-1 font-semibold">
-            <Wallet className="h-3.5 w-3.5" />
-            <span>{activeSummary.labelBal}</span>
+        <Card className={`p-2.5 sm:p-4 shadow-elegant border-0 ${activeSummary.balance < 0 ? "bg-destructive text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.39)]" : "bg-gradient-primary text-primary-foreground"}`}>
+          <div className="text-[10px] sm:text-xs uppercase opacity-90 flex items-center gap-1 font-semibold tracking-tight truncate">
+            <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
+            <span className="truncate">{activeSummary.labelBal}</span>
           </div>
-          <div className="font-display text-xl mt-1">{fmt(activeSummary.balance)}</div>
+          <div className="font-display text-xs sm:text-lg md:text-xl mt-1 font-bold truncate" title={fmt(activeSummary.balance)}>{fmt(activeSummary.balance)}</div>
         </Card>
       </div>
 
@@ -1227,42 +1227,47 @@ const Cashbook = () => {
                 ) : null}
               </div>
             </div>
-            <div className="text-right shrink-0">
-              <div className={`font-medium ${r.direction === "in" ? "text-success" : "text-destructive"}`}>
-                {r.direction === "in" ? "+" : "−"}{fmt(r.amount)}
-              </div>
-              {runningBalances.has(r.id) && (
-                <div className="text-[11px] text-muted-foreground font-normal mt-0.5">
-                  Bal: {fmt(runningBalances.get(r.id) || 0)}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="text-right">
+                <div className={`font-semibold text-xs sm:text-sm ${r.direction === "in" ? "text-success" : "text-destructive"}`}>
+                  {r.direction === "in" ? "+" : "−"}{fmt(r.amount)}
                 </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {r.reference_id && <span className="text-[10px] text-muted-foreground italic px-1">auto</span>}
-              <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete entry?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {(r.category === "sale" || r.category === "sales")
-                          ? "Are you sure? This will delete the Sale, return the sold items to Stock, remove the customer's ledger entry, and deduct the cash balance."
-                          : (r.category === "purchase" || r.category === "purchases")
-                            ? "Are you sure? This will delete the Purchase, remove the purchased items from Stock, remove the supplier's ledger entry, and restore the cash balance."
-                            : "This cash entry will be permanently removed. The cash balance will be updated accordingly."
-                        }
-                        <div className="mt-2 font-semibold text-destructive">Warning: This action cannot be undone!</div>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => remove(r)}>Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {runningBalances.has(r.id) && (
+                  <div className="text-[10px] sm:text-[11px] text-muted-foreground font-normal mt-0.5 font-mono">
+                    Bal: {fmt(runningBalances.get(r.id) || 0)}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                {r.reference_id ? (
+                  <span className="text-[10px] text-muted-foreground italic px-1 select-none">auto</span>
+                ) : (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10 active:scale-95">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete entry?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {(r.category === "sale" || r.category === "sales")
+                            ? "Are you sure? This will delete the Sale, return the sold items to Stock, remove the customer's ledger entry, and deduct the cash balance."
+                            : (r.category === "purchase" || r.category === "purchases")
+                              ? "Are you sure? This will delete the Purchase, remove the purchased items from Stock, remove the supplier's ledger entry, and restore the cash balance."
+                              : "This cash entry will be permanently removed. The cash balance will be updated accordingly."
+                          }
+                          <div className="mt-2 font-semibold text-destructive">Warning: This action cannot be undone!</div>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => remove(r)}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             </div>
             </div>
