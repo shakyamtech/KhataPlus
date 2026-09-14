@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { fmt } from "@/lib/format";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { format, startOfDay, subDays } from "date-fns";
+import { format, startOfDay, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, Scale, ChevronLeft, ChevronRight, BookOpen, Search, AlertCircle, Info, Sparkles, X, Calendar, Landmark, ChevronDown, FileSpreadsheet, BarChart3, Package } from "lucide-react";
@@ -1350,29 +1350,132 @@ const Reports = () => {
   };
 
   const chartData = useMemo(() => {
-    const days = Number(range);
-    const map = new Map<string, { day: string; sales: number; profit: number }>();
-    for (let i = days - 1; i >= 0; i--) {
-      const d = format(subDays(new Date(), i), "dd MMM");
-      map.set(d, { day: d, sales: 0, profit: 0 });
+    if (range === "7") {
+      // 7 Days: Daily breakdown (7 slots)
+      const map = new Map<string, { day: string; sales: number; profit: number; periodLabel: string }>();
+      for (let i = 6; i >= 0; i--) {
+        const d = subDays(new Date(), i);
+        const dayKey = format(d, "dd MMM");
+        map.set(dayKey, {
+          day: dayKey,
+          sales: 0,
+          profit: 0,
+          periodLabel: format(d, "dd MMMM yyyy")
+        });
+      }
+      sales.forEach((s) => {
+        const d = format(new Date(s.created_at), "dd MMM");
+        const ex = map.get(d);
+        if (!ex) return;
+        ex.sales += Number(s.total || 0);
+        ex.profit += (Number(s.total || 0) - Number(s.vat_amount || 0)) - Number(s.cost_total || 0);
+      });
+      return Array.from(map.values());
     }
-    sales.forEach((s) => {
-      const d = format(new Date(s.created_at), "dd MMM");
-      const ex = map.get(d); if (!ex) return;
-      ex.sales += Number(s.total); ex.profit += (Number(s.total || 0) - Number(s.vat_amount || 0)) - Number(s.cost_total || 0);
-    });
-    const all = Array.from(map.values());
 
-    // Option 1: Trim leading empty days before the first transaction date
-    const firstActiveIdx = all.findIndex(d => d.sales > 0 || d.profit !== 0);
-    if (firstActiveIdx > 0) {
-      return all.slice(firstActiveIdx);
+    if (range === "30") {
+      // 30 Days: Weekly breakdown (4 consecutive weeks)
+      const now = new Date();
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const w4Start = startOfDay(subDays(now, 6));   // Current week (last 7 days)
+      const w3Start = startOfDay(subDays(now, 13));  // 2nd week
+      const w2Start = startOfDay(subDays(now, 20));  // 3rd week
+      const w1Start = startOfDay(subDays(now, 29));  // 4th week (oldest)
+
+      const weeks = [
+        {
+          label: `${format(w1Start, "dd")}-${format(subDays(now, 21), "dd MMM")}`,
+          periodLabel: `${format(w1Start, "dd MMM")} - ${format(subDays(now, 21), "dd MMM yyyy")}`,
+          startMs: w1Start.getTime(),
+          endMs: w2Start.getTime(),
+          sales: 0,
+          profit: 0,
+        },
+        {
+          label: `${format(w2Start, "dd")}-${format(subDays(now, 14), "dd MMM")}`,
+          periodLabel: `${format(w2Start, "dd MMM")} - ${format(subDays(now, 14), "dd MMM yyyy")}`,
+          startMs: w2Start.getTime(),
+          endMs: w3Start.getTime(),
+          sales: 0,
+          profit: 0,
+        },
+        {
+          label: `${format(w3Start, "dd")}-${format(subDays(now, 7), "dd MMM")}`,
+          periodLabel: `${format(w3Start, "dd MMM")} - ${format(subDays(now, 7), "dd MMM yyyy")}`,
+          startMs: w3Start.getTime(),
+          endMs: w4Start.getTime(),
+          sales: 0,
+          profit: 0,
+        },
+        {
+          label: `${format(w4Start, "dd")}-${format(now, "dd MMM")}`,
+          periodLabel: `${format(w4Start, "dd MMM")} - ${format(now, "dd MMM yyyy")} (यो हप्ता)`,
+          startMs: w4Start.getTime(),
+          endMs: endOfToday.getTime(),
+          sales: 0,
+          profit: 0,
+        },
+      ];
+
+      sales.forEach((s) => {
+        const t = new Date(s.created_at).getTime();
+        const saleAmt = Number(s.total || 0);
+        const profitAmt = (Number(s.total || 0) - Number(s.vat_amount || 0)) - Number(s.cost_total || 0);
+        for (const w of weeks) {
+          if (t >= w.startMs && t <= w.endMs) {
+            w.sales += saleAmt;
+            w.profit += profitAmt;
+            break;
+          }
+        }
+      });
+
+      return weeks.map(w => ({
+        day: w.label,
+        sales: w.sales,
+        profit: w.profit,
+        periodLabel: w.periodLabel,
+      }));
     }
-    // If no transactions in 30d/90d period, show the last 7 days to avoid a giant empty zero-grid
-    if (firstActiveIdx === -1 && days > 7) {
-      return all.slice(-7);
-    }
-    return all;
+
+    // range === "90": Monthly breakdown (3 calendar months)
+    const now = new Date();
+    const months = [
+      { date: subMonths(now, 2), sales: 0, profit: 0 },
+      { date: subMonths(now, 1), sales: 0, profit: 0 },
+      { date: now, sales: 0, profit: 0 },
+    ].map(m => {
+      const start = startOfMonth(m.date);
+      const end = endOfMonth(m.date);
+      return {
+        label: format(m.date, "MMMM yyyy"),
+        shortLabel: format(m.date, "MMM yyyy"),
+        startMs: start.getTime(),
+        endMs: end.getTime(),
+        sales: 0,
+        profit: 0,
+      };
+    });
+
+    sales.forEach((s) => {
+      const t = new Date(s.created_at).getTime();
+      const saleAmt = Number(s.total || 0);
+      const profitAmt = (Number(s.total || 0) - Number(s.vat_amount || 0)) - Number(s.cost_total || 0);
+      for (const m of months) {
+        if (t >= m.startMs && t <= m.endMs) {
+          m.sales += saleAmt;
+          m.profit += profitAmt;
+          break;
+        }
+      }
+    });
+
+    return months.map(m => ({
+      day: m.shortLabel,
+      sales: m.sales,
+      profit: m.profit,
+      periodLabel: m.label,
+    }));
   }, [sales, range]);
 
   const handlePrintVatReport = () => {
@@ -1633,7 +1736,11 @@ const Reports = () => {
               <Landmark className="h-3.5 w-3.5 text-primary" />
               चालु आर्थिक वर्ष: <strong className="text-foreground">{currentFY.labelNp} ({currentFY.labelEn})</strong>
             </span>
-            <span className="text-[11px] sm:text-xs">विगत {range} दिनको कारोबार विवरण</span>
+            <span className="text-[11px] sm:text-xs">
+              {range === "7" && "विगत ७ दिनको दैनिक कारोबार विवरण"}
+              {range === "30" && "विगत ३० दिनको साप्ताहिक कारोबार विवरण"}
+              {range === "90" && "विगत ९० दिनको मासिक कारोबार विवरण"}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
@@ -1664,16 +1771,36 @@ const Reports = () => {
           </div>
 
           <Card className="p-3.5 sm:p-4 shadow-card border-0">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-display text-base sm:text-lg font-bold text-foreground">Daily Sales & Profit</div>
-              {chartData.length > 7 && (
-                <span className="text-[10px] sm:hidden text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full border border-border/40 font-medium">
-                  दायाँ स्वाइप 👉
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="font-display text-base sm:text-lg font-bold text-foreground">
+                  {range === "7"
+                    ? "Daily Sales & Profit"
+                    : range === "30"
+                      ? "Weekly Sales & Profit"
+                      : "Monthly Sales & Profit"}
+                </div>
+                <span className="text-[10.5px] font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                  {range === "7"
+                    ? "दैनिक (७ दिन)"
+                    : range === "30"
+                      ? "साप्ताहिक (४ हप्ता)"
+                      : "मासिक (३ महिना)"}
                 </span>
-              )}
+              </div>
+              <div className="text-[11px] text-muted-foreground flex items-center gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-xs bg-primary inline-block" />
+                  बिक्री (Sales)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-xs bg-accent inline-block" />
+                  नाफा (Profit)
+                </span>
+              </div>
             </div>
             <div className="overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
-              <div className={`h-64 sm:h-72 w-full ${chartData.length <= 7 ? "min-w-0" : chartData.length <= 14 ? "min-w-[360px] sm:min-w-0" : "min-w-[480px] sm:min-w-0"}`}>
+              <div className="h-64 sm:h-72 w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -1683,7 +1810,7 @@ const Reports = () => {
                       fontSize={11}
                       tickLine={false}
                       axisLine={{ stroke: "hsl(var(--border))" }}
-                      interval={chartData.length <= 10 ? 0 : "preserveStartEnd"}
+                      interval={0}
                     />
                     <YAxis
                       stroke="hsl(var(--muted-foreground))"
@@ -1693,6 +1820,14 @@ const Reports = () => {
                       tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
                     />
                     <Tooltip
+                      formatter={(value: any, name: string) => [
+                        `Rs. ${Number(value || 0).toLocaleString("en-IN")}`,
+                        name === "sales" ? "बिक्री (Sales)" : "नाफा (Profit)"
+                      ]}
+                      labelFormatter={(label: any, payload: any) => {
+                        const item = payload?.[0]?.payload;
+                        return item?.periodLabel || label;
+                      }}
                       contentStyle={{
                         background: "hsl(var(--card))",
                         border: "1px solid hsl(var(--border))",
@@ -1703,8 +1838,20 @@ const Reports = () => {
                       wrapperStyle={{ zIndex: 50 }}
                       cursor={{ fill: "hsl(var(--muted)/0.4)" }}
                     />
-                    <Bar dataKey="sales" name="Sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={chartData.length <= 7 ? 36 : chartData.length <= 14 ? 28 : 22} />
-                    <Bar dataKey="profit" name="Profit" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={chartData.length <= 7 ? 36 : chartData.length <= 14 ? 28 : 22} />
+                    <Bar
+                      dataKey="sales"
+                      name="sales"
+                      fill="hsl(var(--primary))"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={range === "90" ? 48 : range === "30" ? 40 : 34}
+                    />
+                    <Bar
+                      dataKey="profit"
+                      name="profit"
+                      fill="hsl(var(--accent))"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={range === "90" ? 48 : range === "30" ? 40 : 34}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
