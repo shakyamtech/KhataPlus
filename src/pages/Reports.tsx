@@ -1118,6 +1118,14 @@ const Reports = () => {
     `).join("");
 
     const body = `
+      <style>
+        @media print {
+          @page { margin: 18mm 14mm; }
+          @page :first { margin-top: 10mm; }
+          thead { display: table-header-group; }
+          tfoot { display: table-footer-group; }
+        }
+      </style>
       <div class="a4-container" style="background:#ffffff; color:#000000; padding:24px 28px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
         
         <!-- Header -->
@@ -1190,15 +1198,12 @@ const Reports = () => {
             </thead>
             <tbody>
               ${purchaseRows || '<tr><td colspan="8" style="border:1px solid #111; padding:12px; text-align:center; color:#666;">यस महिनामा कुनै खरिद भएको छैन।</td></tr>'}
-            </tbody>
-            ${regMonthlyTotals.purchasesList.length > 0 ? `
-            <tfoot>
+              ${regMonthlyTotals.purchasesList.length > 0 ? `
               <tr style="background:#f3f4f6; font-weight:bold;">
                 <td colspan="7" style="border:1px solid #111; padding:5px 6px; text-align:right;">कुल खरिद जम्मा (Total Purchases):</td>
                 <td style="border:1px solid #111; padding:5px 6px; text-align:right;">${regMonthlyTotals.totalPurchasesAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>
-            </tfoot>
-            ` : ''}
+              </tr>` : ''}
+            </tbody>
           </table>
         </div>
 
@@ -1222,15 +1227,12 @@ const Reports = () => {
             </thead>
             <tbody>
               ${salesRows || '<tr><td colspan="7" style="border:1px solid #111; padding:12px; text-align:center; color:#666;">यस महिनामा कुनै बिक्री भएको छैन।</td></tr>'}
-            </tbody>
-            ${regMonthlyTotals.salesList.length > 0 ? `
-            <tfoot>
+              ${regMonthlyTotals.salesList.length > 0 ? `
               <tr style="background:#f3f4f6; font-weight:bold;">
                 <td colspan="6" style="border:1px solid #111; padding:5px 6px; text-align:right;">कुल बिक्री जम्मा (Total Sales):</td>
                 <td style="border:1px solid #111; padding:5px 6px; text-align:right;">${regMonthlyTotals.totalSalesAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>
-            </tfoot>
-            ` : ''}
+              </tr>` : ''}
+            </tbody>
           </table>
         </div>
 
