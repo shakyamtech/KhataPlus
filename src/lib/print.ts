@@ -316,19 +316,19 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       display: table-header-group;
     }
     tfoot {
-      display: table-row-group;
+      display: table-footer-group;
     }
 
     @media print {
       body {
-        padding: 0;
+        padding: 8mm 12mm;
         background: #ffffff;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
       .a4-container {
         box-shadow: none;
-        padding: 0 !important;
+        padding: 0;
         min-height: auto;
         max-width: 100%;
         width: 100%;
@@ -336,7 +336,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       }
       @page {
         size: A4 portrait;
-        margin: 0.5in;
+        margin: 0;
       }
     }
     ` : `

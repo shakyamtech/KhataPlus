@@ -1118,7 +1118,6 @@ const Reports = () => {
     `).join("");
 
     const body = `
-
       <div class="a4-container" style="background:#ffffff; color:#000000; padding:24px 28px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
         
         <!-- Header -->
@@ -1191,12 +1190,15 @@ const Reports = () => {
             </thead>
             <tbody>
               ${purchaseRows || '<tr><td colspan="8" style="border:1px solid #111; padding:12px; text-align:center; color:#666;">यस महिनामा कुनै खरिद भएको छैन।</td></tr>'}
-              ${regMonthlyTotals.purchasesList.length > 0 ? `
+            </tbody>
+            ${regMonthlyTotals.purchasesList.length > 0 ? `
+            <tfoot>
               <tr style="background:#f3f4f6; font-weight:bold;">
                 <td colspan="7" style="border:1px solid #111; padding:5px 6px; text-align:right;">कुल खरिद जम्मा (Total Purchases):</td>
                 <td style="border:1px solid #111; padding:5px 6px; text-align:right;">${regMonthlyTotals.totalPurchasesAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>` : ''}
-            </tbody>
+              </tr>
+            </tfoot>
+            ` : ''}
           </table>
         </div>
 
@@ -1220,12 +1222,15 @@ const Reports = () => {
             </thead>
             <tbody>
               ${salesRows || '<tr><td colspan="7" style="border:1px solid #111; padding:12px; text-align:center; color:#666;">यस महिनामा कुनै बिक्री भएको छैन।</td></tr>'}
-              ${regMonthlyTotals.salesList.length > 0 ? `
+            </tbody>
+            ${regMonthlyTotals.salesList.length > 0 ? `
+            <tfoot>
               <tr style="background:#f3f4f6; font-weight:bold;">
                 <td colspan="6" style="border:1px solid #111; padding:5px 6px; text-align:right;">कुल बिक्री जम्मा (Total Sales):</td>
                 <td style="border:1px solid #111; padding:5px 6px; text-align:right;">${regMonthlyTotals.totalSalesAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>` : ''}
-            </tbody>
+              </tr>
+            </tfoot>
+            ` : ''}
           </table>
         </div>
 
@@ -1601,7 +1606,6 @@ const Reports = () => {
     `).join("");
 
     const body = `
-
       <div class="a4-container" style="background:#ffffff; color:#000000; padding:24px 28px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
         
         <!-- Header -->
@@ -1693,14 +1697,15 @@ const Reports = () => {
             </thead>
             <tbody>
               ${purchaseRows || `<tr><td colspan="8" style="border:1px solid #111; padding:8px; text-align:center; color:#666;">यस महिना कुनै खरिद बिल फेला परेन।</td></tr>`}
-              ${vatMonthlyTotals.purchasesList.length > 0 ? `
+            </tbody>
+            <tfoot>
               <tr style="background:#f3f4f6; font-weight:bold; border-top:1.5px solid #111;">
                 <td colspan="5" style="border:1px solid #111; padding:5px; text-align:right;">कुल जम्मा (Total Purchases):</td>
                 <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatMonthlyTotals.taxablePurchases.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatMonthlyTotals.inputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${(vatMonthlyTotals.totalPurchasesWithVat + vatMonthlyTotals.nonTaxablePurchases).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>` : ''}
-            </tbody>
+              </tr>
+            </tfoot>
           </table>
         </div>
 
@@ -1725,14 +1730,15 @@ const Reports = () => {
             </thead>
             <tbody>
               ${salesRows || `<tr><td colspan="8" style="border:1px solid #111; padding:8px; text-align:center; color:#666;">यस महिना कुनै बिक्री बिल फेला परेन।</td></tr>`}
-              ${vatMonthlyTotals.salesList.length > 0 ? `
+            </tbody>
+            <tfoot>
               <tr style="background:#f3f4f6; font-weight:bold; border-top:1.5px solid #111;">
                 <td colspan="5" style="border:1px solid #111; padding:5px; text-align:right;">कुल जम्मा (Total Sales):</td>
                 <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatMonthlyTotals.taxableSales.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${vatMonthlyTotals.outputVat.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td style="border:1px solid #111; padding:5px; text-align:right;">Rs. ${(vatMonthlyTotals.totalSalesWithVat + vatMonthlyTotals.nonTaxableSales).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>` : ''}
-            </tbody>
+              </tr>
+            </tfoot>
           </table>
         </div>
 
