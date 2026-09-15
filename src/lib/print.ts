@@ -328,7 +328,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       }
       .a4-container {
         box-shadow: none;
-        padding: 0;
+        padding: 0 !important;
         min-height: auto;
         max-width: 100%;
         width: 100%;
@@ -336,10 +336,7 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       }
       @page {
         size: A4 portrait;
-        margin: 16mm 8mm 10mm 8mm;
-      }
-      @page :first {
-        margin-top: 5mm;
+        margin: 0.5in;
       }
     }
     ` : `

@@ -1118,14 +1118,7 @@ const Reports = () => {
     `).join("");
 
     const body = `
-      <style>
-        @media print {
-          @page { margin: 16mm 8mm 10mm 8mm; }
-          @page :first { margin-top: 5mm; }
-          .a4-container { padding: 4px 8px !important; }
-          thead { display: table-header-group; }
-        }
-      </style>
+
       <div class="a4-container" style="background:#ffffff; color:#000000; padding:24px 28px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
         
         <!-- Header -->
@@ -1608,16 +1601,7 @@ const Reports = () => {
     `).join("");
 
     const body = `
-      <style>
-        @media print {
-          @page { margin: 16mm 8mm 10mm 8mm; }
-          @page :first { margin-top: 5mm; }
-          .a4-container { padding: 4px 8px !important; }
-          thead { display: table-header-group; }
-          tr { page-break-inside: avoid; break-inside: avoid; }
-          .signature-box { page-break-inside: avoid; break-inside: avoid; }
-        }
-      </style>
+
       <div class="a4-container" style="background:#ffffff; color:#000000; padding:24px 28px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
         
         <!-- Header -->
