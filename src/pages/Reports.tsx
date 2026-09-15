@@ -1120,8 +1120,8 @@ const Reports = () => {
     const body = `
       <style>
         @media print {
-          @page { margin: 10mm 8mm; }
-          @page :first { margin-top: 6mm; }
+          @page { margin: 16mm 8mm 10mm 8mm; }
+          @page :first { margin-top: 5mm; }
           .a4-container { padding: 4px 8px !important; }
           thead { display: table-header-group; }
         }
@@ -1610,8 +1610,8 @@ const Reports = () => {
     const body = `
       <style>
         @media print {
-          @page { margin: 10mm 8mm; }
-          @page :first { margin-top: 6mm; }
+          @page { margin: 16mm 8mm 10mm 8mm; }
+          @page :first { margin-top: 5mm; }
           .a4-container { padding: 4px 8px !important; }
           thead { display: table-header-group; }
           tr { page-break-inside: avoid; break-inside: avoid; }
