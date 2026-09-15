@@ -75,6 +75,8 @@ export default function Accounting() {
   const [ledgerDocs, setLedgerDocs] = useState<any[]>([]);
   const [productDocs, setProductDocs] = useState<any[]>([]);
   const [stockAdjDocs, setStockAdjDocs] = useState<any[]>([]);
+  // Purchases for Day Book
+  const [purchasesDocs, setPurchasesDocs] = useState<any[]>([]);
 
   // Sync tab with URL search params
   useEffect(() => {
@@ -118,7 +120,7 @@ export default function Accounting() {
     if (!user) return;
     setLoading(true);
     try {
-      const [accs, vSnap, sInfo, cSnap, sSnap, lSnap, pSnap, wSnap] = await Promise.all([
+      const [accs, vSnap, sInfo, cSnap, sSnap, lSnap, pSnap, wSnap, purSnap] = await Promise.all([
         getAccounts(user.uid),
         getDocs(query(collection(db, "vouchers"), where("user_id", "==", user.uid))),
         getShopInfo(),
@@ -126,7 +128,8 @@ export default function Accounting() {
         getDocs(query(collection(db, "sales"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "ledger_entries"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "products"), where("user_id", "==", user.uid))),
-        getDocs(query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid)))
+        getDocs(query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "purchases"), where("user_id", "==", user.uid)))
       ]);
       setAccounts(accs);
       const vList = vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher));
@@ -139,6 +142,7 @@ export default function Accounting() {
       setLedgerDocs(lSnap.docs.map(d => d.data()));
       setProductDocs(pSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setStockAdjDocs(wSnap.docs.map(d => d.data()));
+      setPurchasesDocs(purSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to load accounting data");
@@ -309,21 +313,128 @@ export default function Accounting() {
     }
   };
 
-  // Filtered Vouchers for Daybook
-  const filteredVouchers = useMemo(() => {
-    return vouchers.filter(v => {
-      if (filterType !== "all" && v.voucher_type !== filterType) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchNo = v.voucher_no.toLowerCase().includes(q);
-        const matchNarr = v.narration?.toLowerCase().includes(q);
-        const matchDr = v.debit_account_name.toLowerCase().includes(q);
-        const matchCr = v.credit_account_name.toLowerCase().includes(q);
-        if (!matchNo && !matchNarr && !matchDr && !matchCr) return false;
-      }
-      return true;
-    });
-  }, [vouchers, filterType, searchQuery]);
+  // Unified Day Book entries: merges Vouchers + Sales (POS) + Purchases (read-only display)
+  type DayBookEntry = {
+    id: string;
+    entryType: "voucher" | "sale" | "purchase";
+    entryNo: string;
+    date: string;
+    dateBs?: string;
+    amount: number;
+    debitLabel: string;
+    creditLabel: string;
+    narration: string;
+    paymentMode?: string;
+    originalVoucher?: Voucher;
+    originalSale?: any;
+    originalPurchase?: any;
+  };
+
+  const filteredDayBookEntries = useMemo((): DayBookEntry[] => {
+    const q = searchQuery.trim().toLowerCase();
+
+    // 1. Accounting Vouchers
+    const voucherEntries: DayBookEntry[] = (filterType === "all" || ["contra", "payment", "receipt", "journal"].includes(filterType))
+      ? vouchers
+          .filter(v => {
+            if (filterType !== "all" && filterType !== v.voucher_type) return false;
+            if (q) {
+              return (
+                v.voucher_no.toLowerCase().includes(q) ||
+                (v.narration || "").toLowerCase().includes(q) ||
+                v.debit_account_name.toLowerCase().includes(q) ||
+                v.credit_account_name.toLowerCase().includes(q)
+              );
+            }
+            return true;
+          })
+          .map(v => ({
+            id: v.id,
+            entryType: "voucher" as const,
+            entryNo: v.voucher_no,
+            date: v.date,
+            dateBs: v.date_bs,
+            amount: Number(v.amount),
+            debitLabel: v.debit_account_name,
+            creditLabel: v.credit_account_name,
+            narration: v.narration || "",
+            originalVoucher: v
+          }))
+      : [];
+
+    // 2. POS Sales (read-only, shown as "SALE" entries)
+    const saleEntries: DayBookEntry[] = (filterType === "all" || filterType === "sale")
+      ? salesDocs
+          .filter(s => {
+            if (!q) return true;
+            return (
+              (s.bill_no || "").toLowerCase().includes(q) ||
+              (s.customer_name || "").toLowerCase().includes(q) ||
+              (s.payment_mode || "").toLowerCase().includes(q)
+            );
+          })
+          .map(s => ({
+            id: s.id || s.bill_no || Math.random().toString(),
+            entryType: "sale" as const,
+            entryNo: s.bill_no || "—",
+            date: s.created_at || s.date || new Date().toISOString(),
+            dateBs: s.date_bs || "",
+            amount: Number(s.total || 0),
+            debitLabel: lang === "NEP" ? `नगद/बैंक (${s.payment_mode || "cash"})` : `Cash/Bank (${s.payment_mode || "cash"})`,
+            creditLabel: lang === "NEP" ? "बिक्री आम्दानी (Sales)" : "Sales Revenue A/C",
+            narration: s.customer_name ? `Sale to ${s.customer_name}` : "Walk-in Sale",
+            paymentMode: s.payment_mode,
+            originalSale: s
+          }))
+      : [];
+
+    // 3. Purchases (read-only, shown as "PURCHASE" entries)
+    const purchaseEntries: DayBookEntry[] = (filterType === "all" || filterType === "purchase")
+      ? purchasesDocs
+          .filter(p => {
+            if (!q) return true;
+            return (
+              (p.voucher_no || "").toLowerCase().includes(q) ||
+              (p.supplier_name || "").toLowerCase().includes(q) ||
+              (p.supplier_bill_no || "").toLowerCase().includes(q) ||
+              (p.payment_mode || "").toLowerCase().includes(q)
+            );
+          })
+          .map(p => ({
+            id: p.id,
+            entryType: "purchase" as const,
+            entryNo: p.voucher_no || `PUR-${p.id?.slice(-4)?.toUpperCase() || "---"}`,
+            date: p.created_at || p.date || new Date().toISOString(),
+            dateBs: p.date_bs || "",
+            amount: Number(p.total || 0),
+            debitLabel: lang === "NEP" ? "खरिद खाता (Purchases)" : "Purchases A/C",
+            creditLabel: p.supplier_name ? `${p.supplier_name}` : (lang === "NEP" ? "नगद/साहु (Cash/Supplier)" : "Cash/Supplier A/C"),
+            narration: p.supplier_name ? `Purchase from ${p.supplier_name}` : "Purchase Entry",
+            paymentMode: p.payment_mode,
+            originalPurchase: p
+          }))
+      : [];
+
+    // Merge and sort by date descending
+    const all = [...voucherEntries, ...saleEntries, ...purchaseEntries];
+    all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return all;
+  }, [vouchers, salesDocs, purchasesDocs, filterType, searchQuery, lang]);
+
+  // Keep filteredVouchers for backward compatibility (used only by voucher-specific operations)
+  const filteredVouchers = useMemo(() => vouchers.filter(v => {
+    if (filterType !== "all" && v.voucher_type !== filterType) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return (
+        v.voucher_no.toLowerCase().includes(q) ||
+        (v.narration || "").toLowerCase().includes(q) ||
+        v.debit_account_name.toLowerCase().includes(q) ||
+        v.credit_account_name.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  }), [vouchers, filterType, searchQuery]);
 
   // Account Group Label mapping
   const groupLabel = (grp: AccountGroup) => {
@@ -963,7 +1074,7 @@ export default function Accounting() {
               <div className="relative w-full sm:w-64">
                 <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder={lang === "NEP" ? "भाउचर नं वा विवरण खोज्नुहोस्..." : "Search voucher no, narration..."}
+                  placeholder={lang === "NEP" ? "बिल नं, सप्लायर वा विवरण खोज्नुहोस्..." : "Search bill no, supplier, narration..."}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="pl-9 h-9 text-xs"
@@ -971,11 +1082,13 @@ export default function Accounting() {
               </div>
 
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="h-9 text-xs w-[140px]">
-                  <SelectValue placeholder="All Types" />
+                <SelectTrigger className="h-9 text-xs w-[155px]">
+                  <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{lang === "NEP" ? "सबै भाउचर" : "All Vouchers"}</SelectItem>
+                  <SelectItem value="all">{lang === "NEP" ? "सबै कारोबार" : "All Transactions"}</SelectItem>
+                  <SelectItem value="sale">{lang === "NEP" ? "बिक्री (POS)" : "Sales (F8)"}</SelectItem>
+                  <SelectItem value="purchase">{lang === "NEP" ? "खरिद" : "Purchase (F9)"}</SelectItem>
                   <SelectItem value="contra">Contra (F4)</SelectItem>
                   <SelectItem value="payment">Payment (F5)</SelectItem>
                   <SelectItem value="receipt">Receipt (F6)</SelectItem>
@@ -985,89 +1098,104 @@ export default function Accounting() {
             </div>
 
             <div className="text-xs text-muted-foreground">
-              Total {filteredVouchers.length} {lang === "NEP" ? "भाउचरहरू" : "vouchers recorded"}
+              {lang === "NEP" ? `जम्मा ${filteredDayBookEntries.length} कारोबारहरू` : `Total ${filteredDayBookEntries.length} transactions`}
             </div>
           </div>
 
-          {/* Desktop View: Full 8-Column Table (Hidden on Mobile) */}
+          {/* Desktop View: Full Table (Hidden on Mobile) */}
           <div className="hidden sm:block border rounded-xl overflow-x-auto scrollbar-thin bg-card shadow-sm">
             <table className="w-full text-xs text-left border-collapse min-w-[720px]">
               <thead>
                 <tr className="bg-muted/50 border-b font-semibold text-muted-foreground">
-                  <th className="py-2.5 px-3">Voucher No</th>
-                  <th className="py-2.5 px-3">Date (मिति)</th>
-                  <th className="py-2.5 px-3">Type</th>
-                  <th className="py-2.5 px-3">Debit (Dr.)</th>
-                  <th className="py-2.5 px-3">Credit (Cr.)</th>
-                  <th className="py-2.5 px-3 text-right">Amount (Rs.)</th>
-                  <th className="py-2.5 px-3">Narration</th>
-                  <th className="py-2.5 px-3 text-right">Action</th>
+                  <th className="py-2.5 px-3">{lang === "NEP" ? "बिल/भाउचर नं" : "Bill / Voucher No"}</th>
+                  <th className="py-2.5 px-3">{lang === "NEP" ? "मिति" : "Date"}</th>
+                  <th className="py-2.5 px-3">{lang === "NEP" ? "किसिम" : "Type"}</th>
+                  <th className="py-2.5 px-3">{lang === "NEP" ? "डेबिट (Dr.)" : "Debit (Dr.)"}</th>
+                  <th className="py-2.5 px-3">{lang === "NEP" ? "क्रेडिट (Cr.)" : "Credit (Cr.)"}</th>
+                  <th className="py-2.5 px-3 text-right">{lang === "NEP" ? "रकम (रु.)" : "Amount (Rs.)"}</th>
+                  <th className="py-2.5 px-3">{lang === "NEP" ? "विवरण" : "Narration"}</th>
+                  <th className="py-2.5 px-3 text-right">{lang === "NEP" ? "कार्य" : "Action"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredVouchers.length === 0 ? (
+                {filteredDayBookEntries.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-8 text-muted-foreground">
-                      {lang === "NEP" ? "कुनै भाउचर फेला परेन।" : "No accounting vouchers recorded yet."}
+                      {lang === "NEP" ? "कुनै कारोबार फेला परेन।" : "No transactions recorded yet."}
                     </td>
                   </tr>
                 ) : (
-                  filteredVouchers.map(v => (
-                    <tr key={v.id} className="hover:bg-muted/20 transition-colors">
+                  filteredDayBookEntries.map(entry => (
+                    <tr key={entry.id + entry.entryType} className="hover:bg-muted/20 transition-colors">
                       <td className="py-2.5 px-3 font-mono font-bold text-foreground">
-                        {v.voucher_no}
+                        {entry.entryNo}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div>{v.date.slice(0, 10)}</div>
-                        <div className="text-[10px] text-muted-foreground">{v.date_bs || ""}</div>
+                        <div>{entry.date.slice(0, 10)}</div>
+                        {entry.dateBs && <div className="text-[10px] text-muted-foreground">{entry.dateBs}</div>}
                       </td>
                       <td className="py-2.5 px-3">
                         <Badge
                           variant="outline"
                           className={
-                            v.voucher_type === "contra"
+                            entry.entryType === "sale"
+                              ? "border-emerald-500/40 text-emerald-700 bg-emerald-500/5 text-[10px]"
+                              : entry.entryType === "purchase"
+                              ? "border-orange-500/40 text-orange-700 bg-orange-500/5 text-[10px]"
+                              : entry.originalVoucher?.voucher_type === "contra"
                               ? "border-blue-500/40 text-blue-600 bg-blue-500/5 text-[10px]"
-                              : v.voucher_type === "payment"
+                              : entry.originalVoucher?.voucher_type === "payment"
                               ? "border-amber-500/40 text-amber-600 bg-amber-500/5 text-[10px]"
-                              : v.voucher_type === "receipt"
-                              ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/5 text-[10px]"
+                              : entry.originalVoucher?.voucher_type === "receipt"
+                              ? "border-teal-500/40 text-teal-600 bg-teal-500/5 text-[10px]"
                               : "border-purple-500/40 text-purple-600 bg-purple-500/5 text-[10px]"
                           }
                         >
-                          {v.voucher_type.toUpperCase()}
+                          {entry.entryType === "sale" ? "SALE" : entry.entryType === "purchase" ? "PURCHASE" : (entry.originalVoucher?.voucher_type || "").toUpperCase()}
                         </Badge>
                       </td>
-                      <td className="py-2.5 px-3 font-medium text-emerald-700 dark:text-emerald-400">
-                        {v.debit_account_name}
+                      <td className="py-2.5 px-3 font-medium text-emerald-700 dark:text-emerald-400 max-w-[160px] truncate" title={entry.debitLabel}>
+                        {entry.debitLabel}
                       </td>
-                      <td className="py-2.5 px-3 font-medium text-amber-700 dark:text-amber-400">
-                        {v.credit_account_name}
+                      <td className="py-2.5 px-3 font-medium text-amber-700 dark:text-amber-400 max-w-[160px] truncate" title={entry.creditLabel}>
+                        {entry.creditLabel}
                       </td>
                       <td className="py-2.5 px-3 text-right font-bold text-foreground">
-                        {fmt(v.amount)}
+                        {fmt(entry.amount)}
                       </td>
-                      <td className="py-2.5 px-3 text-muted-foreground max-w-[200px] truncate" title={v.narration}>
-                        {v.narration || "-"}
+                      <td className="py-2.5 px-3 text-muted-foreground max-w-[180px] truncate" title={entry.narration}>
+                        {entry.narration || "-"}
                       </td>
                       <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={() => printVoucherSlip(v, shopInfo)}
-                          title="Print Voucher"
-                        >
-                          <Printer className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteVoucher(v.id, v.voucher_no)}
-                          title="Delete Voucher"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {/* Print: only accounting vouchers have a full voucher slip */}
+                        {entry.entryType === "voucher" && entry.originalVoucher && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              onClick={() => printVoucherSlip(entry.originalVoucher!, shopInfo)}
+                              title="Print Voucher"
+                            >
+                              <Printer className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteVoucher(entry.originalVoucher!.id, entry.originalVoucher!.voucher_no)}
+                              title="Delete Voucher"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                        {/* Sales and Purchases are read-only in Day Book — manage them from their own pages */}
+                        {(entry.entryType === "sale" || entry.entryType === "purchase") && (
+                          <span className="text-[10px] text-muted-foreground italic px-2">
+                            {lang === "NEP" ? "(पढ्न मात्र)" : "(view only)"}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -1076,107 +1204,104 @@ export default function Accounting() {
             </table>
           </div>
 
-          {/* Mobile View: Voucher Cards List (Visible on Mobile Only) */}
+          {/* Mobile View: Cards (Visible on Mobile Only) */}
           <div className="block sm:hidden space-y-2.5 pb-20">
-            {filteredVouchers.length === 0 ? (
+            {filteredDayBookEntries.length === 0 ? (
               <div className="border rounded-xl bg-card p-8 text-center text-muted-foreground shadow-xs">
                 <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
                 <p className="font-semibold text-xs text-foreground">
-                  {lang === "NEP" ? "कुनै भाउचर फेला परेन।" : "No accounting vouchers recorded yet."}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {lang === "NEP" ? "नयाँ भाउचर थप्न 'Voucher Entry' ट्याब प्रयोग गर्नुहोस्।" : "Use 'Voucher Entry' tab to create a new voucher."}
+                  {lang === "NEP" ? "कुनै कारोबार फेला परेन।" : "No transactions recorded yet."}
                 </p>
               </div>
             ) : (
-              filteredVouchers.map(v => (
+              filteredDayBookEntries.map(entry => (
                 <div
-                  key={v.id}
+                  key={entry.id + entry.entryType}
                   className="border rounded-xl bg-card p-3 shadow-xs hover:border-primary/40 transition-colors space-y-2.5"
                 >
-                  {/* Header: Voucher No, Date & Type Badge */}
+                  {/* Header: No, Date & Type Badge */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-mono font-bold text-xs text-foreground">
-                        {v.voucher_no}
+                        {entry.entryNo}
                       </span>
                       <span className="text-[11px] text-muted-foreground font-mono">
-                        • {v.date.slice(0, 10)} {v.date_bs ? `(${v.date_bs})` : ""}
+                        • {entry.date.slice(0, 10)} {entry.dateBs ? `(${entry.dateBs})` : ""}
                       </span>
                     </div>
 
                     <Badge
                       variant="outline"
                       className={
-                        v.voucher_type === "contra"
+                        entry.entryType === "sale"
+                          ? "border-emerald-500/40 text-emerald-700 bg-emerald-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                          : entry.entryType === "purchase"
+                          ? "border-orange-500/40 text-orange-700 bg-orange-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                          : entry.originalVoucher?.voucher_type === "contra"
                           ? "border-blue-500/40 text-blue-600 bg-blue-500/5 text-[10px] py-0 px-1.5 shrink-0"
-                          : v.voucher_type === "payment"
+                          : entry.originalVoucher?.voucher_type === "payment"
                           ? "border-amber-500/40 text-amber-600 bg-amber-500/5 text-[10px] py-0 px-1.5 shrink-0"
-                          : v.voucher_type === "receipt"
-                          ? "border-emerald-500/40 text-emerald-600 bg-emerald-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                          : entry.originalVoucher?.voucher_type === "receipt"
+                          ? "border-teal-500/40 text-teal-600 bg-teal-500/5 text-[10px] py-0 px-1.5 shrink-0"
                           : "border-purple-500/40 text-purple-600 bg-purple-500/5 text-[10px] py-0 px-1.5 shrink-0"
                       }
                     >
-                      {v.voucher_type.toUpperCase()}
+                      {entry.entryType === "sale" ? "SALE" : entry.entryType === "purchase" ? "PURCHASE" : (entry.originalVoucher?.voucher_type || "").toUpperCase()}
                     </Badge>
                   </div>
 
                   {/* Debit & Credit Flow */}
                   <div className="bg-muted/40 rounded-lg p-2.5 text-xs space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10.5px] font-semibold uppercase text-emerald-700 dark:text-emerald-400">
-                        Debit (Dr):
-                      </span>
-                      <span className="font-semibold text-emerald-700 dark:text-emerald-400 truncate max-w-[200px]">
-                        {v.debit_account_name}
-                      </span>
+                      <span className="text-[10.5px] font-semibold uppercase text-emerald-700 dark:text-emerald-400">Dr:</span>
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-400 truncate max-w-[200px]">{entry.debitLabel}</span>
                     </div>
                     <div className="flex items-center justify-between border-t border-border/40 pt-1">
-                      <span className="text-[10.5px] font-semibold uppercase text-amber-700 dark:text-amber-400">
-                        Credit (Cr):
-                      </span>
-                      <span className="font-semibold text-amber-700 dark:text-amber-400 truncate max-w-[200px]">
-                        {v.credit_account_name}
-                      </span>
+                      <span className="text-[10.5px] font-semibold uppercase text-amber-700 dark:text-amber-400">Cr:</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-400 truncate max-w-[200px]">{entry.creditLabel}</span>
                     </div>
                   </div>
 
-                  {/* Narration (if any) */}
-                  {v.narration && (
-                    <p className="text-[11px] text-muted-foreground italic px-1 truncate" title={v.narration}>
-                      "{v.narration}"
+                  {/* Narration */}
+                  {entry.narration && (
+                    <p className="text-[11px] text-muted-foreground italic px-1 truncate" title={entry.narration}>
+                      {entry.narration}
                     </p>
                   )}
 
-                  {/* Footer: Amount & Action Buttons */}
+                  {/* Footer: Amount & Actions */}
                   <div className="flex items-center justify-between pt-1 border-t border-border/50">
                     <div>
-                      <span className="text-[10px] text-muted-foreground uppercase mr-1">Rakam:</span>
-                      <span className="font-mono font-bold text-sm text-foreground">
-                        {fmt(v.amount)}
-                      </span>
+                      <span className="text-[10px] text-muted-foreground uppercase mr-1">Rs:</span>
+                      <span className="font-mono font-bold text-sm text-foreground">{fmt(entry.amount)}</span>
                     </div>
-
                     <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2.5 text-xs gap-1"
-                        onClick={() => printVoucherSlip(v, shopInfo)}
-                        title="Print Voucher Slip"
-                      >
-                        <Printer className="h-3.5 w-3.5 text-primary" />
-                        <span>Print</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDeleteVoucher(v.id, v.voucher_no)}
-                        title="Delete Voucher"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {entry.entryType === "voucher" && entry.originalVoucher && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2.5 text-xs gap-1"
+                            onClick={() => printVoucherSlip(entry.originalVoucher!, shopInfo)}
+                          >
+                            <Printer className="h-3.5 w-3.5 text-primary" />
+                            <span>Print</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDeleteVoucher(entry.originalVoucher!.id, entry.originalVoucher!.voucher_no)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      {(entry.entryType === "sale" || entry.entryType === "purchase") && (
+                        <span className="text-[10px] text-muted-foreground italic">
+                          {lang === "NEP" ? "(पढ्न मात्र)" : "view only"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
