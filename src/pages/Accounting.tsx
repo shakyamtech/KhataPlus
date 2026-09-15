@@ -494,13 +494,15 @@ export default function Accounting() {
 
     // 4. Sales Revenue & Cost of Goods Sold
     const outputVat = salesDocs.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
+    const inputVat = purchasesDocs.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
     let vatPaid = 0;
     vouchers.forEach(v => {
       if ((v.debit_account_name || "").toLowerCase().includes("vat")) {
         vatPaid += Number(v.amount || 0);
       }
     });
-    const vatPayable = Math.max(0, outputVat - vatPaid);
+    const netVat = outputVat - inputVat - vatPaid;
+    const vatPayable = Math.max(0, netVat);
     const revenue = salesDocs.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
     const cogs = salesDocs.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
