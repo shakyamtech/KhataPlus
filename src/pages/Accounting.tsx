@@ -450,7 +450,9 @@ export default function Accounting() {
       direct_expenses: lang === "NEP" ? "प्रत्यक्ष खर्च (Direct Expenses)" : "Direct Expenses",
       indirect_expenses: lang === "NEP" ? "अप्रत्यक्ष खर्च (Indirect Expenses)" : "Indirect Expenses",
       direct_incomes: lang === "NEP" ? "प्रत्यक्ष आम्दानी (Direct Incomes)" : "Direct Incomes",
-      indirect_incomes: lang === "NEP" ? "अप्रत्यक्ष आम्दानी (Indirect Incomes)" : "Indirect Incomes"
+      indirect_incomes: lang === "NEP" ? "अप्रत्यक्ष आम्दानी (Indirect Incomes)" : "Indirect Incomes",
+      duties_taxes: lang === "NEP" ? "भ्याट तथा कर (VAT & Taxes)" : "VAT & Taxes",
+      loans_advances_asset: lang === "NEP" ? "दिएको ऋण तथा पेश्की (Loans Given & Advances)" : "Loans Given & Advances"
     };
     return map[grp] || grp;
   };
@@ -2042,8 +2044,10 @@ export default function Accounting() {
                 <SelectContent className="max-h-56">
                   <SelectItem value="bank_accounts">Bank Account (बैंक खाता)</SelectItem>
                   <SelectItem value="fixed_assets">Fixed Asset (सम्पत्ति - गाडी, कम्प्युटर)</SelectItem>
+                  <SelectItem value="loans_advances_asset">Loans Given & Advances (दिएको ऋण तथा पेश्की)</SelectItem>
                   <SelectItem value="loans_liabilities">Loan & Borrowing (बैंक ऋण / साहु ऋण)</SelectItem>
                   <SelectItem value="current_liabilities">Current Liability (दिन बाँकी खर्च)</SelectItem>
+                  <SelectItem value="duties_taxes">VAT & Taxes (भ्याट तथा कर)</SelectItem>
                   <SelectItem value="capital">Capital (मालिकको पुँजी)</SelectItem>
                   <SelectItem value="indirect_expenses">Expense (व्यापारिक खर्च)</SelectItem>
                   <SelectItem value="indirect_incomes">Income (अप्रत्यक्ष आम्दानी)</SelectItem>

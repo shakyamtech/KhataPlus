@@ -31,7 +31,9 @@ export type AccountGroup =
   | "direct_expenses"
   | "indirect_expenses"
   | "direct_incomes"
-  | "indirect_incomes";
+  | "indirect_incomes"
+  | "duties_taxes"
+  | "loans_advances_asset";
 
 export interface Account {
   id: string;
