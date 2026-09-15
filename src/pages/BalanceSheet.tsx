@@ -39,6 +39,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
     outstanding: 0,
     vatPayable: 0,
     vatReceivable: 0,
+    loansGiven: 0,
     capital: 0,
     drawings: 0,
     revenue: 0,
@@ -118,6 +119,14 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           .filter((c: any) => c.direction === "out" && (c.category === "fixed_asset" || c.account_group === "fixed_asset"))
           .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
         fixedAssetsTotal += cashFixedAssets;
+
+        // 2b. Loans Given & Advances (Asset side - money we gave to others)
+        const loansGivenAccounts = accounts.filter((a: any) => a.group === "loans_advances_asset");
+        let loansGivenTotal = loansGivenAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
+        vouchers.forEach((v: any) => {
+          if (loansGivenAccounts.some((a: any) => a.id === v.debit_account_id)) loansGivenTotal += Number(v.amount || 0);
+          if (loansGivenAccounts.some((a: any) => a.id === v.credit_account_id)) loansGivenTotal -= Number(v.amount || 0);
+        });
 
         // 3. Calculate Loans & Borrowings (Liabilities)
         const loanAccounts = accounts.filter((a: any) => a.group === "loans_liabilities");
@@ -228,6 +237,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           stock,
           receivable,
           fixedAssets: fixedAssetsTotal,
+          loansGiven: loansGivenTotal,
           payable,
           loans: loansTotal,
           outstanding: outstandingTotal,
@@ -245,7 +255,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
     })();
   }, [user]);
 
-  const totalAssets = d.cash + d.wallet + d.bank + d.stock + d.receivable + d.fixedAssets + d.vatReceivable;
+  const totalAssets = d.cash + d.wallet + d.bank + d.stock + d.receivable + d.fixedAssets + d.vatReceivable + d.loansGiven;
   const grossProfit = d.revenue - d.cogs;
   const netProfit = grossProfit - d.expenses;
   const totalEquity = d.capital + netProfit - d.drawings;
@@ -504,6 +514,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
               <Row label="ग्राहकबाट उठ्न बाँकी (Customer Receivables)" value={d.receivable} />
               {d.vatReceivable > 0 && <Row label="सरकारबाट लिन बाँकी भ्याट (VAT Credit)" value={d.vatReceivable} />}
               {d.fixedAssets > 0 && <Row label="स्थिर सम्पत्ति (Fixed Assets)" value={d.fixedAssets} />}
+              {d.loansGiven > 0 && <Row label="दिएको ऋण तथा पेश्की (Loans Given & Advances)" value={d.loansGiven} />}
             </div>
           </div>
 

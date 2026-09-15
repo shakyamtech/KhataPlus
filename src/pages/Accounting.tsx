@@ -715,6 +715,24 @@ export default function Accounting() {
       group: lang === "NEP" ? "स्थिर सम्पत्ति" : "Fixed Assets"
     }));
 
+    // Loans Given & Advances (Asset side)
+    const loansGivenAccounts = accounts.filter(a => a.group === "loans_advances_asset");
+    const loansGivenRows = loansGivenAccounts.map(a => {
+      let bal = Number(a.opening_balance || 0);
+      vouchers.forEach(v => {
+        if (v.debit_account_id === a.id) bal += Number(v.amount || 0);
+        if (v.credit_account_id === a.id) bal -= Number(v.amount || 0);
+      });
+      return {
+        id: a.id,
+        name: a.name,
+        group: lang === "NEP" ? "दिएको ऋण तथा पेश्की" : "Loans Given & Advances",
+        debit: bal >= 0 ? bal : 0,
+        credit: bal < 0 ? Math.abs(bal) : 0
+      };
+    }).filter(r => r.debit > 0 || r.credit > 0);
+    loansGivenRows.forEach(r => rows.push(r));
+
     // Cost of Goods Sold (COGS)
     if (cogs > 0) {
       rows.push({
