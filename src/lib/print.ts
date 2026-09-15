@@ -316,12 +316,12 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       display: table-header-group;
     }
     tfoot {
-      display: table-footer-group;
+      display: table-row-group;
     }
 
     @media print {
       body {
-        padding: 8mm 12mm;
+        padding: 0;
         background: #ffffff;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
@@ -336,7 +336,10 @@ export const printHTML = (title: string, bodyHtml: string, options: PrintOptions
       }
       @page {
         size: A4 portrait;
-        margin: 0;
+        margin: 16mm 8mm 10mm 8mm;
+      }
+      @page :first {
+        margin-top: 5mm;
       }
     }
     ` : `
