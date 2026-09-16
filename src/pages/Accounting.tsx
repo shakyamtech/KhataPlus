@@ -23,6 +23,7 @@ import {
   VoucherType,
   VoucherEntryItem,
   getAccounts,
+  getNextVoucherNo,
   createVoucher,
   deleteVoucher,
   printVoucherSlip,
@@ -98,6 +99,7 @@ export default function Accounting() {
   const [creditAccountId, setCreditAccountId] = useState<string>("");
   const [narration, setNarration] = useState<string>("");
   const [referenceNo, setReferenceNo] = useState<string>("");
+  const [previewVoucherNo, setPreviewVoucherNo] = useState<string>("");
   const [submittingVoucher, setSubmittingVoucher] = useState(false);
 
   // Multi-line Compound Journal Rows
@@ -137,25 +139,23 @@ export default function Accounting() {
       const [accs, vSnap, sInfo, cSnap, sSnap, lSnap, pSnap, wSnap, purSnap] = await Promise.all([
         getAccounts(user.uid),
         getDocs(query(collection(db, "vouchers"), where("user_id", "==", user.uid))),
-        getShopInfo(),
-        getDocs(query(collection(db, "cash_transactions"), where("user_id", "==", user.uid))),
-        getDocs(query(collection(db, "sales"), where("user_id", "==", user.uid))),
-        getDocs(query(collection(db, "ledger_entries"), where("user_id", "==", user.uid))),
-        getDocs(query(collection(db, "products"), where("user_id", "==", user.uid))),
-        getDocs(query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid))),
+        getShopInfo(user.uid),
+        getDocs(query(collection(db, "customers"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "suppliers"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "customer_ledgers"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "supplier_ledgers"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "withdrawals"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "purchases"), where("user_id", "==", user.uid)))
       ]);
-      setAccounts(accs);
-      const vList = vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher));
-      vList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setVouchers(vList);
-      setShopInfo(sInfo);
 
-      setCashDocs(cSnap.docs.map(d => d.data()));
-      setSalesDocs(sSnap.docs.map(d => d.data()));
-      setLedgerDocs(lSnap.docs.map(d => d.data()));
-      setProductDocs(pSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setStockAdjDocs(wSnap.docs.map(d => d.data()));
+      setAccounts(accs);
+      setVouchers(vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher)));
+      setShopInfo(sInfo);
+      setCustomers(cSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setSuppliers(sSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setCustomerLedgers(lSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setSupplierLedgers(pSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setWithdrawals(wSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setPurchasesDocs(purSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err: any) {
       console.error(err);
@@ -170,12 +170,17 @@ export default function Accounting() {
   }, [user]);
 
   // Open voucher modal with preset type
-  const handleOpenVoucher = (type: VoucherType) => {
+  const handleOpenVoucher = async (type: VoucherType) => {
     setVoucherType(type);
     setVoucherDate(new Date().toISOString().slice(0, 10));
     setVoucherAmount("");
     setNarration("");
     setReferenceNo("");
+    setPreviewVoucherNo("");
+
+    if (user) {
+      getNextVoucherNo(user.uid, type).then(no => setPreviewVoucherNo(no)).catch(() => {});
+    }
 
     // Set intelligent defaults for accounts based on voucher type
     if (type === "contra") {
@@ -1923,7 +1928,7 @@ export default function Accounting() {
                   {voucherType === "journal" && <FileText className="h-6 w-6" />}
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-extrabold flex items-center gap-2 text-foreground">
+                  <DialogTitle className="text-lg font-extrabold flex items-center gap-2 text-foreground flex-wrap">
                     <span>
                       {voucherType === "contra"
                         ? "कन्ट्रा भाउचर (Contra Entry)"
@@ -1933,6 +1938,11 @@ export default function Accounting() {
                         ? "रसिद/आम्दानी भाउचर (Receipt Entry)"
                         : "जर्नल भाउचर (Compound Journal Entry)"}
                     </span>
+                    {previewVoucherNo && (
+                      <Badge variant="secondary" className="font-mono text-xs font-bold px-2 py-0.5 bg-primary/10 text-primary border border-primary/20">
+                        #{previewVoucherNo}
+                      </Badge>
+                    )}
                     <Badge variant="outline" className="text-[10px] font-mono font-bold px-1.5 py-0.5">
                       {voucherType === "contra" ? "F4" : voucherType === "payment" ? "F5" : voucherType === "receipt" ? "F6" : "F7"}
                     </Badge>
@@ -1983,9 +1993,9 @@ export default function Accounting() {
                     </span>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "रेफरेन्स / ट्रान्ज्याक्सन नं (ऐच्छिक)" : "Ref / Voucher No (Optional)"}</Label>
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</Label>
                     <Input
-                      placeholder="e.g. JV-ADJ-01, TDS-092..."
+                      placeholder="e.g. JV-ADJ-01, CHQ-1049, TDS-092..."
                       value={referenceNo}
                       onChange={e => setReferenceNo(e.target.value)}
                       className="h-10 text-xs font-mono rounded-xl"
@@ -2304,9 +2314,9 @@ export default function Accounting() {
                 {/* Ref & Narration in 2 columns */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / भौचर नं (ऐच्छिक)" : "Ref / Cheque No (Optional)"}</Label>
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</Label>
                     <Input
-                      placeholder="e.g. CHQ-99120, TR-4821..."
+                      placeholder="e.g. CHQ-99120, Bank Slip #4821..."
                       value={referenceNo}
                       onChange={e => setReferenceNo(e.target.value)}
                       className="h-10 text-xs font-mono rounded-xl"
