@@ -75,6 +75,17 @@ const POS = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const cartRef = useRef<CartItem[]>(cart);
+  const productsRef = useRef<Product[]>(products);
+
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
+
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
+
   const [search, setSearch] = useState("");
   const [customerId, setCustomerId] = useState<string>("walk-in");
   const [paymentMode, setPaymentMode] = useState<string>("cash");
@@ -136,7 +147,8 @@ const POS = () => {
     const clean = code.trim();
     if (!clean) return false;
 
-    const found = products.find(
+    const currentProducts = productsRef.current;
+    const found = currentProducts.find(
       (p) =>
         (p.barcode && p.barcode.trim() === clean) ||
         p.id === clean ||
@@ -378,7 +390,8 @@ const POS = () => {
 
   useBarcodeScanner({
     onScan: (barcode) => {
-      const p = products.find((prod) => prod.barcode === barcode);
+      const currentProducts = productsRef.current;
+      const p = currentProducts.find((prod) => prod.barcode === barcode);
       if (p) {
         const added = addToCart(p);
         if (added) toast.success(`Scanned: ${p.name}`);
@@ -389,7 +402,8 @@ const POS = () => {
   });
 
   const getTotalAvailable = (productId: string, selectedBatchId?: string): number => {
-    const p = products.find(prod => prod.id === productId);
+    const currentProducts = productsRef.current;
+    const p = currentProducts.find(prod => prod.id === productId);
     if (!p) return 0;
     if (selectedBatchId && selectedBatchId !== "auto" && p.active_batches) {
       const b = p.active_batches.find(x => x.id === selectedBatchId);
@@ -400,8 +414,9 @@ const POS = () => {
   };
 
   const addToCart = (p: Product): boolean => {
+    const currentCart = cartRef.current;
     const totalAvailable = getTotalAvailable(p.id);
-    const ex = cart.find((i) => i.product_id === p.id);
+    const ex = currentCart.find((i) => i.product_id === p.id);
     
     if (ex) {
       const maxAvailable = getTotalAvailable(p.id, ex.selected_batch_id);
@@ -417,19 +432,35 @@ const POS = () => {
       }
     }
 
+    let addedSuccessfully = false;
+
     setCart((c) => {
       const exInC = c.find((i) => i.product_id === p.id);
       if (exInC) {
+        const maxAvailable = getTotalAvailable(p.id, exInC.selected_batch_id);
         const newQty = +(Number(exInC.qty) + 1).toFixed(3);
-        return c.map((i) => i.product_id === p.id ? { ...i, qty: newQty } : i);
+        if (newQty > maxAvailable) {
+          return c; // Strict boundary: do not allow exceeding available stock
+        }
+        addedSuccessfully = true;
+        const updated = c.map((i) => i.product_id === p.id ? { ...i, qty: newQty } : i);
+        cartRef.current = updated;
+        return updated;
       }
-      return [...c, { 
+
+      if (totalAvailable <= 0) {
+        return c;
+      }
+
+      addedSuccessfully = true;
+      const initialQty = totalAvailable < 1 && totalAvailable > 0 ? +Number(totalAvailable).toFixed(3) : 1;
+      const updated = [...c, { 
         product_id: p.id, 
         product_name: p.name, 
         unit: p.unit, 
         sell_price: Number(p.sell_price), 
         cost_price: Number(p.cost_price), 
-        qty: totalAvailable < 1 && totalAvailable > 0 ? +Number(totalAvailable).toFixed(3) : 1,
+        qty: initialQty,
         is_taxable: (p as any).is_taxable !== false,
         hs_code: p.hs_code || null,
         selected_batch_id: "auto",
@@ -438,10 +469,14 @@ const POS = () => {
         earliest_batch_name: p.earliest_batch_name,
         is_expiring_soon: p.is_expiring_soon
       }];
+      cartRef.current = updated;
+      return updated;
     });
     
-    scrollToCartMobile();
-    return true;
+    if (addedSuccessfully) {
+      scrollToCartMobile();
+    }
+    return addedSuccessfully;
   };
 
   const changeCartBatch = (productId: string, batchId: string) => {
