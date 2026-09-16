@@ -6,29 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Camera, RefreshCw, Volume2, CheckCircle2, AlertCircle, X, Flashlight } from "lucide-react";
 import { toast } from "sonner";
 
-// Web Audio API beep sound generator
-export const playScanBeep = () => {
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const audioCtx = new AudioContextClass();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(1046.5, audioCtx.currentTime); // Crisp scanner tone (C6: 1046Hz)
-    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.12);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.12);
-  } catch {
-    // Ignore silent audio blocks
-  }
-};
+import { playScanBeep } from "@/lib/sound";
 
 interface CameraBarcodeScannerModalProps {
   open: boolean;

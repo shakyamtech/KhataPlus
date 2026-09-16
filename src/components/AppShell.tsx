@@ -5,8 +5,9 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, Check, Loader2, Scale, Languages, Landmark
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, Check, Loader2, Scale, Languages, Landmark, Volume2
 } from "lucide-react";
+import { BARCODE_SOUND_OPTIONS, BarcodeSoundType, playScanBeep } from "@/lib/sound";
 import { generateBatchSamplePreview, getNepaliFiscalYear } from "@/lib/batch";
 import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
 import { InstallAppModal } from "@/components/InstallAppModal";
@@ -133,6 +134,7 @@ export const AppShell = () => {
     const [businessNature, setBusinessNature] = useState<string>("general_trading");
     const [entityType, setEntityType] = useState<"proprietorship" | "pvt_ltd">("proprietorship");
     const [maritalStatus, setMaritalStatus] = useState<"single" | "married">("single");
+    const [barcodeScanSound, setBarcodeScanSound] = useState<BarcodeSoundType>("sweet_ding");
 
     const [fiscalYearDialogOpen, setFiscalYearDialogOpen] = useState(false);
     const [targetFiscalSuffix, setTargetFiscalSuffix] = useState("");
@@ -315,6 +317,9 @@ export const AppShell = () => {
                     setBusinessNature(data.business_nature ?? "general_trading");
                     setEntityType(data.entity_type ?? "proprietorship");
                     setMaritalStatus(data.marital_status ?? "single");
+                    const soundVal = (data.barcode_scan_sound as BarcodeSoundType) ?? "sweet_ding";
+                    setBarcodeScanSound(soundVal);
+                    localStorage.setItem("khataplus_barcode_scan_sound", soundVal);
 
                     // Calculate tenant subscription
                     const subInfo = calculateSubscription(data, isAdmin);
@@ -464,11 +469,13 @@ export const AppShell = () => {
                 local_level_type: localLevelType,
                 business_nature: businessNature,
                 entity_type: entityType,
-                marital_status: maritalStatus
+                marital_status: maritalStatus,
+                barcode_scan_sound: barcodeScanSound
             }, { merge: true });
 
             setShopName(newName);
             localStorage.setItem("khataplus_shop_name", newName);
+            localStorage.setItem("khataplus_barcode_scan_sound", barcodeScanSound);
 
             toast.success("Shop settings saved successfully!");
             setShopOpen(false);

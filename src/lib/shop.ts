@@ -40,6 +40,7 @@ export interface ShopInfo {
     | "manufacturing";      // १०. उत्पादन, प्रशोधन तथा साना घरेलु उद्योग
   entity_type?: "proprietorship" | "pvt_ltd";
   marital_status?: "single" | "married";
+  barcode_scan_sound?: "sweet_ding" | "sweet_bell" | "classic_beep" | "supermarket_chime" | "mute";
 }
 
 export const getShopInfo = async (): Promise<ShopInfo> => {
@@ -64,7 +65,8 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
       purchase_prefix: "INW-",
       purchase_suffix: "",
       purchase_next_no: 1,
-      barcode_starting_no: 1001
+      barcode_starting_no: 1001,
+      barcode_scan_sound: "sweet_ding"
     };
   }
   
@@ -75,6 +77,10 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
       const data = docSnap.data();
       const isVat = data.tax_type === "vat" || data.is_vat_registered === true;
       const ownerName = data.full_name || data.name || data.owner_name || user.displayName || "";
+      const soundVal = data.barcode_scan_sound ?? "sweet_ding";
+      if (typeof window !== "undefined") {
+        localStorage.setItem("khataplus_barcode_scan_sound", soundVal);
+      }
       return {
         name: data.shop_name || "My Shop",
         pan: data.pan_no || "",
@@ -103,7 +109,8 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
         local_level_type: data.local_level_type ?? "municipality",
         business_nature: data.business_nature ?? "general_trading",
         entity_type: data.entity_type ?? "proprietorship",
-        marital_status: data.marital_status ?? "single"
+        marital_status: data.marital_status ?? "single",
+        barcode_scan_sound: soundVal
       };
     }
   } catch (e) {
