@@ -5,7 +5,7 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, Check, Loader2, Scale, Languages, Landmark, Volume2
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, AlertTriangle, Check, Loader2, Scale, Languages, Landmark, Volume2
 } from "lucide-react";
 import { BARCODE_SOUND_OPTIONS, BarcodeSoundType, playScanBeep } from "@/lib/sound";
 import { generateBatchSamplePreview, getNepaliFiscalYear } from "@/lib/batch";
@@ -109,6 +109,8 @@ export const AppShell = () => {
     const [backupOpen, setBackupOpen] = useState(false);
     const [resetDialogOpen, setResetDialogOpen] = useState(false);
     const [busyReset, setBusyReset] = useState(false);
+    const [masterResetDialogOpen, setMasterResetDialogOpen] = useState(false);
+    const [busyMasterReset, setBusyMasterReset] = useState(false);
     const [hasMigrated, setHasMigrated] = useState(true);
 
     const [taxInvoicePrefix, setTaxInvoicePrefix] = useState("TAX-");
@@ -636,6 +638,136 @@ export const AppShell = () => {
         } catch (err: any) {
             toast.error(err.message || "Failed to reset data", { id: "store-reset" });
             setBusyReset(false);
+        }
+    };
+
+    const handleMasterReset = async () => {
+        if (!user?.uid || busyMasterReset) return;
+
+        setBusyMasterReset(true);
+        toast.loading(
+            lang === "NEP"
+                ? "पसलको सम्पूर्ण डाटा (सामान, ग्राहक, सप्लायर, कारोबार) खाली गरिँदैछ..."
+                : "Performing Master Factory Reset, please wait...",
+            { id: "master-store-reset" }
+        );
+
+        try {
+            const collectionsToWipe = [
+                "products",
+                "product_batches",
+                "product_ingredients",
+                "customers",
+                "suppliers",
+                "sales",
+                "purchases",
+                "cash_transactions",
+                "ledger_entries",
+                "stock_adjustments",
+                "accounts",
+                "vouchers",
+                "expenses"
+            ];
+
+            const snapshots = await Promise.all(
+                collectionsToWipe.map(col => getDocs(query(collection(db, col), where("user_id", "==", user.uid))))
+            );
+
+            // 1. Delete all sale_items and purchase_items linked to sales and purchases
+            const salesDocs = snapshots[collectionsToWipe.indexOf("sales")].docs;
+            const purDocs = snapshots[collectionsToWipe.indexOf("purchases")].docs;
+            const saleIds = salesDocs.map(d => d.id);
+            const purIds = purDocs.map(d => d.id);
+
+            for (let i = 0; i < saleIds.length; i += 30) {
+                const chunk = saleIds.slice(i, i + 30);
+                if (chunk.length > 0) {
+                    const siSnap = await getDocs(query(collection(db, "sale_items"), where("sale_id", "in", chunk)));
+                    if (!siSnap.empty) {
+                        const itemBatch = writeBatch(db);
+                        siSnap.docs.forEach(d => itemBatch.delete(d.ref));
+                        await itemBatch.commit();
+                    }
+                }
+            }
+
+            for (let i = 0; i < purIds.length; i += 30) {
+                const chunk = purIds.slice(i, i + 30);
+                if (chunk.length > 0) {
+                    const piSnap = await getDocs(query(collection(db, "purchase_items"), where("purchase_id", "in", chunk)));
+                    if (!piSnap.empty) {
+                        const itemBatch = writeBatch(db);
+                        piSnap.docs.forEach(d => itemBatch.delete(d.ref));
+                        await itemBatch.commit();
+                    }
+                }
+            }
+
+            // 2. Also delete any orphaned sale_items / purchase_items by product_id
+            const prodDocs = snapshots[collectionsToWipe.indexOf("products")].docs;
+            const prodIds = prodDocs.map(d => d.id);
+            for (let i = 0; i < prodIds.length; i += 30) {
+                const chunk = prodIds.slice(i, i + 30);
+                if (chunk.length > 0) {
+                    const [siSnap, piSnap] = await Promise.all([
+                        getDocs(query(collection(db, "sale_items"), where("product_id", "in", chunk))),
+                        getDocs(query(collection(db, "purchase_items"), where("product_id", "in", chunk)))
+                    ]);
+                    if (!siSnap.empty || !piSnap.empty) {
+                        const itemBatch = writeBatch(db);
+                        siSnap.docs.forEach(d => itemBatch.delete(d.ref));
+                        piSnap.docs.forEach(d => itemBatch.delete(d.ref));
+                        await itemBatch.commit();
+                    }
+                }
+            }
+
+            // 3. Delete all docs in user-level collections in batches of 450
+            for (const snap of snapshots) {
+                for (let i = 0; i < snap.docs.length; i += 450) {
+                    const chunk = snap.docs.slice(i, i + 450);
+                    const batch = writeBatch(db);
+                    chunk.forEach(d => batch.delete(d.ref));
+                    await batch.commit();
+                }
+            }
+
+            // 4. Reset bill and inward numbering counters in profile to 1
+            await setDoc(doc(db, "profiles", user.uid), {
+                tax_invoice_next_no: 1,
+                abbreviated_next_no: 1,
+                bill_next_no: 1,
+                purchase_next_no: 1,
+                barcode_starting_no: 1001
+            }, { merge: true });
+
+            setTaxInvoiceNextNo("1");
+            setAbbreviatedNextNo("1");
+            setBillNextNo("1");
+            setPurchaseNextNo("1");
+            setBarcodeStartingNo("1001");
+            setDbLastTax(null);
+            setDbLastAbb(null);
+            setDbLastBill(null);
+            setDbLastPur(null);
+
+            toast.success(
+                lang === "NEP"
+                    ? "पसलको सम्पूर्ण डाटा सफलतापूर्वक फ्याक्ट्री रिसेट गरियो!"
+                    : "Master Factory Reset completed successfully!",
+                { id: "master-store-reset" }
+            );
+
+            setMasterResetDialogOpen(false);
+            setShopOpen(false);
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } catch (err: any) {
+            console.error("Master reset error", err);
+            toast.error(err.message || "Failed to execute master reset", { id: "master-store-reset" });
+            setBusyMasterReset(false);
         }
     };
 
@@ -1739,59 +1871,141 @@ export const AppShell = () => {
                             </p>
                         </div>
 
-                        <div className="pt-4 border-t border-destructive/20 mt-4 space-y-3 bg-destructive/5 rounded-xl p-4 border">
-                            <div className="text-sm font-semibold text-destructive flex items-center gap-1.5">
+                        <div className="pt-4 border-t border-destructive/20 mt-4 space-y-4 bg-destructive/5 rounded-xl p-4 border border-destructive/20">
+                            <div className="text-sm font-bold text-destructive flex items-center gap-1.5">
                                 <Trash2 className="h-4 w-4" />
                                 {lang === "NEP" ? "खतरा क्षेत्र (Danger Zone)" : "Danger Zone"}
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                {lang === "NEP"
-                                    ? "आफ्नो पसलको सबै नाफा-नोक्सान, क्यासबुक, उधारो लेजर र खरिद/बिक्री डाटा रिसेट गर्नुहोस्। सामानको सूची (Products) सुरक्षित रहनेछ।"
-                                    : "Reset all your profit/loss, cashbook, credit ledgers, and sales/purchase data. Your product catalog will be preserved intact."}
-                            </p>
-                            <AlertDialog open={resetDialogOpen} onOpenChange={(open) => { if (!busyReset) setResetDialogOpen(open); }}>
-                                <AlertDialogTrigger asChild>
-                                    <Button 
-                                        type="button"
-                                        variant="outline" 
-                                        size="sm"
-                                        className="border-destructive/30 text-destructive hover:bg-destructive hover:text-white transition-all h-9 w-full"
-                                    >
-                                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                                        {lang === "NEP" ? "सबै कारोबार र लेजर रिसेट गर्नुहोस्" : "Reset All Ledgers & Sales"}
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>
-                                            {lang === "NEP" ? "के तपाईं आफ्नो सबै डाटा रिसेट गर्न चाहनुहुन्छ?" : "Reset all your store transactions?"}
-                                        </AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            {lang === "NEP"
-                                                ? "यसले तपाइँको पसलको सम्पूर्ण बिक्री, खरिद, क्यासबुक र लेजर इतिहास स्थायी रूपमा मेटाउनेछ। सामानहरू (Products) सुरक्षित रहनेछन्, र ग्राहक/सप्लायरको मौज्दात (Balance) ० हुनेछ। यो फिर्ता गर्न सकिने छैन।"
-                                                : "This will permanently delete all your sales, purchases, cash transactions, ledger entries, and expenses. Your products will be preserved, and customer/supplier balances will be reset to 0. This action cannot be undone."}
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel disabled={busyReset}>{t.cancel}</AlertDialogCancel>
-                                        <Button
+
+                            {/* Option 1: Transactional & Ledger Reset */}
+                            <div className="p-3.5 bg-background/90 rounded-xl border border-border space-y-2.5 shadow-2xs">
+                                <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <RotateCcw className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                        {lang === "NEP" ? "१. कारोबार तथा लेजर रिसेट (Transactions Reset)" : "1. Transactions & Ledgers Reset"}
+                                    </span>
+                                    <span className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium border border-amber-500/20">
+                                        {lang === "NEP" ? "सामान सुरक्षित रहन्छ" : "Preserves Products"}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    {lang === "NEP"
+                                        ? "सबै बिक्री, खरिद, क्यासबुक, र लेजर इतिहास रिसेट हुन्छ। सामान (Products), ग्राहक र आपूर्तिकर्ताको नाम सुरक्षित रहनेछ।"
+                                        : "Resets all sales, purchases, cashbook, and ledger history. Your products, customers, and supplier profiles will remain intact."}
+                                </p>
+                                <AlertDialog open={resetDialogOpen} onOpenChange={(open) => { if (!busyReset) setResetDialogOpen(open); }}>
+                                    <AlertDialogTrigger asChild>
+                                        <Button 
                                             type="button"
-                                            disabled={busyReset}
-                                            onClick={handleSelfReset}
-                                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground min-w-[140px] font-bold"
+                                            variant="outline" 
+                                            size="sm"
+                                            className="border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500 hover:text-white transition-all h-8 text-xs font-semibold w-full mt-1"
                                         >
-                                            {busyReset ? (
-                                                <>
-                                                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                                                    {lang === "NEP" ? "रिसेट गरिँदैछ..." : "Resetting Data..."}
-                                                </>
-                                            ) : (
-                                                lang === "NEP" ? "डाटा रिसेट गर्नुहोस्" : "Reset Data"
-                                            )}
+                                            <RotateCcw className="h-3 w-3 mr-1.5" />
+                                            {lang === "NEP" ? "कारोबार र लेजर रिसेट गर्नुहोस्" : "Reset Transactions & Ledgers"}
                                         </Button>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>
+                                                {lang === "NEP" ? "के तपाईं कारोबार र लेजर रिसेट गर्न चाहनुहुन्छ?" : "Reset store transactions & ledgers?"}
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                {lang === "NEP"
+                                                    ? "यसले तपाइँको पसलको सम्पूर्ण बिक्री, खरिद, क्यासबुक, भौचर र लेजर इतिहास मेटाउनेछ। सामानहरू (Products), ग्राहक र सप्लायरको विवरण सुरक्षित रहनेछन् (मौज्दात ० हुनेछ)। यो कार्य फिर्ता गर्न सकिने छैन।"
+                                                    : "This will delete all sales, purchases, cash transactions, vouchers, and ledgers. Your product catalog, customer and supplier lists will be preserved (balances reset to 0). This action cannot be undone."}
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel disabled={busyReset}>{t.cancel}</AlertDialogCancel>
+                                            <Button
+                                                type="button"
+                                                disabled={busyReset}
+                                                onClick={handleSelfReset}
+                                                className="bg-amber-600 hover:bg-amber-700 text-white min-w-[140px] font-bold"
+                                            >
+                                                {busyReset ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                                        {lang === "NEP" ? "रिसेट गरिँदैछ..." : "Resetting Data..."}
+                                                    </>
+                                                ) : (
+                                                    lang === "NEP" ? "कारोबार रिसेट गर्नुहोस्" : "Reset Transactions"
+                                                )}
+                                            </Button>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+
+                            {/* Option 2: Master Store Reset (Full Factory Wipe) */}
+                            <div className="p-3.5 bg-destructive/10 rounded-xl border border-destructive/30 space-y-2.5 shadow-2xs">
+                                <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                    <span className="text-xs font-bold text-destructive flex items-center gap-1.5">
+                                        <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                                        {lang === "NEP" ? "२. मास्टर रिसेट / पूर्ण खाली (Master Factory Reset)" : "2. Master Store Reset (Full Wipe)"}
+                                    </span>
+                                    <span className="text-[10px] bg-destructive/20 text-destructive px-2 py-0.5 rounded-full font-bold border border-destructive/30">
+                                        {lang === "NEP" ? "पूर्ण खाली (Full Wipe)" : "Blank Store"}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-destructive/90 leading-relaxed font-medium">
+                                    {lang === "NEP"
+                                        ? "पसलको सम्पूर्ण सामान (Products), ग्राहक, आपूर्तिकर्ता, र सबै कारोबार पूर्ण रूपमा मेटिनेछ। पसलको प्रोफाइल फारम (नाम, फोन, प्यान) मात्र बाँकी रहनेछ।"
+                                        : "Permanently wipes all products, batches, customers, suppliers, and all transactions. Only basic shop registration info will be kept."}
+                                </p>
+                                <AlertDialog open={masterResetDialogOpen} onOpenChange={(open) => { if (!busyMasterReset) setMasterResetDialogOpen(open); }}>
+                                    <AlertDialogTrigger asChild>
+                                        <Button 
+                                            type="button"
+                                            variant="destructive" 
+                                            size="sm"
+                                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground transition-all h-8 text-xs font-bold w-full mt-1 shadow-sm"
+                                        >
+                                            <Trash2 className="h-3 w-3 mr-1.5" />
+                                            {lang === "NEP" ? "सम्पूर्ण डाटा (Master Store) खाली गर्नुहोस्" : "Execute Master Factory Reset"}
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                                                <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+                                                {lang === "NEP" ? "के तपाईं पसलको सम्पूर्ण डाटा मेट्न निश्चित हुनुहुन्छ?" : "Perform Master Factory Reset?"}
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription className="space-y-2 text-left">
+                                                <p className="font-semibold text-destructive">
+                                                    {lang === "NEP"
+                                                        ? "चेतावनी: यो अन्तिम फ्याक्ट्री रिसेट हो!"
+                                                        : "Warning: This is a full factory reset!"}
+                                                </p>
+                                                <p>
+                                                    {lang === "NEP"
+                                                        ? "यसले तपाइँको पसलका सबै सामानहरू (Products), ग्राहकहरू (Customers), आपूर्तिकर्ताहरू (Suppliers), र सम्पूर्ण कारोबार इतिहास सदाका लागि मेटाउनेछ। तपाईंको पसल सुरुवाती खाली (Brand New Blank Store) अवस्थामा फर्किनेछ। यो कार्य कुनै पनि हालतमा फिर्ता (Undo) गर्न सकिने छैन।"
+                                                        : "This will permanently delete all products, batches, customers, suppliers, and every transaction record. Your store will return to a completely fresh blank state. This action CANNOT be undone."}
+                                                </p>
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel disabled={busyMasterReset}>{t.cancel}</AlertDialogCancel>
+                                            <Button
+                                                type="button"
+                                                disabled={busyMasterReset}
+                                                onClick={handleMasterReset}
+                                                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground min-w-[160px] font-bold"
+                                            >
+                                                {busyMasterReset ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                                        {lang === "NEP" ? "पूर्ण रिसेट गरिँदैछ..." : "Master Resetting..."}
+                                                    </>
+                                                ) : (
+                                                    lang === "NEP" ? "सबै पूर्ण मेटाउनुहोस् (Master Wipe)" : "Confirm Master Wipe"
+                                                )}
+                                            </Button>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
