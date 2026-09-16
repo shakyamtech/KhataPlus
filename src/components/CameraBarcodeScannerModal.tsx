@@ -12,12 +12,16 @@ interface CameraBarcodeScannerModalProps {
   open: boolean;
   onClose: () => void;
   onScan: (scannedText: string) => boolean | Promise<boolean>; // Returns true if item found/added
+  cartItemCount?: number;
+  cartTotalQty?: number;
 }
 
 export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps> = ({
   open,
   onClose,
-  onScan
+  onScan,
+  cartItemCount = 0,
+  cartTotalQty = 0
 }) => {
   const { lang } = useLanguage();
   const isNep = lang === "NEP";
@@ -391,9 +395,17 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
                   : (isNep ? `फेला परेन: ${lastScanned.text}` : `Not found: ${lastScanned.text}`)}
               </span>
             </div>
-            <span className="text-[10px] opacity-75 shrink-0 ml-2">
-              {isNep ? "सक्रिय (Active)" : "Active"}
-            </span>
+            {cartItemCount > 0 ? (
+              <span className="text-[10px] font-bold shrink-0 ml-2 bg-background/90 px-2 py-0.5 rounded border text-foreground shadow-2xs">
+                {isNep
+                  ? `🛒 ${cartItemCount} थरी (${cartTotalQty || cartItemCount} वटा)`
+                  : `🛒 ${cartItemCount} ${cartItemCount === 1 ? 'Item' : 'Items'} (${cartTotalQty || cartItemCount} pcs)`}
+              </span>
+            ) : (
+              <span className="text-[10px] opacity-75 shrink-0 ml-2 font-medium">
+                {isNep ? "सक्रिय (Active)" : "Active"}
+              </span>
+            )}
           </div>
         )}
 

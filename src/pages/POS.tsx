@@ -141,7 +141,19 @@ const POS = () => {
   const [tempAmount, setTempAmount] = useState<{ id: string; val: string } | null>(null);
   const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
   const cartSectionRef = useRef<HTMLDivElement>(null);
+  const cartListContainerRef = useRef<HTMLDivElement>(null);
   const productsSectionRef = useRef<HTMLDivElement>(null);
+
+  const scrollToLatestCartItem = () => {
+    setTimeout(() => {
+      if (cartListContainerRef.current) {
+        cartListContainerRef.current.scrollTo({
+          top: cartListContainerRef.current.scrollHeight,
+          behavior: "smooth"
+        });
+      }
+    }, 50);
+  };
 
   const handleCameraScan = (code: string) => {
     const clean = code.trim();
@@ -160,6 +172,7 @@ const POS = () => {
       if (added) {
         toast.success(`✓ Added to cart: ${found.name}`, { duration: 2000 });
         scrollToCartMobile();
+        scrollToLatestCartItem();
         return true;
       }
     }
@@ -475,6 +488,7 @@ const POS = () => {
     
     if (addedSuccessfully) {
       scrollToCartMobile();
+      scrollToLatestCartItem();
     }
     return addedSuccessfully;
   };
@@ -1256,7 +1270,7 @@ const POS = () => {
             </div>
           </div>
 
-          <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+          <div ref={cartListContainerRef} className="space-y-2 max-h-[40vh] overflow-y-auto scroll-smooth">
             {cart.map((i) => (
               <div key={i.product_id} className="bg-secondary rounded-lg p-2.5 space-y-2">
                 <div className="flex items-center justify-between gap-2">
@@ -1774,6 +1788,8 @@ const POS = () => {
         open={cameraScannerOpen}
         onClose={() => setCameraScannerOpen(false)}
         onScan={handleCameraScan}
+        cartItemCount={cart.length}
+        cartTotalQty={cart.reduce((sum, item) => sum + (Number(item.qty) || 0), 0)}
       />
     </div>
   );
