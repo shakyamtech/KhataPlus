@@ -300,18 +300,18 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
         <div className="relative w-full aspect-[4/3] bg-black/90 rounded-xl overflow-hidden border-2 border-primary/30 shadow-inner flex flex-col items-center justify-center">
           <div id="pos-camera-barcode-reader" className="w-full h-full" />
 
-          {/* Target Scan Guides Overlay - Perfectly Centered & Single Bounding Box */}
+          {/* Target Scan Guides Overlay - Perfectly Centered & Single Bounding Box with Clear Corner Brackets */}
           {isScanning && !errorMsg && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <div className="w-[260px] h-[150px] border-2 border-dashed border-cyan-400/90 rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] relative flex items-center justify-center">
+              <div className="w-[260px] h-[150px] border border-dashed border-cyan-400/50 rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] relative flex items-center justify-center">
                 {/* Laser scan line animation */}
                 <div className="w-full h-0.5 bg-red-500 shadow-[0_0_10px_#ef4444] animate-pulse" />
 
-                {/* Corners */}
-                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-3 border-l-3 border-cyan-400" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-3 border-r-3 border-cyan-400" />
-                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-3 border-l-3 border-cyan-400" />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-3 border-r-3 border-cyan-400" />
+                {/* Viewfinder Corner Brackets */}
+                <div className="absolute -top-1 -left-1 w-6 h-6 border-t-[3px] border-l-[3px] border-cyan-400 rounded-tl-md shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                <div className="absolute -top-1 -right-1 w-6 h-6 border-t-[3px] border-r-[3px] border-cyan-400 rounded-tr-md shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-[3px] border-l-[3px] border-cyan-400 rounded-bl-md shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-[3px] border-r-[3px] border-cyan-400 rounded-br-md shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
               </div>
               <span className="mt-3 text-[11px] font-semibold text-white/95 bg-black/75 px-3 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 shadow-sm border border-white/10">
                 <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
