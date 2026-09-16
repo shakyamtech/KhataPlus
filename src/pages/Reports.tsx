@@ -1364,7 +1364,10 @@ const Reports = () => {
                 <td style="padding:7px 10px; text-align:right; border:1px solid #111;">Rs. ${(plTotals.revenue).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
               <tr>
-                <td style="padding:7px 10px; border:1px solid #111; color:#555;">Less: Cost of Goods Sold - COGS (सामानको लागत)</td>
+                <td style="padding:7px 10px; border:1px solid #111; color:#555;">
+                  Less: Cost of Goods Sold - COGS (बिक्री भएको सामानको लागत)
+                  <div style="font-size:10px; color:#6b7280; margin-top:2px;">[सुरुवाती स्टक + कुल खरिद - अन्तिम स्टक मौज्दात (Opening Stock + Purchases - Closing Stock)]</div>
+                </td>
                 <td style="padding:7px 10px; text-align:right; font-weight:600; color:#555; border:1px solid #111;">(Rs. ${(plTotals.cogs).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
               </tr>
               <tr style="background:#edf2f7; font-weight:800; font-size:13px;">
@@ -2165,7 +2168,10 @@ const Reports = () => {
                         Cost of Sales (सामानको लागत)
                       </h3>
                       <div className="flex justify-between items-center py-1">
-                        <span className="text-sm">Cost of Goods Sold (COGS)</span>
+                        <div>
+                          <div className="text-sm">Cost of Goods Sold (COGS)</div>
+                          <div className="text-[11px] text-muted-foreground">सुरुवाती स्टक + कुल खरिद - अन्तिम स्टक मौज्दात (Opening + Purchases - Closing)</div>
+                        </div>
                         <span className="font-medium text-destructive">({fmt(plTotals.cogs)})</span>
                       </div>
                     </section>

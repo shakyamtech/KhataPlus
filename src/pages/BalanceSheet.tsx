@@ -331,7 +331,10 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                 <td style="padding:7px 10px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.revenue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
               <tr>
-                <td style="padding:7px 10px; border:1px solid #111; color:#555;">Less: Cost of Goods Sold - COGS (सामानको लागत)</td>
+                <td style="padding:7px 10px; border:1px solid #111; color:#555;">
+                  Less: Cost of Goods Sold - COGS (बिक्री भएको सामानको लागत)
+                  <div style="font-size:10px; color:#6b7280; margin-top:2px;">[सुरुवाती स्टक + कुल खरिद - अन्तिम स्टक मौज्दात (Closing Stock: Rs. ${d.stock.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})]</div>
+                </td>
                 <td style="padding:7px 10px; text-align:right; font-weight:600; color:#555; border:1px solid #111;">(Rs. ${d.cogs.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
               </tr>
               <tr style="background:#f9fafb; font-weight:700;">
@@ -368,25 +371,25 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">नगद मौज्दात (Cash in Hand)</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">अन्तिम नगद मौज्दात (Closing Cash in Hand)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.cash.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   ${d.wallet > 0 ? `
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">डिजिटल वालेट (eSewa / Digital Wallets)</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">डिजिटल वालेट मौज्दात (Closing Wallets - eSewa/Khalti)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.wallet.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>` : ''}
                   ${d.bank > 0 ? `
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">बैंक मौज्दात (Bank Balances)</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">अन्तिम बैंक मौज्दात (Closing Bank Balances)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.bank.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>` : ''}
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">मौज्दात स्टक (Stock at cost)</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">अन्तिम स्टक मौज्दात (Closing Stock at Cost)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.stock.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">ग्राहकबाट उठ्न बाँकी (Receivables)</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">ग्राहकबाट उठ्न बाँकी (Customer Receivables)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.receivable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   ${d.vatReceivable > 0 ? `
@@ -398,6 +401,11 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                   <tr>
                     <td style="padding:6px 8px; border:1px solid #111;">स्थिर सम्पत्ति (Fixed Assets - Vehicle/Equip)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.fixedAssets.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>` : ''}
+                  ${d.loansGiven > 0 ? `
+                  <tr>
+                    <td style="padding:6px 8px; border:1px solid #111;">दिएको ऋण तथा पेश्की (Loans Given & Advances)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.loansGiven.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>` : ''}
                 </tbody>
                 <tfoot>
@@ -534,10 +542,10 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
             </div>
 
             <div className="space-y-1 divide-y divide-border/20">
-              <Row label="नगद मौज्दात (Cash in Hand)" value={d.cash} />
-              {d.wallet > 0 && <Row label="डिजिटल वालेट (eSewa / Digital Wallets)" value={d.wallet} />}
-              {d.bank > 0 && <Row label="बैंक मौज्दात (Bank Balances)" value={d.bank} />}
-              <Row label="मौज्दात स्टक (Stock at cost)" value={d.stock} />
+              <Row label="अन्तिम नगद मौज्दात (Closing Cash in Hand)" value={d.cash} />
+              {d.wallet > 0 && <Row label="डिजिटल वालेट मौज्दात (Closing Wallets - eSewa/Khalti)" value={d.wallet} />}
+              {d.bank > 0 && <Row label="अन्तिम बैंक मौज्दात (Closing Bank Balances)" value={d.bank} />}
+              <Row label="अन्तिम स्टक मौज्दात (Closing Stock at Cost)" value={d.stock} />
               <Row label="ग्राहकबाट उठ्न बाँकी (Customer Receivables)" value={d.receivable} />
               {d.fixedAssets > 0 && <Row label="स्थिर सम्पत्ति (Fixed Assets)" value={d.fixedAssets} />}
               {d.loansGiven > 0 && <Row label="दिएको ऋण तथा पेश्की (Loans Given & Advances)" value={d.loansGiven} />}
