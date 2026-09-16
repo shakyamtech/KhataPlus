@@ -17,15 +17,33 @@ export const getSavedBarcodeSound = (): BarcodeSoundType => {
   return "sweet_ding";
 };
 
+// Singleton Web Audio Context to prevent mobile AudioContext quotas/limits
+let sharedAudioCtx: AudioContext | null = null;
+
+const getAudioContext = (): AudioContext | null => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+      sharedAudioCtx = new AudioContextClass();
+    }
+    if (sharedAudioCtx.state === "suspended") {
+      sharedAudioCtx.resume();
+    }
+    return sharedAudioCtx;
+  } catch {
+    return null;
+  }
+};
+
 export const playScanBeep = (typeOverride?: BarcodeSoundType) => {
   const soundType = typeOverride || getSavedBarcodeSound();
   if (soundType === "mute") return;
 
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const audioCtx = new AudioContextClass();
+  const audioCtx = getAudioContext();
+  if (!audioCtx) return;
 
+  try {
     if (soundType === "sweet_ding") {
       // Sweet Ding: Resonant 2-note melody (D5 -> A5) with long warm decay (~0.7s)
       const now = audioCtx.currentTime;
@@ -77,7 +95,9 @@ export const playScanBeep = (typeOverride?: BarcodeSoundType) => {
       gain.gain.setValueAtTime(0.22, now);
       gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.65);
 
-      osc1Connect(osc, gain, audioCtx);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
       osc.start(now);
       osc.stop(now + 0.65);
     } else {
@@ -102,8 +122,3 @@ export const playScanBeep = (typeOverride?: BarcodeSoundType) => {
     // Muted/blocked audio
   }
 };
-
-function osc1Connect(osc: OscillatorNode, gain: GainNode, audioCtx: AudioContext) {
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-}
