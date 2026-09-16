@@ -300,20 +300,20 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
         <div className="relative w-full aspect-[4/3] bg-black/90 rounded-xl overflow-hidden border-2 border-primary/30 shadow-inner flex flex-col items-center justify-center">
           <div id="pos-camera-barcode-reader" className="w-full h-full" />
 
-          {/* Target Scan Guides Overlay - Perfectly Centered & Single Bounding Box with Clear Corner Brackets */}
+          {/* Target Scan Guides Overlay - Clean Classic Grey Viewfinder Corners */}
           {isScanning && !errorMsg && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <div className="w-[260px] h-[150px] border border-dashed border-cyan-400/50 rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] relative flex items-center justify-center">
+              <div className="w-[260px] h-[150px] shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] relative flex items-center justify-center rounded-sm">
                 {/* Laser scan line animation */}
-                <div className="w-full h-0.5 bg-red-500 shadow-[0_0_10px_#ef4444] animate-pulse" />
+                <div className="w-full h-0.5 bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse" />
 
-                {/* Viewfinder Corner Brackets */}
-                <div className="absolute -top-1 -left-1 w-6 h-6 border-t-[3px] border-l-[3px] border-cyan-400 rounded-tl-md shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
-                <div className="absolute -top-1 -right-1 w-6 h-6 border-t-[3px] border-r-[3px] border-cyan-400 rounded-tr-md shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
-                <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-[3px] border-l-[3px] border-cyan-400 rounded-bl-md shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-[3px] border-r-[3px] border-cyan-400 rounded-br-md shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                {/* Classic Grey / White Corner Brackets */}
+                <div className="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-white/80 rounded-tl-xs" />
+                <div className="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-white/80 rounded-tr-xs" />
+                <div className="absolute bottom-0 left-0 w-5 h-5 border-b-2 border-l-2 border-white/80 rounded-bl-xs" />
+                <div className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-white/80 rounded-br-xs" />
               </div>
-              <span className="mt-3 text-[11px] font-semibold text-white/95 bg-black/75 px-3 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 shadow-sm border border-white/10">
+              <span className="mt-3 text-[11px] font-semibold text-white/90 bg-black/75 px-3 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 shadow-sm border border-white/10">
                 <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
                 {isNep ? "बारकोड अगाडि ल्याउनुहोस् (Beep बज्नेछ)" : "Align barcode within frame (Beeps on scan)"}
               </span>
