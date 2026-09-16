@@ -114,6 +114,19 @@ export default function Accounting() {
     { id: "2", type: "credit", account_id: "", amount: "" }
   ]);
 
+  // Multi-line LineItemRow for Payment & Receipt
+  type LineItemRow = {
+    id: string;
+    account_id: string;
+    amount: string;
+  };
+  const [paymentRows, setPaymentRows] = useState<LineItemRow[]>([
+    { id: "1", account_id: "", amount: "" }
+  ]);
+  const [receiptRows, setReceiptRows] = useState<LineItemRow[]>([
+    { id: "1", account_id: "", amount: "" }
+  ]);
+
   // Daybook Filters
   const [filterType, setFilterType] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -191,13 +204,19 @@ export default function Accounting() {
     } else if (type === "payment") {
       const cashAcc = accounts.find(a => a.group === "cash");
       const assetOrExp = accounts.find(a => a.group === "fixed_assets" || a.type === "expense");
-      setDebitAccountId(assetOrExp ? assetOrExp.id : "");
       setCreditAccountId(cashAcc ? cashAcc.id : "");
+      setDebitAccountId("");
+      setPaymentRows([
+        { id: "1", account_id: assetOrExp ? assetOrExp.id : "", amount: "" }
+      ]);
     } else if (type === "receipt") {
       const cashAcc = accounts.find(a => a.group === "cash");
-      const capitalOrLoan = accounts.find(a => a.group === "capital" || a.group === "loans_liabilities");
+      const capitalOrLoan = accounts.find(a => a.group === "capital" || a.group === "loans_liabilities" || a.type === "income");
       setDebitAccountId(cashAcc ? cashAcc.id : "");
-      setCreditAccountId(capitalOrLoan ? capitalOrLoan.id : "");
+      setCreditAccountId("");
+      setReceiptRows([
+        { id: "1", account_id: capitalOrLoan ? capitalOrLoan.id : "", amount: "" }
+      ]);
     } else {
       // Journal: Reset to clean 2-line compound initial state
       setDebitAccountId("");
@@ -210,6 +229,52 @@ export default function Accounting() {
 
     setVoucherModalOpen(true);
   };
+
+  const handleAddPaymentRow = () => {
+    setPaymentRows(prev => [
+      ...prev,
+      { id: Math.random().toString(36).slice(2, 9), account_id: "", amount: "" }
+    ]);
+  };
+
+  const handleRemovePaymentRow = (id: string) => {
+    if (paymentRows.length <= 1) {
+      toast.error(lang === "NEP" ? "कम्तिमा एउटा शीर्षक अनिवार्य छ" : "At least 1 item is required");
+      return;
+    }
+    setPaymentRows(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleUpdatePaymentRow = (id: string, field: keyof LineItemRow, value: string) => {
+    setPaymentRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
+
+  const paymentTotal = useMemo(() => {
+    return paymentRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  }, [paymentRows]);
+
+  const handleAddReceiptRow = () => {
+    setReceiptRows(prev => [
+      ...prev,
+      { id: Math.random().toString(36).slice(2, 9), account_id: "", amount: "" }
+    ]);
+  };
+
+  const handleRemoveReceiptRow = (id: string) => {
+    if (receiptRows.length <= 1) {
+      toast.error(lang === "NEP" ? "कम्तिमा एउटा शीर्षक अनिवार्य छ" : "At least 1 item is required");
+      return;
+    }
+    setReceiptRows(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleUpdateReceiptRow = (id: string, field: keyof LineItemRow, value: string) => {
+    setReceiptRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
+
+  const receiptTotal = useMemo(() => {
+    return receiptRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  }, [receiptRows]);
 
   const handleAddJournalRow = () => {
     const lastRow = journalRows[journalRows.length - 1];
@@ -311,7 +376,139 @@ export default function Accounting() {
       return;
     }
 
-    // Standard Simple / Dr-Cr Voucher
+    if (voucherType === "payment") {
+      if (!creditAccountId) {
+        toast.error(lang === "NEP" ? "भुक्तानी माध्यम (Paid Via) छान्नुहोस्" : "Please select payment method (Paid Via)");
+        return;
+      }
+      const hasEmptyAccount = paymentRows.some(r => !r.account_id);
+      if (hasEmptyAccount) {
+        toast.error(lang === "NEP" ? "सबै लाइनहरूमा खर्च/भुक्तानी खाता छान्नुहोस्" : "Please select an account for every payment item");
+        return;
+      }
+      const hasInvalidAmount = paymentRows.some(r => !Number(r.amount) || Number(r.amount) <= 0);
+      if (hasInvalidAmount) {
+        toast.error(lang === "NEP" ? "सबै लाइनहरूमा मान्य रकम राख्नुहोस्" : "Please enter a valid amount for every item");
+        return;
+      }
+      if (paymentRows.some(r => r.account_id === creditAccountId)) {
+        toast.error(lang === "NEP" ? "भुक्तानी माध्यम र खर्च खाता एउटै हुन सक्दैन" : "Payment method and expense account cannot be the same");
+        return;
+      }
+
+      const creditAcc = accounts.find(a => a.id === creditAccountId);
+      if (!creditAcc) return;
+
+      const drEntries: VoucherEntryItem[] = paymentRows.map(r => {
+        const acc = accounts.find(a => a.id === r.account_id);
+        return {
+          account_id: r.account_id,
+          account_name: acc?.name || "",
+          type: "debit" as const,
+          amount: Number(r.amount)
+        };
+      });
+
+      const crEntry: VoucherEntryItem = {
+        account_id: creditAccountId,
+        account_name: creditAcc.name,
+        type: "credit" as const,
+        amount: paymentTotal
+      };
+
+      setSubmittingVoucher(true);
+      try {
+        const newV = await createVoucher(user.uid, {
+          voucher_type: "payment",
+          date: voucherDate,
+          amount: paymentTotal,
+          entries: [...drEntries, crEntry],
+          narration: narration || "PAYMENT voucher entry",
+          reference_no: referenceNo
+        });
+
+        toast.success(
+          lang === "NEP"
+            ? `${newV.voucher_no} भुक्तानी भाउचर सुरक्षित भयो!`
+            : `Payment voucher ${newV.voucher_no} posted successfully!`
+        );
+        setVoucherModalOpen(false);
+        loadData();
+      } catch (err: any) {
+        toast.error(err.message || "Failed to create voucher");
+      } finally {
+        setSubmittingVoucher(false);
+      }
+      return;
+    }
+
+    if (voucherType === "receipt") {
+      if (!debitAccountId) {
+        toast.error(lang === "NEP" ? "कहाँ जम्मा भयो (Deposited In) खाता छान्नुहोस्" : "Please select deposited account");
+        return;
+      }
+      const hasEmptyAccount = receiptRows.some(r => !r.account_id);
+      if (hasEmptyAccount) {
+        toast.error(lang === "NEP" ? "सबै लाइनहरूमा आम्दानी/स्रोत खाता छान्नुहोस्" : "Please select an account for every receipt item");
+        return;
+      }
+      const hasInvalidAmount = receiptRows.some(r => !Number(r.amount) || Number(r.amount) <= 0);
+      if (hasInvalidAmount) {
+        toast.error(lang === "NEP" ? "सबै लाइनहरूमा मान्य रकम राख्नुहोस्" : "Please enter a valid amount for every item");
+        return;
+      }
+      if (receiptRows.some(r => r.account_id === debitAccountId)) {
+        toast.error(lang === "NEP" ? "जम्मा हुने खाता र आम्दानी खाता एउटै हुन सक्दैन" : "Deposited account and income account cannot be the same");
+        return;
+      }
+
+      const debitAcc = accounts.find(a => a.id === debitAccountId);
+      if (!debitAcc) return;
+
+      const crEntries: VoucherEntryItem[] = receiptRows.map(r => {
+        const acc = accounts.find(a => a.id === r.account_id);
+        return {
+          account_id: r.account_id,
+          account_name: acc?.name || "",
+          type: "credit" as const,
+          amount: Number(r.amount)
+        };
+      });
+
+      const drEntry: VoucherEntryItem = {
+        account_id: debitAccountId,
+        account_name: debitAcc.name,
+        type: "debit" as const,
+        amount: receiptTotal
+      };
+
+      setSubmittingVoucher(true);
+      try {
+        const newV = await createVoucher(user.uid, {
+          voucher_type: "receipt",
+          date: voucherDate,
+          amount: receiptTotal,
+          entries: [drEntry, ...crEntries],
+          narration: narration || "RECEIPT voucher entry",
+          reference_no: referenceNo
+        });
+
+        toast.success(
+          lang === "NEP"
+            ? `${newV.voucher_no} रसिद भाउचर सुरक्षित भयो!`
+            : `Receipt voucher ${newV.voucher_no} posted successfully!`
+        );
+        setVoucherModalOpen(false);
+        loadData();
+      } catch (err: any) {
+        toast.error(err.message || "Failed to create voucher");
+      } finally {
+        setSubmittingVoucher(false);
+      }
+      return;
+    }
+
+    // Contra Voucher
     const amt = Number(voucherAmount);
     if (!amt || amt <= 0) {
       toast.error(lang === "NEP" ? "कृपया मान्य रकम राख्नुहोस्" : "Please enter a valid amount");
@@ -333,14 +530,14 @@ export default function Accounting() {
     setSubmittingVoucher(true);
     try {
       const newV = await createVoucher(user.uid, {
-        voucher_type: voucherType,
+        voucher_type: "contra",
         date: voucherDate,
         amount: amt,
         debit_account_id: debitAccountId,
         debit_account_name: debitAcc.name,
         credit_account_id: creditAccountId,
         credit_account_name: creditAcc.name,
-        narration: narration || `${voucherType.toUpperCase()} voucher entry`,
+        narration: narration || "CONTRA voucher entry",
         reference_no: referenceNo
       });
 
@@ -1912,7 +2109,7 @@ export default function Accounting() {
 
       {/* CREATE VOUCHER MODAL */}
       <Dialog open={voucherModalOpen} onOpenChange={setVoucherModalOpen}>
-        <DialogContent className={`${voucherType === "journal" ? "max-w-4xl" : "max-w-2xl"} w-[95vw] sm:w-full transition-all p-6 sm:p-7 rounded-2xl shadow-2xl border bg-card`}>
+        <DialogContent className={`${voucherType === "contra" ? "max-w-2xl" : "max-w-4xl"} w-[95vw] sm:w-full transition-all p-6 sm:p-7 rounded-2xl shadow-2xl border bg-card`}>
           <DialogHeader className="pb-3 border-b">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
@@ -1951,25 +2148,13 @@ export default function Accounting() {
                     {voucherType === "contra"
                       ? "पसलको क्यास बैंकमा हाल्दा, झिक्दा वा बैंक ट्रान्सफरको लागि।"
                       : voucherType === "payment"
-                      ? "सम्पत्ति खरिद, ऋण किस्ता, कर वा अन्य व्यापारिक भुक्तानीको लागि।"
+                      ? "खर्च भुक्तानी, साहुको हिसाब वा सम्पत्ति खरिद दाखिलाका लागि।"
                       : voucherType === "receipt"
-                      ? "पुँजी लगानी, नयाँ बैंक ऋण वा अन्य आम्दानीको दाखिलाका लागि।"
+                      ? "पुँजी लगानी, आम्दानी दाखिला वा आसामीबाट रकम प्राप्तिका लागि।"
                       : "ह्रासकट्टी (Depreciation), बक्यौता खर्च वा बहु-खाता (Compound Entry) समायोजनका लागि।"}
                   </DialogDescription>
                 </div>
               </div>
-
-              {voucherType !== "journal" && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsDrCrMode(!isDrCrMode)}
-                  className="text-xs h-8 px-3 rounded-full border-primary/30 text-primary hover:bg-primary/10 font-semibold"
-                >
-                  {isDrCrMode ? "⇄ Switch to Simple" : "⇄ Switch to Dr/Cr Mode"}
-                </Button>
-              )}
             </div>
           </DialogHeader>
 
@@ -2132,9 +2317,308 @@ export default function Accounting() {
                     </div>
                   </div>
                 </div>
+
+                {/* Narration */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "कैफियत (Narration)" : "Narration"}</Label>
+                  <Input
+                    placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
+                    value={narration}
+                    onChange={e => setNarration(e.target.value)}
+                    className="h-10 text-xs rounded-xl"
+                  />
+                </div>
+              </div>
+            ) : voucherType === "payment" ? (
+              // MULTI-ITEM PAYMENT VOUCHER VIEW
+              <div className="space-y-4">
+                {/* Date & Ref */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "मिति (Date)" : "Date"}</Label>
+                    <Input
+                      type="date"
+                      value={voucherDate}
+                      onChange={e => setVoucherDate(e.target.value)}
+                      className="h-10 text-xs rounded-xl"
+                      required
+                    />
+                    <span className="text-[11px] text-muted-foreground block font-medium">
+                      📅 {formatNepaliDate(voucherDate)}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</Label>
+                    <Input
+                      placeholder="e.g. CHQ-99120, Bank Slip #4821..."
+                      value={referenceNo}
+                      onChange={e => setReferenceNo(e.target.value)}
+                      className="h-10 text-xs font-mono rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                {/* Paid Via (Cash / Bank) Selector */}
+                <div className="p-3.5 rounded-2xl border bg-muted/20 space-y-1.5">
+                  <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <CreditCard className="h-4 w-4 text-amber-500" />
+                    <span>{lang === "NEP" ? "भुक्तानी माध्यम (Paid Via)" : "Paid Via (Cash / Bank Account)"}</span>
+                  </Label>
+                  <Select value={creditAccountId} onValueChange={setCreditAccountId}>
+                    <SelectTrigger className="h-10 text-xs rounded-xl font-semibold">
+                      <SelectValue placeholder="नगद वा बैंक छान्नुहोस्..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {renderGroupedAccountOptions(
+                        accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Multi-Item Payment Lines */}
+                <div className="border rounded-2xl bg-card overflow-hidden shadow-sm">
+                  <div className="p-3 bg-muted/40 border-b flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <FolderTree className="h-4 w-4 text-primary" />
+                      {lang === "NEP" ? "भुक्तानी गरिएका खर्च तथा खाताहरू (Payment / Expense Items)" : "Payment / Expense Items"}
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono px-2 py-0.5">
+                      {paymentRows.length} Items
+                    </Badge>
+                  </div>
+
+                  <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
+                    {paymentRows.map((row, idx) => (
+                      <div
+                        key={row.id}
+                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-2.5 rounded-xl bg-muted/20 border hover:border-primary/40 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <Select
+                            value={row.account_id}
+                            onValueChange={(val) => handleUpdatePaymentRow(row.id, "account_id", val)}
+                          >
+                            <SelectTrigger className="h-9 text-xs rounded-lg">
+                              <SelectValue placeholder={lang === "NEP" ? `खर्च वा पार्टी खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {renderGroupedAccountOptions(accounts.filter(a => a.id !== creditAccountId), true)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="w-full sm:w-40 shrink-0">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={row.amount}
+                            onChange={(e) => handleUpdatePaymentRow(row.id, "amount", e.target.value)}
+                            className="h-9 text-xs font-mono font-bold text-right rounded-lg"
+                            required
+                          />
+                        </div>
+
+                        <div className="shrink-0 flex justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-lg"
+                            onClick={() => handleRemovePaymentRow(row.id)}
+                            disabled={paymentRows.length <= 1}
+                            title={lang === "NEP" ? "हटाउनुहोस्" : "Remove Item"}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-2.5 border-t bg-muted/10">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddPaymentRow}
+                      className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 font-semibold rounded-xl"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>{lang === "NEP" ? "+ नयाँ खर्च / शीर्षक थप्नुहोस् (+ Add Payment Item)" : "+ Add Payment Item"}</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Total & Narration */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                  <div className="p-3 rounded-xl border bg-amber-500/5 border-amber-500/20 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground font-semibold">
+                      {lang === "NEP" ? "जम्मा भुक्तानी रकम:" : "Total Payment:"}
+                    </span>
+                    <strong className="text-base font-bold font-mono text-amber-600">
+                      {fmt(paymentTotal)}
+                    </strong>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "कैफियत (Narration)" : "Narration"}</Label>
+                    <Input
+                      placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
+                      value={narration}
+                      onChange={e => setNarration(e.target.value)}
+                      className="h-10 text-xs rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : voucherType === "receipt" ? (
+              // MULTI-ITEM RECEIPT VOUCHER VIEW
+              <div className="space-y-4">
+                {/* Date & Ref */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "मिति (Date)" : "Date"}</Label>
+                    <Input
+                      type="date"
+                      value={voucherDate}
+                      onChange={e => setVoucherDate(e.target.value)}
+                      className="h-10 text-xs rounded-xl"
+                      required
+                    />
+                    <span className="text-[11px] text-muted-foreground block font-medium">
+                      📅 {formatNepaliDate(voucherDate)}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</Label>
+                    <Input
+                      placeholder="e.g. CHQ-99120, Bank Slip #4821..."
+                      value={referenceNo}
+                      onChange={e => setReferenceNo(e.target.value)}
+                      className="h-10 text-xs font-mono rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                {/* Deposited In (Cash / Bank) Selector */}
+                <div className="p-3.5 rounded-2xl border bg-muted/20 space-y-1.5">
+                  <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Landmark className="h-4 w-4 text-emerald-500" />
+                    <span>{lang === "NEP" ? "कहाँ जम्मा भयो? (Deposited In)" : "Deposited In (Cash / Bank Account)"}</span>
+                  </Label>
+                  <Select value={debitAccountId} onValueChange={setDebitAccountId}>
+                    <SelectTrigger className="h-10 text-xs rounded-xl font-semibold">
+                      <SelectValue placeholder="नगद वा बैंक छान्नुहोस्..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {renderGroupedAccountOptions(
+                        accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Multi-Item Receipt Lines */}
+                <div className="border rounded-2xl bg-card overflow-hidden shadow-sm">
+                  <div className="p-3 bg-muted/40 border-b flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <FolderTree className="h-4 w-4 text-primary" />
+                      {lang === "NEP" ? "आम्दानी तथा दाखिला स्रोतहरू (Receipt / Income Items)" : "Receipt / Income Items"}
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono px-2 py-0.5">
+                      {receiptRows.length} Items
+                    </Badge>
+                  </div>
+
+                  <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
+                    {receiptRows.map((row, idx) => (
+                      <div
+                        key={row.id}
+                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-2.5 rounded-xl bg-muted/20 border hover:border-primary/40 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <Select
+                            value={row.account_id}
+                            onValueChange={(val) => handleUpdateReceiptRow(row.id, "account_id", val)}
+                          >
+                            <SelectTrigger className="h-9 text-xs rounded-lg">
+                              <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा स्रोत खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {renderGroupedAccountOptions(accounts.filter(a => a.id !== debitAccountId), true)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="w-full sm:w-40 shrink-0">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={row.amount}
+                            onChange={(e) => handleUpdateReceiptRow(row.id, "amount", e.target.value)}
+                            className="h-9 text-xs font-mono font-bold text-right rounded-lg"
+                            required
+                          />
+                        </div>
+
+                        <div className="shrink-0 flex justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-lg"
+                            onClick={() => handleRemoveReceiptRow(row.id)}
+                            disabled={receiptRows.length <= 1}
+                            title={lang === "NEP" ? "हटाउनुहोस्" : "Remove Item"}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-2.5 border-t bg-muted/10">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddReceiptRow}
+                      className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 font-semibold rounded-xl"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>{lang === "NEP" ? "+ नयाँ आम्दानी / स्रोत थप्नुहोस् (+ Add Receipt Item)" : "+ Add Receipt Item"}</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Total & Narration */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                  <div className="p-3 rounded-xl border bg-emerald-500/5 border-emerald-500/20 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground font-semibold">
+                      {lang === "NEP" ? "जम्मा रसिद रकम:" : "Total Receipt:"}
+                    </span>
+                    <strong className="text-base font-bold font-mono text-emerald-600">
+                      {fmt(receiptTotal)}
+                    </strong>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "कैफियत (Narration)" : "Narration"}</Label>
+                    <Input
+                      placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
+                      value={narration}
+                      onChange={e => setNarration(e.target.value)}
+                      className="h-10 text-xs rounded-xl"
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
-              // SINGLE 2-LEGGED VOUCHER VIEW (Contra / Payment / Receipt)
+              // CONTRA VOUCHER VIEW (Cash <-> Bank Transfer)
               <div className="space-y-4">
                 {/* Date & Ref (Top Row) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2162,153 +2646,44 @@ export default function Accounting() {
                   </div>
                 </div>
 
-                {/* Account Selectors */}
-                {isDrCrMode ? (
-                  // Tally Dr / Cr View
-                  <div className="p-4 rounded-2xl border bg-muted/20 space-y-3.5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                          <span>Debit (Dr.)</span>
-                          <span className="text-[10px] font-normal text-muted-foreground">(पाउने वा सम्पत्ति)</span>
-                        </Label>
-                        <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-                          <SelectTrigger className="h-10 text-xs rounded-xl">
-                            <SelectValue placeholder="Select Debit account..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {renderGroupedAccountOptions(accounts, true)}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                {/* From / To Accounts */}
+                <div className="p-4 rounded-2xl border bg-muted/20 space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-foreground">
+                        {lang === "NEP" ? "कहाँबाट पैसा गयो? (From Account)" : "From Account"}
+                      </Label>
+                      <Select value={creditAccountId} onValueChange={setCreditAccountId}>
+                        <SelectTrigger className="h-10 text-xs rounded-xl">
+                          <SelectValue placeholder="कहाँबाट..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {renderGroupedAccountOptions(
+                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-amber-600 flex items-center gap-1">
-                          <span>Credit (Cr.)</span>
-                          <span className="text-[10px] font-normal text-muted-foreground">(दिने वा जाने)</span>
-                        </Label>
-                        <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-                          <SelectTrigger className="h-10 text-xs rounded-xl">
-                            <SelectValue placeholder="Select Credit account..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {renderGroupedAccountOptions(accounts, true)}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-foreground">
+                        {lang === "NEP" ? "कहाँ पैसा पुग्यो / जम्मा भयो? (To Account)" : "To Account"}
+                      </Label>
+                      <Select value={debitAccountId} onValueChange={setDebitAccountId}>
+                        <SelectTrigger className="h-10 text-xs rounded-xl">
+                          <SelectValue placeholder="कहाँ पुग्यो..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {renderGroupedAccountOptions(
+                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                ) : (
-                  // Simple Friendly From / To View
-                  <div className="p-4 rounded-2xl border bg-muted/20 space-y-3.5">
-                    {voucherType === "contra" ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-bold text-foreground">
-                            {lang === "NEP" ? "कहाँबाट पैसा गयो? (From Account)" : "From Account"}
-                          </Label>
-                          <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-                            <SelectTrigger className="h-10 text-xs rounded-xl">
-                              <SelectValue placeholder="कहाँबाट..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {renderGroupedAccountOptions(
-                                accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                </div>
 
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-bold text-foreground">
-                            {lang === "NEP" ? "कहाँ पैसा पुग्यो / जम्मा भयो? (To Account)" : "To Account"}
-                          </Label>
-                          <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-                            <SelectTrigger className="h-10 text-xs rounded-xl">
-                              <SelectValue placeholder="कहाँ पुग्यो..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {renderGroupedAccountOptions(
-                                accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    ) : voucherType === "payment" ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-bold text-foreground">
-                            {lang === "NEP" ? "के खरिद गरियो वा कसलाई भुक्तानी? (Paid For)" : "Paid For (Account)"}
-                          </Label>
-                          <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-                            <SelectTrigger className="h-10 text-xs rounded-xl">
-                              <SelectValue placeholder="शीर्षक छान्नुहोस्..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {renderGroupedAccountOptions(
-                                accounts.filter(a => a.group !== "cash")
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-bold text-foreground">
-                            {lang === "NEP" ? "भुक्तानी माध्यम (Paid Via)" : "Paid Via"}
-                          </Label>
-                          <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-                            <SelectTrigger className="h-10 text-xs rounded-xl">
-                              <SelectValue placeholder="नगद वा बैंक..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {renderGroupedAccountOptions(
-                                accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    ) : (
-                      // Receipt
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-bold text-foreground">
-                            {lang === "NEP" ? "पैसा के बापत आयो? (Received From)" : "Received From (Account)"}
-                          </Label>
-                          <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-                            <SelectTrigger className="h-10 text-xs rounded-xl">
-                              <SelectValue placeholder="स्रोत छान्नुहोस्..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {renderGroupedAccountOptions(
-                                accounts.filter(a => a.group === "capital" || a.group === "loans_liabilities" || a.type === "income" || a.group === "current_liabilities")
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-bold text-foreground">
-                            {lang === "NEP" ? "कहाँ जम्मा भयो? (Deposited In)" : "Deposited In"}
-                          </Label>
-                          <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-                            <SelectTrigger className="h-10 text-xs rounded-xl">
-                              <SelectValue placeholder="नगद वा बैंक..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {renderGroupedAccountOptions(
-                                accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Amount & Narration in 2 columns (Bottom Row) */}
+                {/* Amount & Narration */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}</Label>
