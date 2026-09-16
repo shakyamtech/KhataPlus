@@ -7,7 +7,7 @@ import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { formatNepaliDate, getFiscalYearInfo } from "@/lib/fiscalYear";
 import { fmt } from "@/lib/format";
-import { Account, Voucher, getAccounts } from "@/lib/accounting";
+import { Account, Voucher, getAccounts, getVoucherAccountImpacts } from "@/lib/accounting";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -106,9 +106,12 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const outputVat = salesDocs.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
     let vatPaid = 0;
     vouchers.forEach(v => {
-      if ((v.debit_account_name || "").toLowerCase().includes("vat")) {
-        vatPaid += Number(v.amount || 0);
-      }
+      const impacts = getVoucherAccountImpacts(v);
+      impacts.forEach(imp => {
+        if ((imp.account_name || "").toLowerCase().includes("vat")) {
+          vatPaid += imp.debit;
+        }
+      });
     });
     const vatPayable = Math.max(0, outputVat - vatPaid);
     const revenue = salesDocs.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
@@ -119,8 +122,10 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const bankRows = bankAccounts.map(b => {
       let bal = Number(b.opening_balance || 0);
       vouchers.forEach(v => {
-        if (v.debit_account_id === b.id) bal += Number(v.amount || 0);
-        if (v.credit_account_id === b.id) bal -= Number(v.amount || 0);
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === b.id) bal += (imp.debit - imp.credit);
+        });
       });
       return {
         id: b.id,
@@ -140,8 +145,10 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const fixedAssetRows = assetAccounts.map((a, idx) => {
       let bal = Number(a.opening_balance || 0);
       vouchers.forEach(v => {
-        if (v.debit_account_id === a.id) bal += Number(v.amount || 0);
-        if (v.credit_account_id === a.id) bal -= Number(v.amount || 0);
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === a.id) bal += (imp.debit - imp.credit);
+        });
       });
       if (idx === 0) bal += cashFixedAssets;
       return {
@@ -175,8 +182,10 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const loanRows = loanAccounts.map((l, idx) => {
       let bal = Number(l.opening_balance || 0);
       vouchers.forEach(v => {
-        if (v.credit_account_id === l.id) bal += Number(v.amount || 0);
-        if (v.debit_account_id === l.id) bal -= Number(v.amount || 0);
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === l.id) bal += (imp.credit - imp.debit);
+        });
       });
       if (idx === 0) bal += (cashLoansTaken - cashLoansRepaid);
       return {
@@ -203,8 +212,10 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const currLiabRows = currLiabAccounts.map(c => {
       let bal = Number(c.opening_balance || 0);
       vouchers.forEach(v => {
-        if (v.credit_account_id === c.id) bal += Number(v.amount || 0);
-        if (v.debit_account_id === c.id) bal -= Number(v.amount || 0);
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === c.id) bal += (imp.credit - imp.debit);
+        });
       });
       return {
         id: c.id,
@@ -219,8 +230,12 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const capitalAccounts = accounts.filter(a => a.group === "capital");
     let capitalExtra = capitalAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
     vouchers.forEach(v => {
-      if (capitalAccounts.some(c => c.id === v.credit_account_id)) capitalExtra += Number(v.amount || 0);
-      if (capitalAccounts.some(c => c.id === v.debit_account_id)) capitalExtra -= Number(v.amount || 0);
+      const impacts = getVoucherAccountImpacts(v);
+      impacts.forEach(imp => {
+        if (capitalAccounts.some(c => c.id === imp.account_id)) {
+          capitalExtra += (imp.credit - imp.debit);
+        }
+      });
     });
     const capitalCats = ["opening", "capital", "investment", "owner_investment"];
     const cashCapital = cashDocs
@@ -232,8 +247,12 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const drawingsAccounts = accounts.filter(a => a.group === "drawings");
     let drawingsExtra = drawingsAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
     vouchers.forEach(v => {
-      if (drawingsAccounts.some(d => d.id === v.debit_account_id)) drawingsExtra += Number(v.amount || 0);
-      if (drawingsAccounts.some(d => d.id === v.credit_account_id)) drawingsExtra -= Number(v.amount || 0);
+      const impacts = getVoucherAccountImpacts(v);
+      impacts.forEach(imp => {
+        if (drawingsAccounts.some(d => d.id === imp.account_id)) {
+          drawingsExtra += (imp.debit - imp.credit);
+        }
+      });
     });
     const cashDrawings = cashDocs
       .filter((c: any) => c.direction === "out" && ((c.category || "").toLowerCase() === "personal" || c.account_group === "drawings"))
@@ -260,7 +279,12 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const expAccounts = accounts.filter(a => a.type === "expense");
     let voucherExpenses = 0;
     vouchers.forEach(v => {
-      if (expAccounts.some(e => e.id === v.debit_account_id)) voucherExpenses += Number(v.amount || 0);
+      const impacts = getVoucherAccountImpacts(v);
+      impacts.forEach(imp => {
+        if (expAccounts.some(e => e.id === imp.account_id)) {
+          voucherExpenses += (imp.debit - imp.credit);
+        }
+      });
     });
     const totalExpenses = cashExpenses + wastageExpenses + voucherExpenses;
 

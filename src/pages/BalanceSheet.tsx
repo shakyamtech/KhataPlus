@@ -11,7 +11,7 @@ import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { Printer, Landmark } from "lucide-react";
 import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
-import { getAccounts, Account } from "@/lib/accounting";
+import { getAccounts, Account, getVoucherAccountImpacts } from "@/lib/accounting";
 
 const Row = ({ label, value, bold }: { label: string; value: number; bold?: boolean }) => (
   <div className={`flex justify-between py-2 ${bold ? "font-display text-base border-t pt-3 mt-2" : "text-sm"}`}>
@@ -98,16 +98,24 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const bankAccounts = accounts.filter((a: any) => a.group === "bank_accounts");
         let bankTotal = bankAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
         vouchers.forEach((v: any) => {
-          if (bankAccounts.some((b: any) => b.id === v.debit_account_id)) bankTotal += Number(v.amount || 0);
-          if (bankAccounts.some((b: any) => b.id === v.credit_account_id)) bankTotal -= Number(v.amount || 0);
+          const impacts = getVoucherAccountImpacts(v);
+          impacts.forEach(imp => {
+            if (bankAccounts.some((b: any) => b.id === imp.account_id)) {
+              bankTotal += (imp.debit - imp.credit);
+            }
+          });
         });
 
         // 2. Calculate Fixed Assets (Vehicles, Computers, Furniture, etc.)
         const assetAccounts = accounts.filter((a: any) => a.group === "fixed_assets");
         let fixedAssetsTotal = assetAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
         vouchers.forEach((v: any) => {
-          if (assetAccounts.some((a: any) => a.id === v.debit_account_id)) fixedAssetsTotal += Number(v.amount || 0);
-          if (assetAccounts.some((a: any) => a.id === v.credit_account_id)) fixedAssetsTotal -= Number(v.amount || 0);
+          const impacts = getVoucherAccountImpacts(v);
+          impacts.forEach(imp => {
+            if (assetAccounts.some((a: any) => a.id === imp.account_id)) {
+              fixedAssetsTotal += (imp.debit - imp.credit);
+            }
+          });
         });
         // Include Cashbook fixed asset purchases (e.g. vehicle, computer, furniture bought via Cash)
         const cashFixedAssets = cash
@@ -119,16 +127,24 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const loansGivenAccounts = accounts.filter((a: any) => a.group === "loans_advances_asset");
         let loansGivenTotal = loansGivenAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
         vouchers.forEach((v: any) => {
-          if (loansGivenAccounts.some((a: any) => a.id === v.debit_account_id)) loansGivenTotal += Number(v.amount || 0);
-          if (loansGivenAccounts.some((a: any) => a.id === v.credit_account_id)) loansGivenTotal -= Number(v.amount || 0);
+          const impacts = getVoucherAccountImpacts(v);
+          impacts.forEach(imp => {
+            if (loansGivenAccounts.some((a: any) => a.id === imp.account_id)) {
+              loansGivenTotal += (imp.debit - imp.credit);
+            }
+          });
         });
 
         // 3. Calculate Loans & Borrowings (Liabilities)
         const loanAccounts = accounts.filter((a: any) => a.group === "loans_liabilities");
         let loansTotal = loanAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
         vouchers.forEach((v: any) => {
-          if (loanAccounts.some((l: any) => l.id === v.credit_account_id)) loansTotal += Number(v.amount || 0);
-          if (loanAccounts.some((l: any) => l.id === v.debit_account_id)) loansTotal -= Number(v.amount || 0);
+          const impacts = getVoucherAccountImpacts(v);
+          impacts.forEach(imp => {
+            if (loanAccounts.some((l: any) => l.id === imp.account_id)) {
+              loansTotal += (imp.credit - imp.debit);
+            }
+          });
         });
         // Include Cashbook loans (In = loan taken, Out = loan repayment)
         const cashLoansTaken = cash
@@ -143,31 +159,48 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const currLiabAccounts = accounts.filter((a: any) => a.group === "current_liabilities");
         let outstandingTotal = currLiabAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
         vouchers.forEach((v: any) => {
-          if (currLiabAccounts.some((l: any) => l.id === v.credit_account_id)) outstandingTotal += Number(v.amount || 0);
-          if (currLiabAccounts.some((l: any) => l.id === v.debit_account_id)) outstandingTotal -= Number(v.amount || 0);
+          const impacts = getVoucherAccountImpacts(v);
+          impacts.forEach(imp => {
+            if (currLiabAccounts.some((l: any) => l.id === imp.account_id)) {
+              outstandingTotal += (imp.credit - imp.debit);
+            }
+          });
         });
 
         // 5. Capital adjustments from Accounts & Vouchers
         const capitalAccounts = accounts.filter((a: any) => a.group === "capital");
         let capitalExtra = capitalAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
         vouchers.forEach((v: any) => {
-          if (capitalAccounts.some((c: any) => c.id === v.credit_account_id)) capitalExtra += Number(v.amount || 0);
-          if (capitalAccounts.some((c: any) => c.id === v.debit_account_id)) capitalExtra -= Number(v.amount || 0);
+          const impacts = getVoucherAccountImpacts(v);
+          impacts.forEach(imp => {
+            if (capitalAccounts.some((c: any) => c.id === imp.account_id)) {
+              capitalExtra += (imp.credit - imp.debit);
+            }
+          });
         });
 
         // 6. Drawings adjustments from Vouchers
         const drawingsAccounts = accounts.filter((a: any) => a.group === "drawings");
         let drawingsExtra = drawingsAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
         vouchers.forEach((v: any) => {
-          if (drawingsAccounts.some((d: any) => d.id === v.debit_account_id)) drawingsExtra += Number(v.amount || 0);
-          if (drawingsAccounts.some((d: any) => d.id === v.credit_account_id)) drawingsExtra -= Number(v.amount || 0);
+          const impacts = getVoucherAccountImpacts(v);
+          impacts.forEach(imp => {
+            if (drawingsAccounts.some((d: any) => d.id === imp.account_id)) {
+              drawingsExtra += (imp.debit - imp.credit);
+            }
+          });
         });
 
         // 7. Non-cash voucher expenses (like Depreciation)
         const expAccounts = accounts.filter((a: any) => a.type === "expense");
         let voucherExpenses = 0;
         vouchers.forEach((v: any) => {
-          if (expAccounts.some((e: any) => e.id === v.debit_account_id)) voucherExpenses += Number(v.amount || 0);
+          const impacts = getVoucherAccountImpacts(v);
+          impacts.forEach(imp => {
+            if (expAccounts.some((e: any) => e.id === imp.account_id)) {
+              voucherExpenses += (imp.debit - imp.credit);
+            }
+          });
         });
 
         const partyBalances: Record<string, number> = {};
@@ -188,9 +221,12 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const outputVat = sales.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
         let vatPaid = 0;
         vouchers.forEach((v: any) => {
-          if ((v.debit_account_name || "").toLowerCase().includes("vat")) {
-            vatPaid += Number(v.amount || 0);
-          }
+          const impacts = getVoucherAccountImpacts(v);
+          impacts.forEach(imp => {
+            if ((imp.account_name || "").toLowerCase().includes("vat")) {
+              vatPaid += imp.debit;
+            }
+          });
         });
         const vatPayable = Math.max(0, outputVat - vatPaid);
         const revenue = sales.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);

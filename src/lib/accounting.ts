@@ -69,13 +69,46 @@ export interface Voucher {
   date: string; // ISO date
   date_bs?: string; // Nepali date (वि.सं.)
   amount: number;
-  debit_account_id: string;
-  debit_account_name: string;
-  credit_account_id: string;
-  credit_account_name: string;
+  debit_account_id?: string;
+  debit_account_name?: string;
+  credit_account_id?: string;
+  credit_account_name?: string;
+  entries?: VoucherEntryItem[];
   narration: string;
   reference_no?: string; // Cheque number, deposit slip, transaction ID
   created_at: string;
+}
+
+/**
+ * Extracts normalized account debit and credit impacts from single or compound vouchers
+ */
+export function getVoucherAccountImpacts(v: Voucher | any): { account_id: string; debit: number; credit: number; account_name?: string }[] {
+  if (v && v.entries && Array.isArray(v.entries) && v.entries.length > 0) {
+    return v.entries.map((e: any) => ({
+      account_id: e.account_id,
+      account_name: e.account_name || "",
+      debit: e.type === "debit" ? Number(e.amount || 0) : 0,
+      credit: e.type === "credit" ? Number(e.amount || 0) : 0,
+    }));
+  }
+  const results: { account_id: string; debit: number; credit: number; account_name?: string }[] = [];
+  if (v && v.debit_account_id) {
+    results.push({
+      account_id: v.debit_account_id,
+      account_name: v.debit_account_name || "",
+      debit: Number(v.amount || 0),
+      credit: 0
+    });
+  }
+  if (v && v.credit_account_id) {
+    results.push({
+      account_id: v.credit_account_id,
+      account_name: v.credit_account_name || "",
+      debit: 0,
+      credit: Number(v.amount || 0)
+    });
+  }
+  return results;
 }
 
 /**
@@ -239,11 +272,12 @@ export async function createVoucher(
   data: {
     voucher_type: VoucherType;
     date: string;
-    amount: number;
-    debit_account_id: string;
-    debit_account_name: string;
-    credit_account_id: string;
-    credit_account_name: string;
+    amount?: number;
+    debit_account_id?: string;
+    debit_account_name?: string;
+    credit_account_id?: string;
+    credit_account_name?: string;
+    entries?: VoucherEntryItem[];
     narration: string;
     reference_no?: string;
   }
@@ -252,6 +286,22 @@ export async function createVoucher(
   const voucherRef = doc(collection(db, "vouchers"));
   const dateBs = formatNepaliDate(data.date);
 
+  let totalAmount = Number(data.amount || 0);
+  let debAccId = data.debit_account_id || "";
+  let debAccName = data.debit_account_name || "";
+  let credAccId = data.credit_account_id || "";
+  let credAccName = data.credit_account_name || "";
+
+  if (data.entries && data.entries.length > 0) {
+    const drItems = data.entries.filter(e => e.type === "debit");
+    const crItems = data.entries.filter(e => e.type === "credit");
+    totalAmount = drItems.reduce((s, e) => s + Number(e.amount || 0), 0);
+    debAccName = drItems.map(e => e.account_name).join(", ") || debAccName;
+    debAccId = drItems[0]?.account_id || debAccId;
+    credAccName = crItems.map(e => e.account_name).join(", ") || credAccName;
+    credAccId = crItems[0]?.account_id || credAccId;
+  }
+
   const voucher: Voucher = {
     id: voucherRef.id,
     user_id: userId,
@@ -259,11 +309,12 @@ export async function createVoucher(
     voucher_type: data.voucher_type,
     date: data.date,
     date_bs: dateBs,
-    amount: Number(data.amount),
-    debit_account_id: data.debit_account_id,
-    debit_account_name: data.debit_account_name,
-    credit_account_id: data.credit_account_id,
-    credit_account_name: data.credit_account_name,
+    amount: totalAmount,
+    debit_account_id: debAccId,
+    debit_account_name: debAccName,
+    credit_account_id: credAccId,
+    credit_account_name: credAccName,
+    entries: data.entries && data.entries.length > 0 ? data.entries : undefined,
     narration: data.narration.trim(),
     reference_no: data.reference_no?.trim() || "",
     created_at: new Date().toISOString()
@@ -272,42 +323,77 @@ export async function createVoucher(
   const batch = writeBatch(db);
   batch.set(voucherRef, voucher);
 
-  // If this voucher involves Cash In Hand, mirror it into cash_transactions
-  // so the simple Cashbook stays in sync automatically!
-  const isDebitCash = data.debit_account_name.toLowerCase().includes("cash");
-  const isCreditCash = data.credit_account_name.toLowerCase().includes("cash");
-
+  // Mirror cash changes to cash_transactions for Cashbook sync
   const txTime = new Date();
   const txCreatedAt = data.date ? `${data.date}T${txTime.toTimeString().slice(0, 8)}` : txTime.toISOString();
 
-  if (isDebitCash && !isCreditCash) {
-    // Money came into Cash
-    const cashRef = doc(collection(db, "cash_transactions"));
-    batch.set(cashRef, {
-      id: cashRef.id,
-      user_id: userId,
-      direction: "in",
-      amount: Number(data.amount),
-      category: data.voucher_type === "contra" ? "contra_bank_withdrawal" : "voucher_receipt",
-      payment_mode: "cash",
-      note: `${voucherNo}: ${data.narration}`,
-      reference_id: voucherRef.id,
-      created_at: txCreatedAt
-    });
-  } else if (isCreditCash && !isDebitCash) {
-    // Money went out of Cash
-    const cashRef = doc(collection(db, "cash_transactions"));
-    batch.set(cashRef, {
-      id: cashRef.id,
-      user_id: userId,
-      direction: "out",
-      amount: Number(data.amount),
-      category: data.voucher_type === "contra" ? "contra_bank_deposit" : "voucher_payment",
-      payment_mode: "cash",
-      note: `${voucherNo}: ${data.narration}`,
-      reference_id: voucherRef.id,
-      created_at: txCreatedAt
-    });
+  if (data.entries && data.entries.length > 0) {
+    const drCash = data.entries.filter(e => e.type === "debit" && e.account_name.toLowerCase().includes("cash"));
+    const crCash = data.entries.filter(e => e.type === "credit" && e.account_name.toLowerCase().includes("cash"));
+
+    const totalDrCash = drCash.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const totalCrCash = crCash.reduce((s, e) => s + Number(e.amount || 0), 0);
+
+    if (totalDrCash > 0) {
+      const cashRef = doc(collection(db, "cash_transactions"));
+      batch.set(cashRef, {
+        id: cashRef.id,
+        user_id: userId,
+        direction: "in",
+        amount: totalDrCash,
+        category: data.voucher_type === "contra" ? "contra_bank_withdrawal" : "voucher_receipt",
+        payment_mode: "cash",
+        note: `${voucherNo}: ${data.narration}`,
+        reference_id: voucherRef.id,
+        created_at: txCreatedAt
+      });
+    }
+
+    if (totalCrCash > 0) {
+      const cashRef = doc(collection(db, "cash_transactions"));
+      batch.set(cashRef, {
+        id: cashRef.id,
+        user_id: userId,
+        direction: "out",
+        amount: totalCrCash,
+        category: data.voucher_type === "contra" ? "contra_bank_deposit" : "voucher_payment",
+        payment_mode: "cash",
+        note: `${voucherNo}: ${data.narration}`,
+        reference_id: voucherRef.id,
+        created_at: txCreatedAt
+      });
+    }
+  } else {
+    const isDebitCash = debAccName.toLowerCase().includes("cash");
+    const isCreditCash = credAccName.toLowerCase().includes("cash");
+
+    if (isDebitCash && !isCreditCash) {
+      const cashRef = doc(collection(db, "cash_transactions"));
+      batch.set(cashRef, {
+        id: cashRef.id,
+        user_id: userId,
+        direction: "in",
+        amount: totalAmount,
+        category: data.voucher_type === "contra" ? "contra_bank_withdrawal" : "voucher_receipt",
+        payment_mode: "cash",
+        note: `${voucherNo}: ${data.narration}`,
+        reference_id: voucherRef.id,
+        created_at: txCreatedAt
+      });
+    } else if (isCreditCash && !isDebitCash) {
+      const cashRef = doc(collection(db, "cash_transactions"));
+      batch.set(cashRef, {
+        id: cashRef.id,
+        user_id: userId,
+        direction: "out",
+        amount: totalAmount,
+        category: data.voucher_type === "contra" ? "contra_bank_deposit" : "voucher_payment",
+        payment_mode: "cash",
+        note: `${voucherNo}: ${data.narration}`,
+        reference_id: voucherRef.id,
+        created_at: txCreatedAt
+      });
+    }
   }
 
   await batch.commit();
@@ -321,7 +407,6 @@ export async function deleteVoucher(userId: string, voucherId: string): Promise<
   const batch = writeBatch(db);
   batch.delete(doc(db, "vouchers", voucherId));
 
-  // Also remove mirrored cash transaction if any exists
   const cashQ = query(
     collection(db, "cash_transactions"),
     where("user_id", "==", userId),
@@ -347,6 +432,57 @@ export function printVoucherSlip(voucher: Voucher, shopInfo: any) {
     receipt: "रसिद/आम्दानी भाउचर (RECEIPT VOUCHER - F6)",
     journal: "जर्नल भाउचर (JOURNAL VOUCHER - F7)"
   };
+
+  const hasMultiEntries = voucher.entries && voucher.entries.length > 0;
+  let rowsHtml = "";
+  let totalDr = 0;
+  let totalCr = 0;
+
+  if (hasMultiEntries) {
+    rowsHtml = voucher.entries!.map((e, idx) => {
+      const isDr = e.type === "debit";
+      if (isDr) totalDr += Number(e.amount || 0);
+      else totalCr += Number(e.amount || 0);
+
+      return `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 9px 8px; ${!isDr ? 'padding-left: 28px;' : ''}">
+            <span style="font-weight: 700; color: ${isDr ? '#047857' : '#b91c1c'};">${isDr ? 'Dr.' : 'To'}</span>
+            <strong>${escapeHtml(e.account_name)}</strong>
+          </td>
+          <td style="padding: 9px 8px; text-align: right; font-weight: ${isDr ? '700' : 'normal'}; color: ${isDr ? '#111' : '#9ca3af'};">
+            ${isDr ? fmt(e.amount) : '-'}
+          </td>
+          <td style="padding: 9px 8px; text-align: right; font-weight: ${!isDr ? '700' : 'normal'}; color: ${!isDr ? '#111' : '#9ca3af'};">
+            ${!isDr ? fmt(e.amount) : '-'}
+          </td>
+        </tr>
+      `;
+    }).join("");
+  } else {
+    totalDr = voucher.amount;
+    totalCr = voucher.amount;
+    rowsHtml = `
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 10px 8px;">
+          <span style="font-weight: 700; color: #047857;">Dr.</span> <strong>${escapeHtml(voucher.debit_account_name || "")}</strong>
+        </td>
+        <td style="padding: 10px 8px; text-align: right; font-weight: 700;">
+          ${fmt(voucher.amount)}
+        </td>
+        <td style="padding: 10px 8px; text-align: right; color: #9ca3af;">-</td>
+      </tr>
+      <tr style="border-bottom: 1.5px solid #111;">
+        <td style="padding: 10px 8px; padding-left: 28px;">
+          <span style="font-weight: 700; color: #b91c1c;">To</span> <strong>${escapeHtml(voucher.credit_account_name || "")}</strong>
+        </td>
+        <td style="padding: 10px 8px; text-align: right; color: #9ca3af;">-</td>
+        <td style="padding: 10px 8px; text-align: right; font-weight: 700;">
+          ${fmt(voucher.amount)}
+        </td>
+      </tr>
+    `;
+  }
 
   const body = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px 28px; max-width: 700px; margin: 0 auto; border: 1.5px solid #333; border-radius: 8px; color: #111;">
@@ -379,32 +515,36 @@ export function printVoucherSlip(voucher: Voucher, shopInfo: any) {
           </tr>
         </thead>
         <tbody>
-          <!-- Debit Row -->
-          <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 10px 8px;">
-              <span style="font-weight: 700; color: #047857;">Dr.</span> <strong>${escapeHtml(voucher.debit_account_name)}</strong>
-            </td>
-            <td style="padding: 10px 8px; text-align: right; font-weight: 700;">
-              ${fmt(voucher.amount)}
-            </td>
-            <td style="padding: 10px 8px; text-align: right; color: #9ca3af;">-</td>
-          </tr>
-          <!-- Credit Row -->
-          <tr style="border-bottom: 1.5px solid #111;">
-            <td style="padding: 10px 8px; padding-left: 28px;">
-              <span style="font-weight: 700; color: #b91c1c;">To</span> <strong>${escapeHtml(voucher.credit_account_name)}</strong>
-            </td>
-            <td style="padding: 10px 8px; text-align: right; color: #9ca3af;">-</td>
-            <td style="padding: 10px 8px; text-align: right; font-weight: 700;">
-              ${fmt(voucher.amount)}
-            </td>
-          </tr>
+          ${rowsHtml}
         </tbody>
         <tfoot>
           <tr style="background: #f3f4f6; font-weight: 800; border-bottom: 2px solid #111;">
             <td style="padding: 8px;">कुल जम्मा (Total):</td>
-            <td style="padding: 8px; text-align: right;">${fmt(voucher.amount)}</td>
-            <td style="padding: 8px; text-align: right;">${fmt(voucher.amount)}</td>
+            <td style="padding: 8px; text-align: right;">${fmt(totalDr)}</td>
+            <td style="padding: 8px; text-align: right;">${fmt(totalCr)}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- Narration -->
+      <div style="font-size: 12px; margin-bottom: 35px; padding: 8px 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 4px;">
+        <strong>Narration (कैफियत):</strong> <em>${escapeHtml(voucher.narration || "N/A")}</em>
+      </div>
+
+      <!-- Signatures -->
+      <div style="display: flex; justify-content: space-between; margin-top: 40px; font-size: 11.5px; padding-top: 10px;">
+        <div style="border-top: 1px dashed #444; width: 150px; text-align: center; padding-top: 4px;">
+          तयार गर्ने (Prepared By)
+        </div>
+        <div style="border-top: 1px dashed #444; width: 150px; text-align: center; padding-top: 4px;">
+          जाँच गर्ने (Checked By)
+        </div>
+        <div style="border-top: 1px dashed #444; width: 150px; text-align: center; padding-top: 4px; font-weight: 700;">
+          स्वीकृत गर्ने (Authorized Sign)
+        </div>
+      </div>
+    </div>
+  `;
           </tr>
         </tfoot>
       </table>

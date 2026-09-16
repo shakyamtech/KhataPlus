@@ -11,7 +11,7 @@ import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
 import { format } from "date-fns";
-import { getAccounts } from "@/lib/accounting";
+import { getAccounts, getVoucherAccountImpacts } from "@/lib/accounting";
 import {
   BarChart3,
   Printer,
@@ -135,8 +135,10 @@ export default function RatioAnalysisView() {
         const getAccountBalance = (accId: string, opening: number = 0) => {
           let bal = opening;
           vouchersList.forEach((v: any) => {
-            if (v.debit_account_id === accId) bal += Number(v.amount || 0);
-            if (v.credit_account_id === accId) bal -= Number(v.amount || 0);
+            const impacts = getVoucherAccountImpacts(v);
+            impacts.forEach(imp => {
+              if (imp.account_id === accId) bal += (imp.debit - imp.credit);
+            });
           });
           return bal;
         };
@@ -154,8 +156,10 @@ export default function RatioAnalysisView() {
           .reduce((sum: number, a: any) => {
             let b = Number(a.opening_balance || 0);
             vouchersList.forEach((v: any) => {
-              if (v.credit_account_id === a.id) b += Number(v.amount || 0);
-              if (v.debit_account_id === a.id) b -= Number(v.amount || 0);
+              const impacts = getVoucherAccountImpacts(v);
+              impacts.forEach(imp => {
+                if (imp.account_id === a.id) b += (imp.credit - imp.debit);
+              });
             });
             return sum + Math.max(0, b);
           }, 0);
@@ -164,8 +168,10 @@ export default function RatioAnalysisView() {
         const capitalBal = capitalAccs.reduce((sum: number, a: any) => {
           let b = Number(a.opening_balance || 0);
           vouchersList.forEach((v: any) => {
-            if (v.credit_account_id === a.id) b += Number(v.amount || 0);
-            if (v.debit_account_id === a.id) b -= Number(v.amount || 0);
+            const impacts = getVoucherAccountImpacts(v);
+            impacts.forEach(imp => {
+              if (imp.account_id === a.id) b += (imp.credit - imp.debit);
+            });
           });
           return sum + Math.max(0, b);
         }, 0);
@@ -174,8 +180,10 @@ export default function RatioAnalysisView() {
         const drawingsBal = drawingsAccs.reduce((sum: number, a: any) => {
           let b = Number(a.opening_balance || 0);
           vouchersList.forEach((v: any) => {
-            if (v.debit_account_id === a.id) b += Number(v.amount || 0);
-            if (v.credit_account_id === a.id) b -= Number(v.amount || 0);
+            const impacts = getVoucherAccountImpacts(v);
+            impacts.forEach(imp => {
+              if (imp.account_id === a.id) b += (imp.debit - imp.credit);
+            });
           });
           return sum + Math.max(0, b);
         }, 0);
