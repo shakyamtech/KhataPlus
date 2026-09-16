@@ -107,6 +107,8 @@ export const AppShell = () => {
     const [aboutOpen, setAboutOpen] = useState(false);
     const [installModalOpen, setInstallModalOpen] = useState(false);
     const [backupOpen, setBackupOpen] = useState(false);
+    const [resetDialogOpen, setResetDialogOpen] = useState(false);
+    const [busyReset, setBusyReset] = useState(false);
     const [hasMigrated, setHasMigrated] = useState(true);
 
     const [taxInvoicePrefix, setTaxInvoicePrefix] = useState("TAX-");
@@ -489,22 +491,41 @@ export const AppShell = () => {
     };
 
     const handleSelfReset = async () => {
-        if (!user?.uid) return;
+        if (!user?.uid || busyReset) return;
 
-        setBusy(true);
+        setBusyReset(true);
+        toast.loading(
+            lang === "NEP"
+                ? "सबै कारोबार र लेजर रिसेट गरिँदैछ, कृपया केही सेकेन्ड पर्खनुहोस्..."
+                : "Resetting all store transactions, please wait...",
+            { id: "store-reset" }
+        );
+
         try {
-            // 1. Get all products for this user
-            const prodQ = query(collection(db, "products"), where("user_id", "==", user.uid));
-            const prodSnap = await getDocs(prodQ);
+            // 1. Query products, batches, and party records in parallel
+            const tablesToWipe = [
+                "sales", "purchases", "cash_transactions",
+                "ledger_entries", "expenses", "stock_adjustments", "vouchers"
+            ];
+
+            const [prodSnap, batchSnap, custSnap, suppSnap, ...tableSnaps] = await Promise.all([
+                getDocs(query(collection(db, "products"), where("user_id", "==", user.uid))),
+                getDocs(query(collection(db, "product_batches"), where("user_id", "==", user.uid))),
+                getDocs(query(collection(db, "customers"), where("user_id", "==", user.uid))),
+                getDocs(query(collection(db, "suppliers"), where("user_id", "==", user.uid))),
+                ...tablesToWipe.map(t => getDocs(query(collection(db, t), where("user_id", "==", user.uid))))
+            ]);
+
             const prodIds = prodSnap.docs.map(d => d.id);
 
-            // 2. Delete all product batches
-            const batchQ = query(collection(db, "product_batches"), where("user_id", "==", user.uid));
-            const batchSnap = await getDocs(batchQ);
+            // 2. Delete all product batches in batches
             if (!batchSnap.empty) {
-                const bBatch = writeBatch(db);
-                batchSnap.docs.forEach(d => bBatch.delete(d.ref));
-                await bBatch.commit();
+                for (let i = 0; i < batchSnap.docs.length; i += 450) {
+                    const chunk = batchSnap.docs.slice(i, i + 450);
+                    const bBatch = writeBatch(db);
+                    chunk.forEach(d => bBatch.delete(d.ref));
+                    await bBatch.commit();
+                }
             }
 
             // 3. Delete all sale_items and purchase_items linked to user's products
@@ -525,14 +546,7 @@ export const AppShell = () => {
             }
 
             // 4. Delete all user-level transaction tables
-            const tablesToWipe = [
-                "sales", "purchases", "cash_transactions",
-                "ledger_entries", "expenses", "stock_adjustments", "vouchers"
-            ];
-            for (const t of tablesToWipe) {
-                const q = query(collection(db, t), where("user_id", "==", user.uid));
-                const snapshot = await getDocs(q);
-
+            for (const snapshot of tableSnaps) {
                 for (let i = 0; i < snapshot.docs.length; i += 450) {
                     const chunk = snapshot.docs.slice(i, i + 450);
                     const batch = writeBatch(db);
@@ -552,11 +566,6 @@ export const AppShell = () => {
             }
 
             // 6. Reset customer and supplier balances to 0
-            const [custSnap, suppSnap] = await Promise.all([
-                getDocs(query(collection(db, "customers"), where("user_id", "==", user.uid))),
-                getDocs(query(collection(db, "suppliers"), where("user_id", "==", user.uid)))
-            ]);
-
             const partyDocs = [...custSnap.docs, ...suppSnap.docs];
             for (let i = 0; i < partyDocs.length; i += 450) {
                 const chunk = partyDocs.slice(i, i + 450);
@@ -577,17 +586,23 @@ export const AppShell = () => {
             setBillNextNo("1");
             setPurchaseNextNo("1");
 
-            toast.success(lang === "NEP" ? "सबै कारोबार र लेजर सफलतापूर्वक रिसेट गरियो!" : "All transactions and ledgers reset successfully!");
+            toast.success(
+                lang === "NEP"
+                    ? "सबै कारोबार र लेजर सफलतापूर्वक रिसेट गरियो!"
+                    : "All transactions and ledgers reset successfully!",
+                { id: "store-reset" }
+            );
+
+            setResetDialogOpen(false);
             setShopOpen(false);
-            setPassword("");
 
             // Delay reload so toast is visible
             setTimeout(() => {
                 window.location.reload();
-            }, 1500);
+            }, 1000);
         } catch (err: any) {
-            toast.error(err.message || "Failed to reset data");
-            setBusy(false);
+            toast.error(err.message || "Failed to reset data", { id: "store-reset" });
+            setBusyReset(false);
         }
     };
 
@@ -1701,11 +1716,11 @@ export const AppShell = () => {
                                     ? "आफ्नो पसलको सबै नाफा-नोक्सान, क्यासबुक, उधारो लेजर र खरिद/बिक्री डाटा रिसेट गर्नुहोस्। सामानको सूची (Products) सुरक्षित रहनेछ।"
                                     : "Reset all your profit/loss, cashbook, credit ledgers, and sales/purchase data. Your product catalog will be preserved intact."}
                             </p>
-                            <AlertDialog>
+                            <AlertDialog open={resetDialogOpen} onOpenChange={(open) => { if (!busyReset) setResetDialogOpen(open); }}>
                                 <AlertDialogTrigger asChild>
-                                    <Button
+                                    <Button 
                                         type="button"
-                                        variant="outline"
+                                        variant="outline" 
                                         size="sm"
                                         className="border-destructive/30 text-destructive hover:bg-destructive hover:text-white transition-all h-9 w-full"
                                     >
@@ -1725,13 +1740,22 @@ export const AppShell = () => {
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                        <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
-                                        <AlertDialogAction
+                                        <AlertDialogCancel disabled={busyReset}>{t.cancel}</AlertDialogCancel>
+                                        <Button
+                                            type="button"
+                                            disabled={busyReset}
                                             onClick={handleSelfReset}
-                                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground min-w-[140px] font-bold"
                                         >
-                                            {lang === "NEP" ? "डाटा रिसेट गर्नुहोस्" : "Reset Data"}
-                                        </AlertDialogAction>
+                                            {busyReset ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                                    {lang === "NEP" ? "रिसेट गरिँदैछ..." : "Resetting Data..."}
+                                                </>
+                                            ) : (
+                                                lang === "NEP" ? "डाटा रिसेट गर्नुहोस्" : "Reset Data"
+                                            )}
+                                        </Button>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
