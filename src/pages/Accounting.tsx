@@ -153,22 +153,22 @@ export default function Accounting() {
         getAccounts(user.uid),
         getDocs(query(collection(db, "vouchers"), where("user_id", "==", user.uid))),
         getShopInfo(user.uid),
-        getDocs(query(collection(db, "customers"), where("user_id", "==", user.uid))),
-        getDocs(query(collection(db, "suppliers"), where("user_id", "==", user.uid))),
-        getDocs(query(collection(db, "customer_ledgers"), where("user_id", "==", user.uid))),
-        getDocs(query(collection(db, "supplier_ledgers"), where("user_id", "==", user.uid))),
-        getDocs(query(collection(db, "withdrawals"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "cash_transactions"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "sales"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "ledger_entries"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "products"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "purchases"), where("user_id", "==", user.uid)))
       ]);
 
       setAccounts(accs);
       setVouchers(vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher)));
       setShopInfo(sInfo);
-      setCustomers(cSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setSuppliers(sSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setCustomerLedgers(lSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setSupplierLedgers(pSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setWithdrawals(wSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setCashDocs(cSnap.docs.map(d => d.data()));
+      setSalesDocs(sSnap.docs.map(d => d.data()));
+      setLedgerDocs(lSnap.docs.map(d => d.data()));
+      setProductDocs(pSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setStockAdjDocs(wSnap.docs.map(d => d.data()));
       setPurchasesDocs(purSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err: any) {
       console.error(err);
