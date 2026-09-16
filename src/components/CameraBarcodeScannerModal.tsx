@@ -161,7 +161,12 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
             success: isSuccess
           });
 
-          if (!isSuccess) {
+          if (isSuccess) {
+            // Auto close camera modal after adding item to cart
+            setTimeout(() => {
+              onClose();
+            }, 300);
+          } else {
             toast.error(`बारकोड '${cleanText}' स्टकमा फेला परेन!`);
           }
         },
