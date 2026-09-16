@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { fmt } from "@/lib/format";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { formatNepaliDate, getFiscalYearInfo } from "@/lib/fiscalYear";
+import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
 import { format } from "date-fns";
+import { getAccounts } from "@/lib/accounting";
 import {
   BarChart3,
   Printer,
@@ -61,15 +62,14 @@ export default function RatioAnalysisView() {
         const pQ = query(collection(db, "products"), where("user_id", "==", user.uid));
         const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
         const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid));
-        const accQ = query(collection(db, "accounts"), where("user_id", "==", user.uid));
         const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
 
-        const [cSnap, pSnap, lSnap, sSnap, accSnap, vSnap, sInfo] = await Promise.all([
+        const [cSnap, pSnap, lSnap, sSnap, accList, vSnap, sInfo] = await Promise.all([
           getDocs(cQ),
           getDocs(pQ),
           getDocs(lQ),
           getDocs(sQ),
-          getDocs(accQ),
+          getAccounts(user.uid),
           getDocs(vQ),
           getShopInfo()
         ]);
@@ -129,7 +129,7 @@ export default function RatioAnalysisView() {
           .reduce((sum, tx: any) => sum + Number(tx.amount || 0), 0);
 
         // 6. Bank, Fixed Assets, Loans, Capital from Accounts & Vouchers
-        const accountsList = accSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        const accountsList = accList as any[];
         const vouchersList = vSnap.docs.map(d => d.data());
 
         const getAccountBalance = (accId: string, opening: number = 0) => {

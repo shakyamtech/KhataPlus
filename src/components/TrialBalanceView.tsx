@@ -7,7 +7,7 @@ import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { formatNepaliDate, getFiscalYearInfo } from "@/lib/fiscalYear";
 import { fmt } from "@/lib/format";
-import { Account, Voucher } from "@/lib/accounting";
+import { Account, Voucher, getAccounts } from "@/lib/accounting";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,8 +34,8 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     if (!user) return;
     setLoading(true);
     try {
-      const [accSnap, vSnap, cSnap, sSnap, lSnap, pSnap, saSnap, sInfo] = await Promise.all([
-        getDocs(query(collection(db, "accounts"), where("user_id", "==", user.uid))),
+      const [accList, vSnap, cSnap, sSnap, lSnap, pSnap, saSnap, sInfo] = await Promise.all([
+        getAccounts(user.uid),
         getDocs(query(collection(db, "vouchers"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "cash_transactions"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "sales"), where("user_id", "==", user.uid))),
@@ -45,7 +45,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
         getShopInfo()
       ]);
 
-      setAccounts(accSnap.docs.map(d => ({ id: d.id, ...d.data() } as Account)));
+      setAccounts(accList);
       setVouchers(vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher)));
       setCashDocs(cSnap.docs.map(d => d.data()));
       setSalesDocs(sSnap.docs.map(d => d.data()));

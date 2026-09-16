@@ -81,33 +81,33 @@ export interface Voucher {
 /**
  * Standard default accounts for any newly initialized shop in Nepal
  */
-export const DEFAULT_ACCOUNTS_TEMPLATE: Omit<Account, "id" | "user_id">[] = [
+export const DEFAULT_ACCOUNTS_TEMPLATE: (Omit<Account, "id" | "user_id"> & { key: string })[] = [
   // Assets
-  { name: "Cash in Hand (नगद मौज्दात)", type: "asset", group: "cash", is_system: true },
-  { name: "Bank Account - Primary (मुख्य बैंक खाता)", type: "asset", group: "bank_accounts", is_system: false },
-  { name: "Office Vehicle / Van (पसलको गाडी)", type: "asset", group: "fixed_assets", is_system: false },
-  { name: "Computers & Electronics (कम्प्युटर/इलेक्ट्रोनिक्स)", type: "asset", group: "fixed_assets", is_system: false },
-  { name: "Furniture & Fixtures (फर्निचर तथा फिक्सचर)", type: "asset", group: "fixed_assets", is_system: false },
+  { key: "cash", name: "Cash in Hand (नगद मौज्दात)", type: "asset", group: "cash", is_system: true },
+  { key: "bank_primary", name: "Bank Account - Primary (मुख्य बैंक खाता)", type: "asset", group: "bank_accounts", is_system: false },
+  { key: "vehicle", name: "Office Vehicle / Van (पसलको गाडी)", type: "asset", group: "fixed_assets", is_system: false },
+  { key: "computers", name: "Computers & Electronics (कम्प्युटर/इलेक्ट्रोनिक्स)", type: "asset", group: "fixed_assets", is_system: false },
+  { key: "furniture", name: "Furniture & Fixtures (फर्निचर तथा फिक्सचर)", type: "asset", group: "fixed_assets", is_system: false },
   
   // Liabilities & Equity
-  { name: "Capital Account (साहुको पुँजी)", type: "equity", group: "capital", is_system: true },
-  { name: "Drawings Account (मालिकको व्यक्तिगत खर्च)", type: "equity", group: "drawings", is_system: true },
-  { name: "Bank Loan / Borrowing (बैंक ऋण दायित्व)", type: "liability", group: "loans_liabilities", is_system: false },
-  { name: "Outstanding Salaries (दिन बाँकी तलब)", type: "liability", group: "current_liabilities", is_system: false },
-  { name: "Outstanding Rent (तिर्न बाँकी घरभाडा)", type: "liability", group: "current_liabilities", is_system: false },
+  { key: "capital", name: "Capital Account (साहुको पुँजी)", type: "equity", group: "capital", is_system: true },
+  { key: "drawings", name: "Drawings Account (मालिकको व्यक्तिगत खर्च)", type: "equity", group: "drawings", is_system: true },
+  { key: "loans", name: "Bank Loan / Borrowing (बैंक ऋण दायित्व)", type: "liability", group: "loans_liabilities", is_system: false },
+  { key: "outstanding_salaries", name: "Outstanding Salaries (दिन बाँकी तलब)", type: "liability", group: "current_liabilities", is_system: false },
+  { key: "outstanding_rent", name: "Outstanding Rent (तिर्न बाँकी घरभाडा)", type: "liability", group: "current_liabilities", is_system: false },
 
   // Expenses & Income
-  { name: "Salaries & Wages (कर्मचारी तलब खर्च)", type: "expense", group: "indirect_expenses", is_system: false },
-  { name: "Shop Rent (पसलको घरभाडा)", type: "expense", group: "indirect_expenses", is_system: false },
-  { name: "Electricity & Water (बिजुली तथा पानी)", type: "expense", group: "indirect_expenses", is_system: false },
-  { name: "Depreciation Expense (ह्रासकट्टी खर्च)", type: "expense", group: "indirect_expenses", is_system: false },
-  { name: "Interest Expense (ऋणको ब्याज खर्च)", type: "expense", group: "indirect_expenses", is_system: false },
-  { name: "Bank Interest Income (बैंक ब्याज आम्दानी)", type: "income", group: "indirect_incomes", is_system: false },
-  { name: "Discount Received (पाएको छुट)", type: "income", group: "indirect_incomes", is_system: false }
+  { key: "salaries", name: "Salaries & Wages (कर्मचारी तलब खर्च)", type: "expense", group: "indirect_expenses", is_system: false },
+  { key: "shop_rent", name: "Shop Rent (पसलको घरभाडा)", type: "expense", group: "indirect_expenses", is_system: false },
+  { key: "electricity_water", name: "Electricity & Water (बिजुली तथा पानी)", type: "expense", group: "indirect_expenses", is_system: false },
+  { key: "depreciation", name: "Depreciation Expense (ह्रासकट्टी खर्च)", type: "expense", group: "indirect_expenses", is_system: false },
+  { key: "interest_expense", name: "Interest Expense (ऋणको ब्याज खर्च)", type: "expense", group: "indirect_expenses", is_system: false },
+  { key: "bank_interest_income", name: "Bank Interest Income (बैंक ब्याज आम्दानी)", type: "income", group: "indirect_incomes", is_system: false },
+  { key: "discount_received", name: "Discount Received (पाएको छुट)", type: "income", group: "indirect_incomes", is_system: false }
 ];
 
 /**
- * Initializes default accounts if user has none yet
+ * Initializes default accounts if user has none yet, and automatically deduplicates any duplicate records
  */
 export async function ensureDefaultAccounts(userId: string): Promise<Account[]> {
   const accountsRef = collection(db, "accounts");
@@ -115,23 +115,54 @@ export async function ensureDefaultAccounts(userId: string): Promise<Account[]> 
   const snap = await getDocs(q);
 
   if (!snap.empty) {
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Account));
+    const rawAccounts = snap.docs.map(d => ({ id: d.id, ...d.data() } as Account));
+
+    // Deduplicate existing accounts by normalized name + group
+    const uniqueMap = new Map<string, Account>();
+    const duplicateIdsToDelete: string[] = [];
+
+    for (const acc of rawAccounts) {
+      const normKey = `${acc.group}___${(acc.name || "").trim().toLowerCase()}`;
+      
+      if (!uniqueMap.has(normKey)) {
+        uniqueMap.set(normKey, acc);
+      } else {
+        const existing = uniqueMap.get(normKey)!;
+        // Prioritize the one with opening balance or more data
+        if ((acc.opening_balance || 0) !== 0 && (existing.opening_balance || 0) === 0) {
+          duplicateIdsToDelete.push(existing.id);
+          uniqueMap.set(normKey, acc);
+        } else {
+          duplicateIdsToDelete.push(acc.id);
+        }
+      }
+    }
+
+    // Clean up duplicate documents from Firestore in background
+    if (duplicateIdsToDelete.length > 0) {
+      Promise.all(duplicateIdsToDelete.map(dupId => deleteDoc(doc(db, "accounts", dupId)).catch(() => {})))
+        .catch(err => console.warn("Background cleanup of duplicate accounts:", err));
+    }
+
+    return Array.from(uniqueMap.values());
   }
 
-  // Initialize defaults
+  // Initialize defaults using deterministic IDs to completely prevent race-condition duplicates
   const batch = writeBatch(db);
   const createdAccounts: Account[] = [];
 
   for (const tpl of DEFAULT_ACCOUNTS_TEMPLATE) {
-    const docRef = doc(accountsRef);
+    const docId = `${userId}_${tpl.key}`;
+    const docRef = doc(accountsRef, docId);
+    const { key, ...accFields } = tpl;
     const accData: Account = {
-      ...tpl,
-      id: docRef.id,
+      ...accFields,
+      id: docId,
       user_id: userId,
       opening_balance: 0,
       created_at: new Date().toISOString()
     };
-    batch.set(docRef, accData);
+    batch.set(docRef, accData, { merge: true });
     createdAccounts.push(accData);
   }
 
@@ -140,7 +171,7 @@ export async function ensureDefaultAccounts(userId: string): Promise<Account[]> 
 }
 
 /**
- * Fetches all accounts for a specific user
+ * Fetches all accounts for a specific user (guaranteed deduplicated)
  */
 export async function getAccounts(userId: string): Promise<Account[]> {
   return await ensureDefaultAccounts(userId);

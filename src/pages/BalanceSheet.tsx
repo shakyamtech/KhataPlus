@@ -11,6 +11,7 @@ import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { Printer, Landmark } from "lucide-react";
 import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
+import { getAccounts, Account } from "@/lib/accounting";
 
 const Row = ({ label, value, bold }: { label: string; value: number; bold?: boolean }) => (
   <div className={`flex justify-between py-2 ${bold ? "font-display text-base border-t pt-3 mt-2" : "text-sm"}`}>
@@ -54,16 +55,15 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
         const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid));
         const wQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
-        const accQ = query(collection(db, "accounts"), where("user_id", "==", user.uid));
         const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
 
-        const [cSnap, pSnap, lSnap, sSnap, wSnap, accSnap, vSnap, sInfo] = await Promise.all([
+        const [cSnap, pSnap, lSnap, sSnap, wSnap, accList, vSnap, sInfo] = await Promise.all([
           getDocs(cQ),
           getDocs(pQ),
           getDocs(lQ),
           getDocs(sQ),
           getDocs(wQ),
-          getDocs(accQ),
+          getAccounts(user.uid),
           getDocs(vQ),
           getShopInfo()
         ]);
@@ -75,7 +75,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const ledger = lSnap.docs.map(d => d.data());
         const sales = sSnap.docs.map(d => d.data());
         const wastageAdjustments = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
-        const accounts = accSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const accounts = accList;
         const vouchers = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         // Separate Physical Cash in Hand and Digital Wallets (eSewa, Khalti)
