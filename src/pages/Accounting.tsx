@@ -2206,23 +2206,23 @@ export default function Accounting() {
 
       {/* CREATE VOUCHER MODAL */}
       <Dialog open={voucherModalOpen} onOpenChange={setVoucherModalOpen}>
-        <DialogContent className={`${voucherType === "contra" ? "max-w-2xl" : "max-w-4xl"} w-[95vw] sm:w-full transition-all p-6 sm:p-7 rounded-2xl shadow-2xl border bg-card`}>
-          <DialogHeader className="pb-3 border-b">
+        <DialogContent className={`${voucherType === "contra" ? "max-w-2xl" : "max-w-4xl"} w-[96vw] sm:w-full max-h-[92vh] flex flex-col p-4 sm:p-7 rounded-2xl shadow-2xl border bg-card overflow-hidden transition-all`}>
+          <DialogHeader className="pb-3 border-b shrink-0">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-xl ${
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 ${
                   voucherType === "contra" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
                   voucherType === "payment" ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
                   voucherType === "receipt" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
                   "bg-purple-500/10 text-purple-500 border border-purple-500/20"
                 }`}>
-                  {voucherType === "contra" && <ArrowRightLeft className="h-6 w-6" />}
-                  {voucherType === "payment" && <ArrowUpRight className="h-6 w-6" />}
-                  {voucherType === "receipt" && <ArrowDownLeft className="h-6 w-6" />}
-                  {voucherType === "journal" && <FileText className="h-6 w-6" />}
+                  {voucherType === "contra" && <ArrowRightLeft className="h-5 w-5 sm:h-6 sm:w-6" />}
+                  {voucherType === "payment" && <ArrowUpRight className="h-5 w-5 sm:h-6 sm:w-6" />}
+                  {voucherType === "receipt" && <ArrowDownLeft className="h-5 w-5 sm:h-6 sm:w-6" />}
+                  {voucherType === "journal" && <FileText className="h-5 w-5 sm:h-6 sm:w-6" />}
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-extrabold flex items-center gap-2 text-foreground flex-wrap">
+                  <DialogTitle className="text-base sm:text-lg font-extrabold flex items-center gap-1.5 sm:gap-2 text-foreground flex-wrap">
                     <span>
                       {voucherType === "contra"
                         ? "कन्ट्रा भाउचर (Contra Entry)"
@@ -2230,18 +2230,18 @@ export default function Accounting() {
                         ? "भुक्तानी भाउचर (Payment Entry)"
                         : voucherType === "receipt"
                         ? "रसिद/आम्दानी भाउचर (Receipt Entry)"
-                        : "जर्नल भाउचर (Compound Journal Entry)"}
+                        : "जर्नल भाउचर (Journal Entry)"}
                     </span>
                     {previewVoucherNo && (
-                      <Badge variant="secondary" className="font-mono text-xs font-bold px-2.5 py-0.5 bg-primary/10 text-primary border border-primary/25">
+                      <Badge variant="secondary" className="font-mono text-[11px] sm:text-xs font-bold px-2 py-0.5 bg-primary/10 text-primary border border-primary/25">
                         #{previewVoucherNo}
                       </Badge>
                     )}
-                    <Badge variant="outline" className="text-[10px] font-mono font-bold px-2 py-0.5 shadow-xs">
+                    <Badge variant="outline" className="text-[10px] font-mono font-bold px-1.5 py-0.5 shadow-xs">
                       {voucherType === "contra" ? "F4" : voucherType === "payment" ? "F5" : voucherType === "receipt" ? "F6" : "F7"}
                     </Badge>
                   </DialogTitle>
-                  <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-none">
                     {voucherType === "contra"
                       ? "पसलको क्यास बैंकमा हाल्दा, झिक्दा वा बैंक ट्रान्सफरको लागि।"
                       : voucherType === "payment"
@@ -2259,23 +2259,23 @@ export default function Accounting() {
                 variant="outline"
                 size="sm"
                 onClick={() => openQuickCreateAccount()}
-                className="text-xs h-8 px-3 gap-1.5 border-dashed font-semibold bg-background hover:bg-primary/5 hover:border-primary/50 text-primary rounded-xl shrink-0 shadow-xs"
+                className="text-[11px] sm:text-xs h-7 sm:h-8 px-2.5 sm:px-3 gap-1 sm:gap-1.5 border-dashed font-semibold bg-background hover:bg-primary/5 hover:border-primary/50 text-primary rounded-xl shrink-0 shadow-xs ml-auto"
                 title="Alt + C थिचेर सिधै नयाँ खाता बनाउनुहोस्"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 <span>{lang === "NEP" ? "नयाँ खाता (Alt+C)" : "New Ledger (Alt+C)"}</span>
               </Button>
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSubmitVoucher} className="space-y-4 pt-3">
+          <form onSubmit={handleSubmitVoucher} className="space-y-4 pt-2 flex-1 overflow-y-auto pr-0.5 sm:pr-1">
             {voucherType === "journal" ? (
               // MULTI-ROW COMPOUND JOURNAL ENTRY TABLE
               <div className="space-y-4">
                 {/* Date & Ref Top Card */}
-                <div className="p-4 rounded-2xl border bg-muted/20 space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
+                <div className="p-3 sm:p-4 rounded-2xl border bg-muted/20 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-primary" />
                         <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
@@ -2284,14 +2284,14 @@ export default function Accounting() {
                         value={voucherDate}
                         onChange={setVoucherDate}
                         placeholder="DD/MM/YYYY"
-                        className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
+                        className="h-9 sm:h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
                       />
-                      <span className="text-[11px] text-muted-foreground block font-medium">
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium">
                         📅 {formatNepaliDate(voucherDate)}
                       </span>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</span>
@@ -2300,34 +2300,34 @@ export default function Accounting() {
                         placeholder="e.g. JV-ADJ-01, CHQ-1049, TDS-092..."
                         value={referenceNo}
                         onChange={e => setReferenceNo(e.target.value)}
-                        className="h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
+                        className="h-9 sm:h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Journal Multi-Row Table */}
+                {/* Journal Multi-Row Responsive Cards / Table */}
                 <div className="border rounded-2xl bg-card overflow-hidden shadow-xs">
-                  <div className="p-3 bg-muted/40 border-b flex items-center justify-between">
+                  <div className="p-2.5 sm:p-3 bg-muted/40 border-b flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600">
-                        <FolderTree className="h-4 w-4" />
+                      <span className="p-1 sm:p-1.5 rounded-lg bg-purple-500/10 text-purple-600">
+                        <FolderTree className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </span>
                       <div>
                         <span className="text-xs font-bold text-foreground block">
                           {lang === "NEP" ? "डेबिट र क्रेडिट लाइनहरू (Journal Lines)" : "Journal Entry Lines"}
                         </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {lang === "NEP" ? "डेबिट (Dr.) र क्रेडिट (Cr.) लाइनहरू सन्तुलित (Balanced) हुनुपर्छ" : "Ensure total Dr and Cr match"}
+                        <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                          {lang === "NEP" ? "डेबिट (Dr.) र क्रेडिट (Cr.) बराबर हुनुपर्छ" : "Ensure total Dr and Cr match"}
                         </span>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-xs font-mono px-2 py-0.5 bg-background">
+                    <Badge variant="outline" className="text-[11px] sm:text-xs font-mono px-2 py-0.5 bg-background">
                       {journalRows.length} Lines
                     </Badge>
                   </div>
 
-                  {/* Table Column Headers */}
+                  {/* Desktop Table Column Headers */}
                   <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-2 bg-muted/20 border-b text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     <div className="col-span-3">{lang === "NEP" ? "प्रकार (Dr./Cr.)" : "Type"}</div>
                     <div className="col-span-5">{lang === "NEP" ? "खाता शीर्षक (Account)" : "Account"}</div>
@@ -2335,74 +2335,95 @@ export default function Accounting() {
                     <div className="col-span-1 text-center">{lang === "NEP" ? "हटाउने" : "Action"}</div>
                   </div>
 
-                  <div className="p-3 space-y-2.5 max-h-64 overflow-y-auto">
+                  <div className="p-2.5 sm:p-3 space-y-2.5 max-h-72 sm:max-h-64 overflow-y-auto">
                     {journalRows.map((row, idx) => (
                       <div
                         key={row.id}
-                        className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2.5 p-2 rounded-xl bg-muted/10 hover:bg-muted/30 border transition-all"
+                        className="flex flex-col sm:grid sm:grid-cols-12 items-stretch sm:items-center gap-2 sm:gap-2.5 p-2.5 sm:p-2 rounded-xl bg-card sm:bg-muted/10 hover:bg-muted/20 border shadow-xs sm:shadow-none transition-all"
                       >
-                        {/* Type Dr/Cr */}
-                        <div className="sm:col-span-3">
-                          <Select
-                            value={row.type}
-                            onValueChange={(val: "debit" | "credit") => handleUpdateJournalRow(row.id, "type", val)}
-                          >
-                            <SelectTrigger className={`h-9 text-xs font-bold rounded-lg ${row.type === "debit" ? "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" : "text-amber-600 border-amber-500/40 bg-amber-500/5"}`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="debit" className="text-xs font-bold text-emerald-600">
-                                Dr. (डेबिट)
-                              </SelectItem>
-                              <SelectItem value="credit" className="text-xs font-bold text-amber-600">
-                                Cr. (क्रेडिट)
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Account Selector + Inline Add Button */}
-                        <div className="sm:col-span-5 flex items-center gap-1.5">
-                          <div className="flex-1 min-w-0">
+                        {/* Mobile Top Row: Type + Account + Actions */}
+                        <div className="flex items-center gap-1.5 w-full sm:contents">
+                          {/* Type Dr/Cr */}
+                          <div className="w-28 sm:w-auto sm:col-span-3 shrink-0">
                             <Select
-                              value={row.account_id}
-                              onValueChange={(val) => handleUpdateJournalRow(row.id, "account_id", val)}
+                              value={row.type}
+                              onValueChange={(val: "debit" | "credit") => handleUpdateJournalRow(row.id, "type", val)}
                             >
-                              <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
-                                <SelectValue placeholder={lang === "NEP" ? `खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
+                              <SelectTrigger className={`h-9 text-xs font-bold rounded-lg ${row.type === "debit" ? "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" : "text-amber-600 border-amber-500/40 bg-amber-500/5"}`}>
+                                <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {renderGroupedAccountOptions(accounts, true)}
+                                <SelectItem value="debit" className="text-xs font-bold text-emerald-600">
+                                  Dr. (डेबिट)
+                                </SelectItem>
+                                <SelectItem value="credit" className="text-xs font-bold text-amber-600">
+                                  Cr. (क्रेडिट)
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openQuickCreateAccount({ type: "journalRow", id: row.id })}
-                            className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
-                            title={lang === "NEP" ? "यस लाइनको लागि नयाँ खाता बनाउनुहोस् (Alt+C)" : "Create New Account (Alt+C)"}
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
+
+                          {/* Account Selector + Inline Add Button */}
+                          <div className="flex-1 sm:col-span-5 flex items-center gap-1 min-w-0">
+                            <div className="flex-1 min-w-0">
+                              <Select
+                                value={row.account_id}
+                                onValueChange={(val) => handleUpdateJournalRow(row.id, "account_id", val)}
+                              >
+                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
+                                  <SelectValue placeholder={lang === "NEP" ? `खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {renderGroupedAccountOptions(accounts, true)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openQuickCreateAccount({ type: "journalRow", id: row.id })}
+                              className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
+                              title={lang === "NEP" ? "यस लाइनको लागि नयाँ खाता बनाउनुहोस् (Alt+C)" : "Create New Account (Alt+C)"}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+
+                          {/* Mobile Delete Button */}
+                          <div className="sm:hidden shrink-0">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                              onClick={() => handleRemoveJournalRow(row.id)}
+                              disabled={journalRows.length <= 2}
+                              title={lang === "NEP" ? "लाइन हटाउनुहोस्" : "Remove Line"}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
 
-                        {/* Amount */}
-                        <div className="sm:col-span-3">
+                        {/* Amount on Mobile / Desktop */}
+                        <div className="flex items-center justify-between sm:block sm:col-span-3 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-0">
+                          <span className="text-[11px] font-semibold text-muted-foreground sm:hidden">
+                            {lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}
+                          </span>
                           <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
                             value={row.amount}
                             onChange={(e) => handleUpdateJournalRow(row.id, "amount", e.target.value)}
-                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background"
+                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background w-36 sm:w-full"
                             required
                           />
                         </div>
 
-                        {/* Delete Button */}
-                        <div className="sm:col-span-1 flex justify-center">
+                        {/* Desktop Delete Button */}
+                        <div className="hidden sm:flex sm:col-span-1 justify-center">
                           <Button
                             type="button"
                             variant="ghost"
@@ -2420,7 +2441,7 @@ export default function Accounting() {
                   </div>
 
                   {/* Add Line Button */}
-                  <div className="p-2.5 border-t bg-muted/10">
+                  <div className="p-2 sm:p-2.5 border-t bg-muted/10">
                     <Button
                       type="button"
                       variant="outline"
@@ -2435,21 +2456,21 @@ export default function Accounting() {
                 </div>
 
                 {/* Live Totals & Balance Verification Box */}
-                <div className={`p-3.5 rounded-2xl border-2 transition-colors ${journalTotals.isBalanced ? "bg-emerald-500/5 border-emerald-500/30" : "bg-amber-500/5 border-amber-500/30"}`}>
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-4 font-mono">
+                <div className={`p-3 sm:p-3.5 rounded-2xl border-2 transition-colors ${journalTotals.isBalanced ? "bg-emerald-500/5 border-emerald-500/30" : "bg-amber-500/5 border-amber-500/30"}`}>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 text-xs">
+                    <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-4 font-mono">
                       <div>
-                        <span className="text-muted-foreground font-semibold">Total Dr: </span>
-                        <strong className="text-emerald-600 font-bold text-sm">{fmt(journalTotals.dr)}</strong>
+                        <span className="text-muted-foreground font-semibold text-[11px] sm:text-xs">Total Dr: </span>
+                        <strong className="text-emerald-600 font-bold text-xs sm:text-sm">{fmt(journalTotals.dr)}</strong>
                       </div>
                       <div className="text-muted-foreground">|</div>
                       <div>
-                        <span className="text-muted-foreground font-semibold">Total Cr: </span>
-                        <strong className="text-blue-600 font-bold text-sm">{fmt(journalTotals.cr)}</strong>
+                        <span className="text-muted-foreground font-semibold text-[11px] sm:text-xs">Total Cr: </span>
+                        <strong className="text-blue-600 font-bold text-xs sm:text-sm">{fmt(journalTotals.cr)}</strong>
                       </div>
                     </div>
 
-                    <div>
+                    <div className="flex justify-end">
                       {journalTotals.isBalanced ? (
                         <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/40 text-xs font-bold flex items-center gap-1 py-1 px-2.5">
                           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -2466,7 +2487,7 @@ export default function Accounting() {
                 </div>
 
                 {/* Narration */}
-                <div className="space-y-1.5">
+                <div className="space-y-1 sm:space-y-1.5">
                   <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                     <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration"}</span>
@@ -2475,7 +2496,7 @@ export default function Accounting() {
                     placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                     value={narration}
                     onChange={e => setNarration(e.target.value)}
-                    className="h-10 text-xs rounded-xl bg-background"
+                    className="h-9 sm:h-10 text-xs rounded-xl bg-background"
                   />
                 </div>
               </div>
@@ -2483,10 +2504,10 @@ export default function Accounting() {
               // MULTI-ITEM PAYMENT VOUCHER VIEW
               <div className="space-y-4">
                 {/* 3-Column Top Metadata Card */}
-                <div className="p-4 rounded-2xl border bg-muted/20 space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="p-3 sm:p-4 rounded-2xl border bg-muted/20 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-3.5">
                     {/* Col 1: Date */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-primary" />
                         <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
@@ -2495,15 +2516,15 @@ export default function Accounting() {
                         value={voucherDate}
                         onChange={setVoucherDate}
                         placeholder="DD/MM/YYYY"
-                        className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
+                        className="h-9 sm:h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
                       />
-                      <span className="text-[11px] text-muted-foreground block font-medium">
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium">
                         📅 {formatNepaliDate(voucherDate)}
                       </span>
                     </div>
 
                     {/* Col 2: Paid Via (Cash/Bank) */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
                         <span className="flex items-center gap-1.5">
                           <CreditCard className="h-3.5 w-3.5 text-amber-500" />
@@ -2521,12 +2542,12 @@ export default function Accounting() {
                             className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
                             title="Alt + C"
                           >
-                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "New"}
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ" : "New"}
                           </button>
                         </div>
                       </Label>
                       <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-                        <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
+                        <SelectTrigger className="h-9 sm:h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
                           <SelectValue placeholder={lang === "NEP" ? "नगद वा बैंक छान्नुहोस्..." : "Select Cash/Bank..."} />
                         </SelectTrigger>
                         <SelectContent>
@@ -2538,7 +2559,7 @@ export default function Accounting() {
                     </div>
 
                     {/* Col 3: Ref / Cheque No */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>{lang === "NEP" ? "चेक / स्लिप नं (ऐच्छिक)" : "Ref / Cheque No"}</span>
@@ -2547,34 +2568,34 @@ export default function Accounting() {
                         placeholder="e.g. CHQ-99120, Slip #4821..."
                         value={referenceNo}
                         onChange={e => setReferenceNo(e.target.value)}
-                        className="h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
+                        className="h-9 sm:h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Multi-Item Payment Lines Table */}
+                {/* Multi-Item Payment Lines Table / Cards */}
                 <div className="border rounded-2xl bg-card overflow-hidden shadow-xs">
-                  <div className="p-3 bg-muted/40 border-b flex items-center justify-between">
+                  <div className="p-2.5 sm:p-3 bg-muted/40 border-b flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600">
-                        <FolderTree className="h-4 w-4" />
+                      <span className="p-1 sm:p-1.5 rounded-lg bg-amber-500/10 text-amber-600">
+                        <FolderTree className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </span>
                       <div>
                         <span className="text-xs font-bold text-foreground block">
-                          {lang === "NEP" ? "भुक्तानी गरिएका खर्च तथा खाताहरू (Payment / Expense Items)" : "Payment Particulars"}
+                          {lang === "NEP" ? "भुक्तानी गरिएका खर्च तथा खाताहरू (Payment Items)" : "Payment Particulars"}
                         </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {lang === "NEP" ? "खर्च वा साहु खाता छानेर रकम राख्नुहोस्" : "Select expense/vendor accounts with individual amounts"}
+                        <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                          {lang === "NEP" ? "खर्च वा साहु खाता छानेर रकम राख्नुहोस्" : "Select expense/vendor accounts"}
                         </span>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-xs font-mono px-2 py-0.5 bg-background">
+                    <Badge variant="outline" className="text-[11px] sm:text-xs font-mono px-2 py-0.5 bg-background">
                       {paymentRows.length} Items
                     </Badge>
                   </div>
 
-                  {/* Table Column Headers */}
+                  {/* Desktop Table Column Headers */}
                   <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-2 bg-muted/20 border-b text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     <div className="col-span-1">#</div>
                     <div className="col-span-7">{lang === "NEP" ? "खर्च / खाता शीर्षक (Account / Particulars)" : "Account / Particulars"}</div>
@@ -2582,58 +2603,81 @@ export default function Accounting() {
                     <div className="col-span-1 text-center">{lang === "NEP" ? "हटाउने" : "Action"}</div>
                   </div>
 
-                  <div className="p-3 space-y-2.5 max-h-64 overflow-y-auto">
+                  <div className="p-2.5 sm:p-3 space-y-2.5 max-h-72 sm:max-h-64 overflow-y-auto">
                     {paymentRows.map((row, idx) => (
                       <div
                         key={row.id}
-                        className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2.5 p-2 rounded-xl bg-muted/10 hover:bg-muted/30 border transition-all"
+                        className="flex flex-col sm:grid sm:grid-cols-12 items-stretch sm:items-center gap-2 sm:gap-2.5 p-2.5 sm:p-2 rounded-xl bg-card sm:bg-muted/10 hover:bg-muted/20 border shadow-xs sm:shadow-none transition-all"
                       >
-                        <div className="sm:col-span-1 flex items-center">
-                          <Badge variant="secondary" className="font-mono text-[10px] font-bold h-6 px-1.5">
-                            #{idx + 1}
-                          </Badge>
-                        </div>
-
-                        {/* Account Selector + Inline Add Button */}
-                        <div className="sm:col-span-7 flex items-center gap-1.5">
-                          <div className="flex-1 min-w-0">
-                            <Select
-                              value={row.account_id}
-                              onValueChange={(val) => handleUpdatePaymentRow(row.id, "account_id", val)}
-                            >
-                              <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
-                                <SelectValue placeholder={lang === "NEP" ? `खर्च वा पार्टी खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {renderGroupedAccountOptions(accounts.filter(a => a.id !== creditAccountId), true)}
-                              </SelectContent>
-                            </Select>
+                        {/* Mobile Top Row: Index + Account + Actions */}
+                        <div className="flex items-center gap-1.5 w-full sm:contents">
+                          <div className="sm:col-span-1 flex items-center shrink-0">
+                            <Badge variant="secondary" className="font-mono text-[10px] font-bold h-6 px-1.5">
+                              #{idx + 1}
+                            </Badge>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openQuickCreateAccount({ type: "paymentRow", id: row.id }, "indirect_expenses")}
-                            className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
-                            title={lang === "NEP" ? "नयाँ खर्च खाता बनाउनुहोस् (Alt+C)" : "New Account (Alt+C)"}
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
+
+                          {/* Account Selector + Inline Add Button */}
+                          <div className="flex-1 sm:col-span-7 flex items-center gap-1 min-w-0">
+                            <div className="flex-1 min-w-0">
+                              <Select
+                                value={row.account_id}
+                                onValueChange={(val) => handleUpdatePaymentRow(row.id, "account_id", val)}
+                              >
+                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
+                                  <SelectValue placeholder={lang === "NEP" ? `खर्च वा पार्टी खाता #${idx + 1}...` : `Select Account #${idx + 1}...`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {renderGroupedAccountOptions(accounts.filter(a => a.id !== creditAccountId), true)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openQuickCreateAccount({ type: "paymentRow", id: row.id }, "indirect_expenses")}
+                              className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
+                              title={lang === "NEP" ? "नयाँ खर्च खाता (Alt+C)" : "New Account (Alt+C)"}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+
+                          {/* Mobile Delete Button */}
+                          <div className="sm:hidden shrink-0">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                              onClick={() => handleRemovePaymentRow(row.id)}
+                              disabled={paymentRows.length <= 1}
+                              title={lang === "NEP" ? "हटाउनुहोस्" : "Remove Item"}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
 
-                        <div className="sm:col-span-3">
+                        {/* Amount on Mobile / Desktop */}
+                        <div className="flex items-center justify-between sm:block sm:col-span-3 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-0">
+                          <span className="text-[11px] font-semibold text-muted-foreground sm:hidden">
+                            {lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}
+                          </span>
                           <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
                             value={row.amount}
                             onChange={(e) => handleUpdatePaymentRow(row.id, "amount", e.target.value)}
-                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background"
+                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background w-36 sm:w-full"
                             required
                           />
                         </div>
 
-                        <div className="sm:col-span-1 flex justify-center">
+                        {/* Desktop Delete Button */}
+                        <div className="hidden sm:flex sm:col-span-1 justify-center">
                           <Button
                             type="button"
                             variant="ghost"
@@ -2651,7 +2695,7 @@ export default function Accounting() {
                   </div>
 
                   {/* Add Line Button */}
-                  <div className="p-2.5 border-t bg-muted/10">
+                  <div className="p-2 sm:p-2.5 border-t bg-muted/10">
                     <Button
                       type="button"
                       variant="outline"
@@ -2666,8 +2710,8 @@ export default function Accounting() {
                 </div>
 
                 {/* Bottom Summary: Narration & Grand Total */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center pt-1">
-                  <div className="sm:col-span-7 space-y-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-3.5 items-center pt-1">
+                  <div className="sm:col-span-7 space-y-1 sm:space-y-1.5">
                     <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration / Note"}</span>
@@ -2676,21 +2720,21 @@ export default function Accounting() {
                       placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                       value={narration}
                       onChange={e => setNarration(e.target.value)}
-                      className="h-11 text-xs rounded-xl bg-background"
+                      className="h-9 sm:h-11 text-xs rounded-xl bg-background"
                     />
                   </div>
 
                   <div className="sm:col-span-5">
-                    <div className="p-3 rounded-2xl border-2 border-amber-500/30 bg-amber-500/10 flex items-center justify-between shadow-xs">
+                    <div className="p-2.5 sm:p-3 rounded-2xl border-2 border-amber-500/30 bg-amber-500/10 flex items-center justify-between shadow-xs">
                       <div>
-                        <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide block">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide block">
                           {lang === "NEP" ? "जम्मा भुक्तानी रकम" : "Total Payment"}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
                           {paymentRows.length} Line Items
                         </span>
                       </div>
-                      <strong className="text-lg font-black font-mono text-amber-600 dark:text-amber-400">
+                      <strong className="text-base sm:text-lg font-black font-mono text-amber-600 dark:text-amber-400">
                         {fmt(paymentTotal)}
                       </strong>
                     </div>
@@ -2701,10 +2745,10 @@ export default function Accounting() {
               // MULTI-ITEM RECEIPT VOUCHER VIEW
               <div className="space-y-4">
                 {/* 3-Column Top Metadata Card */}
-                <div className="p-4 rounded-2xl border bg-muted/20 space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="p-3 sm:p-4 rounded-2xl border bg-muted/20 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-3.5">
                     {/* Col 1: Date */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-primary" />
                         <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
@@ -2713,15 +2757,15 @@ export default function Accounting() {
                         value={voucherDate}
                         onChange={setVoucherDate}
                         placeholder="DD/MM/YYYY"
-                        className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
+                        className="h-9 sm:h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
                       />
-                      <span className="text-[11px] text-muted-foreground block font-medium">
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium">
                         📅 {formatNepaliDate(voucherDate)}
                       </span>
                     </div>
 
                     {/* Col 2: Deposited In (Cash/Bank) */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
                         <span className="flex items-center gap-1.5">
                           <Landmark className="h-3.5 w-3.5 text-emerald-500" />
@@ -2739,12 +2783,12 @@ export default function Accounting() {
                             className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
                             title="Alt + C"
                           >
-                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "New"}
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ" : "New"}
                           </button>
                         </div>
                       </Label>
                       <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-                        <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
+                        <SelectTrigger className="h-9 sm:h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
                           <SelectValue placeholder={lang === "NEP" ? "नगद वा बैंक छान्नुहोस्..." : "Select Cash/Bank..."} />
                         </SelectTrigger>
                         <SelectContent>
@@ -2756,7 +2800,7 @@ export default function Accounting() {
                     </div>
 
                     {/* Col 3: Ref / Cheque No */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>{lang === "NEP" ? "चेक / स्लिप नं (ऐच्छिक)" : "Ref / Cheque No"}</span>
@@ -2765,34 +2809,34 @@ export default function Accounting() {
                         placeholder="e.g. CHQ-99120, Bank Slip #4821..."
                         value={referenceNo}
                         onChange={e => setReferenceNo(e.target.value)}
-                        className="h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
+                        className="h-9 sm:h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Multi-Item Receipt Lines Table */}
+                {/* Multi-Item Receipt Lines Table / Cards */}
                 <div className="border rounded-2xl bg-card overflow-hidden shadow-xs">
-                  <div className="p-3 bg-muted/40 border-b flex items-center justify-between">
+                  <div className="p-2.5 sm:p-3 bg-muted/40 border-b flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600">
-                        <FolderTree className="h-4 w-4" />
+                      <span className="p-1 sm:p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600">
+                        <FolderTree className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </span>
                       <div>
                         <span className="text-xs font-bold text-foreground block">
-                          {lang === "NEP" ? "आम्दानी तथा दाखिला स्रोतहरू (Receipt / Income Items)" : "Receipt Particulars"}
+                          {lang === "NEP" ? "आम्दानी तथा दाखिला स्रोतहरू (Receipt Items)" : "Receipt Particulars"}
                         </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {lang === "NEP" ? "आम्दानी वा आसामी खाता छानेर रकम राख्नुहोस्" : "Select income/customer accounts with individual amounts"}
+                        <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                          {lang === "NEP" ? "आम्दानी वा आसामी खाता छानेर रकम राख्नुहोस्" : "Select income/customer accounts"}
                         </span>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-xs font-mono px-2 py-0.5 bg-background">
+                    <Badge variant="outline" className="text-[11px] sm:text-xs font-mono px-2 py-0.5 bg-background">
                       {receiptRows.length} Items
                     </Badge>
                   </div>
 
-                  {/* Table Column Headers */}
+                  {/* Desktop Table Column Headers */}
                   <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-2 bg-muted/20 border-b text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     <div className="col-span-1">#</div>
                     <div className="col-span-7">{lang === "NEP" ? "आम्दानी / स्रोत शीर्षक (Account / Particulars)" : "Account / Particulars"}</div>
@@ -2800,58 +2844,81 @@ export default function Accounting() {
                     <div className="col-span-1 text-center">{lang === "NEP" ? "हटाउने" : "Action"}</div>
                   </div>
 
-                  <div className="p-3 space-y-2.5 max-h-64 overflow-y-auto">
+                  <div className="p-2.5 sm:p-3 space-y-2.5 max-h-72 sm:max-h-64 overflow-y-auto">
                     {receiptRows.map((row, idx) => (
                       <div
                         key={row.id}
-                        className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2.5 p-2 rounded-xl bg-muted/10 hover:bg-muted/30 border transition-all"
+                        className="flex flex-col sm:grid sm:grid-cols-12 items-stretch sm:items-center gap-2 sm:gap-2.5 p-2.5 sm:p-2 rounded-xl bg-card sm:bg-muted/10 hover:bg-muted/20 border shadow-xs sm:shadow-none transition-all"
                       >
-                        <div className="sm:col-span-1 flex items-center">
-                          <Badge variant="secondary" className="font-mono text-[10px] font-bold h-6 px-1.5">
-                            #{idx + 1}
-                          </Badge>
-                        </div>
-
-                        {/* Account Selector + Inline Add Button */}
-                        <div className="sm:col-span-7 flex items-center gap-1.5">
-                          <div className="flex-1 min-w-0">
-                            <Select
-                              value={row.account_id}
-                              onValueChange={(val) => handleUpdateReceiptRow(row.id, "account_id", val)}
-                            >
-                              <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
-                                <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा स्रोत खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {renderGroupedAccountOptions(accounts.filter(a => a.id !== debitAccountId), true)}
-                              </SelectContent>
-                            </Select>
+                        {/* Mobile Top Row: Index + Account + Actions */}
+                        <div className="flex items-center gap-1.5 w-full sm:contents">
+                          <div className="sm:col-span-1 flex items-center shrink-0">
+                            <Badge variant="secondary" className="font-mono text-[10px] font-bold h-6 px-1.5">
+                              #{idx + 1}
+                            </Badge>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openQuickCreateAccount({ type: "receiptRow", id: row.id }, "indirect_incomes")}
-                            className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
-                            title={lang === "NEP" ? "नयाँ आम्दानी खाता बनाउनुहोस् (Alt+C)" : "New Account (Alt+C)"}
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
+
+                          {/* Account Selector + Inline Add Button */}
+                          <div className="flex-1 sm:col-span-7 flex items-center gap-1 min-w-0">
+                            <div className="flex-1 min-w-0">
+                              <Select
+                                value={row.account_id}
+                                onValueChange={(val) => handleUpdateReceiptRow(row.id, "account_id", val)}
+                              >
+                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
+                                  <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा स्रोत खाता #${idx + 1}...` : `Select Account #${idx + 1}...`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {renderGroupedAccountOptions(accounts.filter(a => a.id !== debitAccountId), true)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openQuickCreateAccount({ type: "receiptRow", id: row.id }, "indirect_incomes")}
+                              className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
+                              title={lang === "NEP" ? "नयाँ आम्दानी खाता (Alt+C)" : "New Account (Alt+C)"}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+
+                          {/* Mobile Delete Button */}
+                          <div className="sm:hidden shrink-0">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                              onClick={() => handleRemoveReceiptRow(row.id)}
+                              disabled={receiptRows.length <= 1}
+                              title={lang === "NEP" ? "हटाउनुहोस्" : "Remove Item"}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
 
-                        <div className="sm:col-span-3">
+                        {/* Amount on Mobile / Desktop */}
+                        <div className="flex items-center justify-between sm:block sm:col-span-3 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-0">
+                          <span className="text-[11px] font-semibold text-muted-foreground sm:hidden">
+                            {lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}
+                          </span>
                           <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
                             value={row.amount}
                             onChange={(e) => handleUpdateReceiptRow(row.id, "amount", e.target.value)}
-                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background"
+                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background w-36 sm:w-full"
                             required
                           />
                         </div>
 
-                        <div className="sm:col-span-1 flex justify-center">
+                        {/* Desktop Delete Button */}
+                        <div className="hidden sm:flex sm:col-span-1 justify-center">
                           <Button
                             type="button"
                             variant="ghost"
@@ -2869,7 +2936,7 @@ export default function Accounting() {
                   </div>
 
                   {/* Add Line Button */}
-                  <div className="p-2.5 border-t bg-muted/10">
+                  <div className="p-2 sm:p-2.5 border-t bg-muted/10">
                     <Button
                       type="button"
                       variant="outline"
@@ -2884,8 +2951,8 @@ export default function Accounting() {
                 </div>
 
                 {/* Bottom Summary: Narration & Grand Total */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center pt-1">
-                  <div className="sm:col-span-7 space-y-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-3.5 items-center pt-1">
+                  <div className="sm:col-span-7 space-y-1 sm:space-y-1.5">
                     <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration / Note"}</span>
@@ -2894,21 +2961,21 @@ export default function Accounting() {
                       placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                       value={narration}
                       onChange={e => setNarration(e.target.value)}
-                      className="h-11 text-xs rounded-xl bg-background"
+                      className="h-9 sm:h-11 text-xs rounded-xl bg-background"
                     />
                   </div>
 
                   <div className="sm:col-span-5">
-                    <div className="p-3 rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between shadow-xs">
+                    <div className="p-2.5 sm:p-3 rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between shadow-xs">
                       <div>
-                        <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide block">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide block">
                           {lang === "NEP" ? "जम्मा रसिद रकम" : "Total Receipt"}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
                           {receiptRows.length} Line Items
                         </span>
                       </div>
-                      <strong className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
+                      <strong className="text-base sm:text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
                         {fmt(receiptTotal)}
                       </strong>
                     </div>
@@ -2919,9 +2986,9 @@ export default function Accounting() {
               // CONTRA VOUCHER VIEW (Cash <-> Bank Transfer)
               <div className="space-y-4">
                 {/* 2-Column Top Metadata Card */}
-                <div className="p-4 rounded-2xl border bg-muted/20 space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
+                <div className="p-3 sm:p-4 rounded-2xl border bg-muted/20 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-primary" />
                         <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
@@ -2930,14 +2997,14 @@ export default function Accounting() {
                         value={voucherDate}
                         onChange={setVoucherDate}
                         placeholder="DD/MM/YYYY"
-                        className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
+                        className="h-9 sm:h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
                       />
-                      <span className="text-[11px] text-muted-foreground block font-medium">
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium">
                         📅 {formatNepaliDate(voucherDate)}
                       </span>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</span>
@@ -2946,16 +3013,16 @@ export default function Accounting() {
                         placeholder="e.g. CHQ-99120, Bank Slip #4821..."
                         value={referenceNo}
                         onChange={e => setReferenceNo(e.target.value)}
-                        className="h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
+                        className="h-9 sm:h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Transfer Accounts Card */}
-                <div className="p-4 rounded-2xl border bg-card shadow-xs space-y-3.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
+                <div className="p-3 sm:p-4 rounded-2xl border bg-card shadow-xs space-y-3 sm:space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-bold text-foreground flex items-center justify-between">
                         <span className="flex items-center gap-1.5">
                           <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" />
@@ -2973,12 +3040,12 @@ export default function Accounting() {
                             className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
                             title="Alt + C"
                           >
-                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "New"}
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ" : "New"}
                           </button>
                         </div>
                       </Label>
                       <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-                        <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
+                        <SelectTrigger className="h-9 sm:h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
                           <SelectValue placeholder="कहाँबाट..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -2989,7 +3056,7 @@ export default function Accounting() {
                       </Select>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-1 sm:space-y-1.5">
                       <Label className="text-xs font-bold text-foreground flex items-center justify-between">
                         <span className="flex items-center gap-1.5">
                           <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-500" />
@@ -3007,12 +3074,12 @@ export default function Accounting() {
                             className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
                             title="Alt + C"
                           >
-                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "New"}
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ" : "New"}
                           </button>
                         </div>
                       </Label>
                       <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-                        <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
+                        <SelectTrigger className="h-9 sm:h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
                           <SelectValue placeholder="कहाँ पुग्यो..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -3026,8 +3093,8 @@ export default function Accounting() {
                 </div>
 
                 {/* Amount & Narration Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center pt-1">
-                  <div className="sm:col-span-7 space-y-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-3.5 items-center pt-1">
+                  <div className="sm:col-span-7 space-y-1 sm:space-y-1.5">
                     <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration / Note"}</span>
@@ -3036,11 +3103,11 @@ export default function Accounting() {
                       placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                       value={narration}
                       onChange={e => setNarration(e.target.value)}
-                      className="h-11 text-xs rounded-xl bg-background"
+                      className="h-9 sm:h-11 text-xs rounded-xl bg-background"
                     />
                   </div>
 
-                  <div className="sm:col-span-5 space-y-1.5">
+                  <div className="sm:col-span-5 space-y-1 sm:space-y-1.5">
                     <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "ट्रान्सफर रकम रु. (Transfer Amount)" : "Transfer Amount (Rs.)"}</Label>
                     <Input
                       type="number"
@@ -3048,7 +3115,7 @@ export default function Accounting() {
                       placeholder="0.00"
                       value={voucherAmount}
                       onChange={e => setVoucherAmount(e.target.value)}
-                      className="h-11 text-base font-bold font-mono text-primary rounded-xl bg-background"
+                      className="h-10 sm:h-11 text-base font-bold font-mono text-primary rounded-xl bg-background"
                       required
                     />
                   </div>
@@ -3056,20 +3123,20 @@ export default function Accounting() {
               </div>
             )}
 
-            <DialogFooter className="pt-3 border-t mt-3 flex items-center justify-end gap-2">
+            <DialogFooter className="pt-3 border-t mt-2 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 shrink-0">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setVoucherModalOpen(false)}
                 disabled={submittingVoucher}
-                className="h-10 px-5 text-xs font-semibold rounded-xl"
+                className="h-10 px-5 text-xs font-semibold rounded-xl w-full sm:w-auto"
               >
                 {lang === "NEP" ? "रद्द गर्नुहोस्" : "Cancel"}
               </Button>
               <Button
                 type="submit"
                 disabled={submittingVoucher || (voucherType === "journal" && !journalTotals.isBalanced)}
-                className="h-10 px-6 text-xs bg-primary font-bold gap-2 text-primary-foreground rounded-xl shadow-md"
+                className="h-10 px-6 text-xs bg-primary font-bold gap-2 text-primary-foreground rounded-xl shadow-md w-full sm:w-auto"
               >
                 {submittingVoucher ? (
                   <>
