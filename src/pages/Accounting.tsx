@@ -139,6 +139,48 @@ export default function Accounting() {
   const [newAccOpening, setNewAccOpening] = useState("0");
   const [savingAccount, setSavingAccount] = useState(false);
 
+  // Quick Account Creation Target Slot (Tally-Style Alt+C)
+  type QuickAccountTarget =
+    | { type: "paymentRow"; id: string }
+    | { type: "receiptRow"; id: string }
+    | { type: "journalRow"; id: string }
+    | { type: "debitAccountId" }
+    | { type: "creditAccountId" }
+    | null;
+
+  const [quickTarget, setQuickTarget] = useState<QuickAccountTarget>(null);
+
+  const openQuickCreateAccount = (target?: QuickAccountTarget, defaultGroup?: AccountGroup) => {
+    setQuickTarget(target || null);
+    if (defaultGroup) {
+      setNewAccGroup(defaultGroup);
+    } else if (voucherType === "payment") {
+      setNewAccGroup("indirect_expenses");
+    } else if (voucherType === "receipt") {
+      setNewAccGroup("indirect_incomes");
+    } else if (voucherType === "contra") {
+      setNewAccGroup("bank_accounts");
+    } else {
+      setNewAccGroup("indirect_expenses");
+    }
+    setNewAccName("");
+    setNewAccOpening("0");
+    setNewAccModalOpen(true);
+  };
+
+  // Global Alt + C shortcut for Instant Account Creation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === "c" || e.key === "C" || e.code === "KeyC")) {
+        e.preventDefault();
+        e.stopPropagation();
+        openQuickCreateAccount();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [voucherType, voucherModalOpen]);
+
   // Edit Account Opening Balance Modal
   const [editAccModalOpen, setEditAccModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
@@ -593,11 +635,66 @@ export default function Accounting() {
       };
 
       await setDoc(docRef, newAcc);
-      toast.success(lang === "NEP" ? "नयाँ खाता थपियो!" : "New ledger account created!");
+      toast.success(lang === "NEP" ? `नयाँ खाता "${newAcc.name}" थपियो!` : `Account "${newAcc.name}" created!`);
+
+      // Update accounts list immediately in local state
+      setAccounts(prev => {
+        const exists = prev.some(a => a.id === newAcc.id);
+        return exists ? prev : [...prev, newAcc];
+      });
+
+      // Auto-assign to the targeted voucher field
+      if (quickTarget) {
+        if (quickTarget.type === "paymentRow") {
+          setPaymentRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id } : r));
+        } else if (quickTarget.type === "receiptRow") {
+          setReceiptRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id } : r));
+        } else if (quickTarget.type === "journalRow") {
+          setJournalRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id } : r));
+        } else if (quickTarget.type === "debitAccountId") {
+          setDebitAccountId(newAcc.id);
+        } else if (quickTarget.type === "creditAccountId") {
+          setCreditAccountId(newAcc.id);
+        }
+      } else if (voucherModalOpen) {
+        // If no explicit row target was given, assign to the first empty row
+        if (voucherType === "payment") {
+          setPaymentRows(prev => {
+            const emptyIdx = prev.findIndex(r => !r.account_id);
+            if (emptyIdx !== -1) {
+              const updated = [...prev];
+              updated[emptyIdx] = { ...updated[emptyIdx], account_id: newAcc.id };
+              return updated;
+            }
+            return prev;
+          });
+        } else if (voucherType === "receipt") {
+          setReceiptRows(prev => {
+            const emptyIdx = prev.findIndex(r => !r.account_id);
+            if (emptyIdx !== -1) {
+              const updated = [...prev];
+              updated[emptyIdx] = { ...updated[emptyIdx], account_id: newAcc.id };
+              return updated;
+            }
+            return prev;
+          });
+        } else if (voucherType === "journal") {
+          setJournalRows(prev => {
+            const emptyIdx = prev.findIndex(r => !r.account_id);
+            if (emptyIdx !== -1) {
+              const updated = [...prev];
+              updated[emptyIdx] = { ...updated[emptyIdx], account_id: newAcc.id };
+              return updated;
+            }
+            return prev;
+          });
+        }
+      }
+
       setNewAccModalOpen(false);
       setNewAccName("");
       setNewAccOpening("0");
-      loadData();
+      setQuickTarget(null);
     } catch (err: any) {
       toast.error(err.message || "Failed to create account");
     } finally {
@@ -2155,6 +2252,19 @@ export default function Accounting() {
                   </DialogDescription>
                 </div>
               </div>
+
+              {/* Quick Alt+C Account Creation Button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => openQuickCreateAccount()}
+                className="text-xs h-8 px-3 gap-1.5 border-dashed font-semibold bg-background hover:bg-primary/5 hover:border-primary/50 text-primary rounded-xl shrink-0 shadow-xs"
+                title="Alt + C थिचेर सिधै नयाँ खाता बनाउनुहोस्"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>{lang === "NEP" ? "नयाँ खाता (Alt+C)" : "+ New Ledger (Alt+C)"}</span>
+              </Button>
             </div>
           </DialogHeader>
 
@@ -2252,19 +2362,31 @@ export default function Accounting() {
                           </Select>
                         </div>
 
-                        {/* Account Selector */}
-                        <div className="sm:col-span-5">
-                          <Select
-                            value={row.account_id}
-                            onValueChange={(val) => handleUpdateJournalRow(row.id, "account_id", val)}
+                        {/* Account Selector + Inline Add Button */}
+                        <div className="sm:col-span-5 flex items-center gap-1.5">
+                          <div className="flex-1 min-w-0">
+                            <Select
+                              value={row.account_id}
+                              onValueChange={(val) => handleUpdateJournalRow(row.id, "account_id", val)}
+                            >
+                              <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
+                                <SelectValue placeholder={lang === "NEP" ? `खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {renderGroupedAccountOptions(accounts, true)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openQuickCreateAccount({ type: "journalRow", id: row.id })}
+                            className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
+                            title={lang === "NEP" ? "यस लाइनको लागि नयाँ खाता बनाउनुहोस् (Alt+C)" : "Create New Account (Alt+C)"}
                           >
-                            <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
-                              <SelectValue placeholder={lang === "NEP" ? `खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {renderGroupedAccountOptions(accounts, true)}
-                            </SelectContent>
-                          </Select>
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
 
                         {/* Amount */}
@@ -2389,11 +2511,21 @@ export default function Accounting() {
                           <CreditCard className="h-3.5 w-3.5 text-amber-500" />
                           <span>{lang === "NEP" ? "भुक्तानी माध्यम (Paid Via)" : "Paid Via"}</span>
                         </span>
-                        {creditAccountId && (
-                          <span className="text-[10px] font-mono text-muted-foreground">
-                            Bal: {fmt(accounts.find(a => a.id === creditAccountId)?.opening_balance || 0)}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {creditAccountId && (
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              Bal: {fmt(accounts.find(a => a.id === creditAccountId)?.opening_balance || 0)}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openQuickCreateAccount({ type: "creditAccountId" }, "bank_accounts")}
+                            className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
+                            title="Alt + C"
+                          >
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "+ New"}
+                          </button>
+                        </div>
                       </Label>
                       <Select value={creditAccountId} onValueChange={setCreditAccountId}>
                         <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
@@ -2464,18 +2596,31 @@ export default function Accounting() {
                           </Badge>
                         </div>
 
-                        <div className="sm:col-span-7">
-                          <Select
-                            value={row.account_id}
-                            onValueChange={(val) => handleUpdatePaymentRow(row.id, "account_id", val)}
+                        {/* Account Selector + Inline Add Button */}
+                        <div className="sm:col-span-7 flex items-center gap-1.5">
+                          <div className="flex-1 min-w-0">
+                            <Select
+                              value={row.account_id}
+                              onValueChange={(val) => handleUpdatePaymentRow(row.id, "account_id", val)}
+                            >
+                              <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
+                                <SelectValue placeholder={lang === "NEP" ? `खर्च वा पार्टी खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {renderGroupedAccountOptions(accounts.filter(a => a.id !== creditAccountId), true)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openQuickCreateAccount({ type: "paymentRow", id: row.id }, "indirect_expenses")}
+                            className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
+                            title={lang === "NEP" ? "नयाँ खर्च खाता बनाउनुहोस् (Alt+C)" : "New Account (Alt+C)"}
                           >
-                            <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
-                              <SelectValue placeholder={lang === "NEP" ? `खर्च वा पार्टी खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {renderGroupedAccountOptions(accounts.filter(a => a.id !== creditAccountId), true)}
-                            </SelectContent>
-                          </Select>
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
 
                         <div className="sm:col-span-3">
@@ -2585,11 +2730,21 @@ export default function Accounting() {
                           <Landmark className="h-3.5 w-3.5 text-emerald-500" />
                           <span>{lang === "NEP" ? "कहाँ जम्मा भयो? (Deposited In)" : "Deposited In"}</span>
                         </span>
-                        {debitAccountId && (
-                          <span className="text-[10px] font-mono text-muted-foreground">
-                            Bal: {fmt(accounts.find(a => a.id === debitAccountId)?.opening_balance || 0)}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {debitAccountId && (
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              Bal: {fmt(accounts.find(a => a.id === debitAccountId)?.opening_balance || 0)}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openQuickCreateAccount({ type: "debitAccountId" }, "bank_accounts")}
+                            className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
+                            title="Alt + C"
+                          >
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "+ New"}
+                          </button>
+                        </div>
                       </Label>
                       <Select value={debitAccountId} onValueChange={setDebitAccountId}>
                         <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
@@ -2660,18 +2815,31 @@ export default function Accounting() {
                           </Badge>
                         </div>
 
-                        <div className="sm:col-span-7">
-                          <Select
-                            value={row.account_id}
-                            onValueChange={(val) => handleUpdateReceiptRow(row.id, "account_id", val)}
+                        {/* Account Selector + Inline Add Button */}
+                        <div className="sm:col-span-7 flex items-center gap-1.5">
+                          <div className="flex-1 min-w-0">
+                            <Select
+                              value={row.account_id}
+                              onValueChange={(val) => handleUpdateReceiptRow(row.id, "account_id", val)}
+                            >
+                              <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
+                                <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा स्रोत खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {renderGroupedAccountOptions(accounts.filter(a => a.id !== debitAccountId), true)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openQuickCreateAccount({ type: "receiptRow", id: row.id }, "indirect_incomes")}
+                            className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
+                            title={lang === "NEP" ? "नयाँ आम्दानी खाता बनाउनुहोस् (Alt+C)" : "New Account (Alt+C)"}
                           >
-                            <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
-                              <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा स्रोत खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {renderGroupedAccountOptions(accounts.filter(a => a.id !== debitAccountId), true)}
-                            </SelectContent>
-                          </Select>
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
 
                         <div className="sm:col-span-3">
@@ -2797,11 +2965,21 @@ export default function Accounting() {
                           <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" />
                           <span>{lang === "NEP" ? "कहाँबाट पैसा गयो? (From Account)" : "From Account"}</span>
                         </span>
-                        {creditAccountId && (
-                          <span className="text-[10px] font-mono text-muted-foreground">
-                            Bal: {fmt(accounts.find(a => a.id === creditAccountId)?.opening_balance || 0)}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {creditAccountId && (
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              Bal: {fmt(accounts.find(a => a.id === creditAccountId)?.opening_balance || 0)}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openQuickCreateAccount({ type: "creditAccountId" }, "bank_accounts")}
+                            className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
+                            title="Alt + C"
+                          >
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "+ New"}
+                          </button>
+                        </div>
                       </Label>
                       <Select value={creditAccountId} onValueChange={setCreditAccountId}>
                         <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
@@ -2821,11 +2999,21 @@ export default function Accounting() {
                           <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-500" />
                           <span>{lang === "NEP" ? "कहाँ पैसा पुग्यो / जम्मा भयो? (To Account)" : "To Account"}</span>
                         </span>
-                        {debitAccountId && (
-                          <span className="text-[10px] font-mono text-muted-foreground">
-                            Bal: {fmt(accounts.find(a => a.id === debitAccountId)?.opening_balance || 0)}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {debitAccountId && (
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              Bal: {fmt(accounts.find(a => a.id === debitAccountId)?.opening_balance || 0)}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openQuickCreateAccount({ type: "debitAccountId" }, "bank_accounts")}
+                            className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
+                            title="Alt + C"
+                          >
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "+ New"}
+                          </button>
+                        </div>
                       </Label>
                       <Select value={debitAccountId} onValueChange={setDebitAccountId}>
                         <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
@@ -2901,17 +3089,22 @@ export default function Accounting() {
         </DialogContent>
       </Dialog>
 
-      {/* CREATE NEW ACCOUNT MODAL */}
+      {/* CREATE NEW ACCOUNT MODAL (Alt + C) */}
       <Dialog open={newAccModalOpen} onOpenChange={setNewAccModalOpen}>
-        <DialogContent className="max-w-lg w-[95vw] sm:w-full p-6 sm:p-7 rounded-2xl shadow-2xl border bg-card">
+        <DialogContent className="max-w-lg w-[95vw] sm:w-full p-6 sm:p-7 rounded-2xl shadow-2xl border bg-card z-[80]">
           <DialogHeader className="pb-3 border-b">
-            <DialogTitle className="text-base font-bold text-foreground">
-              {lang === "NEP" ? "नयाँ खाता सिर्जना गर्नुहोस्" : "Create Ledger Account"}
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                <span>{lang === "NEP" ? "नयाँ खाता सिर्जना गर्नुहोस्" : "Create Ledger Account"}</span>
+              </DialogTitle>
+              <Badge variant="outline" className="text-[10px] font-mono font-bold px-2 py-0.5 bg-primary/10 text-primary border-primary/30">
+                Alt + C
+              </Badge>
+            </div>
             <DialogDescription className="text-xs text-muted-foreground mt-0.5">
               {lang === "NEP"
-                ? "नयाँ बैंक खाता, ऋण, गाडी वा खर्चको खाता थप्नुहोस्।"
-                : "Add a new bank account, asset, loan, or expense ledger."}
+                ? "नयाँ खाता सिर्जना गरेपछि यो स्वतः तपाईंको भाउचरमा छानिन्छ।"
+                : "Add a new ledger account. It will be automatically selected in your voucher."}
             </DialogDescription>
           </DialogHeader>
 
@@ -2919,11 +3112,12 @@ export default function Accounting() {
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "खाताको नाम (Account Name)" : "Account Name"}</Label>
               <Input
-                placeholder="e.g. NIC Asia Bank A/C, Delivery Bike..."
+                placeholder="e.g. NIC Asia Bank, Office Electricity, Ram Bahadur (Vendor)..."
                 value={newAccName}
                 onChange={e => setNewAccName(e.target.value)}
                 className="h-10 text-xs rounded-xl"
                 required
+                autoFocus
               />
             </div>
 
@@ -2933,16 +3127,19 @@ export default function Accounting() {
                 <SelectTrigger className="h-10 text-xs rounded-xl mt-1">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="max-h-56">
+                <SelectContent className="max-h-56 z-[90]">
                   <SelectItem value="bank_accounts">Bank Account (बैंक खाता)</SelectItem>
-                  <SelectItem value="fixed_assets">Fixed Asset (सम्पत्ति - गाडी, कम्प्युटर)</SelectItem>
+                  <SelectItem value="indirect_expenses">Expense (व्यापारिक/कार्यालय खर्च)</SelectItem>
+                  <SelectItem value="direct_expenses">Direct Expense (प्रत्यक्ष खर्च)</SelectItem>
+                  <SelectItem value="indirect_incomes">Income (अप्रत्यक्ष आम्दानी)</SelectItem>
+                  <SelectItem value="direct_incomes">Direct Income (प्रत्यक्ष आम्दानी)</SelectItem>
+                  <SelectItem value="fixed_assets">Fixed Asset (सम्पत्ति - गाडी, कम्प्युटर, फर्निचर)</SelectItem>
                   <SelectItem value="loans_advances_asset">Loans Given & Advances (दिएको ऋण तथा पेश्की)</SelectItem>
                   <SelectItem value="loans_liabilities">Loan & Borrowing (बैंक ऋण / साहु ऋण)</SelectItem>
-                  <SelectItem value="current_liabilities">Current Liability (दिन बाँकी खर्च)</SelectItem>
+                  <SelectItem value="current_liabilities">Current Liability (दिन बाँकी दायित्व)</SelectItem>
                   <SelectItem value="duties_taxes">VAT & Taxes (भ्याट तथा कर)</SelectItem>
                   <SelectItem value="capital">Capital (मालिकको पुँजी)</SelectItem>
-                  <SelectItem value="indirect_expenses">Expense (व्यापारिक खर्च)</SelectItem>
-                  <SelectItem value="indirect_incomes">Income (अप्रत्यक्ष आम्दानी)</SelectItem>
+                  <SelectItem value="drawings">Drawings (घरखर्च/व्यक्तिगत झिक्)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2962,7 +3159,10 @@ export default function Accounting() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setNewAccModalOpen(false)}
+                onClick={() => {
+                  setNewAccModalOpen(false);
+                  setQuickTarget(null);
+                }}
                 disabled={savingAccount}
                 className="h-10 px-5 text-xs font-semibold rounded-xl"
               >
@@ -2979,7 +3179,7 @@ export default function Accounting() {
                     {lang === "NEP" ? "बनाइँदैछ..." : "Creating..."}
                   </>
                 ) : (
-                  lang === "NEP" ? "खाता सुरक्षित गर्नुहोस्" : "Save Account"
+                  lang === "NEP" ? "खाता सुरक्षित गर्नुहोस्" : "Save & Select Account"
                 )}
               </Button>
             </DialogFooter>
