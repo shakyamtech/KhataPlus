@@ -34,6 +34,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { useColorTheme } from "@/contexts/ColorThemeContext";
+import { cn } from "@/lib/utils";
 import {
     Dialog,
     DialogContent,
