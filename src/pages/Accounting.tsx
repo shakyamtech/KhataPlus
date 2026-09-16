@@ -2417,17 +2417,17 @@ export default function Accounting() {
                 type="button"
                 variant="outline"
                 onClick={() => setNewAccModalOpen(false)}
-                disabled={creatingAcc}
+                disabled={savingAccount}
                 className="h-10 px-5 text-xs font-semibold rounded-xl"
               >
                 {lang === "NEP" ? "रद्द गर्नुहोस्" : "Cancel"}
               </Button>
               <Button
                 type="submit"
-                disabled={creatingAcc}
+                disabled={savingAccount}
                 className="h-10 px-6 text-xs bg-primary font-bold gap-2 text-primary-foreground rounded-xl shadow-md"
               >
-                {creatingAcc ? (
+                {savingAccount ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     {lang === "NEP" ? "बनाइँदैछ..." : "Creating..."}
