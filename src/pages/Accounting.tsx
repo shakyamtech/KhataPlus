@@ -2136,7 +2136,7 @@ export default function Accounting() {
             ) : (
               // SINGLE 2-LEGGED VOUCHER VIEW (Contra / Payment / Receipt)
               <div className="space-y-4">
-                {/* Date & Amount */}
+                {/* Date & Ref (Top Row) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "मिति (Date)" : "Date"}</Label>
@@ -2152,15 +2152,12 @@ export default function Accounting() {
                     </span>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}</Label>
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</Label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={voucherAmount}
-                      onChange={e => setVoucherAmount(e.target.value)}
-                      className="h-10 text-sm font-bold font-mono rounded-xl"
-                      required
+                      placeholder="e.g. CHQ-99120, Bank Slip #4821..."
+                      value={referenceNo}
+                      onChange={e => setReferenceNo(e.target.value)}
+                      className="h-10 text-xs font-mono rounded-xl"
                     />
                   </div>
                 </div>
@@ -2311,15 +2308,18 @@ export default function Accounting() {
                   </div>
                 )}
 
-                {/* Ref & Narration in 2 columns */}
+                {/* Amount & Narration in 2 columns (Bottom Row) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</Label>
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}</Label>
                     <Input
-                      placeholder="e.g. CHQ-99120, Bank Slip #4821..."
-                      value={referenceNo}
-                      onChange={e => setReferenceNo(e.target.value)}
-                      className="h-10 text-xs font-mono rounded-xl"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={voucherAmount}
+                      onChange={e => setVoucherAmount(e.target.value)}
+                      className="h-10 text-sm font-bold font-mono rounded-xl"
+                      required
                     />
                   </div>
 
