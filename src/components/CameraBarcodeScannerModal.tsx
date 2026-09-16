@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Camera, RefreshCw, Volume2, CheckCircle2, AlertCircle, X, Flashlight } from "lucide-react";
 import { toast } from "sonner";
-
 import { playScanBeep } from "@/lib/sound";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CameraBarcodeScannerModalProps {
   open: boolean;
@@ -19,6 +19,9 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
   onClose,
   onScan
 }) => {
+  const { lang } = useLanguage();
+  const isNep = lang === "NEP";
+
   const [cameras, setCameras] = useState<CameraDevice[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const [isScanning, setIsScanning] = useState(false);
@@ -56,20 +59,28 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
           const initialId = backCam ? backCam.id : devices[0].id;
           setSelectedCameraId(initialId);
         } else {
-          setErrorMsg("कुनै क्यामेरा फेला परेन। कृपया क्यामेरा जोडिएको पक्का गर्नुहोस् (No camera found).");
+          setErrorMsg(
+            isNep
+              ? "कुनै क्यामेरा फेला परेन। कृपया क्यामेरा जोडिएको पक्का गर्नुहोस्।"
+              : "No camera found. Please ensure a camera is connected."
+          );
         }
       })
       .catch((err) => {
         if (!isMounted) return;
         console.error("Camera permission or enumeration error:", err);
-        setErrorMsg("क्यामेराको अनुमति (Permission) मिलेन वा क्यामेरा उपलब्ध छैन।");
+        setErrorMsg(
+          isNep
+            ? "क्यामेराको अनुमति (Permission) मिलेन वा क्यामेरा उपलब्ध छैन।"
+            : "Camera permission denied or camera is unavailable."
+        );
       });
 
     return () => {
       isMounted = false;
       stopCamera();
     };
-  }, [open]);
+  }, [open, isNep]);
 
   // 2. Start scanner when camera is selected
   useEffect(() => {
@@ -109,8 +120,12 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
       await scanner.start(
         cameraId,
         {
-          fps: 12,
-          qrbox: { width: 260, height: 160 },
+          fps: 15,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const w = Math.min(260, Math.floor(viewfinderWidth * 0.78));
+            const h = Math.min(150, Math.floor(w * 0.58));
+            return { width: w, height: h };
+          },
           aspectRatio: 1.333333
         },
         async (decodedText) => {
@@ -148,7 +163,11 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
               }, 300);
             }
           } else {
-            toast.error(`बारकोड '${cleanText}' स्टकमा फेला परेन!`);
+            toast.error(
+              isNep
+                ? `बारकोड '${cleanText}' स्टकमा फेला परेन!`
+                : `Barcode '${cleanText}' not found in stock!`
+            );
           }
         },
         () => {
@@ -159,7 +178,11 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
       setIsScanning(true);
     } catch (err: any) {
       console.error("Failed to start camera scanner:", err);
-      setErrorMsg("क्यामेरा सुरु गर्न सकिएन। कृपया क्यामेरा प्रयोग गर्ने अर्कै एप्लिकेसन बन्द गर्नुहोस्।");
+      setErrorMsg(
+        isNep
+          ? "क्यामेरा सुरु गर्न सकिएन। कृपया क्यामेरा प्रयोग गर्ने अर्कै एप्लिकेसन बन्द गर्नुहोस्।"
+          : "Failed to access camera. Please close any other app using the camera."
+      );
       setIsScanning(false);
     }
   };
@@ -173,7 +196,11 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
         });
         setTorchOn(nextState);
       } catch {
-        toast.error("यो क्यामेरामा Flashlight / Torch सपोर्ट छैन।");
+        toast.error(
+          isNep
+            ? "यो क्यामेरामा Flashlight / Torch सपोर्ट छैन।"
+            : "Flashlight / Torch is not supported on this camera."
+        );
       }
     }
   };
@@ -181,6 +208,19 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md p-4 sm:p-5 gap-3 border-border shadow-2xl bg-card">
+        {/* Scoped CSS to hide Html5Qrcode duplicate default shaded region and keep video smooth */}
+        <style>{`
+          #pos-camera-barcode-reader #qr-shaded-region {
+            display: none !important;
+          }
+          #pos-camera-barcode-reader video {
+            border-radius: 0.75rem;
+            object-fit: cover;
+            width: 100% !important;
+            height: 100% !important;
+          }
+        `}</style>
+
         <DialogHeader className="space-y-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -189,10 +229,12 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
               </div>
               <div>
                 <DialogTitle className="text-base font-bold flex items-center gap-1.5">
-                  बारकोड क्यामेरा स्क्यानर (Camera Scanner)
+                  {isNep ? "बारकोड क्यामेरा स्क्यानर" : "Camera Barcode Scanner"}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  समानको बारकोड क्यामेरा अगाडि राख्नुहोस्, स्वतः Beep बजेर Cart मा थपिनेछ।
+                  {isNep
+                    ? "समानको बारकोड क्यामेरा अगाडि राख्नुहोस्, स्वतः Beep बजेर Cart मा थपिनेछ।"
+                    : "Point barcode at camera to auto-scan and add to cart."}
                 </DialogDescription>
               </div>
             </div>
@@ -202,7 +244,9 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
         {/* Scan Mode Toggle & Camera Device Selector */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs bg-muted/40 p-2 rounded-lg border border-border/60">
-            <span className="font-semibold text-muted-foreground">स्क्यान मोड (Scan Mode):</span>
+            <span className="font-semibold text-muted-foreground">
+              {isNep ? "स्क्यान मोड (Scan Mode):" : "Scan Mode:"}
+            </span>
             <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border text-[11px]">
               <button
                 type="button"
@@ -212,9 +256,9 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
                     ? "bg-primary text-primary-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
-                title="१ वटा सामान थपिएपछि क्यामेरा स्वतः बन्द हुनेछ"
+                title={isNep ? "१ वटा सामान थपिएपछि क्यामेरा स्वतः बन्द हुनेछ" : "Auto-close after 1 item is added to cart"}
               >
-                १ वटा स्क्यानपछि बन्द (Auto-Close)
+                {isNep ? "१ वटा स्क्यानपछि बन्द (Auto-Close)" : "Auto-Close (1 Item)"}
               </button>
               <button
                 type="button"
@@ -224,19 +268,21 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
                     ? "bg-primary text-primary-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
-                title="धेरै सामानहरू लगातार स्क्यान गरिरहने"
+                title={isNep ? "धेरै सामानहरू लगातार स्क्यान गरिरहने" : "Keep camera open for multiple scans"}
               >
-                लगातार स्क्यान (Continuous)
+                {isNep ? "लगातार स्क्यान (Continuous)" : "Continuous Scan"}
               </button>
             </div>
           </div>
 
           {cameras.length > 1 && (
             <div className="flex items-center gap-2 text-xs">
-              <span className="font-semibold text-muted-foreground shrink-0">क्यामेरा छान्नुहोस्:</span>
+              <span className="font-semibold text-muted-foreground shrink-0">
+                {isNep ? "क्यामेरा छान्नुहोस्:" : "Select Camera:"}
+              </span>
               <Select value={selectedCameraId} onValueChange={setSelectedCameraId}>
                 <SelectTrigger className="h-8 text-xs bg-muted/50 border-muted">
-                  <SelectValue placeholder="Select Camera" />
+                  <SelectValue placeholder={isNep ? "क्यामेरा छान्नुहोस्" : "Select Camera"} />
                 </SelectTrigger>
                 <SelectContent>
                   {cameras.map((cam, idx) => (
@@ -254,22 +300,22 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
         <div className="relative w-full aspect-[4/3] bg-black/90 rounded-xl overflow-hidden border-2 border-primary/30 shadow-inner flex flex-col items-center justify-center">
           <div id="pos-camera-barcode-reader" className="w-full h-full" />
 
-          {/* Target Scan Guides Overlay */}
+          {/* Target Scan Guides Overlay - Perfectly Centered & Single Bounding Box */}
           {isScanning && !errorMsg && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <div className="w-[260px] h-[150px] border-2 border-dashed border-primary/80 rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] relative flex items-center justify-center">
+              <div className="w-[260px] h-[150px] border-2 border-dashed border-cyan-400/90 rounded-lg shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] relative flex items-center justify-center">
                 {/* Laser scan line animation */}
-                <div className="w-full h-0.5 bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse" />
+                <div className="w-full h-0.5 bg-red-500 shadow-[0_0_10px_#ef4444] animate-pulse" />
 
                 {/* Corners */}
-                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-3 border-l-3 border-primary" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-3 border-r-3 border-primary" />
-                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-3 border-l-3 border-primary" />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-3 border-r-3 border-primary" />
+                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-3 border-l-3 border-cyan-400" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-3 border-r-3 border-cyan-400" />
+                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-3 border-l-3 border-cyan-400" />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-3 border-r-3 border-cyan-400" />
               </div>
-              <span className="mt-3 text-[11px] font-semibold text-white/90 bg-black/70 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5">
+              <span className="mt-3 text-[11px] font-semibold text-white/95 bg-black/75 px-3 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 shadow-sm border border-white/10">
                 <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
-                बारकोड अगाडि ल्याउनुहोस् (Beep बज्नेछ)
+                {isNep ? "बारकोड अगाडि ल्याउनुहोस् (Beep बज्नेछ)" : "Align barcode within frame (Beeps on scan)"}
               </span>
             </div>
           )}
@@ -285,7 +331,7 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
                 onClick={() => selectedCameraId && startCamera(selectedCameraId)}
                 className="mt-2 text-xs"
               >
-                <RefreshCw className="h-3.5 w-3.5 mr-1" /> फेरि प्रयास गर्नुहोस्
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> {isNep ? "फेरि प्रयास गर्नुहोस्" : "Retry Camera"}
               </Button>
             </div>
           )}
@@ -307,10 +353,14 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
                 <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
               )}
               <span className="truncate">
-                {lastScanned.success ? `Cart मा थपियो: ${lastScanned.text}` : `फेला परेन: ${lastScanned.text}`}
+                {lastScanned.success
+                  ? (isNep ? `Cart मा थपियो: ${lastScanned.text}` : `Added to Cart: ${lastScanned.text}`)
+                  : (isNep ? `फेला परेन: ${lastScanned.text}` : `Not found: ${lastScanned.text}`)}
               </span>
             </div>
-            <span className="text-[10px] opacity-75 shrink-0 ml-2">सक्रिय (Active)</span>
+            <span className="text-[10px] opacity-75 shrink-0 ml-2">
+              {isNep ? "सक्रिय (Active)" : "Active"}
+            </span>
           </div>
         )}
 
@@ -333,7 +383,7 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
             onClick={onClose}
             className="text-xs font-semibold"
           >
-            <X className="h-3.5 w-3.5 mr-1" /> बन्द गर्नुहोस् (Close)
+            <X className="h-3.5 w-3.5 mr-1" /> {isNep ? "बन्द गर्नुहोस् (Close)" : "Close"}
           </Button>
         </div>
       </DialogContent>
