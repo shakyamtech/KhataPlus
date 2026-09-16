@@ -1571,7 +1571,57 @@ export const AppShell = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    </>
+                                    
+                                         {/* 6. Barcode Notification Sound Setting */}
+                                         <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
+                                             <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                                 <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                                     <Volume2 className="h-3.5 w-3.5 text-primary" />
+                                                     {lang === "NEP" ? "६. बारकोड स्क्यानर आवाज (Barcode Scanner Sound)" : "Barcode Scanner Notification Sound"}
+                                                 </Label>
+                                                 <span className="text-[10px] text-muted-foreground">
+                                                     {lang === "NEP" ? "POS मा सामान स्क्यान हुँदा बज्ने आवाज" : "Chime sound played on barcode scan"}
+                                                 </span>
+                                             </div>
+
+                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                 {BARCODE_SOUND_OPTIONS.map((opt) => (
+                                                     <div
+                                                         key={opt.id}
+                                                         onClick={() => {
+                                                             setBarcodeScanSound(opt.id);
+                                                             playScanBeep(opt.id);
+                                                         }}
+                                                         className={cn(
+                                                             "p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between",
+                                                             barcodeScanSound === opt.id
+                                                                 ? "bg-primary/10 border-primary ring-1 ring-primary/30 text-primary font-bold shadow-2xs"
+                                                                 : "bg-background hover:bg-muted/60 border-border text-foreground"
+                                                         )}
+                                                     >
+                                                         <div>
+                                                             <div className="font-bold text-xs">{opt.name}</div>
+                                                             <div className="text-[10px] text-muted-foreground font-normal mt-0.5">{opt.desc}</div>
+                                                         </div>
+                                                         <Button
+                                                             type="button"
+                                                             size="icon"
+                                                             variant="ghost"
+                                                             className="h-7 w-7 rounded-full shrink-0 hover:bg-primary/20 text-primary"
+                                                             onClick={(e) => {
+                                                                 e.stopPropagation();
+                                                                 setBarcodeScanSound(opt.id);
+                                                                 playScanBeep(opt.id);
+                                                             }}
+                                                             title="आवाज सुन्नुहोस् (Test Sound)"
+                                                         >
+                                                             <Volume2 className="h-3.5 w-3.5" />
+                                                         </Button>
+                                                     </div>
+                                                 ))}
+                                             </div>
+                                         </div>
+                                     </>
                                 );
                             })()}
 
