@@ -545,29 +545,6 @@ export function printVoucherSlip(voucher: Voucher, shopInfo: any) {
       </div>
     </div>
   `;
-          </tr>
-        </tfoot>
-      </table>
-
-      <!-- Narration -->
-      <div style="font-size: 12px; margin-bottom: 35px; padding: 8px 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 4px;">
-        <strong>Narration (कैफियत):</strong> <em>${escapeHtml(voucher.narration || "N/A")}</em>
-      </div>
-
-      <!-- Signatures -->
-      <div style="display: flex; justify-content: space-between; margin-top: 40px; font-size: 11.5px; padding-top: 10px;">
-        <div style="border-top: 1px dashed #444; width: 150px; text-align: center; padding-top: 4px;">
-          तयार गर्ने (Prepared By)
-        </div>
-        <div style="border-top: 1px dashed #444; width: 150px; text-align: center; padding-top: 4px;">
-          जाँच गर्ने (Checked By)
-        </div>
-        <div style="border-top: 1px dashed #444; width: 150px; text-align: center; padding-top: 4px; font-weight: 700;">
-          स्वीकृत गर्ने (Authorized Sign)
-        </div>
-      </div>
-    </div>
-  `;
 
   printHTML(`Voucher_${voucher.voucher_no}`, body, { paperSize: "a4" });
 }

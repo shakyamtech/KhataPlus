@@ -2335,21 +2335,6 @@ export default function Accounting() {
           </form>
         </DialogContent>
       </Dialog>
-                className="h-9 text-xs bg-primary font-bold gap-2"
-              >
-                {submittingVoucher ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    {lang === "NEP" ? "सुरक्षित हुँदैछ..." : "Saving..."}
-                  </>
-                ) : (
-                  lang === "NEP" ? "भाउचर सुरक्षित गर्नुहोस्" : "Post Voucher"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* CREATE NEW ACCOUNT MODAL */}
       <Dialog open={newAccModalOpen} onOpenChange={setNewAccModalOpen}>
