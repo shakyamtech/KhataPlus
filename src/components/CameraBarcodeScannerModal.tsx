@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Camera, RefreshCw, Volume2, CheckCircle2, AlertCircle, X, Flashlight } from "lucide-react";
 import { toast } from "sonner";
-import { playScanBeep } from "@/lib/sound";
+import { playScanBeep, playErrorBuzzer } from "@/lib/sound";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CameraBarcodeScannerModalProps {
@@ -133,18 +133,15 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
           const cleanText = decodedText.trim();
           if (!cleanText) return;
 
-          // Prevent rapid duplicate scans within 1.4 seconds for the same barcode
+          // Fast & responsive: short 450ms debounce only for exact identical consecutive frames
           if (
             lastScanLockRef.current.text === cleanText &&
-            now - lastScanLockRef.current.time < 1400
+            now - lastScanLockRef.current.time < 450
           ) {
             return;
           }
 
           lastScanLockRef.current = { text: cleanText, time: now };
-
-          // Play scan audio beep sound
-          playScanBeep();
 
           // Call item handler in POS
           const isSuccess = await Promise.resolve(onScan(cleanText));
@@ -156,6 +153,7 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
           });
 
           if (isSuccess) {
+            playScanBeep();
             if (autoClose) {
               // Auto close camera modal after adding item to cart
               setTimeout(() => {
@@ -163,6 +161,7 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
               }, 300);
             }
           } else {
+            playErrorBuzzer();
             toast.error(
               isNep
                 ? `बारकोड '${cleanText}' स्टकमा फेला परेन!`

@@ -122,3 +122,39 @@ export const playScanBeep = (typeOverride?: BarcodeSoundType) => {
     // Muted/blocked audio
   }
 };
+
+/**
+ * Play a distinctive low-tone double warning buzz when a barcode is not found in stock or invalid.
+ */
+export const playErrorBuzzer = () => {
+  const soundType = getSavedBarcodeSound();
+  if (soundType === "mute") return;
+
+  const audioCtx = getAudioContext();
+  if (!audioCtx) return;
+
+  try {
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(220, now); // Low tone A3
+    osc.frequency.setValueAtTime(160, now + 0.08); // Drop tone
+
+    // Double pulse pattern
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+    gain.gain.setValueAtTime(0.18, now + 0.09);
+    gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.24);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.24);
+  } catch {
+    // Muted/blocked audio
+  }
+};
+
