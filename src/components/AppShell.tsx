@@ -489,14 +489,10 @@ export const AppShell = () => {
     };
 
     const handleSelfReset = async () => {
-        if (!password) return toast.error("Please enter your current password to confirm");
         if (!user?.uid) return;
 
         setBusy(true);
         try {
-            const credential = EmailAuthProvider.credential(user.email!, password);
-            await reauthenticateWithCredential(user, credential);
-
             // 1. Get all products for this user
             const prodQ = query(collection(db, "products"), where("user_id", "==", user.uid));
             const prodSnap = await getDocs(prodQ);
@@ -531,7 +527,7 @@ export const AppShell = () => {
             // 4. Delete all user-level transaction tables
             const tablesToWipe = [
                 "sales", "purchases", "cash_transactions",
-                "ledger_entries", "expenses", "stock_adjustments"
+                "ledger_entries", "expenses", "stock_adjustments", "vouchers"
             ];
             for (const t of tablesToWipe) {
                 const q = query(collection(db, t), where("user_id", "==", user.uid));
