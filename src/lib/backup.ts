@@ -184,7 +184,7 @@ export async function exportUserDataAsJson(
   const {
     products, batches, customers, suppliers, sales, saleItems,
     purchases, purchaseItems, cashTransactions, ledgerEntries,
-    stockAdjustments, profileData, shopName, counts
+    stockAdjustments, accounts, vouchers, profileData, shopName, counts
   } = full;
 
   const payload: BackupPayload = {
