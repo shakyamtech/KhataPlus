@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -455,6 +455,63 @@ export default function Accounting() {
       loans_advances_asset: lang === "NEP" ? "दिएको ऋण तथा पेश्की (Loans Given & Advances)" : "Loans Given & Advances"
     };
     return map[grp] || grp;
+  };
+
+  const GROUP_SORT_ORDER: Record<AccountGroup, number> = {
+    cash: 1,
+    bank_accounts: 2,
+    fixed_assets: 3,
+    current_assets: 4,
+    loans_advances_asset: 5,
+    capital: 6,
+    drawings: 7,
+    loans_liabilities: 8,
+    current_liabilities: 9,
+    duties_taxes: 10,
+    direct_expenses: 11,
+    indirect_expenses: 12,
+    direct_incomes: 13,
+    indirect_incomes: 14,
+  };
+
+  const renderGroupedAccountOptions = (accountList: Account[], showTypeBadge = false) => {
+    const grouped: Record<string, Account[]> = {};
+    for (const acc of accountList) {
+      const grp = acc.group || "cash";
+      if (!grouped[grp]) grouped[grp] = [];
+      grouped[grp].push(acc);
+    }
+
+    const sortedGroups = Object.keys(grouped).sort((a, b) => {
+      const orderA = GROUP_SORT_ORDER[a as AccountGroup] ?? 99;
+      const orderB = GROUP_SORT_ORDER[b as AccountGroup] ?? 99;
+      return orderA - orderB;
+    });
+
+    return sortedGroups.map(grpKey => {
+      const label = groupLabel(grpKey as AccountGroup);
+      const items = grouped[grpKey];
+
+      return (
+        <SelectGroup key={grpKey}>
+          <SelectLabel className="px-2 py-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/50 rounded my-0.5">
+            {label}
+          </SelectLabel>
+          {items.map(a => (
+            <SelectItem key={a.id} value={a.id} className="text-xs pl-4 cursor-pointer">
+              <div className="flex items-center justify-between w-full gap-2">
+                <span>{a.name}</span>
+                {showTypeBadge && (
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    ({a.type.toUpperCase()})
+                  </span>
+                )}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      );
+    });
   };
 
   // Trial Balance Data Calculation
@@ -1781,12 +1838,8 @@ export default function Accounting() {
                     <SelectTrigger className="h-9 text-xs mt-1">
                       <SelectValue placeholder="Select Debit account..." />
                     </SelectTrigger>
-                    <SelectContent className="max-h-56">
-                      {accounts.map(a => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name} ({a.type.toUpperCase()})
-                        </SelectItem>
-                      ))}
+                    <SelectContent>
+                      {renderGroupedAccountOptions(accounts, true)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1800,12 +1853,8 @@ export default function Accounting() {
                     <SelectTrigger className="h-9 text-xs mt-1">
                       <SelectValue placeholder="Select Credit account..." />
                     </SelectTrigger>
-                    <SelectContent className="max-h-56">
-                      {accounts.map(a => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name} ({a.type.toUpperCase()})
-                        </SelectItem>
-                      ))}
+                    <SelectContent>
+                      {renderGroupedAccountOptions(accounts, true)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1823,14 +1872,10 @@ export default function Accounting() {
                         <SelectTrigger className="h-9 text-xs mt-1">
                           <SelectValue placeholder="कहाँबाट..." />
                         </SelectTrigger>
-                        <SelectContent className="max-h-56">
-                          {accounts
-                            .filter(a => a.group === "cash" || a.group === "bank_accounts")
-                            .map(a => (
-                              <SelectItem key={a.id} value={a.id}>
-                                {a.name}
-                              </SelectItem>
-                            ))}
+                        <SelectContent>
+                          {renderGroupedAccountOptions(
+                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1843,14 +1888,10 @@ export default function Accounting() {
                         <SelectTrigger className="h-9 text-xs mt-1">
                           <SelectValue placeholder="कहाँ पुग्यो..." />
                         </SelectTrigger>
-                        <SelectContent className="max-h-56">
-                          {accounts
-                            .filter(a => a.group === "cash" || a.group === "bank_accounts")
-                            .map(a => (
-                              <SelectItem key={a.id} value={a.id}>
-                                {a.name}
-                              </SelectItem>
-                            ))}
+                        <SelectContent>
+                          {renderGroupedAccountOptions(
+                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1865,14 +1906,10 @@ export default function Accounting() {
                         <SelectTrigger className="h-9 text-xs mt-1">
                           <SelectValue placeholder="शीर्षक छान्नुहोस्..." />
                         </SelectTrigger>
-                        <SelectContent className="max-h-56">
-                          {accounts
-                            .filter(a => a.group !== "cash")
-                            .map(a => (
-                              <SelectItem key={a.id} value={a.id}>
-                                {a.name}
-                              </SelectItem>
-                            ))}
+                        <SelectContent>
+                          {renderGroupedAccountOptions(
+                            accounts.filter(a => a.group !== "cash")
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1885,14 +1922,10 @@ export default function Accounting() {
                         <SelectTrigger className="h-9 text-xs mt-1">
                           <SelectValue placeholder="नगद वा बैंक..." />
                         </SelectTrigger>
-                        <SelectContent className="max-h-56">
-                          {accounts
-                            .filter(a => a.group === "cash" || a.group === "bank_accounts")
-                            .map(a => (
-                              <SelectItem key={a.id} value={a.id}>
-                                {a.name}
-                              </SelectItem>
-                            ))}
+                        <SelectContent>
+                          {renderGroupedAccountOptions(
+                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1907,14 +1940,10 @@ export default function Accounting() {
                         <SelectTrigger className="h-9 text-xs mt-1">
                           <SelectValue placeholder="स्रोत छान्नुहोस्..." />
                         </SelectTrigger>
-                        <SelectContent className="max-h-56">
-                          {accounts
-                            .filter(a => a.group === "capital" || a.group === "loans_liabilities" || a.type === "income")
-                            .map(a => (
-                              <SelectItem key={a.id} value={a.id}>
-                                {a.name}
-                              </SelectItem>
-                            ))}
+                        <SelectContent>
+                          {renderGroupedAccountOptions(
+                            accounts.filter(a => a.group === "capital" || a.group === "loans_liabilities" || a.type === "income" || a.group === "current_liabilities")
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1927,14 +1956,10 @@ export default function Accounting() {
                         <SelectTrigger className="h-9 text-xs mt-1">
                           <SelectValue placeholder="नगद वा बैंक..." />
                         </SelectTrigger>
-                        <SelectContent className="max-h-56">
-                          {accounts
-                            .filter(a => a.group === "cash" || a.group === "bank_accounts")
-                            .map(a => (
-                              <SelectItem key={a.id} value={a.id}>
-                                {a.name}
-                              </SelectItem>
-                            ))}
+                        <SelectContent>
+                          {renderGroupedAccountOptions(
+                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1948,12 +1973,8 @@ export default function Accounting() {
                         <SelectTrigger className="h-9 text-xs mt-1">
                           <SelectValue placeholder="Select Debit Account..." />
                         </SelectTrigger>
-                        <SelectContent className="max-h-56">
-                          {accounts.map(a => (
-                            <SelectItem key={a.id} value={a.id}>
-                              {a.name}
-                            </SelectItem>
-                          ))}
+                        <SelectContent>
+                          {renderGroupedAccountOptions(accounts, true)}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1963,12 +1984,8 @@ export default function Accounting() {
                         <SelectTrigger className="h-9 text-xs mt-1">
                           <SelectValue placeholder="Select Credit Account..." />
                         </SelectTrigger>
-                        <SelectContent className="max-h-56">
-                          {accounts.map(a => (
-                            <SelectItem key={a.id} value={a.id}>
-                              {a.name}
-                            </SelectItem>
-                          ))}
+                        <SelectContent>
+                          {renderGroupedAccountOptions(accounts, true)}
                         </SelectContent>
                       </Select>
                     </div>
