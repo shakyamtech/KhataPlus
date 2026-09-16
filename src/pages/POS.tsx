@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown, Calendar as CalendarIcon, ArrowDown, ArrowUp } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown, Calendar as CalendarIcon, ArrowDown, ArrowUp, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
@@ -22,6 +22,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { formatNepaliDate, NEPALI_MONTHS, getDaysInBSMonth, bsToAdDateString, adToBsDateParts } from "@/lib/fiscalYear";
+import { CameraBarcodeScannerModal } from "@/components/CameraBarcodeScannerModal";
 
 type ActiveBatch = {
   id: string;
@@ -127,8 +128,31 @@ const POS = () => {
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
   const [busyCustomer, setBusyCustomer] = useState(false);
   const [tempAmount, setTempAmount] = useState<{ id: string; val: string } | null>(null);
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
   const cartSectionRef = useRef<HTMLDivElement>(null);
   const productsSectionRef = useRef<HTMLDivElement>(null);
+
+  const handleCameraScan = (code: string) => {
+    const clean = code.trim();
+    if (!clean) return false;
+
+    const found = products.find(
+      (p) =>
+        (p.barcode && p.barcode.trim() === clean) ||
+        p.id === clean ||
+        p.name.toLowerCase() === clean.toLowerCase()
+    );
+
+    if (found) {
+      const added = addToCart(found);
+      if (added) {
+        toast.success(`✓ Added to cart: ${found.name}`, { duration: 2000 });
+        scrollToCartMobile();
+        return true;
+      }
+    }
+    return false;
+  };
 
   const scrollToCartMobile = () => {
     // Only scroll on mobile/tablet screens (< 1024px) where Cart is below the product grid
@@ -944,33 +968,46 @@ const POS = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div ref={productsSectionRef} className="lg:col-span-2 space-y-4 scroll-mt-20">
-          <Input 
-            placeholder="Search item or barcode... (Press Enter to add)" 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && search.trim() !== '') {
-                e.preventDefault();
-                const exactBarcodeMatch = products.find(p => p.barcode === search.trim());
-                if (exactBarcodeMatch) {
-                  const added = addToCart(exactBarcodeMatch);
-                  setSearch("");
-                  if (added) toast.success(`Added: ${exactBarcodeMatch.name}`);
-                  return;
+          <div className="flex gap-2 mb-3">
+            <Input 
+              placeholder="Search item or barcode... (Press Enter to add)" 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && search.trim() !== '') {
+                  e.preventDefault();
+                  const exactBarcodeMatch = products.find(p => p.barcode === search.trim());
+                  if (exactBarcodeMatch) {
+                    const added = addToCart(exactBarcodeMatch);
+                    setSearch("");
+                    if (added) toast.success(`Added: ${exactBarcodeMatch.name}`);
+                    return;
+                  }
+                  
+                  if (filtered.length === 1) {
+                    const added = addToCart(filtered[0]);
+                    setSearch("");
+                    if (added) toast.success(`Added: ${filtered[0].name}`);
+                  } else if (filtered.length > 1) {
+                    toast.error("Multiple items match. Please click the one you want.");
+                  } else {
+                    toast.error("No product found.");
+                  }
                 }
-                
-                if (filtered.length === 1) {
-                  const added = addToCart(filtered[0]);
-                  setSearch("");
-                  if (added) toast.success(`Added: ${filtered[0].name}`);
-                } else if (filtered.length > 1) {
-                  toast.error("Multiple items match. Please click the one you want.");
-                } else {
-                  toast.error("No product found.");
-                }
-              }
-            }}
-          />
+              }}
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCameraScannerOpen(true)}
+              className="shrink-0 bg-primary/10 hover:bg-primary/20 border-primary/30 text-primary font-semibold flex items-center gap-1.5 shadow-2xs text-xs px-3"
+              title="क्यामेराबाट बारकोड स्क्यान गर्नुहोस् (Scan barcode via camera)"
+            >
+              <Camera className="h-4 w-4" />
+              <span className="hidden sm:inline">Camera Scan</span>
+            </Button>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {filtered.map((p) => {
               const totalAvailable = getTotalAvailable(p.id);
@@ -1696,6 +1733,13 @@ const POS = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Camera Barcode Scanner Modal */}
+      <CameraBarcodeScannerModal
+        open={cameraScannerOpen}
+        onClose={() => setCameraScannerOpen(false)}
+        onScan={handleCameraScan}
+      />
     </div>
   );
 };
