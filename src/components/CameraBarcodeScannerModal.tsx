@@ -48,6 +48,7 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
   const [lastScanned, setLastScanned] = useState<{ text: string; time: number; success: boolean } | null>(null);
   const [torchOn, setTorchOn] = useState(false);
 
+  const [autoClose, setAutoClose] = useState<boolean>(true);
   const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
   const lastScanLockRef = useRef<{ text: string; time: number }>({ text: "", time: 0 });
 
@@ -162,10 +163,12 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
           });
 
           if (isSuccess) {
-            // Auto close camera modal after adding item to cart
-            setTimeout(() => {
-              onClose();
-            }, 300);
+            if (autoClose) {
+              // Auto close camera modal after adding item to cart
+              setTimeout(() => {
+                onClose();
+              }, 300);
+            }
           } else {
             toast.error(`बारकोड '${cleanText}' स्टकमा फेला परेन!`);
           }
@@ -218,24 +221,56 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
           </div>
         </DialogHeader>
 
-        {/* Camera Device Dropdown Selector */}
-        {cameras.length > 1 && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-semibold text-muted-foreground shrink-0">क्यामेरा छान्नुहोस्:</span>
-            <Select value={selectedCameraId} onValueChange={setSelectedCameraId}>
-              <SelectTrigger className="h-8 text-xs bg-muted/50 border-muted">
-                <SelectValue placeholder="Select Camera" />
-              </SelectTrigger>
-              <SelectContent>
-                {cameras.map((cam, idx) => (
-                  <SelectItem key={cam.id} value={cam.id} className="text-xs">
-                    📷 {cam.label || `Camera ${idx + 1}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Scan Mode Toggle & Camera Device Selector */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs bg-muted/40 p-2 rounded-lg border border-border/60">
+            <span className="font-semibold text-muted-foreground">स्क्यान मोड (Scan Mode):</span>
+            <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border text-[11px]">
+              <button
+                type="button"
+                onClick={() => setAutoClose(true)}
+                className={`px-2 py-0.5 rounded transition-all font-bold ${
+                  autoClose
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="१ वटा सामान थपिएपछि क्यामेरा स्वतः बन्द हुनेछ"
+              >
+                १ वटा स्क्यानपछि बन्द (Auto-Close)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAutoClose(false)}
+                className={`px-2 py-0.5 rounded transition-all font-bold ${
+                  !autoClose
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="धेरै सामानहरू लगातार स्क्यान गरिरहने"
+              >
+                लगातार स्क्यान (Continuous)
+              </button>
+            </div>
           </div>
-        )}
+
+          {cameras.length > 1 && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="font-semibold text-muted-foreground shrink-0">क्यामेरा छान्नुहोस्:</span>
+              <Select value={selectedCameraId} onValueChange={setSelectedCameraId}>
+                <SelectTrigger className="h-8 text-xs bg-muted/50 border-muted">
+                  <SelectValue placeholder="Select Camera" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cameras.map((cam, idx) => (
+                    <SelectItem key={cam.id} value={cam.id} className="text-xs">
+                      📷 {cam.label || `Camera ${idx + 1}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
 
         {/* Scanner Viewport Box */}
         <div className="relative w-full aspect-[4/3] bg-black/90 rounded-xl overflow-hidden border-2 border-primary/30 shadow-inner flex flex-col items-center justify-center">
