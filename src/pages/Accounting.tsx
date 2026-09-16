@@ -2263,7 +2263,7 @@ export default function Accounting() {
                 title="Alt + C थिचेर सिधै नयाँ खाता बनाउनुहोस्"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>{lang === "NEP" ? "नयाँ खाता (Alt+C)" : "+ New Ledger (Alt+C)"}</span>
+                <span>{lang === "NEP" ? "नयाँ खाता (Alt+C)" : "New Ledger (Alt+C)"}</span>
               </Button>
             </div>
           </DialogHeader>
@@ -2430,7 +2430,7 @@ export default function Accounting() {
                       className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 hover:border-primary/50 font-semibold rounded-xl"
                     >
                       <Plus className="h-4 w-4" />
-                      <span>{lang === "NEP" ? "+ नयाँ लाइन थप्नुहोस् (Add Line)" : "+ Add Journal Line"}</span>
+                      <span>{lang === "NEP" ? "नयाँ लाइन थप्नुहोस् (Add Line)" : "Add Journal Line"}</span>
                     </Button>
                   </div>
                 </div>
@@ -2523,7 +2523,7 @@ export default function Accounting() {
                             className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
                             title="Alt + C"
                           >
-                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "+ New"}
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "New"}
                           </button>
                         </div>
                       </Label>
@@ -2662,7 +2662,7 @@ export default function Accounting() {
                       className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 hover:border-primary/50 font-semibold rounded-xl"
                     >
                       <Plus className="h-4 w-4" />
-                      <span>{lang === "NEP" ? "+ नयाँ खर्च / शीर्षक थप्नुहोस् (+ Add Item)" : "+ Add Item"}</span>
+                      <span>{lang === "NEP" ? "नयाँ खर्च / शीर्षक थप्नुहोस् (Add Item)" : "Add Item"}</span>
                     </Button>
                   </div>
                 </div>
@@ -2742,7 +2742,7 @@ export default function Accounting() {
                             className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
                             title="Alt + C"
                           >
-                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "+ New"}
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "New"}
                           </button>
                         </div>
                       </Label>
@@ -2881,7 +2881,7 @@ export default function Accounting() {
                       className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 hover:border-primary/50 font-semibold rounded-xl"
                     >
                       <Plus className="h-4 w-4" />
-                      <span>{lang === "NEP" ? "+ नयाँ आम्दानी / स्रोत थप्नुहोस् (+ Add Item)" : "+ Add Item"}</span>
+                      <span>{lang === "NEP" ? "नयाँ आम्दानी / स्रोत थप्नुहोस् (Add Item)" : "Add Item"}</span>
                     </Button>
                   </div>
                 </div>
@@ -2977,7 +2977,7 @@ export default function Accounting() {
                             className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
                             title="Alt + C"
                           >
-                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "+ New"}
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "New"}
                           </button>
                         </div>
                       </Label>
@@ -3011,7 +3011,7 @@ export default function Accounting() {
                             className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 ml-1"
                             title="Alt + C"
                           >
-                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "+ New"}
+                            <Plus className="h-2.5 w-2.5" /> {lang === "NEP" ? "नयाँ खाता" : "New"}
                           </button>
                         </div>
                       </Label>
