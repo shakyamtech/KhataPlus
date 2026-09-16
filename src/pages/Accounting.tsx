@@ -2280,12 +2280,11 @@ export default function Accounting() {
                         <Calendar className="h-3.5 w-3.5 text-primary" />
                         <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
                       </Label>
-                      <Input
-                        type="date"
+                      <CustomDatePicker
                         value={voucherDate}
-                        onChange={e => setVoucherDate(e.target.value)}
+                        onChange={setVoucherDate}
+                        placeholder="DD/MM/YYYY"
                         className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
-                        required
                       />
                       <span className="text-[11px] text-muted-foreground block font-medium">
                         📅 {formatNepaliDate(voucherDate)}
@@ -2492,12 +2491,11 @@ export default function Accounting() {
                         <Calendar className="h-3.5 w-3.5 text-primary" />
                         <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
                       </Label>
-                      <Input
-                        type="date"
+                      <CustomDatePicker
                         value={voucherDate}
-                        onChange={e => setVoucherDate(e.target.value)}
+                        onChange={setVoucherDate}
+                        placeholder="DD/MM/YYYY"
                         className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
-                        required
                       />
                       <span className="text-[11px] text-muted-foreground block font-medium">
                         📅 {formatNepaliDate(voucherDate)}
@@ -2711,12 +2709,11 @@ export default function Accounting() {
                         <Calendar className="h-3.5 w-3.5 text-primary" />
                         <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
                       </Label>
-                      <Input
-                        type="date"
+                      <CustomDatePicker
                         value={voucherDate}
-                        onChange={e => setVoucherDate(e.target.value)}
+                        onChange={setVoucherDate}
+                        placeholder="DD/MM/YYYY"
                         className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
-                        required
                       />
                       <span className="text-[11px] text-muted-foreground block font-medium">
                         📅 {formatNepaliDate(voucherDate)}
@@ -2929,12 +2926,11 @@ export default function Accounting() {
                         <Calendar className="h-3.5 w-3.5 text-primary" />
                         <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
                       </Label>
-                      <Input
-                        type="date"
+                      <CustomDatePicker
                         value={voucherDate}
-                        onChange={e => setVoucherDate(e.target.value)}
+                        onChange={setVoucherDate}
+                        placeholder="DD/MM/YYYY"
                         className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
-                        required
                       />
                       <span className="text-[11px] text-muted-foreground block font-medium">
                         📅 {formatNepaliDate(voucherDate)}
