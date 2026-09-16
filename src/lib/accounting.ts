@@ -117,26 +117,58 @@ export async function ensureDefaultAccounts(userId: string): Promise<Account[]> 
   if (!snap.empty) {
     const rawAccounts = snap.docs.map(d => ({ id: d.id, ...d.data() } as Account));
 
-    // Deduplicate existing accounts by normalized name + group
-    const uniqueMap = new Map<string, Account>();
     const duplicateIdsToDelete: string[] = [];
+    const uniqueAccounts: Account[] = [];
 
-    for (const acc of rawAccounts) {
-      const normKey = `${acc.group}___${(acc.name || "").trim().toLowerCase()}`;
-      
-      if (!uniqueMap.has(normKey)) {
-        uniqueMap.set(normKey, acc);
+    // 1. Strict SINGLE Cash in Hand Account Consolidation (Handles both "Cash in Hand" & "Cash in Hand (नगद मौज्दात)")
+    const cashAccounts = rawAccounts.filter(a => 
+      a.group === "cash" || 
+      (a.name && (a.name.toLowerCase().includes("cash in hand") || a.name.includes("नगद मौज्दात")))
+    );
+
+    if (cashAccounts.length > 0) {
+      // Pick the best cash account (prefer one with opening balance or system account)
+      let primaryCashAcc = cashAccounts.find(a => (Number(a.opening_balance) || 0) !== 0) || cashAccounts[0];
+      primaryCashAcc = {
+        ...primaryCashAcc,
+        name: "Cash in Hand (नगद मौज्दात)",
+        group: "cash",
+        type: "asset",
+        is_system: true
+      };
+      uniqueAccounts.push(primaryCashAcc);
+
+      // Mark all other duplicate cash accounts for background deletion
+      cashAccounts.forEach(a => {
+        if (a.id !== primaryCashAcc.id) {
+          duplicateIdsToDelete.push(a.id);
+        }
+      });
+    }
+
+    // 2. Process non-cash accounts with clean group/base-name deduplication
+    const nonCashAccounts = rawAccounts.filter(a => !cashAccounts.some(c => c.id === a.id));
+    const nonCashMap = new Map<string, Account>();
+
+    for (const acc of nonCashAccounts) {
+      // Normalize name by removing parenthesis translations so "Bank Account" & "Bank Account (मुख्य बैंक खाता)" merge
+      const baseName = (acc.name || "").replace(/\(.*?\)/g, "").trim().toLowerCase();
+      const normKey = `${acc.group}___${baseName}`;
+
+      if (!nonCashMap.has(normKey)) {
+        nonCashMap.set(normKey, acc);
       } else {
-        const existing = uniqueMap.get(normKey)!;
-        // Prioritize the one with opening balance or more data
-        if ((acc.opening_balance || 0) !== 0 && (existing.opening_balance || 0) === 0) {
+        const existing = nonCashMap.get(normKey)!;
+        if ((Number(acc.opening_balance) || 0) !== 0 && (Number(existing.opening_balance) || 0) === 0) {
           duplicateIdsToDelete.push(existing.id);
-          uniqueMap.set(normKey, acc);
+          nonCashMap.set(normKey, acc);
         } else {
           duplicateIdsToDelete.push(acc.id);
         }
       }
     }
+
+    uniqueAccounts.push(...Array.from(nonCashMap.values()));
 
     // Clean up duplicate documents from Firestore in background
     if (duplicateIdsToDelete.length > 0) {
@@ -144,7 +176,7 @@ export async function ensureDefaultAccounts(userId: string): Promise<Account[]> 
         .catch(err => console.warn("Background cleanup of duplicate accounts:", err));
     }
 
-    return Array.from(uniqueMap.values());
+    return uniqueAccounts;
   }
 
   // Initialize defaults using deterministic IDs to completely prevent race-condition duplicates
