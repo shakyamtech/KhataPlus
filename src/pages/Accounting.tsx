@@ -2114,10 +2114,10 @@ export default function Accounting() {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
                 <div className={`p-2.5 rounded-xl ${
-                  voucherType === "contra" ? "bg-blue-500/10 text-blue-500" :
-                  voucherType === "payment" ? "bg-amber-500/10 text-amber-500" :
-                  voucherType === "receipt" ? "bg-emerald-500/10 text-emerald-500" :
-                  "bg-purple-500/10 text-purple-500"
+                  voucherType === "contra" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
+                  voucherType === "payment" ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
+                  voucherType === "receipt" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
+                  "bg-purple-500/10 text-purple-500 border border-purple-500/20"
                 }`}>
                   {voucherType === "contra" && <ArrowRightLeft className="h-6 w-6" />}
                   {voucherType === "payment" && <ArrowUpRight className="h-6 w-6" />}
@@ -2136,11 +2136,11 @@ export default function Accounting() {
                         : "जर्नल भाउचर (Compound Journal Entry)"}
                     </span>
                     {previewVoucherNo && (
-                      <Badge variant="secondary" className="font-mono text-xs font-bold px-2 py-0.5 bg-primary/10 text-primary border border-primary/20">
+                      <Badge variant="secondary" className="font-mono text-xs font-bold px-2.5 py-0.5 bg-primary/10 text-primary border border-primary/25">
                         #{previewVoucherNo}
                       </Badge>
                     )}
-                    <Badge variant="outline" className="text-[10px] font-mono font-bold px-1.5 py-0.5">
+                    <Badge variant="outline" className="text-[10px] font-mono font-bold px-2 py-0.5 shadow-xs">
                       {voucherType === "contra" ? "F4" : voucherType === "payment" ? "F5" : voucherType === "receipt" ? "F6" : "F7"}
                     </Badge>
                   </DialogTitle>
@@ -2162,52 +2162,78 @@ export default function Accounting() {
             {voucherType === "journal" ? (
               // MULTI-ROW COMPOUND JOURNAL ENTRY TABLE
               <div className="space-y-4">
-                {/* Date & Ref */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "मिति (Date)" : "Date"}</Label>
-                    <Input
-                      type="date"
-                      value={voucherDate}
-                      onChange={e => setVoucherDate(e.target.value)}
-                      className="h-10 text-xs rounded-xl"
-                      required
-                    />
-                    <span className="text-[11px] text-muted-foreground block font-medium">
-                      📅 {formatNepaliDate(voucherDate)}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</Label>
-                    <Input
-                      placeholder="e.g. JV-ADJ-01, CHQ-1049, TDS-092..."
-                      value={referenceNo}
-                      onChange={e => setReferenceNo(e.target.value)}
-                      className="h-10 text-xs font-mono rounded-xl"
-                    />
+                {/* Date & Ref Top Card */}
+                <div className="p-4 rounded-2xl border bg-muted/20 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-primary" />
+                        <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
+                      </Label>
+                      <Input
+                        type="date"
+                        value={voucherDate}
+                        onChange={e => setVoucherDate(e.target.value)}
+                        className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
+                        required
+                      />
+                      <span className="text-[11px] text-muted-foreground block font-medium">
+                        📅 {formatNepaliDate(voucherDate)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</span>
+                      </Label>
+                      <Input
+                        placeholder="e.g. JV-ADJ-01, CHQ-1049, TDS-092..."
+                        value={referenceNo}
+                        onChange={e => setReferenceNo(e.target.value)}
+                        className="h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Journal Multi-Row Table */}
-                <div className="border rounded-2xl bg-card overflow-hidden shadow-sm">
+                <div className="border rounded-2xl bg-card overflow-hidden shadow-xs">
                   <div className="p-3 bg-muted/40 border-b flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <FolderTree className="h-4 w-4 text-primary" />
-                      {lang === "NEP" ? "डेबिट र क्रेडिट लाइनहरू (Journal Lines)" : "Journal Entry Lines"}
-                    </span>
-                    <Badge variant="outline" className="text-[10px] font-mono px-2 py-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600">
+                        <FolderTree className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <span className="text-xs font-bold text-foreground block">
+                          {lang === "NEP" ? "डेबिट र क्रेडिट लाइनहरू (Journal Lines)" : "Journal Entry Lines"}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {lang === "NEP" ? "डेबिट (Dr.) र क्रेडिट (Cr.) लाइनहरू सन्तुलित (Balanced) हुनुपर्छ" : "Ensure total Dr and Cr match"}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs font-mono px-2 py-0.5 bg-background">
                       {journalRows.length} Lines
                     </Badge>
                   </div>
 
-                  <div className="p-3 space-y-3 max-h-72 overflow-y-auto">
-                    {journalRows.map((row) => (
+                  {/* Table Column Headers */}
+                  <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-2 bg-muted/20 border-b text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    <div className="col-span-3">{lang === "NEP" ? "प्रकार (Dr./Cr.)" : "Type"}</div>
+                    <div className="col-span-5">{lang === "NEP" ? "खाता शीर्षक (Account)" : "Account"}</div>
+                    <div className="col-span-3 text-right">{lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}</div>
+                    <div className="col-span-1 text-center">{lang === "NEP" ? "हटाउने" : "Action"}</div>
+                  </div>
+
+                  <div className="p-3 space-y-2.5 max-h-64 overflow-y-auto">
+                    {journalRows.map((row, idx) => (
                       <div
                         key={row.id}
-                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-2.5 rounded-xl bg-muted/20 border hover:border-primary/40 transition-colors"
+                        className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2.5 p-2 rounded-xl bg-muted/10 hover:bg-muted/30 border transition-all"
                       >
                         {/* Type Dr/Cr */}
-                        <div className="w-full sm:w-32 shrink-0">
+                        <div className="sm:col-span-3">
                           <Select
                             value={row.type}
                             onValueChange={(val: "debit" | "credit") => handleUpdateJournalRow(row.id, "type", val)}
@@ -2227,13 +2253,13 @@ export default function Accounting() {
                         </div>
 
                         {/* Account Selector */}
-                        <div className="flex-1 min-w-0">
+                        <div className="sm:col-span-5">
                           <Select
                             value={row.account_id}
                             onValueChange={(val) => handleUpdateJournalRow(row.id, "account_id", val)}
                           >
-                            <SelectTrigger className="h-9 text-xs rounded-lg">
-                              <SelectValue placeholder={lang === "NEP" ? "खाता छान्नुहोस्..." : "Select Account..."} />
+                            <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
+                              <SelectValue placeholder={lang === "NEP" ? `खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
                             </SelectTrigger>
                             <SelectContent>
                               {renderGroupedAccountOptions(accounts, true)}
@@ -2242,30 +2268,30 @@ export default function Accounting() {
                         </div>
 
                         {/* Amount */}
-                        <div className="w-full sm:w-36 shrink-0">
+                        <div className="sm:col-span-3">
                           <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
                             value={row.amount}
                             onChange={(e) => handleUpdateJournalRow(row.id, "amount", e.target.value)}
-                            className="h-9 text-xs font-mono font-bold text-right rounded-lg"
+                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background"
                             required
                           />
                         </div>
 
                         {/* Delete Button */}
-                        <div className="shrink-0 flex justify-end">
+                        <div className="sm:col-span-1 flex justify-center">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-lg"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
                             onClick={() => handleRemoveJournalRow(row.id)}
                             disabled={journalRows.length <= 2}
                             title={lang === "NEP" ? "लाइन हटाउनुहोस्" : "Remove Line"}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
@@ -2279,7 +2305,7 @@ export default function Accounting() {
                       variant="outline"
                       size="sm"
                       onClick={handleAddJournalRow}
-                      className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 font-semibold rounded-xl"
+                      className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 hover:border-primary/50 font-semibold rounded-xl"
                     >
                       <Plus className="h-4 w-4" />
                       <span>{lang === "NEP" ? "+ नयाँ लाइन थप्नुहोस् (Add Line)" : "+ Add Journal Line"}</span>
@@ -2292,12 +2318,12 @@ export default function Accounting() {
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-4 font-mono">
                       <div>
-                        <span className="text-muted-foreground">Total Dr: </span>
+                        <span className="text-muted-foreground font-semibold">Total Dr: </span>
                         <strong className="text-emerald-600 font-bold text-sm">{fmt(journalTotals.dr)}</strong>
                       </div>
                       <div className="text-muted-foreground">|</div>
                       <div>
-                        <span className="text-muted-foreground">Total Cr: </span>
+                        <span className="text-muted-foreground font-semibold">Total Cr: </span>
                         <strong className="text-blue-600 font-bold text-sm">{fmt(journalTotals.cr)}</strong>
                       </div>
                     </div>
@@ -2320,86 +2346,130 @@ export default function Accounting() {
 
                 {/* Narration */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "कैफियत (Narration)" : "Narration"}</Label>
+                  <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration"}</span>
+                  </Label>
                   <Input
                     placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                     value={narration}
                     onChange={e => setNarration(e.target.value)}
-                    className="h-10 text-xs rounded-xl"
+                    className="h-10 text-xs rounded-xl bg-background"
                   />
                 </div>
               </div>
             ) : voucherType === "payment" ? (
               // MULTI-ITEM PAYMENT VOUCHER VIEW
               <div className="space-y-4">
-                {/* Date & Ref */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "मिति (Date)" : "Date"}</Label>
-                    <Input
-                      type="date"
-                      value={voucherDate}
-                      onChange={e => setVoucherDate(e.target.value)}
-                      className="h-10 text-xs rounded-xl"
-                      required
-                    />
-                    <span className="text-[11px] text-muted-foreground block font-medium">
-                      📅 {formatNepaliDate(voucherDate)}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</Label>
-                    <Input
-                      placeholder="e.g. CHQ-99120, Bank Slip #4821..."
-                      value={referenceNo}
-                      onChange={e => setReferenceNo(e.target.value)}
-                      className="h-10 text-xs font-mono rounded-xl"
-                    />
+                {/* 3-Column Top Metadata Card */}
+                <div className="p-4 rounded-2xl border bg-muted/20 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    {/* Col 1: Date */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-primary" />
+                        <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
+                      </Label>
+                      <Input
+                        type="date"
+                        value={voucherDate}
+                        onChange={e => setVoucherDate(e.target.value)}
+                        className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
+                        required
+                      />
+                      <span className="text-[11px] text-muted-foreground block font-medium">
+                        📅 {formatNepaliDate(voucherDate)}
+                      </span>
+                    </div>
+
+                    {/* Col 2: Paid Via (Cash/Bank) */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <CreditCard className="h-3.5 w-3.5 text-amber-500" />
+                          <span>{lang === "NEP" ? "भुक्तानी माध्यम (Paid Via)" : "Paid Via"}</span>
+                        </span>
+                        {creditAccountId && (
+                          <span className="text-[10px] font-mono text-muted-foreground">
+                            Bal: {fmt(accounts.find(a => a.id === creditAccountId)?.opening_balance || 0)}
+                          </span>
+                        )}
+                      </Label>
+                      <Select value={creditAccountId} onValueChange={setCreditAccountId}>
+                        <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
+                          <SelectValue placeholder={lang === "NEP" ? "नगद वा बैंक छान्नुहोस्..." : "Select Cash/Bank..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {renderGroupedAccountOptions(
+                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Col 3: Ref / Cheque No */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{lang === "NEP" ? "चेक / स्लिप नं (ऐच्छिक)" : "Ref / Cheque No"}</span>
+                      </Label>
+                      <Input
+                        placeholder="e.g. CHQ-99120, Slip #4821..."
+                        value={referenceNo}
+                        onChange={e => setReferenceNo(e.target.value)}
+                        className="h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Paid Via (Cash / Bank) Selector */}
-                <div className="p-3.5 rounded-2xl border bg-muted/20 space-y-1.5">
-                  <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <CreditCard className="h-4 w-4 text-amber-500" />
-                    <span>{lang === "NEP" ? "भुक्तानी माध्यम (Paid Via)" : "Paid Via (Cash / Bank Account)"}</span>
-                  </Label>
-                  <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-                    <SelectTrigger className="h-10 text-xs rounded-xl font-semibold">
-                      <SelectValue placeholder="नगद वा बैंक छान्नुहोस्..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {renderGroupedAccountOptions(
-                        accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Multi-Item Payment Lines */}
-                <div className="border rounded-2xl bg-card overflow-hidden shadow-sm">
+                {/* Multi-Item Payment Lines Table */}
+                <div className="border rounded-2xl bg-card overflow-hidden shadow-xs">
                   <div className="p-3 bg-muted/40 border-b flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <FolderTree className="h-4 w-4 text-primary" />
-                      {lang === "NEP" ? "भुक्तानी गरिएका खर्च तथा खाताहरू (Payment / Expense Items)" : "Payment / Expense Items"}
-                    </span>
-                    <Badge variant="outline" className="text-[10px] font-mono px-2 py-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600">
+                        <FolderTree className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <span className="text-xs font-bold text-foreground block">
+                          {lang === "NEP" ? "भुक्तानी गरिएका खर्च तथा खाताहरू (Payment / Expense Items)" : "Payment Particulars"}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {lang === "NEP" ? "खर्च वा साहु खाता छानेर रकम राख्नुहोस्" : "Select expense/vendor accounts with individual amounts"}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs font-mono px-2 py-0.5 bg-background">
                       {paymentRows.length} Items
                     </Badge>
                   </div>
 
-                  <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
+                  {/* Table Column Headers */}
+                  <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-2 bg-muted/20 border-b text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    <div className="col-span-1">#</div>
+                    <div className="col-span-7">{lang === "NEP" ? "खर्च / खाता शीर्षक (Account / Particulars)" : "Account / Particulars"}</div>
+                    <div className="col-span-3 text-right">{lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}</div>
+                    <div className="col-span-1 text-center">{lang === "NEP" ? "हटाउने" : "Action"}</div>
+                  </div>
+
+                  <div className="p-3 space-y-2.5 max-h-64 overflow-y-auto">
                     {paymentRows.map((row, idx) => (
                       <div
                         key={row.id}
-                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-2.5 rounded-xl bg-muted/20 border hover:border-primary/40 transition-colors"
+                        className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2.5 p-2 rounded-xl bg-muted/10 hover:bg-muted/30 border transition-all"
                       >
-                        <div className="flex-1 min-w-0">
+                        <div className="sm:col-span-1 flex items-center">
+                          <Badge variant="secondary" className="font-mono text-[10px] font-bold h-6 px-1.5">
+                            #{idx + 1}
+                          </Badge>
+                        </div>
+
+                        <div className="sm:col-span-7">
                           <Select
                             value={row.account_id}
                             onValueChange={(val) => handleUpdatePaymentRow(row.id, "account_id", val)}
                           >
-                            <SelectTrigger className="h-9 text-xs rounded-lg">
+                            <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
                               <SelectValue placeholder={lang === "NEP" ? `खर्च वा पार्टी खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
                             </SelectTrigger>
                             <SelectContent>
@@ -2408,142 +2478,194 @@ export default function Accounting() {
                           </Select>
                         </div>
 
-                        <div className="w-full sm:w-40 shrink-0">
+                        <div className="sm:col-span-3">
                           <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
                             value={row.amount}
                             onChange={(e) => handleUpdatePaymentRow(row.id, "amount", e.target.value)}
-                            className="h-9 text-xs font-mono font-bold text-right rounded-lg"
+                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background"
                             required
                           />
                         </div>
 
-                        <div className="shrink-0 flex justify-end">
+                        <div className="sm:col-span-1 flex justify-center">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-lg"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
                             onClick={() => handleRemovePaymentRow(row.id)}
                             disabled={paymentRows.length <= 1}
                             title={lang === "NEP" ? "हटाउनुहोस्" : "Remove Item"}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
                     ))}
                   </div>
 
+                  {/* Add Line Button */}
                   <div className="p-2.5 border-t bg-muted/10">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={handleAddPaymentRow}
-                      className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 font-semibold rounded-xl"
+                      className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 hover:border-primary/50 font-semibold rounded-xl"
                     >
                       <Plus className="h-4 w-4" />
-                      <span>{lang === "NEP" ? "+ नयाँ खर्च / शीर्षक थप्नुहोस् (+ Add Payment Item)" : "+ Add Payment Item"}</span>
+                      <span>{lang === "NEP" ? "+ नयाँ खर्च / शीर्षक थप्नुहोस् (+ Add Item)" : "+ Add Item"}</span>
                     </Button>
                   </div>
                 </div>
 
-                {/* Total & Narration */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                  <div className="p-3 rounded-xl border bg-amber-500/5 border-amber-500/20 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground font-semibold">
-                      {lang === "NEP" ? "जम्मा भुक्तानी रकम:" : "Total Payment:"}
-                    </span>
-                    <strong className="text-base font-bold font-mono text-amber-600">
-                      {fmt(paymentTotal)}
-                    </strong>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "कैफियत (Narration)" : "Narration"}</Label>
+                {/* Bottom Summary: Narration & Grand Total */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center pt-1">
+                  <div className="sm:col-span-7 space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration / Note"}</span>
+                    </Label>
                     <Input
                       placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                       value={narration}
                       onChange={e => setNarration(e.target.value)}
-                      className="h-10 text-xs rounded-xl"
+                      className="h-11 text-xs rounded-xl bg-background"
                     />
+                  </div>
+
+                  <div className="sm:col-span-5">
+                    <div className="p-3 rounded-2xl border-2 border-amber-500/30 bg-amber-500/10 flex items-center justify-between shadow-xs">
+                      <div>
+                        <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide block">
+                          {lang === "NEP" ? "जम्मा भुक्तानी रकम" : "Total Payment"}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {paymentRows.length} Line Items
+                        </span>
+                      </div>
+                      <strong className="text-lg font-black font-mono text-amber-600 dark:text-amber-400">
+                        {fmt(paymentTotal)}
+                      </strong>
+                    </div>
                   </div>
                 </div>
               </div>
             ) : voucherType === "receipt" ? (
               // MULTI-ITEM RECEIPT VOUCHER VIEW
               <div className="space-y-4">
-                {/* Date & Ref */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "मिति (Date)" : "Date"}</Label>
-                    <Input
-                      type="date"
-                      value={voucherDate}
-                      onChange={e => setVoucherDate(e.target.value)}
-                      className="h-10 text-xs rounded-xl"
-                      required
-                    />
-                    <span className="text-[11px] text-muted-foreground block font-medium">
-                      📅 {formatNepaliDate(voucherDate)}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</Label>
-                    <Input
-                      placeholder="e.g. CHQ-99120, Bank Slip #4821..."
-                      value={referenceNo}
-                      onChange={e => setReferenceNo(e.target.value)}
-                      className="h-10 text-xs font-mono rounded-xl"
-                    />
+                {/* 3-Column Top Metadata Card */}
+                <div className="p-4 rounded-2xl border bg-muted/20 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    {/* Col 1: Date */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-primary" />
+                        <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
+                      </Label>
+                      <Input
+                        type="date"
+                        value={voucherDate}
+                        onChange={e => setVoucherDate(e.target.value)}
+                        className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
+                        required
+                      />
+                      <span className="text-[11px] text-muted-foreground block font-medium">
+                        📅 {formatNepaliDate(voucherDate)}
+                      </span>
+                    </div>
+
+                    {/* Col 2: Deposited In (Cash/Bank) */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Landmark className="h-3.5 w-3.5 text-emerald-500" />
+                          <span>{lang === "NEP" ? "कहाँ जम्मा भयो? (Deposited In)" : "Deposited In"}</span>
+                        </span>
+                        {debitAccountId && (
+                          <span className="text-[10px] font-mono text-muted-foreground">
+                            Bal: {fmt(accounts.find(a => a.id === debitAccountId)?.opening_balance || 0)}
+                          </span>
+                        )}
+                      </Label>
+                      <Select value={debitAccountId} onValueChange={setDebitAccountId}>
+                        <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
+                          <SelectValue placeholder={lang === "NEP" ? "नगद वा बैंक छान्नुहोस्..." : "Select Cash/Bank..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {renderGroupedAccountOptions(
+                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Col 3: Ref / Cheque No */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{lang === "NEP" ? "चेक / स्लिप नं (ऐच्छिक)" : "Ref / Cheque No"}</span>
+                      </Label>
+                      <Input
+                        placeholder="e.g. CHQ-99120, Bank Slip #4821..."
+                        value={referenceNo}
+                        onChange={e => setReferenceNo(e.target.value)}
+                        className="h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Deposited In (Cash / Bank) Selector */}
-                <div className="p-3.5 rounded-2xl border bg-muted/20 space-y-1.5">
-                  <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <Landmark className="h-4 w-4 text-emerald-500" />
-                    <span>{lang === "NEP" ? "कहाँ जम्मा भयो? (Deposited In)" : "Deposited In (Cash / Bank Account)"}</span>
-                  </Label>
-                  <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-                    <SelectTrigger className="h-10 text-xs rounded-xl font-semibold">
-                      <SelectValue placeholder="नगद वा बैंक छान्नुहोस्..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {renderGroupedAccountOptions(
-                        accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Multi-Item Receipt Lines */}
-                <div className="border rounded-2xl bg-card overflow-hidden shadow-sm">
+                {/* Multi-Item Receipt Lines Table */}
+                <div className="border rounded-2xl bg-card overflow-hidden shadow-xs">
                   <div className="p-3 bg-muted/40 border-b flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <FolderTree className="h-4 w-4 text-primary" />
-                      {lang === "NEP" ? "आम्दानी तथा दाखिला स्रोतहरू (Receipt / Income Items)" : "Receipt / Income Items"}
-                    </span>
-                    <Badge variant="outline" className="text-[10px] font-mono px-2 py-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600">
+                        <FolderTree className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <span className="text-xs font-bold text-foreground block">
+                          {lang === "NEP" ? "आम्दानी तथा दाखिला स्रोतहरू (Receipt / Income Items)" : "Receipt Particulars"}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {lang === "NEP" ? "आम्दानी वा आसामी खाता छानेर रकम राख्नुहोस्" : "Select income/customer accounts with individual amounts"}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs font-mono px-2 py-0.5 bg-background">
                       {receiptRows.length} Items
                     </Badge>
                   </div>
 
-                  <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
+                  {/* Table Column Headers */}
+                  <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-2 bg-muted/20 border-b text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    <div className="col-span-1">#</div>
+                    <div className="col-span-7">{lang === "NEP" ? "आम्दानी / स्रोत शीर्षक (Account / Particulars)" : "Account / Particulars"}</div>
+                    <div className="col-span-3 text-right">{lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}</div>
+                    <div className="col-span-1 text-center">{lang === "NEP" ? "हटाउने" : "Action"}</div>
+                  </div>
+
+                  <div className="p-3 space-y-2.5 max-h-64 overflow-y-auto">
                     {receiptRows.map((row, idx) => (
                       <div
                         key={row.id}
-                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-2.5 rounded-xl bg-muted/20 border hover:border-primary/40 transition-colors"
+                        className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2.5 p-2 rounded-xl bg-muted/10 hover:bg-muted/30 border transition-all"
                       >
-                        <div className="flex-1 min-w-0">
+                        <div className="sm:col-span-1 flex items-center">
+                          <Badge variant="secondary" className="font-mono text-[10px] font-bold h-6 px-1.5">
+                            #{idx + 1}
+                          </Badge>
+                        </div>
+
+                        <div className="sm:col-span-7">
                           <Select
                             value={row.account_id}
                             onValueChange={(val) => handleUpdateReceiptRow(row.id, "account_id", val)}
                           >
-                            <SelectTrigger className="h-9 text-xs rounded-lg">
+                            <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
                               <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा स्रोत खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
                             </SelectTrigger>
                             <SelectContent>
@@ -2552,109 +2674,137 @@ export default function Accounting() {
                           </Select>
                         </div>
 
-                        <div className="w-full sm:w-40 shrink-0">
+                        <div className="sm:col-span-3">
                           <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
                             value={row.amount}
                             onChange={(e) => handleUpdateReceiptRow(row.id, "amount", e.target.value)}
-                            className="h-9 text-xs font-mono font-bold text-right rounded-lg"
+                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background"
                             required
                           />
                         </div>
 
-                        <div className="shrink-0 flex justify-end">
+                        <div className="sm:col-span-1 flex justify-center">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-lg"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
                             onClick={() => handleRemoveReceiptRow(row.id)}
                             disabled={receiptRows.length <= 1}
                             title={lang === "NEP" ? "हटाउनुहोस्" : "Remove Item"}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
                     ))}
                   </div>
 
+                  {/* Add Line Button */}
                   <div className="p-2.5 border-t bg-muted/10">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={handleAddReceiptRow}
-                      className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 font-semibold rounded-xl"
+                      className="w-full text-xs h-9 border-dashed gap-1.5 text-primary hover:bg-primary/5 hover:border-primary/50 font-semibold rounded-xl"
                     >
                       <Plus className="h-4 w-4" />
-                      <span>{lang === "NEP" ? "+ नयाँ आम्दानी / स्रोत थप्नुहोस् (+ Add Receipt Item)" : "+ Add Receipt Item"}</span>
+                      <span>{lang === "NEP" ? "+ नयाँ आम्दानी / स्रोत थप्नुहोस् (+ Add Item)" : "+ Add Item"}</span>
                     </Button>
                   </div>
                 </div>
 
-                {/* Total & Narration */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                  <div className="p-3 rounded-xl border bg-emerald-500/5 border-emerald-500/20 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground font-semibold">
-                      {lang === "NEP" ? "जम्मा रसिद रकम:" : "Total Receipt:"}
-                    </span>
-                    <strong className="text-base font-bold font-mono text-emerald-600">
-                      {fmt(receiptTotal)}
-                    </strong>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "कैफियत (Narration)" : "Narration"}</Label>
+                {/* Bottom Summary: Narration & Grand Total */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center pt-1">
+                  <div className="sm:col-span-7 space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration / Note"}</span>
+                    </Label>
                     <Input
                       placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                       value={narration}
                       onChange={e => setNarration(e.target.value)}
-                      className="h-10 text-xs rounded-xl"
+                      className="h-11 text-xs rounded-xl bg-background"
                     />
+                  </div>
+
+                  <div className="sm:col-span-5">
+                    <div className="p-3 rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between shadow-xs">
+                      <div>
+                        <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide block">
+                          {lang === "NEP" ? "जम्मा रसिद रकम" : "Total Receipt"}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {receiptRows.length} Line Items
+                        </span>
+                      </div>
+                      <strong className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
+                        {fmt(receiptTotal)}
+                      </strong>
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
               // CONTRA VOUCHER VIEW (Cash <-> Bank Transfer)
               <div className="space-y-4">
-                {/* Date & Ref (Top Row) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "मिति (Date)" : "Date"}</Label>
-                    <Input
-                      type="date"
-                      value={voucherDate}
-                      onChange={e => setVoucherDate(e.target.value)}
-                      className="h-10 text-xs rounded-xl"
-                      required
-                    />
-                    <span className="text-[11px] text-muted-foreground block font-medium">
-                      📅 {formatNepaliDate(voucherDate)}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</Label>
-                    <Input
-                      placeholder="e.g. CHQ-99120, Bank Slip #4821..."
-                      value={referenceNo}
-                      onChange={e => setReferenceNo(e.target.value)}
-                      className="h-10 text-xs font-mono rounded-xl"
-                    />
+                {/* 2-Column Top Metadata Card */}
+                <div className="p-4 rounded-2xl border bg-muted/20 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-primary" />
+                        <span>{lang === "NEP" ? "मिति (Date)" : "Date"}</span>
+                      </Label>
+                      <Input
+                        type="date"
+                        value={voucherDate}
+                        onChange={e => setVoucherDate(e.target.value)}
+                        className="h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
+                        required
+                      />
+                      <span className="text-[11px] text-muted-foreground block font-medium">
+                        📅 {formatNepaliDate(voucherDate)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{lang === "NEP" ? "चेक / बैंक स्लिप / रेफरेन्स नं (ऐच्छिक)" : "Ref / Cheque / Slip No (Optional)"}</span>
+                      </Label>
+                      <Input
+                        placeholder="e.g. CHQ-99120, Bank Slip #4821..."
+                        value={referenceNo}
+                        onChange={e => setReferenceNo(e.target.value)}
+                        className="h-10 text-xs font-mono rounded-xl bg-background shadow-xs"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* From / To Accounts */}
-                <div className="p-4 rounded-2xl border bg-muted/20 space-y-3.5">
+                {/* Transfer Accounts Card */}
+                <div className="p-4 rounded-2xl border bg-card shadow-xs space-y-3.5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-foreground">
-                        {lang === "NEP" ? "कहाँबाट पैसा गयो? (From Account)" : "From Account"}
+                      <Label className="text-xs font-bold text-foreground flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <ArrowUpRight className="h-3.5 w-3.5 text-amber-500" />
+                          <span>{lang === "NEP" ? "कहाँबाट पैसा गयो? (From Account)" : "From Account"}</span>
+                        </span>
+                        {creditAccountId && (
+                          <span className="text-[10px] font-mono text-muted-foreground">
+                            Bal: {fmt(accounts.find(a => a.id === creditAccountId)?.opening_balance || 0)}
+                          </span>
+                        )}
                       </Label>
                       <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-                        <SelectTrigger className="h-10 text-xs rounded-xl">
+                        <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
                           <SelectValue placeholder="कहाँबाट..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -2666,11 +2816,19 @@ export default function Accounting() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-foreground">
-                        {lang === "NEP" ? "कहाँ पैसा पुग्यो / जम्मा भयो? (To Account)" : "To Account"}
+                      <Label className="text-xs font-bold text-foreground flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-500" />
+                          <span>{lang === "NEP" ? "कहाँ पैसा पुग्यो / जम्मा भयो? (To Account)" : "To Account"}</span>
+                        </span>
+                        {debitAccountId && (
+                          <span className="text-[10px] font-mono text-muted-foreground">
+                            Bal: {fmt(accounts.find(a => a.id === debitAccountId)?.opening_balance || 0)}
+                          </span>
+                        )}
                       </Label>
                       <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-                        <SelectTrigger className="h-10 text-xs rounded-xl">
+                        <SelectTrigger className="h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
                           <SelectValue placeholder="कहाँ पुग्यो..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -2683,28 +2841,31 @@ export default function Accounting() {
                   </div>
                 </div>
 
-                {/* Amount & Narration */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}</Label>
+                {/* Amount & Narration Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center pt-1">
+                  <div className="sm:col-span-7 space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration / Note"}</span>
+                    </Label>
+                    <Input
+                      placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
+                      value={narration}
+                      onChange={e => setNarration(e.target.value)}
+                      className="h-11 text-xs rounded-xl bg-background"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-5 space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "ट्रान्सफर रकम रु. (Transfer Amount)" : "Transfer Amount (Rs.)"}</Label>
                     <Input
                       type="number"
                       step="0.01"
                       placeholder="0.00"
                       value={voucherAmount}
                       onChange={e => setVoucherAmount(e.target.value)}
-                      className="h-10 text-sm font-bold font-mono rounded-xl"
+                      className="h-11 text-base font-bold font-mono text-primary rounded-xl bg-background"
                       required
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "कैफियत (Narration)" : "Narration"}</Label>
-                    <Input
-                      placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
-                      value={narration}
-                      onChange={e => setNarration(e.target.value)}
-                      className="h-10 text-xs rounded-xl"
                     />
                   </div>
                 </div>
