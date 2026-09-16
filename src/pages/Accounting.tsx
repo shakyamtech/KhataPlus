@@ -494,11 +494,11 @@ export default function Accounting() {
 
       return (
         <SelectGroup key={grpKey}>
-          <SelectLabel className="px-2 py-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/50 rounded my-0.5">
+          <SelectLabel className="px-2.5 py-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/60 rounded my-1">
             {label}
           </SelectLabel>
           {items.map(a => (
-            <SelectItem key={a.id} value={a.id} className="text-xs pl-4 cursor-pointer">
+            <SelectItem key={a.id} value={a.id} className="text-xs pl-8 cursor-pointer">
               <div className="flex items-center justify-between w-full gap-2">
                 <span>{a.name}</span>
                 {showTypeBadge && (
