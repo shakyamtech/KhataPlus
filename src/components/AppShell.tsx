@@ -379,6 +379,39 @@ export const AppShell = () => {
                 if (lastAbb) setDbLastAbb(lastAbb);
                 if (lastBill) setDbLastBill(lastBill);
                 if (lastPur) setDbLastPur(lastPur);
+
+                // Auto-sync sequence counters in settings modal if existing docs have higher or equal sequence
+                const maxPurSeq = pSnap.docs.reduce((max, d) => Math.max(max, Number(d.data().voucher_sequence) || 0), 0);
+                if (maxPurSeq > 0) {
+                    setPurchaseNextNo(prev => {
+                        const cur = parseInt(prev) || 1;
+                        return cur <= maxPurSeq ? String(maxPurSeq + 1) : prev;
+                    });
+                }
+
+                const maxTaxSeq = sSnap.docs.filter(d => d.data().invoice_type === "tax_invoice").reduce((max, d) => Math.max(max, Number(d.data().bill_sequence) || 0), 0);
+                if (maxTaxSeq > 0) {
+                    setTaxInvoiceNextNo(prev => {
+                        const cur = parseInt(prev) || 1;
+                        return cur <= maxTaxSeq ? String(maxTaxSeq + 1) : prev;
+                    });
+                }
+
+                const maxAbbSeq = sSnap.docs.filter(d => d.data().invoice_type === "abbreviated").reduce((max, d) => Math.max(max, Number(d.data().bill_sequence) || 0), 0);
+                if (maxAbbSeq > 0) {
+                    setAbbreviatedNextNo(prev => {
+                        const cur = parseInt(prev) || 1;
+                        return cur <= maxAbbSeq ? String(maxAbbSeq + 1) : prev;
+                    });
+                }
+
+                const maxBillSeq = sSnap.docs.filter(d => !d.data().invoice_type || d.data().invoice_type === "normal").reduce((max, d) => Math.max(max, Number(d.data().bill_sequence) || 0), 0);
+                if (maxBillSeq > 0) {
+                    setBillNextNo(prev => {
+                        const cur = parseInt(prev) || 1;
+                        return cur <= maxBillSeq ? String(maxBillSeq + 1) : prev;
+                    });
+                }
             } catch (e) {
                 console.warn("Could not fetch last bills", e);
             }

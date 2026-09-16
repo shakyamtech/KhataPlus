@@ -871,9 +871,9 @@ const POS = () => {
       });
 
       // Increment profile sequence counter
-      batch.update(doc(db, "profiles", user!.uid), {
-        [counterField]: increment(1)
-      });
+      batch.set(doc(db, "profiles", user!.uid), {
+        [counterField]: currentNo + 1
+      }, { merge: true });
 
       for (const si of finalSaleItems) {
         const itemRef = doc(collection(db, "sale_items"));

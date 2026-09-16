@@ -439,13 +439,14 @@ const Purchases = () => {
   const [editingOriginalPaid, setEditingOriginalPaid] = useState<number>(0);
   const [editingVoucherNo, setEditingVoucherNo] = useState<string | null>(null);
   const [editingVoucherSeq, setEditingVoucherSeq] = useState<number | null>(null);
+  const [maxVoucherSeq, setMaxVoucherSeq] = useState<number>(0);
 
   const load = async () => {
     if (!user) return;
     try {
       const pQ = query(collection(db, "products"), where("user_id", "==", user.uid));
       const sQ = query(collection(db, "suppliers"), where("user_id", "==", user.uid));
-      const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(20));
+      const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(40));
       const txQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
 
       const [pSnap, sSnap, purSnap, txSnap, sInfo] = await Promise.all([
@@ -464,8 +465,11 @@ const Purchases = () => {
       const s = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const sMap = new Map(s.map(supplier => [supplier.id, supplier]));
 
+      let highestSeq = 0;
       const h = purSnap.docs.map(d => {
         const data = d.data();
+        const seq = typeof data.voucher_sequence === "number" ? data.voucher_sequence : 0;
+        if (seq > highestSeq) highestSeq = seq;
         return {
           id: d.id,
           ...data,
@@ -473,6 +477,7 @@ const Purchases = () => {
         };
       });
 
+      setMaxVoucherSeq(highestSeq);
       setProducts(p.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any);
       setSuppliers(s.sort((a: any, b: any) => a.name.localeCompare(b.name)) as any);
       setHistory(h);
@@ -770,7 +775,7 @@ const Purchases = () => {
       if (!editingId || !voucherNoToSave) {
         const prefix = shop.purchase_prefix ?? "INW-";
         const suffix = shop.purchase_suffix ?? "";
-        let currentNo = Number(shop.purchase_next_no ?? 1);
+        let currentNo = Math.max(Number(shop.purchase_next_no ?? 1), maxVoucherSeq + 1);
         if (isNaN(currentNo) || currentNo < 1) currentNo = 1;
         const formattedNum = String(currentNo).padStart(4, "0");
         voucherNoToSave = `${prefix}${formattedNum}${suffix}`;
@@ -809,9 +814,9 @@ const Purchases = () => {
       });
 
       if (!editingId) {
-        batch.update(doc(db, "profiles", user!.uid), {
-          purchase_next_no: increment(1)
-        });
+        batch.set(doc(db, "profiles", user!.uid), {
+          purchase_next_no: (voucherSeqToSave || 1) + 1
+        }, { merge: true });
       }
 
       for (const item of items) {
@@ -1077,7 +1082,7 @@ const Purchases = () => {
               <span className="font-mono text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded">
                 Inward #{editingId && editingVoucherNo
                   ? editingVoucherNo
-                  : `${shopInfo?.purchase_prefix ?? "INW-"}${String(shopInfo?.purchase_next_no ?? 1).padStart(4, "0")}${shopInfo?.purchase_suffix ?? ""}`}
+                  : `${shopInfo?.purchase_prefix ?? "INW-"}${String(Math.max(Number(shopInfo?.purchase_next_no ?? 1), maxVoucherSeq + 1)).padStart(4, "0")}${shopInfo?.purchase_suffix ?? ""}`}
               </span>
               {editingId && (
                 <span className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded font-medium">
