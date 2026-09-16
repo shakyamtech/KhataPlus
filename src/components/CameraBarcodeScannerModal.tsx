@@ -32,73 +32,97 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
   const [autoClose, setAutoClose] = useState<boolean>(true);
   const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
   const lastScanLockRef = useRef<{ text: string; time: number }>({ text: "", time: 0 });
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const activeHeldCodeRef = useRef<string | null>(null);
+  const emptyFrameCountRef = useRef<number>(0);
 
-  // 1. Fetch available cameras on mount/open
+  // Load user's preference for Auto-Close vs Continuous scan mode
   useEffect(() => {
-    if (!open) {
-      stopCamera();
-      return;
+    const savedAutoClose = localStorage.getItem("khataplus_camera_scan_autoclose");
+    if (savedAutoClose !== null) {
+      setAutoClose(savedAutoClose === "true");
     }
+  }, []);
 
-    let isMounted = true;
+  const handleToggleAutoClose = (val: boolean) => {
+    setAutoClose(val);
+    localStorage.setItem("khataplus_camera_scan_autoclose", val ? "true" : "false");
+  };
 
-    Html5Qrcode.getCameras()
-      .then((devices) => {
-        if (!isMounted) return;
-        if (devices && devices.length > 0) {
-          setCameras(devices);
-          // Prefer back camera or USB camera if available
-          const backCam = devices.find(
-            (d) =>
-              d.label.toLowerCase().includes("back") ||
-              d.label.toLowerCase().includes("rear") ||
-              d.label.toLowerCase().includes("environment") ||
-              d.label.toLowerCase().includes("usb") ||
-              d.label.toLowerCase().includes("webcam")
-          );
-          const initialId = backCam ? backCam.id : devices[0].id;
-          setSelectedCameraId(initialId);
-        } else {
+  // Enumerate cameras when modal opens
+  useEffect(() => {
+    let mounted = true;
+    if (open) {
+      setErrorMsg(null);
+      setLastScanned(null);
+      activeHeldCodeRef.current = null;
+      emptyFrameCountRef.current = 0;
+      Html5Qrcode.getCameras()
+        .then((devices) => {
+          if (!mounted) return;
+          if (devices && devices.length > 0) {
+            setCameras(devices);
+            // Prefer back camera or USB camera if available
+            const backCam = devices.find(
+              (d) =>
+                d.label.toLowerCase().includes("back") ||
+                d.label.toLowerCase().includes("rear") ||
+                d.label.toLowerCase().includes("environment") ||
+                d.label.toLowerCase().includes("usb") ||
+                d.label.toLowerCase().includes("webcam")
+            );
+            const initialId = backCam ? backCam.id : devices[0].id;
+            setSelectedCameraId(initialId);
+          } else {
+            setErrorMsg(
+              isNep
+                ? "कुनै क्यामेरा फेला परेन। कृपया क्यामेरा जोडिएको पक्का गर्नुहोस्।"
+                : "No camera found. Please ensure a camera is connected."
+            );
+          }
+        })
+        .catch((err) => {
+          if (!mounted) return;
+          console.error("Camera permission or enumeration error:", err);
           setErrorMsg(
             isNep
-              ? "कुनै क्यामेरा फेला परेन। कृपया क्यामेरा जोडिएको पक्का गर्नुहोस्।"
-              : "No camera found. Please ensure a camera is connected."
+              ? "क्यामेराको अनुमति (Permission) मिलेन वा क्यामेरा उपलब्ध छैन।"
+              : "Camera permission denied or camera is unavailable."
           );
-        }
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        console.error("Camera permission or enumeration error:", err);
-        setErrorMsg(
-          isNep
-            ? "क्यामेराको अनुमति (Permission) मिलेन वा क्यामेरा उपलब्ध छैन।"
-            : "Camera permission denied or camera is unavailable."
-        );
-      });
+        });
+    } else {
+      stopCamera();
+      activeHeldCodeRef.current = null;
+      emptyFrameCountRef.current = 0;
+    }
 
     return () => {
-      isMounted = false;
+      mounted = false;
       stopCamera();
+      activeHeldCodeRef.current = null;
+      emptyFrameCountRef.current = 0;
     };
   }, [open, isNep]);
 
-  // 2. Start scanner when camera is selected
+  // Start camera whenever selectedCameraId changes and modal is open
   useEffect(() => {
     if (open && selectedCameraId) {
       startCamera(selectedCameraId);
     }
-  }, [open, selectedCameraId]);
+  }, [selectedCameraId, open]);
 
   const stopCamera = async () => {
-    if (html5QrcodeRef.current) {
+    const activeScanner = html5QrCodeRef.current || html5QrcodeRef.current;
+    if (activeScanner) {
       try {
-        if (html5QrcodeRef.current.isScanning) {
-          await html5QrcodeRef.current.stop();
+        if (activeScanner.isScanning) {
+          await activeScanner.stop();
         }
-        html5QrcodeRef.current.clear();
+        activeScanner.clear();
       } catch (e) {
         console.warn("Error stopping scanner:", e);
       } finally {
+        html5QrCodeRef.current = null;
         html5QrcodeRef.current = null;
         setIsScanning(false);
       }
@@ -114,13 +138,19 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
     if (!el) return;
 
     try {
-      const scanner = new Html5Qrcode(elementId);
-      html5QrcodeRef.current = scanner;
+      const html5QrCode = new Html5Qrcode(elementId, {
+        verbose: false,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        }
+      });
+      html5QrCodeRef.current = html5QrCode;
+      html5QrcodeRef.current = html5QrCode;
 
-      await scanner.start(
+      await html5QrCode.start(
         cameraId,
         {
-          fps: 15,
+          fps: 20,
           qrbox: (viewfinderWidth, viewfinderHeight) => {
             const w = Math.min(260, Math.floor(viewfinderWidth * 0.78));
             const h = Math.min(150, Math.floor(w * 0.58));
@@ -133,15 +163,14 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
           const cleanText = decodedText.trim();
           if (!cleanText) return;
 
-          // Fast & responsive: short 450ms debounce only for exact identical consecutive frames
-          if (
-            lastScanLockRef.current.text === cleanText &&
-            now - lastScanLockRef.current.time < 450
-          ) {
+          emptyFrameCountRef.current = 0;
+
+          // Industry Standard: If user is continuously holding the EXACT same barcode in front of camera, do NOT re-add
+          if (activeHeldCodeRef.current === cleanText) {
             return;
           }
 
-          lastScanLockRef.current = { text: cleanText, time: now };
+          activeHeldCodeRef.current = cleanText;
 
           // Call item handler in POS
           const isSuccess = await Promise.resolve(onScan(cleanText));
@@ -170,7 +199,12 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
           }
         },
         () => {
-          // Normal frame scan tick with no barcode
+          // Frame processed with no barcode in view
+          emptyFrameCountRef.current++;
+          // When barcode is removed from view for ~4 frames (~150-200ms), reset active code to allow fresh re-scan
+          if (emptyFrameCountRef.current >= 4) {
+            activeHeldCodeRef.current = null;
+          }
         }
       );
 
