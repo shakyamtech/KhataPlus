@@ -1510,7 +1510,7 @@ export default function Accounting() {
                 <div className="flex items-center justify-between w-full gap-2">
                   <span className="font-semibold text-foreground">{c.name}</span>
                   <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${bal > 0 ? "bg-amber-500/10 text-amber-600 font-bold" : "text-muted-foreground"}`}>
-                    {bal > 0 ? `बाँकी: Rs. ${fmt(bal)}` : `Rs. ${fmt(bal)}`}
+                    {bal > 0 ? `बाँकी: ${fmt(bal)}` : fmt(bal)}
                   </span>
                 </div>
               </SelectItem>
@@ -1534,7 +1534,7 @@ export default function Accounting() {
                 <div className="flex items-center justify-between w-full gap-2">
                   <span className="font-semibold text-foreground">{s.name}</span>
                   <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${bal > 0 ? "bg-destructive/10 text-destructive font-bold" : "text-muted-foreground"}`}>
-                    {bal > 0 ? `तिर्न बाँकी: Rs. ${fmt(bal)}` : `Rs. ${fmt(bal)}`}
+                    {bal > 0 ? `तिर्न बाँकी: ${fmt(bal)}` : fmt(bal)}
                   </span>
                 </div>
               </SelectItem>
@@ -3362,7 +3362,7 @@ export default function Accounting() {
                                     🏢 {row.party_name}
                                   </Badge>
                                   <span className="text-[11px] text-muted-foreground">
-                                    {lang === "NEP" ? "कुल तिर्न बाँकी:" : "Total Payable:"} <strong className="font-mono text-destructive">Rs. {fmt(totalDue)}</strong>
+                                    {lang === "NEP" ? "कुल तिर्न बाँकी:" : "Total Payable:"} <strong className="font-mono text-destructive">{fmt(totalDue)}</strong>
                                   </span>
                                 </div>
 
@@ -3425,7 +3425,7 @@ export default function Accounting() {
                                               <div className="flex items-center justify-between w-full gap-3">
                                                 <span className="font-semibold font-mono">#{b.bill_no}</span>
                                                 <span className="text-[10px] text-muted-foreground">({b.date})</span>
-                                                <span className="text-[11px] font-bold text-destructive font-mono">बाँकी: Rs. {fmt(b.due)}</span>
+                                                <span className="text-[11px] font-bold text-destructive font-mono">बाँकी: {fmt(b.due)}</span>
                                               </div>
                                             </SelectItem>
                                           ))}
@@ -3723,7 +3723,7 @@ export default function Accounting() {
                                     👤 {row.party_name}
                                   </Badge>
                                   <span className="text-[11px] text-muted-foreground">
-                                    {lang === "NEP" ? "कुल लिन बाँकी:" : "Total Receivable:"} <strong className="font-mono text-emerald-600 dark:text-emerald-400">Rs. {fmt(totalDue)}</strong>
+                                    {lang === "NEP" ? "कुल लिन बाँकी:" : "Total Receivable:"} <strong className="font-mono text-emerald-600 dark:text-emerald-400">{fmt(totalDue)}</strong>
                                   </span>
                                 </div>
 
@@ -3786,7 +3786,7 @@ export default function Accounting() {
                                               <div className="flex items-center justify-between w-full gap-3">
                                                 <span className="font-semibold font-mono">#{b.bill_no}</span>
                                                 <span className="text-[10px] text-muted-foreground">({b.date})</span>
-                                                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">बाँकी: Rs. {fmt(b.due)}</span>
+                                                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">बाँकी: {fmt(b.due)}</span>
                                               </div>
                                             </SelectItem>
                                           ))}
