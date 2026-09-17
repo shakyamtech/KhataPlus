@@ -421,83 +421,123 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const sortedSales = [...salesData].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         sortedSales.forEach((s: any) => saleIdsSet.add(s.id));
 
-        // Available payments for customer
-        const paymentEntries = ledgerData.filter((l: any) => l.entry_type === "payment_in" || l.entry_type === "payment");
+        // Available payments for customer (chronologically)
+        const paymentEntries = ledgerData
+          .filter((l: any) => l.entry_type === "payment_in" || l.entry_type === "payment")
+          .sort((a: any, b: any) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
         const paymentConsumed = new Map<string, number>();
 
-        // 1. Direct / Specific matches first
         const salePaymentsMap = new Map<string, number>();
         const directPaymentIds = new Set<string>();
-        const saleReconcileNotes = new Map<string, string>();
+        const saleAuditSources = new Map<string, string[]>();
 
+        // Phase 1: Exact reference_id === s.id matches
         sortedSales.forEach((s: any) => {
-          const directPayments = paymentEntries.filter((l: any) => {
-            if (l.reference_id === s.id) return true;
-            if (s.bill_no && (l.reference_id === s.bill_no || l.bill_no === s.bill_no || (l.note && l.note.includes(s.bill_no)))) return true;
-            return false;
+          const sTotal = Number(s.total || 0);
+          let currentPaid = salePaymentsMap.get(s.id) || 0;
+          let dueAmt = Math.max(0, sTotal - currentPaid);
+          if (dueAmt <= 0) return;
+
+          const exactPayments = paymentEntries.filter((l: any) => l.reference_id === s.id);
+          exactPayments.forEach((l: any) => {
+            if (dueAmt <= 0) return;
+            const payAmt = Number(l.amount || 0);
+            const used = paymentConsumed.get(l.id) || 0;
+            const rem = Math.max(0, payAmt - used);
+            if (rem > 0) {
+              const alloc = Math.min(dueAmt, rem);
+              paymentConsumed.set(l.id, used + alloc);
+              currentPaid += alloc;
+              dueAmt -= alloc;
+              directPaymentIds.add(l.id);
+              const payDateStr = l.created_at ? format(new Date(l.created_at), "dd MMM yyyy") : "";
+              const srcList = saleAuditSources.get(s.id) || [];
+              srcList.push(`मिति ${payDateStr} को ${fmt(alloc)} को भुक्तानीबाट`);
+              saleAuditSources.set(s.id, srcList);
+            }
           });
-          let directSum = 0;
-          const directSources: string[] = [];
-          directPayments.forEach((l: any) => {
-            directSum += Number(l.amount || 0);
-            directPaymentIds.add(l.id);
-            paymentConsumed.set(l.id, Number(l.amount || 0));
-            const payDateStr = l.created_at ? format(new Date(l.created_at), "dd MMM yyyy") : "";
-            directSources.push(`मिति ${payDateStr} को ${fmt(l.amount)} को भुक्तानीबाट`);
-          });
-          salePaymentsMap.set(s.id, directSum);
-          if (directSources.length > 0) {
-            const isSettled = directSum >= Number(s.total || 0);
-            const statusTag = isSettled
-              ? (lang === "NEP" ? "(बिल चुक्ता ✓)" : "(Bill Settled ✓)")
-              : (lang === "NEP" ? `(बाँकी: ${fmt(Math.max(0, Number(s.total || 0) - directSum))})` : `(Due: ${fmt(Math.max(0, Number(s.total || 0) - directSum))})`);
-            saleReconcileNotes.set(s.id, `${directSources.join(", ")} यो बिल मिलान भयो ${statusTag}।`);
-          }
+          salePaymentsMap.set(s.id, currentPaid);
         });
 
-        // 2. FIFO Auto-Reconciliation of unallocated / on-account payments
+        // Phase 2: Direct specific matches by bill_no / note
+        sortedSales.forEach((s: any) => {
+          const sTotal = Number(s.total || 0);
+          let currentPaid = salePaymentsMap.get(s.id) || 0;
+          let dueAmt = Math.max(0, sTotal - currentPaid);
+          if (dueAmt <= 0 || !s.bill_no) return;
+
+          const billPayments = paymentEntries.filter((l: any) => {
+            if (l.reference_id === s.bill_no || l.bill_no === s.bill_no) return true;
+            if (l.note && l.note.includes(s.bill_no)) return true;
+            return false;
+          });
+
+          billPayments.forEach((l: any) => {
+            if (dueAmt <= 0) return;
+            const payAmt = Number(l.amount || 0);
+            const used = paymentConsumed.get(l.id) || 0;
+            const rem = Math.max(0, payAmt - used);
+            if (rem > 0) {
+              const alloc = Math.min(dueAmt, rem);
+              paymentConsumed.set(l.id, used + alloc);
+              currentPaid += alloc;
+              dueAmt -= alloc;
+              directPaymentIds.add(l.id);
+              const payDateStr = l.created_at ? format(new Date(l.created_at), "dd MMM yyyy") : "";
+              const srcList = saleAuditSources.get(s.id) || [];
+              srcList.push(`मिति ${payDateStr} को ${fmt(alloc)} को भुक्तानीबाट`);
+              saleAuditSources.set(s.id, srcList);
+            }
+          });
+          salePaymentsMap.set(s.id, currentPaid);
+        });
+
+        // Phase 3: FIFO Auto-Reconciliation of remaining unallocated / on-account payments
         const unallocatedPayments = paymentEntries
-          .filter((l: any) => !directPaymentIds.has(l.id))
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          .filter((l: any) => !directPaymentIds.has(l.id) || (Number(l.amount || 0) > (paymentConsumed.get(l.id) || 0)))
+          .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
 
         sortedSales.forEach((s: any) => {
-          const totalAmt = Number(s.total || 0);
+          const sTotal = Number(s.total || 0);
           let currentPaid = salePaymentsMap.get(s.id) || 0;
-          let dueAmt = Math.max(0, totalAmt - currentPaid);
+          let dueAmt = Math.max(0, sTotal - currentPaid);
 
           if (dueAmt > 0) {
-            let autoReconciledAmt = 0;
-            const sources: string[] = [];
-
             for (const pay of unallocatedPayments) {
               const payAmt = Number(pay.amount || 0);
-              const alreadyUsed = paymentConsumed.get(pay.id) || 0;
-              const remainingPay = Math.max(0, payAmt - alreadyUsed);
+              const used = paymentConsumed.get(pay.id) || 0;
+              const rem = Math.max(0, payAmt - used);
 
-              if (remainingPay > 0 && dueAmt > 0) {
-                const allocate = Math.min(dueAmt, remainingPay);
-                paymentConsumed.set(pay.id, alreadyUsed + allocate);
-                currentPaid += allocate;
-                dueAmt -= allocate;
-                autoReconciledAmt += allocate;
+              if (rem > 0 && dueAmt > 0) {
+                const alloc = Math.min(dueAmt, rem);
+                paymentConsumed.set(pay.id, used + alloc);
+                currentPaid += alloc;
+                dueAmt -= alloc;
                 const payDateStr = pay.created_at ? format(new Date(pay.created_at), "dd MMM yyyy") : "";
-                sources.push(`मिति ${payDateStr} मा प्राप्त ${fmt(payAmt)} को अन-अकाउन्ट रकमबाट ${fmt(allocate)} यस बिलमा मिलान भयो`);
+                const srcList = saleAuditSources.get(s.id) || [];
+                srcList.push(`मिति ${payDateStr} मा प्राप्त ${fmt(payAmt)} को अन-अकाउन्ट रकमबाट ${fmt(alloc)}`);
+                saleAuditSources.set(s.id, srcList);
               }
               if (dueAmt <= 0) break;
             }
+            salePaymentsMap.set(s.id, currentPaid);
+          }
+        });
 
-            if (autoReconciledAmt > 0) {
-              salePaymentsMap.set(s.id, currentPaid);
-              const statusTag = dueAmt <= 0 ? (lang === "NEP" ? "(बिल चुक्ता ✓)" : "(Bill Settled ✓)") : (lang === "NEP" ? `(बाँकी: ${fmt(dueAmt)})` : `(Due: ${fmt(dueAmt)})`);
-              const noteText = lang === "NEP"
-                ? `${sources.join(", ")} ${statusTag}।`
-                : `Allocated ${fmt(autoReconciledAmt)} to this bill from on-account payments ${statusTag}.`;
-              saleReconcileNotes.set(s.id, noteText);
-            }
+        // Sales items push with audit notes
+        sortedSales.forEach((s: any) => {
+          const sTotal = Number(s.total || 0);
+          const paid = salePaymentsMap.get(s.id) || 0;
+          const due = Math.max(0, sTotal - paid);
+          const sources = saleAuditSources.get(s.id) || [];
+          let reconcileNote: string | undefined;
+          if (sources.length > 0) {
+            const statusTag = due <= 0
+              ? (lang === "NEP" ? "(बिल चुक्ता ✓)" : "(Bill Settled ✓)")
+              : (lang === "NEP" ? `(बाँकी: ${fmt(due)})` : `(Due: ${fmt(due)})`);
+            reconcileNote = `${sources.join(", ")} यो बिल मिलान भयो ${statusTag}।`;
           }
 
-          const finalPaid = salePaymentsMap.get(s.id) || 0;
-          const finalDue = Math.max(0, totalAmt - finalPaid);
           const orderItems = prodsMap[s.id] || [];
 
           items.push({
@@ -507,10 +547,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             bill_no: s.bill_no || s.id.slice(-6).toUpperCase(),
             payment_mode: s.payment_mode || "cash",
             paid_via: s.paid_via || null,
-            amount: totalAmt,
-            paid_amount: finalPaid,
-            due_amount: finalDue,
-            reconcile_info: saleReconcileNotes.get(s.id),
+            amount: sTotal,
+            paid_amount: paid,
+            due_amount: due,
+            reconcile_info: reconcileNote,
             created_at: s.created_at,
             note: s.note,
             invoice_type: s.invoice_type,
@@ -646,84 +686,123 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           if (pu.supplier_bill_no) purVoucherNosSet.add(pu.supplier_bill_no);
         });
 
-        // Available payments for supplier
-        const paymentEntries = ledgerData.filter((l: any) => l.entry_type === "payment_out" || l.entry_type === "payment");
+        // Available payments for supplier (chronologically)
+        const paymentEntries = ledgerData
+          .filter((l: any) => l.entry_type === "payment_out" || l.entry_type === "payment")
+          .sort((a: any, b: any) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
         const paymentConsumed = new Map<string, number>();
 
-        // 1. Direct / Specific matches first
         const purPaymentsMap = new Map<string, number>();
         const directPaymentIds = new Set<string>();
-        const purReconcileNotes = new Map<string, string>();
+        const purAuditSources = new Map<string, string[]>();
 
+        // Phase 1: Exact matches by id (l.reference_id === pu.id)
         sortedPurchases.forEach((pu: any) => {
-          const directPayments = paymentEntries.filter((l: any) => {
-            if (l.reference_id === pu.id) return true;
+          const puTotal = Number(pu.total || 0);
+          let currentPaid = purPaymentsMap.get(pu.id) || 0;
+          let dueAmt = Math.max(0, puTotal - currentPaid);
+          if (dueAmt <= 0) return;
+
+          const exactPayments = paymentEntries.filter((l: any) => l.reference_id === pu.id);
+          exactPayments.forEach((l: any) => {
+            if (dueAmt <= 0) return;
+            const payAmt = Number(l.amount || 0);
+            const used = paymentConsumed.get(l.id) || 0;
+            const rem = Math.max(0, payAmt - used);
+            if (rem > 0) {
+              const alloc = Math.min(dueAmt, rem);
+              paymentConsumed.set(l.id, used + alloc);
+              currentPaid += alloc;
+              dueAmt -= alloc;
+              directPaymentIds.add(l.id);
+              const payDateStr = l.created_at ? format(new Date(l.created_at), "dd MMM yyyy") : "";
+              const srcList = purAuditSources.get(pu.id) || [];
+              srcList.push(`मिति ${payDateStr} को ${fmt(alloc)} को भुक्तानीबाट`);
+              purAuditSources.set(pu.id, srcList);
+            }
+          });
+          purPaymentsMap.set(pu.id, currentPaid);
+        });
+
+        // Phase 2: Specific voucher_no / supplier_bill_no / note matches
+        sortedPurchases.forEach((pu: any) => {
+          const puTotal = Number(pu.total || 0);
+          let currentPaid = purPaymentsMap.get(pu.id) || 0;
+          let dueAmt = Math.max(0, puTotal - currentPaid);
+          if (dueAmt <= 0) return;
+
+          const billPayments = paymentEntries.filter((l: any) => {
             if (pu.voucher_no && (l.reference_id === pu.voucher_no || l.voucher_no === pu.voucher_no || (l.note && l.note.includes(pu.voucher_no)))) return true;
             if (pu.supplier_bill_no && (l.reference_id === pu.supplier_bill_no || (l.note && l.note.includes(pu.supplier_bill_no)))) return true;
             return false;
           });
-          let directSum = 0;
-          const directSources: string[] = [];
-          directPayments.forEach((l: any) => {
-            directSum += Number(l.amount || 0);
-            directPaymentIds.add(l.id);
-            paymentConsumed.set(l.id, Number(l.amount || 0));
-            const payDateStr = l.created_at ? format(new Date(l.created_at), "dd MMM yyyy") : "";
-            directSources.push(`मिति ${payDateStr} को ${fmt(l.amount)} को भुक्तानीबाट`);
+
+          billPayments.forEach((l: any) => {
+            if (dueAmt <= 0) return;
+            const payAmt = Number(l.amount || 0);
+            const used = paymentConsumed.get(l.id) || 0;
+            const rem = Math.max(0, payAmt - used);
+            if (rem > 0) {
+              const alloc = Math.min(dueAmt, rem);
+              paymentConsumed.set(l.id, used + alloc);
+              currentPaid += alloc;
+              dueAmt -= alloc;
+              directPaymentIds.add(l.id);
+              const payDateStr = l.created_at ? format(new Date(l.created_at), "dd MMM yyyy") : "";
+              const srcList = purAuditSources.get(pu.id) || [];
+              srcList.push(`मिति ${payDateStr} को ${fmt(alloc)} को भुक्तानीबाट`);
+              purAuditSources.set(pu.id, srcList);
+            }
           });
-          purPaymentsMap.set(pu.id, directSum);
-          if (directSources.length > 0) {
-            const isSettled = directSum >= Number(pu.total || 0);
-            const statusTag = isSettled
-              ? (lang === "NEP" ? "(बिल चुक्ता ✓)" : "(Bill Settled ✓)")
-              : (lang === "NEP" ? `(बाँकी: ${fmt(Math.max(0, Number(pu.total || 0) - directSum))})` : `(Due: ${fmt(Math.max(0, Number(pu.total || 0) - directSum))})`);
-            purReconcileNotes.set(pu.id, `${directSources.join(", ")} यो बिल मिलान भयो ${statusTag}।`);
-          }
+          purPaymentsMap.set(pu.id, currentPaid);
         });
 
-        // 2. FIFO Auto-Reconciliation of unallocated payments
+        // Phase 3: FIFO Auto-Reconciliation of unallocated / remaining payments
         const unallocatedPayments = paymentEntries
-          .filter((l: any) => !directPaymentIds.has(l.id))
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          .filter((l: any) => !directPaymentIds.has(l.id) || (Number(l.amount || 0) > (paymentConsumed.get(l.id) || 0)))
+          .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
 
         sortedPurchases.forEach((pu: any) => {
-          const totalAmt = Number(pu.total || 0);
+          const puTotal = Number(pu.total || 0);
           let currentPaid = purPaymentsMap.get(pu.id) || 0;
-          let dueAmt = Math.max(0, totalAmt - currentPaid);
+          let dueAmt = Math.max(0, puTotal - currentPaid);
 
           if (dueAmt > 0) {
-            let autoReconciledAmt = 0;
-            const sources: string[] = [];
-
             for (const pay of unallocatedPayments) {
               const payAmt = Number(pay.amount || 0);
-              const alreadyUsed = paymentConsumed.get(pay.id) || 0;
-              const remainingPay = Math.max(0, payAmt - alreadyUsed);
+              const used = paymentConsumed.get(pay.id) || 0;
+              const rem = Math.max(0, payAmt - used);
 
-              if (remainingPay > 0 && dueAmt > 0) {
-                const allocate = Math.min(dueAmt, remainingPay);
-                paymentConsumed.set(pay.id, alreadyUsed + allocate);
-                currentPaid += allocate;
-                dueAmt -= allocate;
-                autoReconciledAmt += allocate;
+              if (rem > 0 && dueAmt > 0) {
+                const alloc = Math.min(dueAmt, rem);
+                paymentConsumed.set(pay.id, used + alloc);
+                currentPaid += alloc;
+                dueAmt -= alloc;
                 const payDateStr = pay.created_at ? format(new Date(pay.created_at), "dd MMM yyyy") : "";
-                sources.push(`मिति ${payDateStr} मा भुक्तानी ${fmt(payAmt)} को अन-अकाउन्ट रकमबाट ${fmt(allocate)} यस बिलमा मिलान भयो`);
+                const srcList = purAuditSources.get(pu.id) || [];
+                srcList.push(`मिति ${payDateStr} मा भुक्तानी ${fmt(payAmt)} को अन-अकाउन्ट रकमबाट ${fmt(alloc)}`);
+                purAuditSources.set(pu.id, srcList);
               }
               if (dueAmt <= 0) break;
             }
+            purPaymentsMap.set(pu.id, currentPaid);
+          }
+        });
 
-            if (autoReconciledAmt > 0) {
-              purPaymentsMap.set(pu.id, currentPaid);
-              const statusTag = dueAmt <= 0 ? (lang === "NEP" ? "(बिल चुक्ता ✓)" : "(Bill Settled ✓)") : (lang === "NEP" ? `(बाँकी: ${fmt(dueAmt)})` : `(Due: ${fmt(dueAmt)})`);
-              const noteText = lang === "NEP"
-                ? `${sources.join(", ")} ${statusTag}।`
-                : `Allocated ${fmt(autoReconciledAmt)} to this bill from on-account payments ${statusTag}.`;
-              purReconcileNotes.set(pu.id, noteText);
-            }
+        // Purchases items push with audit notes
+        sortedPurchases.forEach((pu: any) => {
+          const puTotal = Number(pu.total || 0);
+          const paid = purPaymentsMap.get(pu.id) || 0;
+          const due = Math.max(0, puTotal - paid);
+          const sources = purAuditSources.get(pu.id) || [];
+          let reconcileNote: string | undefined;
+          if (sources.length > 0) {
+            const statusTag = due <= 0
+              ? (lang === "NEP" ? "(बिल चुक्ता ✓)" : "(Bill Settled ✓)")
+              : (lang === "NEP" ? `(बाँकी: ${fmt(due)})` : `(Due: ${fmt(due)})`);
+            reconcileNote = `${sources.join(", ")} यो बिल मिलान भयो ${statusTag}।`;
           }
 
-          const finalPaid = purPaymentsMap.get(pu.id) || 0;
-          const finalDue = Math.max(0, totalAmt - finalPaid);
           const orderItems = prodsMap[pu.id] || [];
 
           items.push({
@@ -734,10 +813,10 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             supplier_bill_no: pu.supplier_bill_no,
             payment_mode: pu.payment_mode || "cash",
             paid_via: pu.paid_via || null,
-            amount: totalAmt,
-            paid_amount: finalPaid,
-            due_amount: finalDue,
-            reconcile_info: purReconcileNotes.get(pu.id),
+            amount: puTotal,
+            paid_amount: paid,
+            due_amount: due,
+            reconcile_info: reconcileNote,
             created_at: pu.created_at,
             note: pu.note,
             is_vat_bill: pu.is_vat_bill,

@@ -1269,27 +1269,68 @@ export default function Accounting() {
       .filter((s: any) => s.customer_id === customerId || (cust && s.customer_name === cust.name))
       .sort((a: any, b: any) => new Date(a.created_at || a.date || 0).getTime() - new Date(b.created_at || b.date || 0).getTime());
 
-    const payments = ledgerDocs.filter((l: any) => (l.party_id === customerId || l.party_name === cust?.name) && (l.entry_type === "payment_in" || l.entry_type === "payment"));
+    const payments = ledgerDocs
+      .filter((l: any) => (l.party_id === customerId || l.party_name === cust?.name) && (l.entry_type === "payment_in" || l.entry_type === "payment"))
+      .sort((a: any, b: any) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
     const consumed = new Map<string, number>();
-
-    // 1. Direct matches
     const salePaidMap = new Map<string, number>();
+    const directPaymentIds = new Set<string>();
+
+    // Phase 1: Exact matches by reference_id === s.id
     custSales.forEach((s: any) => {
-      const direct = payments.filter((l: any) => {
-        if (l.reference_id === s.id) return true;
-        if (s.bill_no && (l.reference_id === s.bill_no || l.bill_no === s.bill_no || l.note?.includes(s.bill_no))) return true;
-        return false;
+      const sTotal = Number(s.total || 0);
+      let paid = salePaidMap.get(s.id) || 0;
+      let due = Math.max(0, sTotal - paid);
+      if (due <= 0) return;
+
+      const exact = payments.filter((l: any) => l.reference_id === s.id);
+      exact.forEach((l: any) => {
+        if (due <= 0) return;
+        const payAmt = Number(l.amount || 0);
+        const used = consumed.get(l.id) || 0;
+        const rem = Math.max(0, payAmt - used);
+        if (rem > 0) {
+          const alloc = Math.min(due, rem);
+          consumed.set(l.id, used + alloc);
+          paid += alloc;
+          due -= alloc;
+          directPaymentIds.add(l.id);
+        }
       });
-      let sum = 0;
-      direct.forEach((l: any) => {
-        sum += Number(l.amount || 0);
-        consumed.set(l.id, Number(l.amount || 0));
-      });
-      salePaidMap.set(s.id, sum);
+      salePaidMap.set(s.id, paid);
     });
 
-    // 2. Unallocated FIFO
-    const unallocated = payments.filter((l: any) => !consumed.has(l.id));
+    // Phase 2: Direct matches by bill_no / note
+    custSales.forEach((s: any) => {
+      const sTotal = Number(s.total || 0);
+      let paid = salePaidMap.get(s.id) || 0;
+      let due = Math.max(0, sTotal - paid);
+      if (due <= 0 || !s.bill_no) return;
+
+      const direct = payments.filter((l: any) => {
+        if (l.reference_id === s.bill_no || l.bill_no === s.bill_no) return true;
+        if (l.note && l.note.includes(s.bill_no)) return true;
+        return false;
+      });
+
+      direct.forEach((l: any) => {
+        if (due <= 0) return;
+        const payAmt = Number(l.amount || 0);
+        const used = consumed.get(l.id) || 0;
+        const rem = Math.max(0, payAmt - used);
+        if (rem > 0) {
+          const alloc = Math.min(due, rem);
+          consumed.set(l.id, used + alloc);
+          paid += alloc;
+          due -= alloc;
+          directPaymentIds.add(l.id);
+        }
+      });
+      salePaidMap.set(s.id, paid);
+    });
+
+    // Phase 3: Unallocated FIFO
+    const unallocated = payments.filter((l: any) => !directPaymentIds.has(l.id) || (Number(l.amount || 0) > (consumed.get(l.id) || 0)));
     custSales.forEach((s: any) => {
       let paid = salePaidMap.get(s.id) || 0;
       let due = Math.max(0, Number(s.total || 0) - paid);
@@ -1330,28 +1371,68 @@ export default function Accounting() {
       .filter((p: any) => p.supplier_id === supplierId)
       .sort((a: any, b: any) => new Date(a.created_at || a.date || 0).getTime() - new Date(b.created_at || b.date || 0).getTime());
 
-    const payments = ledgerDocs.filter((l: any) => (l.party_id === supplierId || l.party_name === supp?.name) && (l.entry_type === "payment_out" || l.entry_type === "payment"));
+    const payments = ledgerDocs
+      .filter((l: any) => (l.party_id === supplierId || l.party_name === supp?.name) && (l.entry_type === "payment_out" || l.entry_type === "payment"))
+      .sort((a: any, b: any) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
     const consumed = new Map<string, number>();
-
-    // 1. Direct matches
     const purPaidMap = new Map<string, number>();
+    const directPaymentIds = new Set<string>();
+
+    // Phase 1: Exact matches by reference_id === p.id
     suppPurchases.forEach((p: any) => {
-      const direct = payments.filter((l: any) => {
-        if (l.reference_id === p.id) return true;
-        if (p.voucher_no && (l.reference_id === p.voucher_no || l.voucher_no === p.voucher_no || l.note?.includes(p.voucher_no))) return true;
-        if (p.supplier_bill_no && (l.reference_id === p.supplier_bill_no || l.note?.includes(p.supplier_bill_no))) return true;
-        return false;
+      const pTotal = Number(p.total || 0);
+      let paid = purPaidMap.get(p.id) || 0;
+      let due = Math.max(0, pTotal - paid);
+      if (due <= 0) return;
+
+      const exact = payments.filter((l: any) => l.reference_id === p.id);
+      exact.forEach((l: any) => {
+        if (due <= 0) return;
+        const payAmt = Number(l.amount || 0);
+        const used = consumed.get(l.id) || 0;
+        const rem = Math.max(0, payAmt - used);
+        if (rem > 0) {
+          const alloc = Math.min(due, rem);
+          consumed.set(l.id, used + alloc);
+          paid += alloc;
+          due -= alloc;
+          directPaymentIds.add(l.id);
+        }
       });
-      let sum = 0;
-      direct.forEach((l: any) => {
-        sum += Number(l.amount || 0);
-        consumed.set(l.id, Number(l.amount || 0));
-      });
-      purPaidMap.set(p.id, sum);
+      purPaidMap.set(p.id, paid);
     });
 
-    // 2. Unallocated FIFO
-    const unallocated = payments.filter((l: any) => !consumed.has(l.id));
+    // Phase 2: Direct matches by voucher_no / supplier_bill_no / note
+    suppPurchases.forEach((p: any) => {
+      const pTotal = Number(p.total || 0);
+      let paid = purPaidMap.get(p.id) || 0;
+      let due = Math.max(0, pTotal - paid);
+      if (due <= 0) return;
+
+      const direct = payments.filter((l: any) => {
+        if (p.voucher_no && (l.reference_id === p.voucher_no || l.voucher_no === p.voucher_no || (l.note && l.note.includes(p.voucher_no)))) return true;
+        if (p.supplier_bill_no && (l.reference_id === p.supplier_bill_no || (l.note && l.note.includes(p.supplier_bill_no)))) return true;
+        return false;
+      });
+
+      direct.forEach((l: any) => {
+        if (due <= 0) return;
+        const payAmt = Number(l.amount || 0);
+        const used = consumed.get(l.id) || 0;
+        const rem = Math.max(0, payAmt - used);
+        if (rem > 0) {
+          const alloc = Math.min(due, rem);
+          consumed.set(l.id, used + alloc);
+          paid += alloc;
+          due -= alloc;
+          directPaymentIds.add(l.id);
+        }
+      });
+      purPaidMap.set(p.id, paid);
+    });
+
+    // Phase 3: Unallocated FIFO
+    const unallocated = payments.filter((l: any) => !directPaymentIds.has(l.id) || (Number(l.amount || 0) > (consumed.get(l.id) || 0)));
     suppPurchases.forEach((p: any) => {
       let paid = purPaidMap.get(p.id) || 0;
       let due = Math.max(0, Number(p.total || 0) - paid);
