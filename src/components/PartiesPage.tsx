@@ -65,6 +65,7 @@ type Entry = {
   reference_id?: string;
   is_settlement?: boolean;
   reconcile_info?: string;
+  reconcile_type?: "direct" | "auto" | "mixed";
 };
 
 type UnpaidBill = {
@@ -432,6 +433,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const salePaymentsMap = new Map<string, number>();
         const directPaymentIds = new Set<string>();
         const saleAuditSources = new Map<string, string[]>();
+        const saleDirectMatchCounts = new Map<string, number>();
+        const saleAutoMatchCounts = new Map<string, number>();
 
         // Phase 1: Exact reference_id === s.id matches
         sortedSales.forEach((s: any) => {
@@ -452,6 +455,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               currentPaid += alloc;
               dueAmt -= alloc;
               directPaymentIds.add(l.id);
+              saleDirectMatchCounts.set(s.id, (saleDirectMatchCounts.get(s.id) || 0) + 1);
               const payDateStr = l.created_at ? format(new Date(l.created_at), "dd MMM yyyy") : "";
               const srcList = saleAuditSources.get(s.id) || [];
               srcList.push(`मिति ${payDateStr} को ${fmt(alloc)} को भुक्तानीबाट`);
@@ -485,6 +489,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               currentPaid += alloc;
               dueAmt -= alloc;
               directPaymentIds.add(l.id);
+              saleDirectMatchCounts.set(s.id, (saleDirectMatchCounts.get(s.id) || 0) + 1);
               const payDateStr = l.created_at ? format(new Date(l.created_at), "dd MMM yyyy") : "";
               const srcList = saleAuditSources.get(s.id) || [];
               srcList.push(`मिति ${payDateStr} को ${fmt(alloc)} को भुक्तानीबाट`);
@@ -515,6 +520,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 paymentConsumed.set(pay.id, used + alloc);
                 currentPaid += alloc;
                 dueAmt -= alloc;
+                saleAutoMatchCounts.set(s.id, (saleAutoMatchCounts.get(s.id) || 0) + 1);
                 const payDateStr = pay.created_at ? format(new Date(pay.created_at), "dd MMM yyyy") : "";
                 const srcList = saleAuditSources.get(s.id) || [];
                 srcList.push(`मिति ${payDateStr} मा प्राप्त ${fmt(payAmt)} को अन-अकाउन्ट रकमबाट ${fmt(alloc)}`);
@@ -540,6 +546,13 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             reconcileNote = `${sources.join(", ")} यो बिल मिलान भयो ${statusTag}।`;
           }
 
+          const dirCount = saleDirectMatchCounts.get(s.id) || 0;
+          const autoCount = saleAutoMatchCounts.get(s.id) || 0;
+          let rType: "direct" | "auto" | "mixed" | undefined;
+          if (dirCount > 0 && autoCount === 0) rType = "direct";
+          else if (autoCount > 0 && dirCount === 0) rType = "auto";
+          else if (dirCount > 0 && autoCount > 0) rType = "mixed";
+
           const orderItems = prodsMap[s.id] || [];
 
           items.push({
@@ -553,6 +566,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             paid_amount: paid,
             due_amount: due,
             reconcile_info: reconcileNote,
+            reconcile_type: rType,
             created_at: s.created_at,
             note: s.note,
             invoice_type: s.invoice_type,
@@ -701,6 +715,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const purPaymentsMap = new Map<string, number>();
         const directPaymentIds = new Set<string>();
         const purAuditSources = new Map<string, string[]>();
+        const purDirectMatchCounts = new Map<string, number>();
+        const purAutoMatchCounts = new Map<string, number>();
 
         // Phase 1: Exact matches by id (l.reference_id === pu.id)
         sortedPurchases.forEach((pu: any) => {
@@ -721,6 +737,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               currentPaid += alloc;
               dueAmt -= alloc;
               directPaymentIds.add(l.id);
+              purDirectMatchCounts.set(pu.id, (purDirectMatchCounts.get(pu.id) || 0) + 1);
               const payDateStr = l.created_at ? format(new Date(l.created_at), "dd MMM yyyy") : "";
               const srcList = purAuditSources.get(pu.id) || [];
               srcList.push(`मिति ${payDateStr} को ${fmt(alloc)} को भुक्तानीबाट`);
@@ -754,6 +771,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               currentPaid += alloc;
               dueAmt -= alloc;
               directPaymentIds.add(l.id);
+              purDirectMatchCounts.set(pu.id, (purDirectMatchCounts.get(pu.id) || 0) + 1);
               const payDateStr = l.created_at ? format(new Date(l.created_at), "dd MMM yyyy") : "";
               const srcList = purAuditSources.get(pu.id) || [];
               srcList.push(`मिति ${payDateStr} को ${fmt(alloc)} को भुक्तानीबाट`);
@@ -784,6 +802,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 paymentConsumed.set(pay.id, used + alloc);
                 currentPaid += alloc;
                 dueAmt -= alloc;
+                purAutoMatchCounts.set(pu.id, (purAutoMatchCounts.get(pu.id) || 0) + 1);
                 const payDateStr = pay.created_at ? format(new Date(pay.created_at), "dd MMM yyyy") : "";
                 const srcList = purAuditSources.get(pu.id) || [];
                 srcList.push(`मिति ${payDateStr} मा भुक्तानी ${fmt(payAmt)} को अन-अकाउन्ट रकमबाट ${fmt(alloc)}`);
@@ -809,6 +828,13 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             reconcileNote = `${sources.join(", ")} यो बिल मिलान भयो ${statusTag}।`;
           }
 
+          const dirCount = purDirectMatchCounts.get(pu.id) || 0;
+          const autoCount = purAutoMatchCounts.get(pu.id) || 0;
+          let rType: "direct" | "auto" | "mixed" | undefined;
+          if (dirCount > 0 && autoCount === 0) rType = "direct";
+          else if (autoCount > 0 && dirCount === 0) rType = "auto";
+          else if (dirCount > 0 && autoCount > 0) rType = "mixed";
+
           const orderItems = prodsMap[pu.id] || [];
 
           items.push({
@@ -823,6 +849,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             paid_amount: paid,
             due_amount: due,
             reconcile_info: reconcileNote,
+            reconcile_type: rType,
             created_at: pu.created_at,
             note: pu.note,
             is_vat_bill: pu.is_vat_bill,
@@ -2402,9 +2429,27 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                         {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
                         {e.reconcile_info && (
-                          <div className="mt-2 p-2.5 rounded-r-xl border-l-4 border-l-cyan-500 bg-cyan-950/20 dark:bg-cyan-950/30 border-y border-r border-cyan-500/20 text-xs space-y-0.5">
-                            <div className="font-bold text-cyan-500 dark:text-cyan-400 flex items-center gap-1.5 text-xs">
-                              <span>⚡ {lang === "NEP" ? "स्वतः मिलान (Auto-Reconciled):" : "Auto-Reconciled:"}</span>
+                          <div className={`mt-2 p-2.5 rounded-r-xl border-l-4 text-xs space-y-0.5 border-y border-r ${
+                            e.reconcile_type === "direct"
+                              ? "border-l-emerald-500 bg-emerald-950/20 dark:bg-emerald-950/30 border-emerald-500/20"
+                              : e.reconcile_type === "mixed"
+                              ? "border-l-amber-500 bg-amber-950/20 dark:bg-amber-950/30 border-amber-500/20"
+                              : "border-l-cyan-500 bg-cyan-950/20 dark:bg-cyan-950/30 border-cyan-500/20"
+                          }`}>
+                            <div className={`font-bold flex items-center gap-1.5 text-xs ${
+                              e.reconcile_type === "direct"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : e.reconcile_type === "mixed"
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-cyan-600 dark:text-cyan-400"
+                            }`}>
+                              <span>
+                                {e.reconcile_type === "direct"
+                                  ? (lang === "NEP" ? "🧾 बिल भुक्तानी (Direct Settlement):" : "🧾 Direct Bill Settlement:")
+                                  : e.reconcile_type === "mixed"
+                                  ? (lang === "NEP" ? "🔄 भुक्तानी तथा स्वतः मिलान (Settlement & Allocation):" : "🔄 Settlement & Allocation:")
+                                  : (lang === "NEP" ? "⚡ स्वतः मिलान (Auto-Reconciled / FIFO):" : "⚡ Auto-Reconciled:")}
+                              </span>
                             </div>
                             <div className="italic text-[11px] text-foreground/90 font-normal leading-relaxed">
                               {e.reconcile_info}
@@ -2620,9 +2665,27 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                     {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
                     {e.reconcile_info && (
-                      <div className="mt-2 p-2.5 rounded-r-xl border-l-4 border-l-cyan-500 bg-cyan-950/20 dark:bg-cyan-950/30 border-y border-r border-cyan-500/20 text-xs space-y-0.5">
-                        <div className="font-bold text-cyan-500 dark:text-cyan-400 flex items-center gap-1.5 text-xs">
-                          <span>⚡ {lang === "NEP" ? "स्वतः मिलान (Auto-Reconciled):" : "Auto-Reconciled:"}</span>
+                      <div className={`mt-2 p-2.5 rounded-r-xl border-l-4 text-xs space-y-0.5 border-y border-r ${
+                        e.reconcile_type === "direct"
+                          ? "border-l-emerald-500 bg-emerald-950/20 dark:bg-emerald-950/30 border-emerald-500/20"
+                          : e.reconcile_type === "mixed"
+                          ? "border-l-amber-500 bg-amber-950/20 dark:bg-amber-950/30 border-amber-500/20"
+                          : "border-l-cyan-500 bg-cyan-950/20 dark:bg-cyan-950/30 border-cyan-500/20"
+                      }`}>
+                        <div className={`font-bold flex items-center gap-1.5 text-xs ${
+                          e.reconcile_type === "direct"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : e.reconcile_type === "mixed"
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-cyan-600 dark:text-cyan-400"
+                        }`}>
+                          <span>
+                            {e.reconcile_type === "direct"
+                              ? (lang === "NEP" ? "🧾 बिल भुक्तानी (Direct Settlement):" : "🧾 Direct Bill Settlement:")
+                              : e.reconcile_type === "mixed"
+                              ? (lang === "NEP" ? "🔄 भुक्तानी तथा स्वतः मिलान (Settlement & Allocation):" : "🔄 Settlement & Allocation:")
+                              : (lang === "NEP" ? "⚡ स्वतः मिलान (Auto-Reconciled / FIFO):" : "⚡ Auto-Reconciled:")}
+                          </span>
                         </div>
                         <div className="italic text-[11px] text-foreground/90 font-normal leading-relaxed">
                           {e.reconcile_info}
