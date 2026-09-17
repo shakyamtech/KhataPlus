@@ -661,13 +661,20 @@ async function commitInChunks(
 export async function restoreUserDataFromJson(
   currentUserId: string,
   payload: BackupPayload,
-  mode: "merge" | "clean" = "merge"
+  mode: "merge" | "clean" = "merge",
+  preserveOriginalIds: boolean = false
 ): Promise<{ success: boolean; importedCounts: Record<string, number> }> {
   if (!currentUserId) throw new Error("Target user ID is missing");
   const data = payload.data;
   if (!data) throw new Error("Backup file contains no data section");
 
-  // 1. If Clean mode: delete existing transaction/stock records first
+  const originalUserId = payload.metadata?.user_id;
+  // If we are restoring into a DIFFERENT user (e.g., Admin cloning another user's backup)
+  // and preserveOriginalIds is not explicitly true, we MUST generate new unique IDs and remap
+  // so the original tenant's database records are never modified, overwritten, or transferred!
+  const isCrossUserCloning = !preserveOriginalIds && Boolean(originalUserId && originalUserId !== currentUserId);
+
+  // 1. If Clean mode: delete existing transaction/stock records first for target user
   if (mode === "clean") {
     const collectionsToClean = [
       "products",
@@ -700,11 +707,37 @@ export async function restoreUserDataFromJson(
     }
   }
 
+  // ID Remapping Table for cross-user safe cloning
+  const idMap = new Map<string, string>();
+  const getMappedDocId = (oldId: string | undefined, colName: string): string => {
+    if (!oldId) return doc(collection(db, colName)).id;
+    if (!isCrossUserCloning) return oldId;
+    if (!idMap.has(oldId)) {
+      idMap.set(oldId, doc(collection(db, colName)).id);
+    }
+    return idMap.get(oldId)!;
+  };
+
+  // Pre-populate mapping for primary entities if cross-user cloning
+  if (isCrossUserCloning) {
+    (data.products || []).forEach(p => p.id && getMappedDocId(p.id, "products"));
+    (data.product_batches || []).forEach(b => b.id && getMappedDocId(b.id, "product_batches"));
+    (data.customers || []).forEach(c => c.id && getMappedDocId(c.id, "customers"));
+    (data.suppliers || []).forEach(s => s.id && getMappedDocId(s.id, "suppliers"));
+    (data.sales || []).forEach(s => s.id && getMappedDocId(s.id, "sales"));
+    (data.purchases || []).forEach(p => p.id && getMappedDocId(p.id, "purchases"));
+    (data.accounts || []).forEach(a => a.id && getMappedDocId(a.id, "accounts"));
+  }
+
   // 2. Prepare import operations mapping user_id to current user
   const writeOps: { ref: any; data: any; action: "set" }[] = [];
   const importedCounts: Record<string, number> = {};
 
-  const importCollection = (colName: string, items: any[] | undefined) => {
+  const importCollection = (
+    colName: string,
+    items: any[] | undefined,
+    transformRecord?: (rec: any) => any
+  ) => {
     if (!Array.isArray(items) || items.length === 0) {
       importedCounts[colName] = 0;
       return;
@@ -713,41 +746,111 @@ export async function restoreUserDataFromJson(
 
     items.forEach(item => {
       const { id, ...rest } = item;
-      const docId = id || doc(collection(db, colName)).id;
-      const targetRef = doc(db, colName, docId);
+      const targetDocId = getMappedDocId(id, colName);
+      const targetRef = doc(db, colName, targetDocId);
 
-      // Re-map user_id to active user so records belong to current account
-      const mappedRecord = {
+      let recordPayload: any = {
         ...rest,
-        id: docId,
+        id: targetDocId,
         user_id: currentUserId,
         restored_at: new Date().toISOString()
       };
 
+      if (transformRecord) {
+        recordPayload = transformRecord(recordPayload);
+      }
+
       writeOps.push({
         ref: targetRef,
-        data: mappedRecord,
+        data: recordPayload,
         action: "set"
       });
     });
   };
 
+  // Products
   importCollection("products", data.products);
-  importCollection("product_batches", data.product_batches);
+
+  // Batches
+  importCollection("product_batches", data.product_batches, (rec) => ({
+    ...rec,
+    product_id: isCrossUserCloning && rec.product_id ? (idMap.get(rec.product_id) || rec.product_id) : rec.product_id
+  }));
+
+  // Customers & Suppliers
   importCollection("customers", data.customers);
   importCollection("suppliers", data.suppliers);
-  importCollection("sales", data.sales);
-  importCollection("sale_items", data.sale_items);
-  importCollection("purchases", data.purchases);
-  importCollection("purchase_items", data.purchase_items);
-  importCollection("cash_transactions", data.cash_transactions);
-  importCollection("ledger_entries", data.ledger_entries);
-  importCollection("stock_adjustments", data.stock_adjustments);
-  importCollection("accounts", data.accounts);
-  importCollection("vouchers", data.vouchers);
 
-  // Update profile / shop info if provided
-  if (data.profile || payload.metadata.shop_info) {
+  // Sales
+  importCollection("sales", data.sales, (rec) => ({
+    ...rec,
+    customer_id: isCrossUserCloning && rec.customer_id ? (idMap.get(rec.customer_id) || rec.customer_id) : rec.customer_id
+  }));
+
+  // Sale Items
+  importCollection("sale_items", data.sale_items, (rec) => ({
+    ...rec,
+    sale_id: isCrossUserCloning && rec.sale_id ? (idMap.get(rec.sale_id) || rec.sale_id) : rec.sale_id,
+    product_id: isCrossUserCloning && rec.product_id ? (idMap.get(rec.product_id) || rec.product_id) : rec.product_id,
+    batch_id: isCrossUserCloning && rec.batch_id ? (idMap.get(rec.batch_id) || rec.batch_id) : rec.batch_id
+  }));
+
+  // Purchases
+  importCollection("purchases", data.purchases, (rec) => ({
+    ...rec,
+    supplier_id: isCrossUserCloning && rec.supplier_id ? (idMap.get(rec.supplier_id) || rec.supplier_id) : rec.supplier_id
+  }));
+
+  // Purchase Items
+  importCollection("purchase_items", data.purchase_items, (rec) => ({
+    ...rec,
+    purchase_id: isCrossUserCloning && rec.purchase_id ? (idMap.get(rec.purchase_id) || rec.purchase_id) : rec.purchase_id,
+    product_id: isCrossUserCloning && rec.product_id ? (idMap.get(rec.product_id) || rec.product_id) : rec.product_id,
+    batch_id: isCrossUserCloning && rec.batch_id ? (idMap.get(rec.batch_id) || rec.batch_id) : rec.batch_id
+  }));
+
+  // Cash Transactions
+  importCollection("cash_transactions", data.cash_transactions);
+
+  // Ledger Entries
+  importCollection("ledger_entries", data.ledger_entries, (rec) => ({
+    ...rec,
+    party_id: isCrossUserCloning && rec.party_id ? (idMap.get(rec.party_id) || rec.party_id) : rec.party_id,
+    sale_id: isCrossUserCloning && rec.sale_id ? (idMap.get(rec.sale_id) || rec.sale_id) : rec.sale_id,
+    purchase_id: isCrossUserCloning && rec.purchase_id ? (idMap.get(rec.purchase_id) || rec.purchase_id) : rec.purchase_id
+  }));
+
+  // Stock Adjustments
+  importCollection("stock_adjustments", data.stock_adjustments, (rec) => ({
+    ...rec,
+    product_id: isCrossUserCloning && rec.product_id ? (idMap.get(rec.product_id) || rec.product_id) : rec.product_id
+  }));
+
+  // Chart of Accounts
+  importCollection("accounts", data.accounts);
+
+  // Vouchers
+  importCollection("vouchers", data.vouchers, (rec) => {
+    const updated = { ...rec };
+    if (isCrossUserCloning) {
+      if (updated.debit_account_id && idMap.has(updated.debit_account_id)) {
+        updated.debit_account_id = idMap.get(updated.debit_account_id);
+      }
+      if (updated.credit_account_id && idMap.has(updated.credit_account_id)) {
+        updated.credit_account_id = idMap.get(updated.credit_account_id);
+      }
+      if (Array.isArray(updated.entries)) {
+        updated.entries = updated.entries.map((e: any) => ({
+          ...e,
+          account_id: (e.account_id && idMap.get(e.account_id)) || e.account_id
+        }));
+      }
+    }
+    return updated;
+  });
+
+  // Update profile / shop info if provided and NOT cross-user cloning (preserve current user's profile during clone)
+  if (!isCrossUserCloning && (data.profile || payload.metadata.shop_info)) {
     const shopMeta = data.profile || payload.metadata.shop_info;
     const profileRef = doc(db, "profiles", currentUserId);
     writeOps.push({

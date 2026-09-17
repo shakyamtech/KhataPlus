@@ -14,11 +14,11 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download, Crown, Sparkles, AlertCircle } from "lucide-react";
+import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download, Upload, Crown, Sparkles, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, writeBatch, doc, updateDoc } from "firebase/firestore";
-import { exportUserDataAsJson, downloadJsonFile } from "@/lib/backup";
+import { exportUserDataAsJson, downloadJsonFile, parseAndValidateBackupFile, restoreUserDataFromJson } from "@/lib/backup";
 import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
 
 type AdminUser = {
@@ -39,6 +39,7 @@ const Admin = () => {
   const [busy, setBusy] = useState(false);
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [downloadingBackupId, setDownloadingBackupId] = useState<string | null>(null);
+  const [restoringBackupId, setRestoringBackupId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [managingSubUser, setManagingSubUser] = useState<AdminUser | null>(null);
@@ -271,6 +272,44 @@ const Admin = () => {
     } finally {
       setDownloadingBackupId(null);
     }
+  };
+
+  const handleRestoreUserBackup = (u: AdminUser) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+
+      setRestoringBackupId(u.id);
+      try {
+        const summary = await parseAndValidateBackupFile(file);
+        if (!summary.valid || !summary.payload) {
+          toast.error(summary.error || "Invalid backup file");
+          return;
+        }
+
+        const totalItems = Object.values(summary.counts).reduce((a, b) => a + b, 0);
+        const confirmMsg = `Restore backup (${totalItems} items from '${summary.shopName}') directly to user account '${u.shop_name || u.email}'?`;
+        if (!window.confirm(confirmMsg)) {
+          return;
+        }
+
+        // Restore directly to target user preserving original IDs
+        const res = await restoreUserDataFromJson(u.id, summary.payload, "merge", true);
+        if (res.success) {
+          toast.success(`Successfully restored backup to ${u.shop_name || u.email}!`);
+          load();
+        }
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Restore failed: " + (err.message || "Unknown error"));
+      } finally {
+        setRestoringBackupId(null);
+      }
+    };
+    input.click();
   };
 
 
@@ -609,7 +648,7 @@ const Admin = () => {
                   size="sm" 
                   variant="outline" 
                   onClick={() => handleDownloadUserBackup(u)} 
-                  disabled={downloadingBackupId === u.id}
+                  disabled={downloadingBackupId === u.id || restoringBackupId === u.id}
                   className="flex-1 md:flex-none h-9 border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-400 dark:hover:bg-emerald-500/20 font-medium text-xs gap-1.5"
                   title="Download complete JSON backup for this user"
                 >
@@ -617,6 +656,22 @@ const Admin = () => {
                     <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Exporting...</>
                   ) : (
                     <><Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Backup (.json)</>
+                  )}
+                </Button>
+
+                {/* Restore Tenant Backup (.json) */}
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => handleRestoreUserBackup(u)} 
+                  disabled={restoringBackupId === u.id || downloadingBackupId === u.id}
+                  className="flex-1 md:flex-none h-9 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-500/30 dark:text-blue-400 dark:hover:bg-blue-500/20 font-medium text-xs gap-1.5"
+                  title="Upload JSON backup file directly into this user's account"
+                >
+                  {restoringBackupId === u.id ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Restoring...</>
+                  ) : (
+                    <><Upload className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" /> Restore (.json)</>
                   )}
                 </Button>
 
