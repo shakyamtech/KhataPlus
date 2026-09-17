@@ -4842,38 +4842,43 @@ export default function Accounting() {
       <Dialog open={returnModalOpen} onOpenChange={setReturnModalOpen}>
         <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
           <DialogHeader className="border-b pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold ${
-                  returnType === "credit_note"
-                    ? "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400"
-                    : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
-                }`}>
-                  <RotateCcw className="h-5 w-5" />
-                </div>
-                <div>
-                  <DialogTitle className="text-base sm:text-lg font-bold">
-                    {returnType === "credit_note"
-                      ? (lang === "NEP" ? "क्रेडिट नोट (बिक्री फिर्ता भाउचर)" : "Credit Note (Sales Return)")
-                      : (lang === "NEP" ? "डेबिट नोट (खरिद फिर्ता भाउचर)" : "Debit Note (Purchase Return)")}
-                  </DialogTitle>
-                  <DialogDescription className="text-xs text-muted-foreground">
-                    {returnType === "credit_note"
-                      ? (lang === "NEP" ? "बिक्री भएको सामान ग्राहकबाट फिर्ता लिने र स्टक थप गर्ने" : "Record returned goods from customer & restore inventory stock")
-                      : (lang === "NEP" ? "खरिद गरिएको सामान सप्लायरलाई फिर्ता गर्ने र स्टक घटाउने" : "Return goods to supplier & deduct from inventory stock")}
-                  </DialogDescription>
-                </div>
+            <div className="flex items-center gap-3 pr-6">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+                returnType === "credit_note"
+                  ? "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400"
+                  : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+              }`}>
+                <RotateCcw className="h-5 w-5" />
               </div>
-
-              {previewReturnNo && (
-                <Badge variant="outline" className={`font-mono text-xs px-2.5 py-1 font-bold ${
-                  returnType === "credit_note"
-                    ? "border-cyan-500/40 text-cyan-700 dark:text-cyan-300 bg-cyan-500/10"
-                    : "border-rose-500/40 text-rose-700 dark:text-rose-300 bg-rose-500/10"
-                }`}>
-                  #{previewReturnNo}
-                </Badge>
-              )}
+              <div className="min-w-0">
+                <DialogTitle className="text-base sm:text-lg font-extrabold flex items-center gap-1.5 sm:gap-2 text-foreground flex-wrap">
+                  <span>
+                    {returnType === "credit_note"
+                      ? (lang === "NEP" ? "क्रेडिट नोट (बिक्री फिर्ता)" : "Credit Note (Sales Return)")
+                      : (lang === "NEP" ? "डेबिट नोट (खरिद फिर्ता)" : "Debit Note (Purchase Return)")}
+                  </span>
+                  {previewReturnNo && (
+                    <Badge
+                      variant="secondary"
+                      className={`font-mono text-[11px] sm:text-xs font-bold px-2 py-0.5 border ${
+                        returnType === "credit_note"
+                          ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/30"
+                          : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"
+                      }`}
+                    >
+                      #{previewReturnNo}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-[10px] font-mono font-bold px-1.5 py-0.5 shadow-xs">
+                    {returnType === "credit_note" ? "Alt+F6" : "Alt+F5"}
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  {returnType === "credit_note"
+                    ? (lang === "NEP" ? "ग्राहकबाट सामान फिर्ता लिने, मौज्दात स्टक थप र हिसाब मिलान" : "Receive returned goods from customer & restore inventory stock")
+                    : (lang === "NEP" ? "सप्लायरलाई सामान फिर्ता गर्ने, मौज्दात स्टक कट्टी र हिसाब मिलान" : "Return goods to supplier & deduct from inventory stock")}
+                </DialogDescription>
+              </div>
             </div>
           </DialogHeader>
 
