@@ -55,7 +55,8 @@ import {
   CheckCircle2,
   Pencil,
   Package,
-  Boxes
+  Boxes,
+  Sparkles
 } from "lucide-react";
 import { StockSummaryView } from "@/components/StockSummaryView";
 import { collection, query, where, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
@@ -351,6 +352,73 @@ export default function Accounting() {
     const isBalanced = dr > 0 && cr > 0 && Math.abs(dr - cr) < 0.001;
     return { dr, cr, diff, isBalanced };
   }, [journalRows]);
+
+  const handleAutoGenerateNarration = () => {
+    const isNep = lang === "NEP";
+
+    if (voucherType === "payment") {
+      const selectedNames = paymentRows
+        .map(r => accounts.find(a => a.id === r.account_id)?.name)
+        .filter(Boolean);
+      const viaAcc = accounts.find(a => a.id === creditAccountId)?.name;
+      const namesStr = selectedNames.length > 0 ? selectedNames.join(", ") : (isNep ? "खर्च/पार्टी" : "Expense/Party");
+      const viaStr = viaAcc || (isNep ? "नगद/बैंक" : "Cash/Bank");
+      const totalStr = paymentTotal > 0 ? fmt(paymentTotal) : "";
+
+      if (isNep) {
+        setNarration(`${namesStr} भुक्तानी गरिएको (${viaStr} मार्फत)${totalStr ? ` - ${totalStr}` : ""}`);
+      } else {
+        setNarration(`Paid for ${namesStr} via ${viaStr}${totalStr ? ` [Rs. ${paymentTotal}]` : ""}`);
+      }
+      toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
+    } else if (voucherType === "receipt") {
+      const selectedNames = receiptRows
+        .map(r => accounts.find(a => a.id === r.account_id)?.name)
+        .filter(Boolean);
+      const destAcc = accounts.find(a => a.id === debitAccountId)?.name;
+      const namesStr = selectedNames.length > 0 ? selectedNames.join(", ") : (isNep ? "आम्दानी/पार्टी" : "Income/Party");
+      const destStr = destAcc || (isNep ? "नगद/बैंक" : "Cash/Bank");
+      const totalStr = receiptTotal > 0 ? fmt(receiptTotal) : "";
+
+      if (isNep) {
+        setNarration(`${namesStr} बापतको रकम ${destStr} मा दाखिला/प्राप्त भएको${totalStr ? ` - ${totalStr}` : ""}`);
+      } else {
+        setNarration(`Received from ${namesStr} deposited into ${destStr}${totalStr ? ` [Rs. ${receiptTotal}]` : ""}`);
+      }
+      toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
+    } else if (voucherType === "contra") {
+      const fromAcc = accounts.find(a => a.id === creditAccountId)?.name || (isNep ? "स्रोत खाता" : "Source");
+      const toAcc = accounts.find(a => a.id === debitAccountId)?.name || (isNep ? "गन्तव्य खाता" : "Destination");
+      const amtStr = voucherAmount ? fmt(voucherAmount) : "";
+
+      if (isNep) {
+        setNarration(`${fromAcc} बाट ${toAcc} मा रकम स्थानान्तरण / जम्मा गरिएको${amtStr ? ` - ${amtStr}` : ""}`);
+      } else {
+        setNarration(`Fund transferred from ${fromAcc} to ${toAcc}${voucherAmount ? ` [Rs. ${voucherAmount}]` : ""}`);
+      }
+      toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
+    } else if (voucherType === "journal") {
+      const drNames = journalRows
+        .filter(r => r.type === "debit")
+        .map(r => accounts.find(a => a.id === r.account_id)?.name)
+        .filter(Boolean);
+      const crNames = journalRows
+        .filter(r => r.type === "credit")
+        .map(r => accounts.find(a => a.id === r.account_id)?.name)
+        .filter(Boolean);
+
+      const drStr = drNames.length > 0 ? drNames.join(", ") : (isNep ? "डेबिट खाता" : "Dr. Account");
+      const crStr = crNames.length > 0 ? crNames.join(", ") : (isNep ? "क्रेडिट खाता" : "Cr. Account");
+      const totalStr = journalTotals.dr > 0 ? fmt(journalTotals.dr) : "";
+
+      if (isNep) {
+        setNarration(`समायोजन प्रविष्टि: ${drStr} (Dr.) -> ${crStr} (Cr.)${totalStr ? ` - ${totalStr}` : ""}`);
+      } else {
+        setNarration(`Being journal adjustment passed: ${drStr} (Dr.) to ${crStr} (Cr.)${totalStr ? ` [Rs. ${journalTotals.dr}]` : ""}`);
+      }
+      toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
+    }
+  };
 
   const handleSubmitVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2492,12 +2560,24 @@ export default function Accounting() {
                     <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration"}</span>
                   </Label>
-                  <Input
-                    placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
-                    value={narration}
-                    onChange={e => setNarration(e.target.value)}
-                    className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण वा 'Auto' थिच्नुहोस्..." : "Short note or click 'Auto'..."}
+                      value={narration}
+                      onChange={e => setNarration(e.target.value)}
+                      className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAutoGenerateNarration}
+                      className="h-10 px-2.5 sm:px-3 shrink-0 rounded-xl border-dashed border-primary/40 text-primary hover:bg-primary/10 hover:border-primary shadow-xs text-xs font-semibold gap-1.5 flex items-center"
+                      title={lang === "NEP" ? "स्वचालित कैफियत तयार गर्नुहोस् (Auto Generate Narration)" : "Auto Generate Narration"}
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                      <span className="text-[11px] sm:text-xs">Auto</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : voucherType === "payment" ? (
@@ -2716,12 +2796,24 @@ export default function Accounting() {
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration / Note"}</span>
                     </Label>
-                    <Input
-                      placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
-                      value={narration}
-                      onChange={e => setNarration(e.target.value)}
-                      className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण वा 'Auto' थिच्नुहोस्..." : "Short note or click 'Auto'..."}
+                        value={narration}
+                        onChange={e => setNarration(e.target.value)}
+                        className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleAutoGenerateNarration}
+                        className="h-10 px-2.5 sm:px-3 shrink-0 rounded-xl border-dashed border-primary/40 text-primary hover:bg-primary/10 hover:border-primary shadow-xs text-xs font-semibold gap-1.5 flex items-center"
+                        title={lang === "NEP" ? "स्वचालित कैफियत तयार गर्नुहोस् (Auto Generate Narration)" : "Auto Generate Narration"}
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                        <span className="text-[11px] sm:text-xs">Auto</span>
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="sm:col-span-5">
@@ -2957,12 +3049,24 @@ export default function Accounting() {
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration / Note"}</span>
                     </Label>
-                    <Input
-                      placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
-                      value={narration}
-                      onChange={e => setNarration(e.target.value)}
-                      className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण वा 'Auto' थिच्नुहोस्..." : "Short note or click 'Auto'..."}
+                        value={narration}
+                        onChange={e => setNarration(e.target.value)}
+                        className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleAutoGenerateNarration}
+                        className="h-10 px-2.5 sm:px-3 shrink-0 rounded-xl border-dashed border-primary/40 text-primary hover:bg-primary/10 hover:border-primary shadow-xs text-xs font-semibold gap-1.5 flex items-center"
+                        title={lang === "NEP" ? "स्वचालित कैफियत तयार गर्नुहोस् (Auto Generate Narration)" : "Auto Generate Narration"}
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                        <span className="text-[11px] sm:text-xs">Auto</span>
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="sm:col-span-5">
@@ -3099,12 +3203,24 @@ export default function Accounting() {
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{lang === "NEP" ? "कैफियत (Narration)" : "Narration / Note"}</span>
                     </Label>
-                    <Input
-                      placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
-                      value={narration}
-                      onChange={e => setNarration(e.target.value)}
-                      className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण वा 'Auto' थिच्नुहोस्..." : "Short note or click 'Auto'..."}
+                        value={narration}
+                        onChange={e => setNarration(e.target.value)}
+                        className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleAutoGenerateNarration}
+                        className="h-10 px-2.5 sm:px-3 shrink-0 rounded-xl border-dashed border-primary/40 text-primary hover:bg-primary/10 hover:border-primary shadow-xs text-xs font-semibold gap-1.5 flex items-center"
+                        title={lang === "NEP" ? "स्वचालित कैफियत तयार गर्नुहोस् (Auto Generate Narration)" : "Auto Generate Narration"}
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                        <span className="text-[11px] sm:text-xs">Auto</span>
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="sm:col-span-5 space-y-1 sm:space-y-1.5">
