@@ -1482,21 +1482,23 @@ const POS = () => {
 
 
             {shopInfo?.is_vat_registered && (
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                  <div className="flex items-center gap-1.5 sm:block">
-                    <Label className="text-xs font-semibold text-primary block leading-tight">Invoice Format</Label>
-                    <span className="text-[10px] text-muted-foreground leading-tight">(बिल ढाँचा)</span>
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-2.5 space-y-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-primary flex items-center gap-1.5">
+                      <span>Invoice Format</span>
+                      <span className="text-[10px] text-muted-foreground font-normal">(बिल ढाँचा)</span>
+                    </Label>
                   </div>
-                  <div className="grid grid-cols-2 sm:flex items-center gap-1 bg-background/80 p-0.5 rounded-md border text-xs w-full sm:w-auto">
+                  <div className="grid grid-cols-2 gap-1 bg-background/90 p-1 rounded-lg border text-xs w-full">
                     <button
                       type="button"
                       onClick={() => setInvoiceType("abbreviated")}
                       className={cn(
-                        "px-2 py-1.5 sm:py-1 rounded text-[11px] sm:text-xs font-medium transition-all text-center truncate",
+                        "px-2 py-1.5 rounded-md text-[11px] font-semibold transition-all text-center truncate flex items-center justify-center",
                         invoiceType === "abbreviated"
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       )}
                     >
                       संक्षिप्त (Abbreviated)
@@ -1505,10 +1507,10 @@ const POS = () => {
                       type="button"
                       onClick={() => setInvoiceType("tax_invoice")}
                       className={cn(
-                        "px-2 py-1.5 sm:py-1 rounded text-[11px] sm:text-xs font-medium transition-all text-center truncate",
+                        "px-2 py-1.5 rounded-md text-[11px] font-semibold transition-all text-center truncate flex items-center justify-center",
                         invoiceType === "tax_invoice"
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       )}
                     >
                       कर बिजक (VAT 13%)
