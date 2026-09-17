@@ -27,6 +27,18 @@ export function toNepaliDigits(input: string | number): string {
 }
 
 /**
+ * Converts Nepali Unicode numerals (०-९) to Western digits (0-9)
+ */
+export function fromNepaliDigits(input: string): string {
+  const nepaliDigits = ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"];
+  let res = input;
+  nepaliDigits.forEach((ch, idx) => {
+    res = res.replaceAll(ch, String(idx));
+  });
+  return res;
+}
+
+/**
  * Formats an English AD date (Date or string) into Nepali Bikram Sambat date string (English digits).
  * e.g., '2083/05/27'
  */

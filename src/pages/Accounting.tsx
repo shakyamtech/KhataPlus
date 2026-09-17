@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { fmt } from "@/lib/format";
-import { formatNepaliDate, resolveDualDates } from "@/lib/fiscalYear";
+import { formatNepaliDate, resolveDualDates, fromNepaliDigits } from "@/lib/fiscalYear";
 import { getShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { toast } from "sonner";
@@ -835,25 +835,14 @@ export default function Accounting() {
   };
 
   const filteredDayBookEntries = useMemo((): DayBookEntry[] => {
-    const q = searchQuery.trim().toLowerCase();
+    const rawQ = searchQuery.trim();
+    const q = fromNepaliDigits(rawQ.toLowerCase());
+    const qClean = q.replace(/[-/.,\s]/g, "");
 
     // 1. Accounting Vouchers
     const voucherEntries: DayBookEntry[] = (filterType === "all" || ["contra", "payment", "receipt", "journal"].includes(filterType))
       ? vouchers
-          .filter(v => {
-            if (filterType !== "all" && filterType !== v.voucher_type) return false;
-            if (q) {
-              const matchesBasic = (
-                (v.voucher_no || "").toLowerCase().includes(q) ||
-                (v.narration || "").toLowerCase().includes(q) ||
-                (v.debit_account_name || "").toLowerCase().includes(q) ||
-                (v.credit_account_name || "").toLowerCase().includes(q)
-              );
-              const matchesEntries = (v.entries || []).some(e => (e.account_name || "").toLowerCase().includes(q));
-              return matchesBasic || matchesEntries;
-            }
-            return true;
-          })
+          .filter(v => filterType === "all" || filterType === v.voucher_type)
           .map(v => {
             const drLabel = v.entries && v.entries.length > 0
               ? v.entries.filter(e => e.type === "debit").map(e => e.account_name).join(", ")
@@ -880,65 +869,77 @@ export default function Accounting() {
 
     // 2. POS Sales (read-only, shown as "SALE" entries)
     const saleEntries: DayBookEntry[] = (filterType === "all" || filterType === "sale")
-      ? salesDocs
-          .filter(s => {
-            if (!q) return true;
-            return (
-              (s.bill_no || "").toLowerCase().includes(q) ||
-              (s.customer_name || "").toLowerCase().includes(q) ||
-              (s.payment_mode || "").toLowerCase().includes(q)
-            );
-          })
-          .map(s => {
-            const { dateAd, dateBs } = resolveDualDates(s.created_at || s.date, s.date_bs || s.nepali_date);
-            return {
-              id: s.id || s.bill_no || Math.random().toString(),
-              entryType: "sale" as const,
-              entryNo: s.bill_no || "—",
-              date: dateAd || s.created_at || s.date || new Date().toISOString(),
-              dateBs: dateBs,
-              amount: Number(s.total || 0),
-              debitLabel: lang === "NEP" ? `नगद/बैंक (${s.payment_mode || "cash"})` : `Cash/Bank (${s.payment_mode || "cash"})`,
-              creditLabel: lang === "NEP" ? "बिक्री आम्दानी (Sales)" : "Sales Revenue A/C",
-              narration: s.customer_name ? `Sale to ${s.customer_name}` : "Walk-in Sale",
-              paymentMode: s.payment_mode,
-              originalSale: s
-            };
-          })
+      ? salesDocs.map(s => {
+          const { dateAd, dateBs } = resolveDualDates(s.created_at || s.date, s.date_bs || s.nepali_date);
+          return {
+            id: s.id || s.bill_no || Math.random().toString(),
+            entryType: "sale" as const,
+            entryNo: s.bill_no || "—",
+            date: dateAd || s.created_at || s.date || new Date().toISOString(),
+            dateBs: dateBs,
+            amount: Number(s.total || 0),
+            debitLabel: lang === "NEP" ? `नगद/बैंक (${s.payment_mode || "cash"})` : `Cash/Bank (${s.payment_mode || "cash"})`,
+            creditLabel: lang === "NEP" ? "बिक्री आम्दानी (Sales)" : "Sales Revenue A/C",
+            narration: s.customer_name ? `Sale to ${s.customer_name}` : "Walk-in Sale",
+            paymentMode: s.payment_mode,
+            originalSale: s
+          };
+        })
       : [];
 
     // 3. Purchases (read-only, shown as "PURCHASE" entries)
     const purchaseEntries: DayBookEntry[] = (filterType === "all" || filterType === "purchase")
-      ? purchasesDocs
-          .filter(p => {
-            if (!q) return true;
-            return (
-              (p.voucher_no || "").toLowerCase().includes(q) ||
-              (p.supplier_name || "").toLowerCase().includes(q) ||
-              (p.supplier_bill_no || "").toLowerCase().includes(q) ||
-              (p.payment_mode || "").toLowerCase().includes(q)
-            );
-          })
-          .map(p => {
-            const { dateAd, dateBs } = resolveDualDates(p.created_at || p.date, p.date_bs || p.nepali_date);
-            return {
-              id: p.id,
-              entryType: "purchase" as const,
-              entryNo: p.voucher_no || `PUR-${p.id?.slice(-4)?.toUpperCase() || "---"}`,
-              date: dateAd || p.created_at || p.date || new Date().toISOString(),
-              dateBs: dateBs,
-              amount: Number(p.total || 0),
-              debitLabel: lang === "NEP" ? "खरिद खाता (Purchases)" : "Purchases A/C",
-              creditLabel: p.supplier_name ? `${p.supplier_name}` : (lang === "NEP" ? "नगद/साहु (Cash/Supplier)" : "Cash/Supplier A/C"),
-              narration: p.supplier_name ? `Purchase from ${p.supplier_name}` : "Purchase Entry",
-              paymentMode: p.payment_mode,
-              originalPurchase: p
-            };
-          })
+      ? purchasesDocs.map(p => {
+          const { dateAd, dateBs } = resolveDualDates(p.created_at || p.date, p.date_bs || p.nepali_date);
+          return {
+            id: p.id,
+            entryType: "purchase" as const,
+            entryNo: p.voucher_no || `PUR-${p.id?.slice(-4)?.toUpperCase() || "---"}`,
+            date: dateAd || p.created_at || p.date || new Date().toISOString(),
+            dateBs: dateBs,
+            amount: Number(p.total || 0),
+            debitLabel: lang === "NEP" ? "खरिद खाता (Purchases)" : "Purchases A/C",
+            creditLabel: p.supplier_name ? `${p.supplier_name}` : (lang === "NEP" ? "नगद/साहु (Cash/Supplier)" : "Cash/Supplier A/C"),
+            narration: p.supplier_name ? `Purchase from ${p.supplier_name}` : "Purchase Entry",
+            paymentMode: p.payment_mode,
+            originalPurchase: p
+          };
+        })
       : [];
 
-    // Merge and sort by date descending
-    const all = [...voucherEntries, ...saleEntries, ...purchaseEntries];
+    // Merge all entries
+    let all = [...voucherEntries, ...saleEntries, ...purchaseEntries];
+
+    // Global comprehensive search filter: Voucher No, Date (AD & BS), Accounts, Narration, Amount, Type
+    if (q) {
+      all = all.filter(entry => {
+        const dateAd = (entry.date || "").toLowerCase();
+        const dateBs = (entry.dateBs || "").toLowerCase();
+        const dateAdClean = dateAd.replace(/[-/.,\s]/g, "");
+        const dateBsClean = dateBs.replace(/[-/.,\s]/g, "");
+
+        const matchesDate =
+          dateAd.includes(q) ||
+          dateBs.includes(q) ||
+          dateAd.replace(/-/g, "/").includes(q) ||
+          dateBs.replace(/\//g, "-").includes(q) ||
+          (qClean.length >= 2 && (dateAdClean.includes(qClean) || dateBsClean.includes(qClean)));
+
+        const matchesNo = (entry.entryNo || "").toLowerCase().includes(q);
+        const matchesDr = (entry.debitLabel || "").toLowerCase().includes(q);
+        const matchesCr = (entry.creditLabel || "").toLowerCase().includes(q);
+        const matchesNarration = (entry.narration || "").toLowerCase().includes(q);
+        const matchesAmount =
+          String(entry.amount).includes(q.replace(/,/g, "")) ||
+          fmt(entry.amount).toLowerCase().includes(q);
+        const matchesType =
+          entry.entryType.toLowerCase().includes(q) ||
+          (entry.originalVoucher?.voucher_type || "").toLowerCase().includes(q);
+
+        return matchesDate || matchesNo || matchesDr || matchesCr || matchesNarration || matchesAmount || matchesType;
+      });
+    }
+
     all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return all;
   }, [vouchers, salesDocs, purchasesDocs, filterType, searchQuery, lang]);
@@ -1697,7 +1698,7 @@ export default function Accounting() {
               <div className="relative w-full sm:w-64">
                 <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder={lang === "NEP" ? "बिल नं, सप्लायर वा विवरण खोज्नुहोस्..." : "Search bill no, supplier, narration..."}
+                  placeholder={lang === "NEP" ? "बिल नं, मिति (BS/AD), रकम वा विवरण खोज्नुहोस्..." : "Search bill no, date (BS/AD), amount, narration..."}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="pl-9 h-9 text-xs"
