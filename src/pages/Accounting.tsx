@@ -1190,12 +1190,10 @@ export default function Accounting() {
     }
 
     all.sort((a, b) => {
-      const timeA = new Date(a.date).getTime();
-      const timeB = new Date(b.date).getTime();
-      if (timeB !== timeA) return timeB - timeA;
-      const createdA = new Date(a.originalVoucher?.created_at || a.originalSale?.created_at || a.originalPurchase?.created_at || 0).getTime();
-      const createdB = new Date(b.originalVoucher?.created_at || b.originalSale?.created_at || b.originalPurchase?.created_at || 0).getTime();
-      return createdB - createdA;
+      const createdA = new Date(a.originalVoucher?.created_at || a.originalSale?.created_at || a.originalPurchase?.created_at || a.date || 0).getTime();
+      const createdB = new Date(b.originalVoucher?.created_at || b.originalSale?.created_at || b.originalPurchase?.created_at || b.date || 0).getTime();
+      if (createdB !== createdA) return createdB - createdA;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
     return all;
   }, [vouchers, salesDocs, purchasesDocs, filterType, searchQuery, lang]);
