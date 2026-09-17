@@ -2329,8 +2329,8 @@ export default function Accounting() {
 
                   {/* Desktop Table Column Headers */}
                   <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-2 bg-muted/20 border-b text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    <div className="col-span-3">{lang === "NEP" ? "प्रकार (Dr./Cr.)" : "Type"}</div>
-                    <div className="col-span-5">{lang === "NEP" ? "खाता शीर्षक (Account)" : "Account"}</div>
+                    <div className="col-span-2">{lang === "NEP" ? "प्रकार (Dr./Cr.)" : "Type"}</div>
+                    <div className="col-span-6">{lang === "NEP" ? "खाता शीर्षक (Account)" : "Account"}</div>
                     <div className="col-span-3 text-right">{lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}</div>
                     <div className="col-span-1 text-center">{lang === "NEP" ? "हटाउने" : "Action"}</div>
                   </div>
@@ -2344,7 +2344,7 @@ export default function Accounting() {
                         {/* Mobile Top Row: Type + Account + Actions */}
                         <div className="flex items-center gap-1.5 w-full sm:contents">
                           {/* Type Dr/Cr */}
-                          <div className="w-[68px] sm:w-auto sm:col-span-3 shrink-0">
+                          <div className="w-[72px] sm:w-auto sm:col-span-2 shrink-0">
                             <Select
                               value={row.type}
                               onValueChange={(val: "debit" | "credit") => handleUpdateJournalRow(row.id, "type", val)}
@@ -2364,7 +2364,7 @@ export default function Accounting() {
                           </div>
 
                           {/* Account Selector + Inline Add Button */}
-                          <div className="flex-1 sm:col-span-5 flex items-center gap-1 min-w-0">
+                          <div className="flex-1 sm:col-span-6 flex items-center gap-1 min-w-0">
                             <div className="flex-1 min-w-0">
                               <Select
                                 value={row.account_id}
