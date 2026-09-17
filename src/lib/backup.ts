@@ -634,6 +634,22 @@ export async function parseAndValidateBackupFile(file: File): Promise<Validation
   }
 }
 
+function removeUndefinedFields(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefinedFields);
+  }
+  if (obj !== null && typeof obj === "object" && !(obj instanceof Date)) {
+    const clean: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        clean[key] = removeUndefinedFields(value);
+      }
+    }
+    return clean;
+  }
+  return obj;
+}
+
 /**
  * Commits writes in chunks of 400 to avoid Firestore's 500-op limit
  */
@@ -646,7 +662,8 @@ async function commitInChunks(
     const batch = writeBatch(db);
     for (const op of chunk) {
       if (op.action === "set") {
-        batch.set(op.ref, op.data, { merge: true });
+        const cleanData = removeUndefinedFields(op.data);
+        batch.set(op.ref, cleanData, { merge: true });
       } else if (op.action === "delete") {
         batch.delete(op.ref);
       }
@@ -762,7 +779,7 @@ export async function restoreUserDataFromJson(
 
       writeOps.push({
         ref: targetRef,
-        data: recordPayload,
+        data: removeUndefinedFields(recordPayload),
         action: "set"
       });
     });
@@ -772,59 +789,73 @@ export async function restoreUserDataFromJson(
   importCollection("products", data.products);
 
   // Batches
-  importCollection("product_batches", data.product_batches, (rec) => ({
-    ...rec,
-    product_id: isCrossUserCloning && rec.product_id ? (idMap.get(rec.product_id) || rec.product_id) : rec.product_id
-  }));
+  importCollection("product_batches", data.product_batches, (rec) => {
+    if (isCrossUserCloning && rec.product_id && idMap.has(rec.product_id)) {
+      rec.product_id = idMap.get(rec.product_id);
+    }
+    return rec;
+  });
 
   // Customers & Suppliers
   importCollection("customers", data.customers);
   importCollection("suppliers", data.suppliers);
 
   // Sales
-  importCollection("sales", data.sales, (rec) => ({
-    ...rec,
-    customer_id: isCrossUserCloning && rec.customer_id ? (idMap.get(rec.customer_id) || rec.customer_id) : rec.customer_id
-  }));
+  importCollection("sales", data.sales, (rec) => {
+    if (isCrossUserCloning && rec.customer_id && idMap.has(rec.customer_id)) {
+      rec.customer_id = idMap.get(rec.customer_id);
+    }
+    return rec;
+  });
 
   // Sale Items
-  importCollection("sale_items", data.sale_items, (rec) => ({
-    ...rec,
-    sale_id: isCrossUserCloning && rec.sale_id ? (idMap.get(rec.sale_id) || rec.sale_id) : rec.sale_id,
-    product_id: isCrossUserCloning && rec.product_id ? (idMap.get(rec.product_id) || rec.product_id) : rec.product_id,
-    batch_id: isCrossUserCloning && rec.batch_id ? (idMap.get(rec.batch_id) || rec.batch_id) : rec.batch_id
-  }));
+  importCollection("sale_items", data.sale_items, (rec) => {
+    if (isCrossUserCloning) {
+      if (rec.sale_id && idMap.has(rec.sale_id)) rec.sale_id = idMap.get(rec.sale_id);
+      if (rec.product_id && idMap.has(rec.product_id)) rec.product_id = idMap.get(rec.product_id);
+      if (rec.batch_id && idMap.has(rec.batch_id)) rec.batch_id = idMap.get(rec.batch_id);
+    }
+    return rec;
+  });
 
   // Purchases
-  importCollection("purchases", data.purchases, (rec) => ({
-    ...rec,
-    supplier_id: isCrossUserCloning && rec.supplier_id ? (idMap.get(rec.supplier_id) || rec.supplier_id) : rec.supplier_id
-  }));
+  importCollection("purchases", data.purchases, (rec) => {
+    if (isCrossUserCloning && rec.supplier_id && idMap.has(rec.supplier_id)) {
+      rec.supplier_id = idMap.get(rec.supplier_id);
+    }
+    return rec;
+  });
 
   // Purchase Items
-  importCollection("purchase_items", data.purchase_items, (rec) => ({
-    ...rec,
-    purchase_id: isCrossUserCloning && rec.purchase_id ? (idMap.get(rec.purchase_id) || rec.purchase_id) : rec.purchase_id,
-    product_id: isCrossUserCloning && rec.product_id ? (idMap.get(rec.product_id) || rec.product_id) : rec.product_id,
-    batch_id: isCrossUserCloning && rec.batch_id ? (idMap.get(rec.batch_id) || rec.batch_id) : rec.batch_id
-  }));
+  importCollection("purchase_items", data.purchase_items, (rec) => {
+    if (isCrossUserCloning) {
+      if (rec.purchase_id && idMap.has(rec.purchase_id)) rec.purchase_id = idMap.get(rec.purchase_id);
+      if (rec.product_id && idMap.has(rec.product_id)) rec.product_id = idMap.get(rec.product_id);
+      if (rec.batch_id && idMap.has(rec.batch_id)) rec.batch_id = idMap.get(rec.batch_id);
+    }
+    return rec;
+  });
 
   // Cash Transactions
   importCollection("cash_transactions", data.cash_transactions);
 
   // Ledger Entries
-  importCollection("ledger_entries", data.ledger_entries, (rec) => ({
-    ...rec,
-    party_id: isCrossUserCloning && rec.party_id ? (idMap.get(rec.party_id) || rec.party_id) : rec.party_id,
-    sale_id: isCrossUserCloning && rec.sale_id ? (idMap.get(rec.sale_id) || rec.sale_id) : rec.sale_id,
-    purchase_id: isCrossUserCloning && rec.purchase_id ? (idMap.get(rec.purchase_id) || rec.purchase_id) : rec.purchase_id
-  }));
+  importCollection("ledger_entries", data.ledger_entries, (rec) => {
+    if (isCrossUserCloning) {
+      if (rec.party_id && idMap.has(rec.party_id)) rec.party_id = idMap.get(rec.party_id);
+      if (rec.sale_id && idMap.has(rec.sale_id)) rec.sale_id = idMap.get(rec.sale_id);
+      if (rec.purchase_id && idMap.has(rec.purchase_id)) rec.purchase_id = idMap.get(rec.purchase_id);
+    }
+    return rec;
+  });
 
   // Stock Adjustments
-  importCollection("stock_adjustments", data.stock_adjustments, (rec) => ({
-    ...rec,
-    product_id: isCrossUserCloning && rec.product_id ? (idMap.get(rec.product_id) || rec.product_id) : rec.product_id
-  }));
+  importCollection("stock_adjustments", data.stock_adjustments, (rec) => {
+    if (isCrossUserCloning && rec.product_id && idMap.has(rec.product_id)) {
+      rec.product_id = idMap.get(rec.product_id);
+    }
+    return rec;
+  });
 
   // Chart of Accounts
   importCollection("accounts", data.accounts);
