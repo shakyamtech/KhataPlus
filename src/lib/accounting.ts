@@ -59,6 +59,12 @@ export interface VoucherEntryItem {
   account_name: string;
   type: "debit" | "credit";
   amount: number;
+  party_id?: string;
+  party_type?: "customer" | "supplier";
+  party_name?: string;
+  settlement_mode?: "specific" | "fifo" | "on_account";
+  bill_id?: string;
+  bill_no?: string;
 }
 
 export interface Voucher {
@@ -76,6 +82,12 @@ export interface Voucher {
   entries?: VoucherEntryItem[];
   narration: string;
   reference_no?: string; // Cheque number, deposit slip, transaction ID
+  party_id?: string;
+  party_type?: "customer" | "supplier";
+  party_name?: string;
+  settlement_mode?: "specific" | "fifo" | "on_account";
+  bill_id?: string;
+  bill_no?: string;
   created_at: string;
 }
 
@@ -403,19 +415,52 @@ export async function createVoucher(
 }
 
 /**
- * Deletes a voucher and removes any mirrored cash_transactions
+ * Deletes a voucher and removes any mirrored cash_transactions and party ledger_entries,
+ * completely reversing settlements and restoring original party due balances.
  */
 export async function deleteVoucher(userId: string, voucherId: string): Promise<void> {
   const batch = writeBatch(db);
   batch.delete(doc(db, "vouchers", voucherId));
 
-  const cashQ = query(
+  // 1. Remove mirrored cash_transactions
+  const cashByRefQ = query(
     collection(db, "cash_transactions"),
     where("user_id", "==", userId),
     where("reference_id", "==", voucherId)
   );
-  const cashSnap = await getDocs(cashQ);
-  cashSnap.docs.forEach(d => batch.delete(d.ref));
+  const cashByVoucherQ = query(
+    collection(db, "cash_transactions"),
+    where("user_id", "==", userId),
+    where("voucher_id", "==", voucherId)
+  );
+
+  const [cashByRefSnap, cashByVoucherSnap] = await Promise.all([
+    getDocs(cashByRefQ),
+    getDocs(cashByVoucherQ)
+  ]);
+
+  const deletedCashIds = new Set<string>();
+  cashByRefSnap.docs.forEach(d => {
+    if (!deletedCashIds.has(d.id)) {
+      deletedCashIds.add(d.id);
+      batch.delete(d.ref);
+    }
+  });
+  cashByVoucherSnap.docs.forEach(d => {
+    if (!deletedCashIds.has(d.id)) {
+      deletedCashIds.add(d.id);
+      batch.delete(d.ref);
+    }
+  });
+
+  // 2. Remove associated party ledger_entries (restores unpaid bills & party dues instantly)
+  const ledgerByVoucherQ = query(
+    collection(db, "ledger_entries"),
+    where("user_id", "==", userId),
+    where("voucher_id", "==", voucherId)
+  );
+  const ledgerSnap = await getDocs(ledgerByVoucherQ);
+  ledgerSnap.docs.forEach(d => batch.delete(d.ref));
 
   await batch.commit();
 }

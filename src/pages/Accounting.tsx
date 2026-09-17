@@ -59,7 +59,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { StockSummaryView } from "@/components/StockSummaryView";
-import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function Accounting() {
@@ -81,6 +81,9 @@ export default function Accounting() {
   const [stockAdjDocs, setStockAdjDocs] = useState<any[]>([]);
   // Purchases for Day Book
   const [purchasesDocs, setPurchasesDocs] = useState<any[]>([]);
+  // Parties for Voucher Settlement
+  const [customersDocs, setCustomersDocs] = useState<any[]>([]);
+  const [suppliersDocs, setSuppliersDocs] = useState<any[]>([]);
 
   // Sync tab with URL search params
   useEffect(() => {
@@ -120,6 +123,12 @@ export default function Accounting() {
     id: string;
     account_id: string;
     amount: string;
+    party_id?: string;
+    party_type?: "customer" | "supplier";
+    party_name?: string;
+    settlement_mode?: "specific" | "fifo" | "on_account";
+    bill_id?: string;
+    bill_no?: string;
   };
   const [paymentRows, setPaymentRows] = useState<LineItemRow[]>([
     { id: "1", account_id: "", amount: "" }
@@ -192,7 +201,7 @@ export default function Accounting() {
     if (!user) return;
     setLoading(true);
     try {
-      const [accs, vSnap, sInfo, cSnap, sSnap, lSnap, pSnap, wSnap, purSnap] = await Promise.all([
+      const [accs, vSnap, sInfo, cSnap, sSnap, lSnap, pSnap, wSnap, purSnap, custSnap, suppSnap] = await Promise.all([
         getAccounts(user.uid),
         getDocs(query(collection(db, "vouchers"), where("user_id", "==", user.uid))),
         getShopInfo(user.uid),
@@ -201,18 +210,22 @@ export default function Accounting() {
         getDocs(query(collection(db, "ledger_entries"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "products"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid))),
-        getDocs(query(collection(db, "purchases"), where("user_id", "==", user.uid)))
+        getDocs(query(collection(db, "purchases"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "customers"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "suppliers"), where("user_id", "==", user.uid)))
       ]);
 
       setAccounts(accs);
       setVouchers(vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher)));
       setShopInfo(sInfo);
       setCashDocs(cSnap.docs.map(d => d.data()));
-      setSalesDocs(sSnap.docs.map(d => d.data()));
-      setLedgerDocs(lSnap.docs.map(d => d.data()));
+      setSalesDocs(sSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLedgerDocs(lSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setProductDocs(pSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setStockAdjDocs(wSnap.docs.map(d => d.data()));
       setPurchasesDocs(purSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setCustomersDocs(custSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setSuppliersDocs(suppSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to load accounting data");
@@ -510,6 +523,20 @@ export default function Accounting() {
       if (!creditAcc) return;
 
       const drEntries: VoucherEntryItem[] = paymentRows.map(r => {
+        if (r.party_id) {
+          return {
+            account_id: r.account_id,
+            account_name: `${r.party_name} (सप्लायर)`,
+            type: "debit" as const,
+            amount: Number(r.amount),
+            party_id: r.party_id,
+            party_type: "supplier",
+            party_name: r.party_name,
+            settlement_mode: r.settlement_mode,
+            bill_id: r.bill_id,
+            bill_no: r.bill_no
+          };
+        }
         const acc = accounts.find(a => a.id === r.account_id);
         return {
           account_id: r.account_id,
@@ -536,6 +563,110 @@ export default function Accounting() {
           narration: narration || "PAYMENT voucher entry",
           reference_no: referenceNo
         });
+
+        // Settle party ledger entries in background if any supplier party was involved
+        const isCreditCash = (creditAcc.group === "cash") || creditAcc.name.toLowerCase().includes("cash");
+        const viaMode = isCreditCash ? "cash" : "bank";
+        const hasParty = paymentRows.some(r => r.party_id);
+
+        if (hasParty) {
+          const batch = writeBatch(db);
+          const now = new Date().toISOString();
+
+          for (const r of paymentRows) {
+            if (!r.party_id || r.party_type !== "supplier") continue;
+            const rowAmt = Number(r.amount);
+            if (rowAmt <= 0) continue;
+
+            if (r.settlement_mode === "specific" && r.bill_id) {
+              const lRef = doc(collection(db, "ledger_entries"));
+              batch.set(lRef, {
+                id: lRef.id,
+                user_id: user.uid,
+                party_type: "supplier",
+                party_id: r.party_id,
+                entry_type: "payment_out",
+                party_name: r.party_name,
+                amount: rowAmt,
+                payment_mode: viaMode,
+                bank_account_id: isCreditCash ? null : creditAcc.id,
+                bank_account_name: isCreditCash ? null : creditAcc.name,
+                voucher_id: newV.id,
+                reference_id: r.bill_id,
+                bill_no: r.bill_no,
+                is_settlement: true,
+                note: narration ? `${narration} · Settlement for Bill #${r.bill_no}` : `Settlement for Bill #${r.bill_no}`,
+                created_at: now
+              });
+            } else if (r.settlement_mode === "fifo") {
+              let remaining = rowAmt;
+              const unpaid = getSupplierUnpaidBills(r.party_id);
+              for (const bill of unpaid) {
+                if (remaining <= 0) break;
+                const alloc = Math.min(remaining, bill.due);
+                if (alloc <= 0) continue;
+
+                const lRef = doc(collection(db, "ledger_entries"));
+                batch.set(lRef, {
+                  id: lRef.id,
+                  user_id: user.uid,
+                  party_type: "supplier",
+                  party_id: r.party_id,
+                  entry_type: "payment_out",
+                  party_name: r.party_name,
+                  amount: alloc,
+                  payment_mode: viaMode,
+                  bank_account_id: isCreditCash ? null : creditAcc.id,
+                  bank_account_name: isCreditCash ? null : creditAcc.name,
+                  voucher_id: newV.id,
+                  reference_id: bill.id,
+                  bill_no: bill.bill_no,
+                  is_settlement: true,
+                  note: narration ? `${narration} · FIFO Settlement #${bill.bill_no}` : `FIFO Settlement for Bill #${bill.bill_no}`,
+                  created_at: now
+                });
+                remaining -= alloc;
+              }
+              if (remaining > 0) {
+                const lRef = doc(collection(db, "ledger_entries"));
+                batch.set(lRef, {
+                  id: lRef.id,
+                  user_id: user.uid,
+                  party_type: "supplier",
+                  party_id: r.party_id,
+                  entry_type: "payment_out",
+                  party_name: r.party_name,
+                  amount: remaining,
+                  payment_mode: viaMode,
+                  bank_account_id: isCreditCash ? null : creditAcc.id,
+                  bank_account_name: isCreditCash ? null : creditAcc.name,
+                  voucher_id: newV.id,
+                  is_settlement: true,
+                  note: narration ? `${narration} · Advance / On-Account` : `Advance / On-Account Payment`,
+                  created_at: now
+                });
+              }
+            } else {
+              const lRef = doc(collection(db, "ledger_entries"));
+              batch.set(lRef, {
+                id: lRef.id,
+                user_id: user.uid,
+                party_type: "supplier",
+                party_id: r.party_id,
+                entry_type: "payment_out",
+                party_name: r.party_name,
+                amount: rowAmt,
+                payment_mode: viaMode,
+                bank_account_id: isCreditCash ? null : creditAcc.id,
+                bank_account_name: isCreditCash ? null : creditAcc.name,
+                voucher_id: newV.id,
+                note: narration || "(On-Account Payment)",
+                created_at: now
+              });
+            }
+          }
+          await batch.commit();
+        }
 
         toast.success(
           lang === "NEP"
@@ -576,6 +707,20 @@ export default function Accounting() {
       if (!debitAcc) return;
 
       const crEntries: VoucherEntryItem[] = receiptRows.map(r => {
+        if (r.party_id) {
+          return {
+            account_id: r.account_id,
+            account_name: `${r.party_name} (ग्राहक)`,
+            type: "credit" as const,
+            amount: Number(r.amount),
+            party_id: r.party_id,
+            party_type: "customer",
+            party_name: r.party_name,
+            settlement_mode: r.settlement_mode,
+            bill_id: r.bill_id,
+            bill_no: r.bill_no
+          };
+        }
         const acc = accounts.find(a => a.id === r.account_id);
         return {
           account_id: r.account_id,
@@ -602,6 +747,110 @@ export default function Accounting() {
           narration: narration || "RECEIPT voucher entry",
           reference_no: referenceNo
         });
+
+        // Settle party ledger entries in background if any customer party was involved
+        const isDebitCash = (debitAcc.group === "cash") || debitAcc.name.toLowerCase().includes("cash");
+        const viaMode = isDebitCash ? "cash" : "bank";
+        const hasParty = receiptRows.some(r => r.party_id);
+
+        if (hasParty) {
+          const batch = writeBatch(db);
+          const now = new Date().toISOString();
+
+          for (const r of receiptRows) {
+            if (!r.party_id || r.party_type !== "customer") continue;
+            const rowAmt = Number(r.amount);
+            if (rowAmt <= 0) continue;
+
+            if (r.settlement_mode === "specific" && r.bill_id) {
+              const lRef = doc(collection(db, "ledger_entries"));
+              batch.set(lRef, {
+                id: lRef.id,
+                user_id: user.uid,
+                party_type: "customer",
+                party_id: r.party_id,
+                entry_type: "payment_in",
+                party_name: r.party_name,
+                amount: rowAmt,
+                payment_mode: viaMode,
+                bank_account_id: isDebitCash ? null : debitAcc.id,
+                bank_account_name: isDebitCash ? null : debitAcc.name,
+                voucher_id: newV.id,
+                reference_id: r.bill_id,
+                bill_no: r.bill_no,
+                is_settlement: true,
+                note: narration ? `${narration} · Settlement for Bill #${r.bill_no}` : `Settlement for Bill #${r.bill_no}`,
+                created_at: now
+              });
+            } else if (r.settlement_mode === "fifo") {
+              let remaining = rowAmt;
+              const unpaid = getCustomerUnpaidBills(r.party_id);
+              for (const bill of unpaid) {
+                if (remaining <= 0) break;
+                const alloc = Math.min(remaining, bill.due);
+                if (alloc <= 0) continue;
+
+                const lRef = doc(collection(db, "ledger_entries"));
+                batch.set(lRef, {
+                  id: lRef.id,
+                  user_id: user.uid,
+                  party_type: "customer",
+                  party_id: r.party_id,
+                  entry_type: "payment_in",
+                  party_name: r.party_name,
+                  amount: alloc,
+                  payment_mode: viaMode,
+                  bank_account_id: isDebitCash ? null : debitAcc.id,
+                  bank_account_name: isDebitCash ? null : debitAcc.name,
+                  voucher_id: newV.id,
+                  reference_id: bill.id,
+                  bill_no: bill.bill_no,
+                  is_settlement: true,
+                  note: narration ? `${narration} · FIFO Settlement #${bill.bill_no}` : `FIFO Settlement for Bill #${bill.bill_no}`,
+                  created_at: now
+                });
+                remaining -= alloc;
+              }
+              if (remaining > 0) {
+                const lRef = doc(collection(db, "ledger_entries"));
+                batch.set(lRef, {
+                  id: lRef.id,
+                  user_id: user.uid,
+                  party_type: "customer",
+                  party_id: r.party_id,
+                  entry_type: "payment_in",
+                  party_name: r.party_name,
+                  amount: remaining,
+                  payment_mode: viaMode,
+                  bank_account_id: isDebitCash ? null : debitAcc.id,
+                  bank_account_name: isDebitCash ? null : debitAcc.name,
+                  voucher_id: newV.id,
+                  is_settlement: true,
+                  note: narration ? `${narration} · Advance / On-Account` : `Advance / On-Account Receipt`,
+                  created_at: now
+                });
+              }
+            } else {
+              const lRef = doc(collection(db, "ledger_entries"));
+              batch.set(lRef, {
+                id: lRef.id,
+                user_id: user.uid,
+                party_type: "customer",
+                party_id: r.party_id,
+                entry_type: "payment_in",
+                party_name: r.party_name,
+                amount: rowAmt,
+                payment_mode: viaMode,
+                bank_account_id: isDebitCash ? null : debitAcc.id,
+                bank_account_name: isDebitCash ? null : debitAcc.name,
+                voucher_id: newV.id,
+                note: narration || "(On-Account Receipt)",
+                created_at: now
+              });
+            }
+          }
+          await batch.commit();
+        }
 
         toast.success(
           lang === "NEP"
@@ -997,7 +1246,216 @@ export default function Accounting() {
     indirect_incomes: 14,
   };
 
-  const renderGroupedAccountOptions = (accountList: Account[], showTypeBadge = false) => {
+  // Debtors and Creditors balances map for instant party dropdown balances
+  const partyBalancesMap = useMemo(() => {
+    const balances: Record<string, number> = {};
+    ledgerDocs.forEach((e: any) => {
+      const key = `${e.party_type}_${e.party_id}`;
+      let val = Number(e.amount || 0);
+      if (e.party_type === "customer") {
+        val = ["sale", "debit"].includes(e.entry_type) ? val : -val;
+      } else {
+        val = ["purchase", "credit"].includes(e.entry_type) ? val : -val;
+      }
+      balances[key] = (balances[key] || 0) + val;
+    });
+    return balances;
+  }, [ledgerDocs]);
+
+  // Unpaid sales bills for customer settlement
+  const getCustomerUnpaidBills = (customerId: string) => {
+    const cust = customersDocs.find(c => c.id === customerId);
+    const custSales = salesDocs.filter((s: any) => s.customer_id === customerId || (cust && s.customer_name === cust.name));
+    return custSales.map((s: any) => {
+      const payments = ledgerDocs.filter((l: any) => l.reference_id === s.id && (l.entry_type === "payment_in" || l.entry_type === "payment"));
+      const paid = payments.reduce((sum: number, l: any) => sum + Number(l.amount || 0), 0);
+      const due = Math.max(0, Number(s.total || 0) - paid);
+      return {
+        id: s.id,
+        bill_no: s.bill_no || s.invoice_no || s.id.slice(-6).toUpperCase(),
+        total: Number(s.total || 0),
+        paid,
+        due,
+        date: s.created_at || s.date || ""
+      };
+    }).filter(b => b.due > 0).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
+
+  // Unpaid purchase bills for supplier settlement
+  const getSupplierUnpaidBills = (supplierId: string) => {
+    const suppPurchases = purchasesDocs.filter((p: any) => p.supplier_id === supplierId);
+    return suppPurchases.map((p: any) => {
+      const payments = ledgerDocs.filter((l: any) => l.reference_id === p.id && (l.entry_type === "payment_out" || l.entry_type === "payment"));
+      const paid = payments.reduce((sum: number, l: any) => sum + Number(l.amount || 0), 0);
+      const due = Math.max(0, Number(p.total || 0) - paid);
+      return {
+        id: p.id,
+        bill_no: p.voucher_no || (p.supplier_bill_no ? `Bill #${p.supplier_bill_no}` : p.id.slice(-6).toUpperCase()),
+        total: Number(p.total || 0),
+        paid,
+        due,
+        date: p.created_at || p.date || ""
+      };
+    }).filter(b => b.due > 0).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
+
+  const handleSelectReceiptAccount = (rowId: string, val: string) => {
+    if (val.startsWith("party_customer_")) {
+      const custId = val.replace("party_customer_", "");
+      const cust = customersDocs.find(c => c.id === custId);
+      const unpaid = getCustomerUnpaidBills(custId);
+      const firstBill = unpaid[0];
+      const bal = partyBalancesMap[`customer_${custId}`] || 0;
+
+      setReceiptRows(prev => prev.map(r => {
+        if (r.id !== rowId) return r;
+        return {
+          ...r,
+          account_id: val,
+          party_id: custId,
+          party_type: "customer",
+          party_name: cust?.name || "",
+          settlement_mode: unpaid.length > 0 ? "specific" : "on_account",
+          bill_id: firstBill?.id,
+          bill_no: firstBill?.bill_no,
+          amount: firstBill?.due ? String(firstBill.due) : (bal > 0 ? String(bal) : r.amount)
+        };
+      }));
+    } else {
+      setReceiptRows(prev => prev.map(r => {
+        if (r.id !== rowId) return r;
+        return {
+          ...r,
+          account_id: val,
+          party_id: undefined,
+          party_type: undefined,
+          party_name: undefined,
+          settlement_mode: undefined,
+          bill_id: undefined,
+          bill_no: undefined
+        };
+      }));
+    }
+  };
+
+  const handleSelectPaymentAccount = (rowId: string, val: string) => {
+    if (val.startsWith("party_supplier_")) {
+      const suppId = val.replace("party_supplier_", "");
+      const supp = suppliersDocs.find(s => s.id === suppId);
+      const unpaid = getSupplierUnpaidBills(suppId);
+      const firstBill = unpaid[0];
+      const bal = partyBalancesMap[`supplier_${suppId}`] || 0;
+
+      setPaymentRows(prev => prev.map(r => {
+        if (r.id !== rowId) return r;
+        return {
+          ...r,
+          account_id: val,
+          party_id: suppId,
+          party_type: "supplier",
+          party_name: supp?.name || "",
+          settlement_mode: unpaid.length > 0 ? "specific" : "on_account",
+          bill_id: firstBill?.id,
+          bill_no: firstBill?.bill_no,
+          amount: firstBill?.due ? String(firstBill.due) : (bal > 0 ? String(bal) : r.amount)
+        };
+      }));
+    } else {
+      setPaymentRows(prev => prev.map(r => {
+        if (r.id !== rowId) return r;
+        return {
+          ...r,
+          account_id: val,
+          party_id: undefined,
+          party_type: undefined,
+          party_name: undefined,
+          settlement_mode: undefined,
+          bill_id: undefined,
+          bill_no: undefined
+        };
+      }));
+    }
+  };
+
+  const handleUpdateReceiptSettlement = (rowId: string, mode: "specific" | "fifo" | "on_account") => {
+    setReceiptRows(prev => prev.map(r => {
+      if (r.id !== rowId) return r;
+      if (mode === "specific") {
+        const unpaid = r.party_id ? getCustomerUnpaidBills(r.party_id) : [];
+        const firstBill = unpaid[0];
+        return {
+          ...r,
+          settlement_mode: mode,
+          bill_id: firstBill?.id,
+          bill_no: firstBill?.bill_no,
+          amount: firstBill?.due ? String(firstBill.due) : r.amount
+        };
+      }
+      return {
+        ...r,
+        settlement_mode: mode,
+        bill_id: undefined,
+        bill_no: undefined
+      };
+    }));
+  };
+
+  const handleUpdateReceiptBill = (rowId: string, billId: string) => {
+    setReceiptRows(prev => prev.map(r => {
+      if (r.id !== rowId) return r;
+      const unpaid = r.party_id ? getCustomerUnpaidBills(r.party_id) : [];
+      const chosen = unpaid.find(b => b.id === billId);
+      return {
+        ...r,
+        bill_id: billId,
+        bill_no: chosen?.bill_no,
+        amount: chosen?.due ? String(chosen.due) : r.amount
+      };
+    }));
+  };
+
+  const handleUpdatePaymentSettlement = (rowId: string, mode: "specific" | "fifo" | "on_account") => {
+    setPaymentRows(prev => prev.map(r => {
+      if (r.id !== rowId) return r;
+      if (mode === "specific") {
+        const unpaid = r.party_id ? getSupplierUnpaidBills(r.party_id) : [];
+        const firstBill = unpaid[0];
+        return {
+          ...r,
+          settlement_mode: mode,
+          bill_id: firstBill?.id,
+          bill_no: firstBill?.bill_no,
+          amount: firstBill?.due ? String(firstBill.due) : r.amount
+        };
+      }
+      return {
+        ...r,
+        settlement_mode: mode,
+        bill_id: undefined,
+        bill_no: undefined
+      };
+    }));
+  };
+
+  const handleUpdatePaymentBill = (rowId: string, billId: string) => {
+    setPaymentRows(prev => prev.map(r => {
+      if (r.id !== rowId) return r;
+      const unpaid = r.party_id ? getSupplierUnpaidBills(r.party_id) : [];
+      const chosen = unpaid.find(b => b.id === billId);
+      return {
+        ...r,
+        bill_id: billId,
+        bill_no: chosen?.bill_no,
+        amount: chosen?.due ? String(chosen.due) : r.amount
+      };
+    }));
+  };
+
+  const renderGroupedAccountOptions = (
+    accountList: Account[],
+    showTypeBadge = false,
+    includeParties?: "customer" | "supplier" | "both"
+  ) => {
     const grouped: Record<string, Account[]> = {};
     for (const acc of accountList) {
       const grp = acc.group || "cash";
@@ -1011,7 +1469,7 @@ export default function Accounting() {
       return orderA - orderB;
     });
 
-    return sortedGroups.map(grpKey => {
+    const accountNodes = sortedGroups.map(grpKey => {
       const label = groupLabel(grpKey as AccountGroup);
       const items = grouped[grpKey];
 
@@ -1035,6 +1493,58 @@ export default function Accounting() {
         </SelectGroup>
       );
     });
+
+    const partyNodes: React.ReactNode[] = [];
+
+    if ((includeParties === "customer" || includeParties === "both") && customersDocs.length > 0) {
+      partyNodes.push(
+        <SelectGroup key="sundry_debtors_group">
+          <SelectLabel className="px-2.5 py-1 text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-500/10 rounded my-1 flex items-center justify-between">
+            <span>👥 {lang === "NEP" ? "आसामी / ग्राहकहरू (SUNDRY DEBTORS)" : "SUNDRY DEBTORS (CUSTOMERS)"}</span>
+            <span className="text-[10px] font-mono">{customersDocs.length} Parties</span>
+          </SelectLabel>
+          {customersDocs.map(c => {
+            const bal = partyBalancesMap[`customer_${c.id}`] || 0;
+            return (
+              <SelectItem key={`party_customer_${c.id}`} value={`party_customer_${c.id}`} className="text-xs pl-8 cursor-pointer">
+                <div className="flex items-center justify-between w-full gap-2">
+                  <span className="font-semibold text-foreground">{c.name}</span>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${bal > 0 ? "bg-amber-500/10 text-amber-600 font-bold" : "text-muted-foreground"}`}>
+                    {bal > 0 ? `बाँकी: Rs. ${fmt(bal)}` : `Rs. ${fmt(bal)}`}
+                  </span>
+                </div>
+              </SelectItem>
+            );
+          })}
+        </SelectGroup>
+      );
+    }
+
+    if ((includeParties === "supplier" || includeParties === "both") && suppliersDocs.length > 0) {
+      partyNodes.push(
+        <SelectGroup key="sundry_creditors_group">
+          <SelectLabel className="px-2.5 py-1 text-[11px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider bg-amber-500/10 rounded my-1 flex items-center justify-between">
+            <span>🏢 {lang === "NEP" ? "साहु / सप्लायरहरू (SUNDRY CREDITORS)" : "SUNDRY CREDITORS (SUPPLIERS)"}</span>
+            <span className="text-[10px] font-mono">{suppliersDocs.length} Parties</span>
+          </SelectLabel>
+          {suppliersDocs.map(s => {
+            const bal = partyBalancesMap[`supplier_${s.id}`] || 0;
+            return (
+              <SelectItem key={`party_supplier_${s.id}`} value={`party_supplier_${s.id}`} className="text-xs pl-8 cursor-pointer">
+                <div className="flex items-center justify-between w-full gap-2">
+                  <span className="font-semibold text-foreground">{s.name}</span>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${bal > 0 ? "bg-destructive/10 text-destructive font-bold" : "text-muted-foreground"}`}>
+                    {bal > 0 ? `तिर्न बाँकी: Rs. ${fmt(bal)}` : `Rs. ${fmt(bal)}`}
+                  </span>
+                </div>
+              </SelectItem>
+            );
+          })}
+        </SelectGroup>
+      );
+    }
+
+    return [...partyNodes, ...accountNodes];
   };
 
   // Trial Balance Data Calculation
@@ -2753,45 +3263,79 @@ export default function Accounting() {
                     {paymentRows.map((row, idx) => (
                       <div
                         key={row.id}
-                        className="flex flex-col sm:grid sm:grid-cols-12 items-stretch sm:items-center gap-2 sm:gap-2.5 p-2.5 sm:p-2 rounded-xl bg-card sm:bg-muted/10 hover:bg-muted/20 border shadow-xs sm:shadow-none transition-all"
+                        className="p-2.5 sm:p-2.5 rounded-xl bg-card sm:bg-muted/10 hover:bg-muted/20 border shadow-xs sm:shadow-none transition-all space-y-2"
                       >
-                        {/* Mobile Top Row: Index + Account + Actions */}
-                        <div className="flex items-center gap-1.5 w-full sm:contents">
-                          <div className="sm:col-span-1 flex items-center shrink-0">
-                            <Badge variant="secondary" className="font-mono text-[10px] font-bold h-6 px-1.5">
-                              #{idx + 1}
-                            </Badge>
-                          </div>
-
-                          {/* Account Selector + Inline Add Button */}
-                          <div className="flex-1 sm:col-span-7 flex items-center gap-1 min-w-0">
-                            <div className="flex-1 min-w-0">
-                              <Select
-                                value={row.account_id}
-                                onValueChange={(val) => handleUpdatePaymentRow(row.id, "account_id", val)}
-                              >
-                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left">
-                                  <SelectValue placeholder={lang === "NEP" ? `खर्च वा पार्टी खाता #${idx + 1}...` : `Select Account #${idx + 1}...`} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {renderGroupedAccountOptions(accounts.filter(a => a.id !== creditAccountId), true)}
-                                </SelectContent>
-                              </Select>
+                        {/* Top Line: Index + Account/Supplier + Amount + Delete */}
+                        <div className="flex flex-col sm:grid sm:grid-cols-12 items-stretch sm:items-center gap-2 sm:gap-2.5">
+                          {/* Mobile Top Row: Index + Account + Actions */}
+                          <div className="flex items-center gap-1.5 w-full sm:contents">
+                            <div className="sm:col-span-1 flex items-center shrink-0">
+                              <Badge variant="secondary" className="font-mono text-[10px] font-bold h-6 px-1.5">
+                                #{idx + 1}
+                              </Badge>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openQuickCreateAccount({ type: "paymentRow", id: row.id }, "indirect_expenses")}
-                              className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
-                              title={lang === "NEP" ? "नयाँ खर्च खाता (Alt+C)" : "New Account (Alt+C)"}
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </Button>
+
+                            {/* Account / Supplier Selector + Inline Add Button */}
+                            <div className="flex-1 sm:col-span-7 flex items-center gap-1 min-w-0">
+                              <div className="flex-1 min-w-0">
+                                <Select
+                                  value={row.account_id}
+                                  onValueChange={(val) => handleSelectPaymentAccount(row.id, val)}
+                                >
+                                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left">
+                                    <SelectValue placeholder={lang === "NEP" ? `खर्च वा साहु खाता #${idx + 1}...` : `Select Account / Supplier #${idx + 1}...`} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {renderGroupedAccountOptions(accounts.filter(a => a.id !== creditAccountId), true, "supplier")}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openQuickCreateAccount({ type: "paymentRow", id: row.id }, "indirect_expenses")}
+                                className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
+                                title={lang === "NEP" ? "नयाँ खर्च खाता (Alt+C)" : "New Account (Alt+C)"}
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+
+                            {/* Mobile Delete Button */}
+                            <div className="sm:hidden shrink-0">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                                onClick={() => handleRemovePaymentRow(row.id)}
+                                disabled={paymentRows.length <= 1}
+                                title={lang === "NEP" ? "हटाउनुहोस्" : "Remove Item"}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </div>
 
-                          {/* Mobile Delete Button */}
-                          <div className="sm:hidden shrink-0">
+                          {/* Amount on Mobile / Desktop */}
+                          <div className="flex items-center justify-between sm:block sm:col-span-3 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-0">
+                            <span className="text-[11px] font-semibold text-muted-foreground sm:hidden">
+                              {lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}
+                            </span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={row.amount}
+                              onChange={(e) => handleUpdatePaymentRow(row.id, "amount", e.target.value)}
+                              className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background w-36 sm:w-full"
+                              required
+                            />
+                          </div>
+
+                          {/* Desktop Delete Button */}
+                          <div className="hidden sm:flex sm:col-span-1 justify-center">
                             <Button
                               type="button"
                               variant="ghost"
@@ -2806,36 +3350,110 @@ export default function Accounting() {
                           </div>
                         </div>
 
-                        {/* Amount on Mobile / Desktop */}
-                        <div className="flex items-center justify-between sm:block sm:col-span-3 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-0">
-                          <span className="text-[11px] font-semibold text-muted-foreground sm:hidden">
-                            {lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}
-                          </span>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={row.amount}
-                            onChange={(e) => handleUpdatePaymentRow(row.id, "amount", e.target.value)}
-                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background w-36 sm:w-full"
-                            required
-                          />
-                        </div>
+                        {/* Inline Supplier Settlement Panel */}
+                        {row.party_id && (() => {
+                          const unpaidBills = getSupplierUnpaidBills(row.party_id);
+                          const totalDue = partyBalancesMap[`supplier_${row.party_id}`] || 0;
+                          return (
+                            <div className="mt-2 p-2 sm:p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20 text-xs space-y-2">
+                              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                <div className="flex items-center gap-1.5 font-medium">
+                                  <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                                    🏢 {row.party_name}
+                                  </Badge>
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {lang === "NEP" ? "कुल तिर्न बाँकी:" : "Total Payable:"} <strong className="font-mono text-destructive">Rs. {fmt(totalDue)}</strong>
+                                  </span>
+                                </div>
 
-                        {/* Desktop Delete Button */}
-                        <div className="hidden sm:flex sm:col-span-1 justify-center">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                            onClick={() => handleRemovePaymentRow(row.id)}
-                            disabled={paymentRows.length <= 1}
-                            title={lang === "NEP" ? "हटाउनुहोस्" : "Remove Item"}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                                {/* Settlement Mode Switch */}
+                                <div className="inline-flex rounded-lg bg-background p-0.5 border shadow-xs">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdatePaymentSettlement(row.id, "specific")}
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
+                                      row.settlement_mode === "specific"
+                                        ? "bg-amber-500 text-white shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    {lang === "NEP" ? "बिल अनुसार" : "Specific Bill"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdatePaymentSettlement(row.id, "fifo")}
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
+                                      row.settlement_mode === "fifo"
+                                        ? "bg-amber-500 text-white shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    {lang === "NEP" ? "पहिलो बिलबाट (FIFO)" : "Auto FIFO"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdatePaymentSettlement(row.id, "on_account")}
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
+                                      row.settlement_mode === "on_account"
+                                        ? "bg-amber-500 text-white shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    {lang === "NEP" ? "खातामा (On-Account)" : "On-Account"}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Bill selector if Specific Bill */}
+                              {row.settlement_mode === "specific" && (
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-1 border-t border-amber-500/15">
+                                  <span className="text-[11px] text-muted-foreground font-medium shrink-0">
+                                    {lang === "NEP" ? "खरिद बिल छान्नुहोस्:" : "Select Purchase Bill:"}
+                                  </span>
+                                  {unpaidBills.length > 0 ? (
+                                    <div className="flex-1 w-full sm:w-auto">
+                                      <Select
+                                        value={row.bill_id || ""}
+                                        onValueChange={(val) => handleUpdatePaymentBill(row.id, val)}
+                                      >
+                                        <SelectTrigger className="h-8 text-xs bg-background rounded-lg border-amber-500/30">
+                                          <SelectValue placeholder={lang === "NEP" ? "बिल छान्नुहोस्..." : "Choose bill..."} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {unpaidBills.map(b => (
+                                            <SelectItem key={b.id} value={b.id} className="text-xs">
+                                              <div className="flex items-center justify-between w-full gap-3">
+                                                <span className="font-semibold font-mono">#{b.bill_no}</span>
+                                                <span className="text-[10px] text-muted-foreground">({b.date})</span>
+                                                <span className="text-[11px] font-bold text-destructive font-mono">बाँकी: Rs. {fmt(b.due)}</span>
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[11px] text-muted-foreground italic">
+                                      {lang === "NEP" ? "यस सप्लायरको कुनै पनि बाँकी बिल भेटिएन।" : "No pending unpaid purchase bills found for this supplier."}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {row.settlement_mode === "fifo" && (
+                                <p className="text-[10px] text-muted-foreground italic">
+                                  ℹ️ {lang === "NEP" ? "तिरेको रकम पुरानो खरिद बिलहरूबाट क्रमैसँग स्वतः मिलान (FIFO) हुनेछ।" : "Payment will automatically clear the oldest pending purchase bills first (FIFO)."}
+                                </p>
+                              )}
+
+                              {row.settlement_mode === "on_account" && (
+                                <p className="text-[10px] text-muted-foreground italic">
+                                  ℹ️ {lang === "NEP" ? "रकम पार्टीको खातामा जम्मा/अग्रिम हुनेछ, कुनै बिलमा बाँधिएको छैन।" : "Amount will be recorded as general ledger payment/advance, not tied to any bill."}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>
@@ -3006,45 +3624,79 @@ export default function Accounting() {
                     {receiptRows.map((row, idx) => (
                       <div
                         key={row.id}
-                        className="flex flex-col sm:grid sm:grid-cols-12 items-stretch sm:items-center gap-2 sm:gap-2.5 p-2.5 sm:p-2 rounded-xl bg-card sm:bg-muted/10 hover:bg-muted/20 border shadow-xs sm:shadow-none transition-all"
+                        className="p-2.5 sm:p-2.5 rounded-xl bg-card sm:bg-muted/10 hover:bg-muted/20 border shadow-xs sm:shadow-none transition-all space-y-2"
                       >
-                        {/* Mobile Top Row: Index + Account + Actions */}
-                        <div className="flex items-center gap-1.5 w-full sm:contents">
-                          <div className="sm:col-span-1 flex items-center shrink-0">
-                            <Badge variant="secondary" className="font-mono text-[10px] font-bold h-6 px-1.5">
-                              #{idx + 1}
-                            </Badge>
-                          </div>
-
-                          {/* Account Selector + Inline Add Button */}
-                          <div className="flex-1 sm:col-span-7 flex items-center gap-1 min-w-0">
-                            <div className="flex-1 min-w-0">
-                              <Select
-                                value={row.account_id}
-                                onValueChange={(val) => handleUpdateReceiptRow(row.id, "account_id", val)}
-                              >
-                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left">
-                                  <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा स्रोत खाता #${idx + 1}...` : `Select Account #${idx + 1}...`} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {renderGroupedAccountOptions(accounts.filter(a => a.id !== debitAccountId), true)}
-                                </SelectContent>
-                              </Select>
+                        {/* Top Line: Index + Account/Customer + Amount + Delete */}
+                        <div className="flex flex-col sm:grid sm:grid-cols-12 items-stretch sm:items-center gap-2 sm:gap-2.5">
+                          {/* Mobile Top Row: Index + Account + Actions */}
+                          <div className="flex items-center gap-1.5 w-full sm:contents">
+                            <div className="sm:col-span-1 flex items-center shrink-0">
+                              <Badge variant="secondary" className="font-mono text-[10px] font-bold h-6 px-1.5">
+                                #{idx + 1}
+                              </Badge>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openQuickCreateAccount({ type: "receiptRow", id: row.id }, "indirect_incomes")}
-                              className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
-                              title={lang === "NEP" ? "नयाँ आम्दानी खाता (Alt+C)" : "New Account (Alt+C)"}
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </Button>
+
+                            {/* Account / Customer Selector + Inline Add Button */}
+                            <div className="flex-1 sm:col-span-7 flex items-center gap-1 min-w-0">
+                              <div className="flex-1 min-w-0">
+                                <Select
+                                  value={row.account_id}
+                                  onValueChange={(val) => handleSelectReceiptAccount(row.id, val)}
+                                >
+                                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left">
+                                    <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा ग्राहक खाता #${idx + 1}...` : `Select Account / Customer #${idx + 1}...`} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {renderGroupedAccountOptions(accounts.filter(a => a.id !== debitAccountId), true, "customer")}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openQuickCreateAccount({ type: "receiptRow", id: row.id }, "indirect_incomes")}
+                                className="h-8 w-8 text-primary hover:bg-primary/10 rounded-lg shrink-0"
+                                title={lang === "NEP" ? "नयाँ आम्दानी खाता (Alt+C)" : "New Account (Alt+C)"}
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+
+                            {/* Mobile Delete Button */}
+                            <div className="sm:hidden shrink-0">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                                onClick={() => handleRemoveReceiptRow(row.id)}
+                                disabled={receiptRows.length <= 1}
+                                title={lang === "NEP" ? "हटाउनुहोस्" : "Remove Item"}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </div>
 
-                          {/* Mobile Delete Button */}
-                          <div className="sm:hidden shrink-0">
+                          {/* Amount on Mobile / Desktop */}
+                          <div className="flex items-center justify-between sm:block sm:col-span-3 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-0">
+                            <span className="text-[11px] font-semibold text-muted-foreground sm:hidden">
+                              {lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}
+                            </span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={row.amount}
+                              onChange={(e) => handleUpdateReceiptRow(row.id, "amount", e.target.value)}
+                              className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background w-36 sm:w-full"
+                              required
+                            />
+                          </div>
+
+                          {/* Desktop Delete Button */}
+                          <div className="hidden sm:flex sm:col-span-1 justify-center">
                             <Button
                               type="button"
                               variant="ghost"
@@ -3059,36 +3711,110 @@ export default function Accounting() {
                           </div>
                         </div>
 
-                        {/* Amount on Mobile / Desktop */}
-                        <div className="flex items-center justify-between sm:block sm:col-span-3 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-0">
-                          <span className="text-[11px] font-semibold text-muted-foreground sm:hidden">
-                            {lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}
-                          </span>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={row.amount}
-                            onChange={(e) => handleUpdateReceiptRow(row.id, "amount", e.target.value)}
-                            className="h-9 text-xs font-mono font-bold text-right rounded-lg bg-background w-36 sm:w-full"
-                            required
-                          />
-                        </div>
+                        {/* Inline Customer Settlement Panel */}
+                        {row.party_id && (() => {
+                          const unpaidBills = getCustomerUnpaidBills(row.party_id);
+                          const totalDue = partyBalancesMap[`customer_${row.party_id}`] || 0;
+                          return (
+                            <div className="mt-2 p-2 sm:p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-xs space-y-2">
+                              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                <div className="flex items-center gap-1.5 font-medium">
+                                  <Badge variant="outline" className="text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+                                    👤 {row.party_name}
+                                  </Badge>
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {lang === "NEP" ? "कुल लिन बाँकी:" : "Total Receivable:"} <strong className="font-mono text-emerald-600 dark:text-emerald-400">Rs. {fmt(totalDue)}</strong>
+                                  </span>
+                                </div>
 
-                        {/* Desktop Delete Button */}
-                        <div className="hidden sm:flex sm:col-span-1 justify-center">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                            onClick={() => handleRemoveReceiptRow(row.id)}
-                            disabled={receiptRows.length <= 1}
-                            title={lang === "NEP" ? "हटाउनुहोस्" : "Remove Item"}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                                {/* Settlement Mode Switch */}
+                                <div className="inline-flex rounded-lg bg-background p-0.5 border shadow-xs">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateReceiptSettlement(row.id, "specific")}
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
+                                      row.settlement_mode === "specific"
+                                        ? "bg-emerald-600 text-white shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    {lang === "NEP" ? "बिल अनुसार" : "Specific Bill"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateReceiptSettlement(row.id, "fifo")}
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
+                                      row.settlement_mode === "fifo"
+                                        ? "bg-emerald-600 text-white shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    {lang === "NEP" ? "पहिलो बिलबाट (FIFO)" : "Auto FIFO"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateReceiptSettlement(row.id, "on_account")}
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
+                                      row.settlement_mode === "on_account"
+                                        ? "bg-emerald-600 text-white shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    {lang === "NEP" ? "खातामा (On-Account)" : "On-Account"}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Bill selector if Specific Bill */}
+                              {row.settlement_mode === "specific" && (
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-1 border-t border-emerald-500/15">
+                                  <span className="text-[11px] text-muted-foreground font-medium shrink-0">
+                                    {lang === "NEP" ? "बिक्री बिल छान्नुहोस्:" : "Select Sales Bill:"}
+                                  </span>
+                                  {unpaidBills.length > 0 ? (
+                                    <div className="flex-1 w-full sm:w-auto">
+                                      <Select
+                                        value={row.bill_id || ""}
+                                        onValueChange={(val) => handleUpdateReceiptBill(row.id, val)}
+                                      >
+                                        <SelectTrigger className="h-8 text-xs bg-background rounded-lg border-emerald-500/30">
+                                          <SelectValue placeholder={lang === "NEP" ? "बिल छान्नुहोस्..." : "Choose bill..."} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {unpaidBills.map(b => (
+                                            <SelectItem key={b.id} value={b.id} className="text-xs">
+                                              <div className="flex items-center justify-between w-full gap-3">
+                                                <span className="font-semibold font-mono">#{b.bill_no}</span>
+                                                <span className="text-[10px] text-muted-foreground">({b.date})</span>
+                                                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">बाँकी: Rs. {fmt(b.due)}</span>
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[11px] text-muted-foreground italic">
+                                      {lang === "NEP" ? "यस ग्राहकको कुनै पनि बाँकी बिल भेटिएन।" : "No pending unpaid sales bills found for this customer."}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {row.settlement_mode === "fifo" && (
+                                <p className="text-[10px] text-muted-foreground italic">
+                                  ℹ️ {lang === "NEP" ? "प्राप्त रकम पुरानो बिक्री बिलहरूबाट क्रमैसँग स्वतः मिलान (FIFO) हुनेछ।" : "Receipt will automatically clear the oldest pending sales bills first (FIFO)."}
+                                </p>
+                              )}
+
+                              {row.settlement_mode === "on_account" && (
+                                <p className="text-[10px] text-muted-foreground italic">
+                                  ℹ️ {lang === "NEP" ? "रकम पार्टीको खातामा जम्मा/अग्रिम हुनेछ, कुनै बिलमा बाँधिएको छैन।" : "Amount will be recorded as general ledger receipt/advance, not tied to any bill."}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>

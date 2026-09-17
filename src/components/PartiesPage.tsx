@@ -879,7 +879,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
       const now = new Date().toISOString();
 
       let selectedBank: Account | null = null;
-      let vRef: any = null;
+      let paymentAccount = { id: "cash_in_hand", name: "Cash in Hand (नगद मौज्दात)" };
 
       if (payPaymentMode === "bank") {
         selectedBank = bankAccounts.find(b => b.id === selectedBankAccountId) || (bankAccounts.length > 0 ? bankAccounts[0] : null);
@@ -887,37 +887,54 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           setBusyPayment(false);
           return toast.error("कृपया बैंक खाता छान्नुहोस् (Please select a bank account)");
         }
-
-        if (selectedBank && user) {
-          const vType = isReceived ? "receipt" : "payment";
-          const vNo = await getNextVoucherNo(user.uid, vType);
-          vRef = doc(collection(db, "vouchers"));
-          const dateBs = formatNepaliDate(new Date());
-
-          const voucherData = {
-            id: vRef.id,
-            user_id: user.uid,
-            voucher_no: vNo,
-            voucher_type: vType,
-            date: now.slice(0, 10),
-            date_bs: dateBs,
-            amount: amt,
-            debit_account_id: isReceived ? selectedBank.id : selected.id,
-            debit_account_name: isReceived ? selectedBank.name : `${selected.name} (${type === "supplier" ? "सप्लायर" : "ग्राहक"})`,
-            credit_account_id: isReceived ? selected.id : selectedBank.id,
-            credit_account_name: isReceived ? `${selected.name} (${type === "supplier" ? "सप्लायर" : "ग्राहक"})` : selectedBank.name,
-            narration: isReceived
-              ? `Payment received from customer ${selected.name} into ${selectedBank.name}${payNote ? ' · ' + payNote.trim() : ''}`
-              : `Payment made to supplier ${selected.name} from ${selectedBank.name}${payNote ? ' · ' + payNote.trim() : ''}`,
-            reference_no: settlementMode === "specific" ? (unpaidBills.find(b => b.id === selectedBillId)?.bill_no || "") : "",
-            created_at: now
-          };
-          batch.set(vRef, voucherData);
+        if (selectedBank) {
+          paymentAccount = { id: selectedBank.id, name: selectedBank.name };
         }
+      } else if (payPaymentMode === "esewa") {
+        paymentAccount = { id: "digital_wallet_esewa", name: "eSewa Wallet" };
+      } else if (payPaymentMode === "khalti") {
+        paymentAccount = { id: "digital_wallet_khalti", name: "Khalti Wallet" };
+      }
+
+      let vRef: any = null;
+      const targetBill = settlementMode === "specific" ? unpaidBills.find(b => b.id === selectedBillId) : null;
+      const billLabel = targetBill ? targetBill.bill_no : "";
+
+      if (user) {
+        const vType = isReceived ? "receipt" : "payment";
+        const vNo = await getNextVoucherNo(user.uid, vType);
+        vRef = doc(collection(db, "vouchers"));
+        const dateBs = formatNepaliDate(new Date());
+        const partyLabel = `${selected.name} (${type === "supplier" ? "सप्लायर" : "ग्राहक"})`;
+
+        const voucherData = {
+          id: vRef.id,
+          user_id: user.uid,
+          voucher_no: vNo,
+          voucher_type: vType,
+          date: now.slice(0, 10),
+          date_bs: dateBs,
+          amount: amt,
+          debit_account_id: isReceived ? paymentAccount.id : selected.id,
+          debit_account_name: isReceived ? paymentAccount.name : partyLabel,
+          credit_account_id: isReceived ? selected.id : paymentAccount.id,
+          credit_account_name: isReceived ? partyLabel : paymentAccount.name,
+          party_id: selected.id,
+          party_type: type,
+          party_name: selected.name,
+          settlement_mode: settlementMode,
+          bill_id: targetBill?.id || undefined,
+          bill_no: billLabel || undefined,
+          narration: isReceived
+            ? `Payment received from customer ${selected.name} via ${paymentAccount.name}${billLabel ? ` for Bill #${billLabel}` : ''}${payNote ? ' · ' + payNote.trim() : ''}`
+            : `Payment made to supplier ${selected.name} via ${paymentAccount.name}${billLabel ? ` for Bill #${billLabel}` : ''}${payNote ? ' · ' + payNote.trim() : ''}`,
+          reference_no: billLabel || "",
+          created_at: now
+        };
+        batch.set(vRef, voucherData);
       }
 
       if (settlementMode === "specific") {
-        const targetBill = unpaidBills.find(b => b.id === selectedBillId);
         if (!targetBill) {
           setBusyPayment(false);
           return toast.error("Please select a valid bill to settle");
@@ -928,7 +945,6 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         }
 
         const lRef = doc(collection(db, "ledger_entries"));
-        const billLabel = targetBill.bill_no;
         const noteDetail = (payNote ? payNote.trim() + " · " : "") +
           (isReceived ? `Payment for Bill #${billLabel}` : `Payment for Bill #${billLabel}` + (targetBill.supplier_bill_no ? ` (Supplier Bill: #${targetBill.supplier_bill_no})` : "")) +
           (selectedBank ? ` · via ${selectedBank.name}` : "");
@@ -944,6 +960,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           payment_mode: payPaymentMode,
           bank_account_id: selectedBank ? selectedBank.id : null,
           bank_account_name: selectedBank ? selectedBank.name : null,
+          voucher_id: vRef ? vRef.id : null,
           reference_id: targetBill.id,
           bill_no: billLabel,
           is_settlement: true,
@@ -979,9 +996,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           if (alloc <= 0) continue;
 
           const lRef = doc(collection(db, "ledger_entries"));
-          const billLabel = bill.bill_no;
+          const curBillLabel = bill.bill_no;
           const noteDetail = (payNote ? payNote.trim() + " · " : "") +
-            `Settlement for Bill #${billLabel}` + (bill.supplier_bill_no ? ` (Supplier Bill: #${bill.supplier_bill_no})` : "") +
+            `Settlement for Bill #${curBillLabel}` + (bill.supplier_bill_no ? ` (Supplier Bill: #${bill.supplier_bill_no})` : "") +
             (selectedBank ? ` · via ${selectedBank.name}` : "");
 
           batch.set(lRef, {
@@ -995,8 +1012,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             payment_mode: payPaymentMode,
             bank_account_id: selectedBank ? selectedBank.id : null,
             bank_account_name: selectedBank ? selectedBank.name : null,
+            voucher_id: vRef ? vRef.id : null,
             reference_id: bill.id,
-            bill_no: billLabel,
+            bill_no: curBillLabel,
             is_settlement: true,
             note: noteDetail,
             created_at: now
@@ -1018,6 +1036,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             payment_mode: payPaymentMode,
             bank_account_id: selectedBank ? selectedBank.id : null,
             bank_account_name: selectedBank ? selectedBank.name : null,
+            voucher_id: vRef ? vRef.id : null,
             is_settlement: true,
             note: (payNote ? payNote.trim() + " · " : "") + "Advance / On-Account Balance" + (selectedBank ? ` · via ${selectedBank.name}` : ""),
             created_at: now
@@ -1054,6 +1073,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           payment_mode: payPaymentMode,
           bank_account_id: selectedBank ? selectedBank.id : null,
           bank_account_name: selectedBank ? selectedBank.name : null,
+          voucher_id: vRef ? vRef.id : null,
           note: (payNote ? payNote.trim() + " · " : "") + "(On-Account Payment)" + (selectedBank ? ` · via ${selectedBank.name}` : ""),
           created_at: now
         });
