@@ -17,7 +17,7 @@ import { Printer, Receipt, FileText, ShoppingBag, ArrowDownRight, ArrowUpRight, 
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
-import { getFiscalYearInfo, getFiscalYearForMonth, getRecentFiscalYears, isDateInFiscalYear, FiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
+import { getFiscalYearInfo, getFiscalYearForMonth, getRecentFiscalYears, isDateInFiscalYear, FiscalYearInfo, formatNepaliDate, resolveDualDates } from "@/lib/fiscalYear";
 import BalanceSheet from "@/pages/BalanceSheet";
 import { TrialBalanceView } from "@/components/TrialBalanceView";
 import { RatioAnalysisView } from "@/components/RatioAnalysisView";
@@ -2697,8 +2697,13 @@ const Reports = () => {
                   <tbody className="divide-y divide-border/40">
                     {pagedRegPurchases.map((p: any) => (
                       <tr key={p.id} className="hover:bg-secondary/20 transition-colors">
-                        <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
-                          {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="font-semibold text-foreground">
+                            {resolveDualDates(p.created_at || p.date, p.date_bs).primaryBsDisplay}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            ({p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : p.date || "—"})
+                          </div>
                         </td>
                         <td className="p-3 font-mono font-medium text-foreground">
                           {p.voucherNo}
@@ -2767,7 +2772,7 @@ const Reports = () => {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-medium text-xs text-muted-foreground">
-                          {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
+                          {resolveDualDates(p.created_at || p.date, p.date_bs).primaryBsDisplay} ({p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : p.date || "—"})
                         </span>
                         <span className="font-mono font-bold text-xs text-foreground truncate">
                           {p.voucherNo || p.billNo || "Voucher"}
@@ -2891,8 +2896,13 @@ const Reports = () => {
                   <tbody className="divide-y divide-border/40">
                     {pagedRegSales.map((s: any) => (
                       <tr key={s.id} className="hover:bg-secondary/20 transition-colors">
-                        <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
-                          {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="font-semibold text-foreground">
+                            {resolveDualDates(s.created_at || s.date, s.date_bs).primaryBsDisplay}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            ({s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : s.date || "—"})
+                          </div>
                         </td>
                         <td className="p-3 font-mono font-semibold text-primary">
                           {s.billNo}
@@ -2958,7 +2968,7 @@ const Reports = () => {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-medium text-xs text-muted-foreground">
-                          {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
+                          {resolveDualDates(s.created_at || s.date, s.date_bs).primaryBsDisplay} ({s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : s.date || "—"})
                         </span>
                         <span className="font-mono font-bold text-xs text-primary truncate">
                           {s.billNo}
@@ -3302,8 +3312,13 @@ const Reports = () => {
                   <tbody className="divide-y divide-border/40">
                     {vatMonthlyTotals.purchasesList.map((p: any) => (
                       <tr key={p.id} className="hover:bg-secondary/20 transition-colors">
-                        <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
-                          {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="font-semibold text-foreground">
+                            {resolveDualDates(p.created_at || p.date, p.date_bs).primaryBsDisplay}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            ({p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : p.date || "—"})
+                          </div>
                         </td>
                         <td className="p-3 font-semibold text-foreground truncate max-w-[160px]">{p.supplierName}</td>
                         <td className="p-3 text-muted-foreground font-mono">{p.supplierPan}</td>
@@ -3341,7 +3356,7 @@ const Reports = () => {
                     {/* Top: Date & Bill No */}
                     <div className="flex items-center justify-between gap-2 text-xs">
                       <span className="font-medium text-muted-foreground">
-                        {p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—"}
+                        {resolveDualDates(p.created_at || p.date, p.date_bs).primaryBsDisplay} ({p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : p.date || "—"})
                       </span>
                       <span className="font-mono font-bold text-foreground">
                         बिल नं: {p.billNo || "—"}
@@ -3426,8 +3441,13 @@ const Reports = () => {
                   <tbody className="divide-y divide-border/40">
                     {vatMonthlyTotals.salesList.map((s: any) => (
                       <tr key={s.id} className="hover:bg-secondary/20 transition-colors">
-                        <td className="p-3 whitespace-nowrap text-muted-foreground font-medium">
-                          {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="font-semibold text-foreground">
+                            {resolveDualDates(s.created_at || s.date, s.date_bs).primaryBsDisplay}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            ({s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : s.date || "—"})
+                          </div>
                         </td>
                         <td className="p-3 font-mono font-semibold text-primary">{s.bill_no || s.id.slice(-6).toUpperCase()}</td>
                         <td className="p-3 font-semibold text-foreground truncate max-w-[160px]">{s.customerName}</td>
@@ -3465,7 +3485,7 @@ const Reports = () => {
                     {/* Top: Date & Invoice No */}
                     <div className="flex items-center justify-between gap-2 text-xs">
                       <span className="font-medium text-muted-foreground">
-                        {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}
+                        {resolveDualDates(s.created_at || s.date, s.date_bs).primaryBsDisplay} ({s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : s.date || "—"})
                       </span>
                       <span className="font-mono font-bold text-primary">
                         {s.bill_no || s.id.slice(-6).toUpperCase()}
