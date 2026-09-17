@@ -2344,20 +2344,23 @@ export default function Accounting() {
                         {/* Mobile Top Row: Type + Account + Actions */}
                         <div className="flex items-center gap-1.5 w-full sm:contents">
                           {/* Type Dr/Cr */}
-                          <div className="w-28 sm:w-auto sm:col-span-3 shrink-0">
+                          <div className="w-[68px] sm:w-auto sm:col-span-3 shrink-0">
                             <Select
                               value={row.type}
                               onValueChange={(val: "debit" | "credit") => handleUpdateJournalRow(row.id, "type", val)}
                             >
-                              <SelectTrigger className={`h-9 text-xs font-bold rounded-lg ${row.type === "debit" ? "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" : "text-amber-600 border-amber-500/40 bg-amber-500/5"}`}>
-                                <SelectValue />
+                              <SelectTrigger className={`h-9 text-xs font-bold rounded-lg px-2 sm:px-3 ${row.type === "debit" ? "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" : "text-amber-600 border-amber-500/40 bg-amber-500/5"}`}>
+                                <span className="sm:hidden font-mono font-black tracking-wide">{row.type === "debit" ? "Dr." : "Cr."}</span>
+                                <span className="hidden sm:inline">{row.type === "debit" ? "Dr. (डेबिट)" : "Cr. (क्रेडिट)"}</span>
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="debit" className="text-xs font-bold text-emerald-600">
-                                  Dr. (डेबिट)
+                                  <span className="sm:hidden">Dr.</span>
+                                  <span className="hidden sm:inline">Dr. (डेबिट)</span>
                                 </SelectItem>
                                 <SelectItem value="credit" className="text-xs font-bold text-amber-600">
-                                  Cr. (क्रेडिट)
+                                  <span className="sm:hidden">Cr.</span>
+                                  <span className="hidden sm:inline">Cr. (क्रेडिट)</span>
                                 </SelectItem>
                               </SelectContent>
                             </Select>
@@ -2370,7 +2373,7 @@ export default function Accounting() {
                                 value={row.account_id}
                                 onValueChange={(val) => handleUpdateJournalRow(row.id, "account_id", val)}
                               >
-                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
+                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left">
                                   <SelectValue placeholder={lang === "NEP" ? `खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2624,7 +2627,7 @@ export default function Accounting() {
                                 value={row.account_id}
                                 onValueChange={(val) => handleUpdatePaymentRow(row.id, "account_id", val)}
                               >
-                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
+                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left">
                                   <SelectValue placeholder={lang === "NEP" ? `खर्च वा पार्टी खाता #${idx + 1}...` : `Select Account #${idx + 1}...`} />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2865,7 +2868,7 @@ export default function Accounting() {
                                 value={row.account_id}
                                 onValueChange={(val) => handleUpdateReceiptRow(row.id, "account_id", val)}
                               >
-                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background">
+                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left">
                                   <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा स्रोत खाता #${idx + 1}...` : `Select Account #${idx + 1}...`} />
                                 </SelectTrigger>
                                 <SelectContent>
