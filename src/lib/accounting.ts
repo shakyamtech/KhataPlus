@@ -526,7 +526,21 @@ export async function createReturnVoucher(params: CreateReturnVoucherParams): Pr
   const batch = writeBatch(db);
   batch.set(voucherRef, voucher);
 
-  // 1. Stock synchronization
+  // 1. Stock synchronization & validation for Debit Note
+  if (!isCreditNote) {
+    for (const it of items) {
+      if (!it.product_id || !it.qty || Number(it.qty) <= 0) continue;
+      const pRef = doc(db, "products", it.product_id);
+      const pSnap = await getDoc(pRef);
+      if (pSnap.exists()) {
+        const currStock = Number(pSnap.data().stock_qty || 0);
+        if (currStock < Number(it.qty)) {
+          throw new Error(`"${it.product_name}" को पसलमा हाल उपलब्ध मौज्दात (${currStock}) भन्दा बढी (${it.qty}) फिर्ता गर्न मिल्दैन।`);
+        }
+      }
+    }
+  }
+
   items.forEach(it => {
     if (!it.product_id || !it.qty || Number(it.qty) <= 0) return;
     const qtyChange = isCreditNote ? Number(it.qty) : -Number(it.qty);

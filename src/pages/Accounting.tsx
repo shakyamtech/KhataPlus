@@ -201,6 +201,9 @@ export default function Accounting() {
     batch_no?: string;
     unit: string;
     billed_qty: number;
+    available_stock: number;
+    already_returned_qty: number;
+    max_returnable: number;
     return_qty: number;
     price: number;
     total: number;
@@ -221,20 +224,58 @@ export default function Accounting() {
     }
     setLoadingBillItems(true);
     try {
+      // 1. Fetch previous return vouchers for this bill to compute already returned quantities
+      const alreadyReturnedMap: Record<string, number> = {};
+      if (user) {
+        try {
+          const prevVouchersQ = query(
+            collection(db, "vouchers"),
+            where("user_id", "==", user.uid),
+            where("bill_id", "==", billId),
+            where("voucher_type", "==", currentReturnType)
+          );
+          const prevSnap = await getDocs(prevVouchersQ);
+          prevSnap.docs.forEach(docSnap => {
+            const vData = docSnap.data() as Voucher;
+            if (vData.return_items && Array.isArray(vData.return_items)) {
+              vData.return_items.forEach(it => {
+                if (it.product_id) {
+                  alreadyReturnedMap[it.product_id] = (alreadyReturnedMap[it.product_id] || 0) + Number(it.qty || 0);
+                }
+              });
+            }
+          });
+        } catch (_) {}
+      }
+
+      // 2. Fetch live product stock map
+      const productStockMap: Record<string, number> = {};
+      productDocs.forEach(p => {
+        if (p.id) productStockMap[p.id] = Number(p.stock_qty || 0);
+      });
+
       if (currentReturnType === "credit_note") {
         const q = query(collection(db, "sale_items"), where("sale_id", "==", billId));
         const snap = await getDocs(q);
         const items: ReturnItemRow[] = snap.docs.map(d => {
           const data = d.data();
+          const pId = data.product_id || d.id;
           const price = Number(data.sell_price ?? data.price ?? 0);
           const qty = Number(data.qty ?? data.quantity ?? 1);
+          const prevReturned = alreadyReturnedMap[pId] || 0;
+          const unreturnedBilled = Math.max(0, qty - prevReturned);
+          const currentStock = productStockMap[pId] ?? 0;
+
           return {
-            product_id: data.product_id || d.id,
+            product_id: pId,
             product_name: data.product_name || "Item",
             batch_id: data.batch_id || "",
             batch_no: data.batch_no || "",
             unit: data.unit || "pcs",
             billed_qty: qty,
+            available_stock: currentStock,
+            already_returned_qty: prevReturned,
+            max_returnable: unreturnedBilled,
             return_qty: 0,
             price: price,
             total: 0
@@ -246,15 +287,25 @@ export default function Accounting() {
         const snap = await getDocs(q);
         const items: ReturnItemRow[] = snap.docs.map(d => {
           const data = d.data();
+          const pId = data.product_id || d.id;
           const price = Number(data.cost_price ?? data.price ?? 0);
           const qty = Number(data.qty ?? data.quantity ?? 1);
+          const prevReturned = alreadyReturnedMap[pId] || 0;
+          const unreturnedBilled = Math.max(0, qty - prevReturned);
+          const currentStock = Math.max(0, productStockMap[pId] ?? 0);
+          // For Debit Note (Purchase return): you cannot return more than what was unreturned AND what is physically in store
+          const maxReturnable = Math.max(0, Math.min(unreturnedBilled, currentStock));
+
           return {
-            product_id: data.product_id || d.id,
+            product_id: pId,
             product_name: data.product_name || "Item",
             batch_id: data.batch_id || "",
             batch_no: data.batch_no || "",
             unit: data.unit || "pcs",
             billed_qty: qty,
+            available_stock: currentStock,
+            already_returned_qty: prevReturned,
+            max_returnable: maxReturnable,
             return_qty: 0,
             price: price,
             total: 0
@@ -374,7 +425,15 @@ export default function Accounting() {
     setReturnItems(prev => {
       const next = [...prev];
       const it = { ...next[index] };
-      const clamped = Math.min(it.billed_qty, Math.max(0, val));
+      const maxAllowed = it.max_returnable ?? it.billed_qty;
+      const clamped = Math.min(maxAllowed, Math.max(0, val));
+      if (val > maxAllowed) {
+        toast.warning(
+          lang === "NEP"
+            ? `अधिकतम फिर्ता गर्न मिल्ने संख्या ${maxAllowed} ${it.unit} मात्र हो (उपलब्ध मौज्दात अनुसार)`
+            : `Max returnable quantity is ${maxAllowed} ${it.unit} based on stock`
+        );
+      }
       it.return_qty = clamped;
       it.total = Math.round(clamped * it.price * 100) / 100;
       next[index] = it;
@@ -384,11 +443,14 @@ export default function Accounting() {
 
   const handleReturnAllItems = () => {
     setReturnItems(prev =>
-      prev.map(it => ({
-        ...it,
-        return_qty: it.billed_qty,
-        total: Math.round(it.billed_qty * it.price * 100) / 100
-      }))
+      prev.map(it => {
+        const qtyToReturn = it.max_returnable ?? it.billed_qty;
+        return {
+          ...it,
+          return_qty: qtyToReturn,
+          total: Math.round(qtyToReturn * it.price * 100) / 100
+        };
+      })
     );
   };
 
@@ -5030,53 +5092,100 @@ export default function Accounting() {
                     : "No items recorded in this bill."}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead>
-                      <tr className="border-b text-muted-foreground font-semibold">
-                        <th className="py-2 px-2.5">{lang === "NEP" ? "सामान (Item)" : "Item Name"}</th>
-                        <th className="py-2 px-2 text-center w-24">{lang === "NEP" ? "बिल गरिएको (Billed)" : "Billed Qty"}</th>
-                        <th className="py-2 px-2 text-center w-28">{lang === "NEP" ? "फिर्ता परिमाण (Return)" : "Return Qty"}</th>
-                        <th className="py-2 px-2 text-right w-24">{lang === "NEP" ? "दर (Price)" : "Price"}</th>
-                        <th className="py-2 px-2.5 text-right w-28">{lang === "NEP" ? "जम्मा (Total)" : "Total"}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {returnItems.map((it, idx) => (
-                        <tr key={it.product_id + idx} className={`transition-colors ${it.return_qty > 0 ? "bg-primary/5 font-medium" : "hover:bg-muted/40"}`}>
-                          <td className="py-2 px-2.5">
-                            <div className="font-semibold text-foreground">{it.product_name}</div>
-                            {it.batch_no && (
-                              <div className="text-[10px] text-muted-foreground font-mono">
-                                Batch: {it.batch_no}
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-2 px-2 text-center font-mono text-muted-foreground">
-                            {it.billed_qty} {it.unit}
-                          </td>
-                          <td className="py-2 px-2 text-center">
-                            <Input
-                              type="number"
-                              min="0"
-                              max={it.billed_qty}
-                              step="any"
-                              value={it.return_qty === 0 ? "" : it.return_qty}
-                              onChange={e => handleItemReturnQtyChange(idx, e.target.value)}
-                              placeholder="0"
-                              className="h-8 text-xs font-mono font-bold text-center w-24 mx-auto rounded-lg"
-                            />
-                          </td>
-                          <td className="py-2 px-2 text-right font-mono">
-                            {fmt(it.price)}
-                          </td>
-                          <td className="py-2 px-2.5 text-right font-mono font-bold text-foreground">
-                            {fmt(it.total)}
-                          </td>
+                <div className="space-y-2">
+                  {returnType === "debit_note" && returnItems.length > 0 && returnItems.every(it => it.max_returnable <= 0) && (
+                    <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span>
+                        {lang === "NEP"
+                          ? "⚠️ यस बिलका सबै सामानहरू ग्राहकलाई बिक्री भइसकेका छन् वा पसलमा मौज्दात (Stock) छैन। सप्लायरलाई फिर्ता गर्न मिल्दैन।"
+                          : "⚠️ All items in this bill are sold out or have 0 stock in store. Cannot return to supplier."}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead>
+                        <tr className="border-b text-muted-foreground font-semibold">
+                          <th className="py-2 px-2.5">{lang === "NEP" ? "सामान (Item)" : "Item Name"}</th>
+                          <th className="py-2 px-2 text-center w-20">{lang === "NEP" ? "बिल (Billed)" : "Billed"}</th>
+                          <th className="py-2 px-2 text-center w-24">
+                            {returnType === "debit_note"
+                              ? (lang === "NEP" ? "मौज्दात (Stock)" : "In Stock")
+                              : (lang === "NEP" ? "फिर्ता बाँकी" : "Unreturned")}
+                          </th>
+                          <th className="py-2 px-2 text-center w-28">{lang === "NEP" ? "फिर्ता संख्या (Return)" : "Return Qty"}</th>
+                          <th className="py-2 px-2 text-right w-24">{lang === "NEP" ? "दर (Price)" : "Price"}</th>
+                          <th className="py-2 px-2.5 text-right w-28">{lang === "NEP" ? "जम्मा (Total)" : "Total"}</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {returnItems.map((it, idx) => {
+                          const isZeroStock = it.max_returnable <= 0;
+                          return (
+                            <tr key={it.product_id + idx} className={`transition-colors ${isZeroStock ? "bg-muted/30 opacity-75" : it.return_qty > 0 ? "bg-primary/5 font-medium" : "hover:bg-muted/40"}`}>
+                              <td className="py-2 px-2.5">
+                                <div className="font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
+                                  <span>{it.product_name}</span>
+                                  {isZeroStock && (
+                                    <Badge variant="destructive" className="text-[9px] px-1.5 py-0 font-bold">
+                                      {lang === "NEP" ? "स्टक छैन (Sold Out)" : "Sold Out"}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {it.batch_no && (
+                                  <div className="text-[10px] text-muted-foreground font-mono">
+                                    Batch: {it.batch_no}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-2 px-2 text-center font-mono text-muted-foreground">
+                                {it.billed_qty} {it.unit}
+                              </td>
+                              <td className="py-2 px-2 text-center font-mono">
+                                {returnType === "debit_note" ? (
+                                  <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${it.available_stock > 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+                                    {it.available_stock} {it.unit}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    {it.max_returnable} {it.unit}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2 px-2 text-center">
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max={it.max_returnable}
+                                    step="any"
+                                    disabled={isZeroStock}
+                                    value={it.return_qty === 0 ? "" : it.return_qty}
+                                    onChange={e => handleItemReturnQtyChange(idx, e.target.value)}
+                                    placeholder="0"
+                                    className={`h-8 text-xs font-mono font-bold text-center w-24 mx-auto rounded-lg ${isZeroStock ? "bg-muted cursor-not-allowed opacity-60" : ""}`}
+                                  />
+                                  {!isZeroStock && it.max_returnable < it.billed_qty && (
+                                    <span className="text-[9px] text-muted-foreground font-mono">
+                                      Max: {it.max_returnable}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-2 px-2 text-right font-mono">
+                                {fmt(it.price)}
+                              </td>
+                              <td className="py-2 px-2.5 text-right font-mono font-bold text-foreground">
+                                {fmt(it.total)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>

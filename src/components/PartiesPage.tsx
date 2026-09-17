@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 
 
 type OrderItem = {
+  product_id?: string;
   product_name: string;
   qty: number;
   unit: string;
@@ -66,6 +67,7 @@ type Entry = {
   is_settlement?: boolean;
   reconcile_info?: string;
   reconcile_type?: "direct" | "auto" | "mixed";
+  has_returnable_stock?: boolean;
 };
 
 type UnpaidBill = {
@@ -651,26 +653,31 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             const chunkQ = query(collection(db, "purchase_items"), where("purchase_id", "in", chunk));
             const chunkSnap = await getDocs(chunkQ);
 
-            // Gather product_ids that might need hs_code fallback
+            // Gather product_ids to check current store stock and hs_code fallback
             const missingHsProductIds = new Set<string>();
+            const allProductIds = new Set<string>();
             chunkSnap.docs.forEach(d => {
               const data = d.data();
-              if (!data.hs_code && data.product_id) {
-                missingHsProductIds.add(data.product_id);
+              if (data.product_id) {
+                allProductIds.add(data.product_id);
+                if (!data.hs_code) missingHsProductIds.add(data.product_id);
               }
             });
 
             const productHsMap: Record<string, string> = {};
-            if (missingHsProductIds.size > 0) {
+            const productStockMap: Record<string, number> = {};
+            if (allProductIds.size > 0) {
               const prodIdChunks = [];
-              const idsArr = Array.from(missingHsProductIds);
+              const idsArr = Array.from(allProductIds);
               for (let j = 0; j < idsArr.length; j += 10) prodIdChunks.push(idsArr.slice(j, j + 10));
               for (const pChunk of prodIdChunks) {
                 try {
                   const pQuery = query(collection(db, "products"), where("__name__", "in", pChunk));
                   const pSnap = await getDocs(pQuery);
                   pSnap.docs.forEach(pd => {
-                    if (pd.data().hs_code) productHsMap[pd.id] = pd.data().hs_code;
+                    const pData = pd.data();
+                    if (pData.hs_code) productHsMap[pd.id] = pData.hs_code;
+                    productStockMap[pd.id] = Number(pData.stock_qty || 0);
                   });
                 } catch (_) { }
               }
@@ -683,6 +690,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               const qty = Number(data.qty ?? data.quantity ?? 1);
               const resolvedHs = (data.hs_code || (data.product_id ? productHsMap[data.product_id] : "") || "").trim() || undefined;
               prodsMap[data.purchase_id].push({
+                product_id: data.product_id,
                 product_name: data.product_name || "Item",
                 qty,
                 unit: data.unit || "pcs",
@@ -836,6 +844,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           else if (dirCount > 0 && autoCount > 0) rType = "mixed";
 
           const orderItems = prodsMap[pu.id] || [];
+          const hasReturnableStock = orderItems.length > 0
+            ? orderItems.some(it => (it.product_id && (productStockMap[it.product_id] || 0) > 0))
+            : true;
 
           items.push({
             id: pu.id,
@@ -859,6 +870,7 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             taxable_amount: pu.taxable_amount,
             vat_amount: pu.vat_amount,
             order_items: orderItems,
+            has_returnable_stock: hasReturnableStock,
             products: orderItems.map(it => `${it.product_name} ×${it.qty}`).join(", ")
           });
         });
@@ -2507,16 +2519,30 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 px-2 text-xs flex items-center gap-1 border-rose-500/40 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                              disabled={type === "supplier" && e.has_returnable_stock === false}
+                              className={`h-7 px-2 text-xs flex items-center gap-1 border-rose-500/40 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors ${
+                                type === "supplier" && e.has_returnable_stock === false ? "opacity-50 cursor-not-allowed hover:bg-transparent border-dashed text-muted-foreground dark:text-muted-foreground" : ""
+                              }`}
                               onClick={(evt) => {
                                 evt.stopPropagation();
                                 if (!selected) return;
+                                if (type === "supplier" && e.has_returnable_stock === false) {
+                                  toast.error(lang === "NEP" ? "यस बिलका सबै सामानहरू बिक्री भइसकेका छन् (स्टक उपलब्ध छैन)" : "All items in this bill are sold out (no stock available to return)");
+                                  return;
+                                }
                                 navigate(`/accounting?tab=vouchers&action=return&type=debit_note&partyId=${selected.id}&partyName=${encodeURIComponent(selected.name)}&billId=${e.id}&billNo=${encodeURIComponent(e.bill_no || (e as any).voucher_no || e.id)}`);
                               }}
-                              title={lang === "NEP" ? "खरिद फिर्ता (Debit Note) भाउचर जारी गर्नुहोस्" : "Issue Purchase Return (Debit Note)"}
+                              title={
+                                type === "supplier" && e.has_returnable_stock === false
+                                  ? (lang === "NEP" ? "सबै सामान बिक्री भइसकेको छ (स्टक उपलब्ध छैन)" : "All items sold out (No stock remaining to return)")
+                                  : (lang === "NEP" ? "खरिद फिर्ता (Debit Note) भाउचर जारी गर्नुहोस्" : "Issue Purchase Return (Debit Note)")
+                              }
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
                               <span>{lang === "NEP" ? "फिर्ता" : "Return"}</span>
+                              {type === "supplier" && e.has_returnable_stock === false && (
+                                <span className="text-[9px] font-mono text-destructive dark:text-rose-400 font-bold ml-0.5">(0 Stock)</span>
+                              )}
                             </Button>
                           )}
                         </div>
