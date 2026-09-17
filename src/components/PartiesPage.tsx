@@ -63,6 +63,7 @@ type Entry = {
   voucher_no?: string;
   reference_id?: string;
   is_settlement?: boolean;
+  reconcile_info?: string;
 };
 
 type UnpaidBill = {
@@ -416,12 +417,77 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const items: Entry[] = [];
         const saleIdsSet = new Set<string>();
 
-        salesData.forEach((s: any) => {
-          saleIdsSet.add(s.id);
+        // Sort sales chronologically (oldest first) for accurate FIFO settlement
+        const sortedSales = [...salesData].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        sortedSales.forEach((s: any) => saleIdsSet.add(s.id));
+
+        // Available payments for customer
+        const paymentEntries = ledgerData.filter((l: any) => l.entry_type === "payment_in" || l.entry_type === "payment");
+        const paymentConsumed = new Map<string, number>();
+
+        // 1. Direct / Specific matches first
+        const salePaymentsMap = new Map<string, number>();
+        const directPaymentIds = new Set<string>();
+
+        sortedSales.forEach((s: any) => {
+          const directPayments = paymentEntries.filter((l: any) => {
+            if (l.reference_id === s.id) return true;
+            if (s.bill_no && (l.reference_id === s.bill_no || l.bill_no === s.bill_no || (l.note && l.note.includes(s.bill_no)))) return true;
+            return false;
+          });
+          let directSum = 0;
+          directPayments.forEach((l: any) => {
+            directSum += Number(l.amount || 0);
+            directPaymentIds.add(l.id);
+            paymentConsumed.set(l.id, Number(l.amount || 0));
+          });
+          salePaymentsMap.set(s.id, directSum);
+        });
+
+        // 2. FIFO Auto-Reconciliation of unallocated / on-account payments
+        const unallocatedPayments = paymentEntries
+          .filter((l: any) => !directPaymentIds.has(l.id))
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        const saleReconcileNotes = new Map<string, string>();
+
+        sortedSales.forEach((s: any) => {
           const totalAmt = Number(s.total || 0);
-          const salePayments = ledgerData.filter((l: any) => l.reference_id === s.id && (l.entry_type === "payment_in" || l.entry_type === "payment"));
-          const paidAmt = salePayments.reduce((sum: number, l: any) => sum + Number(l.amount || 0), 0);
-          const dueAmt = Math.max(0, totalAmt - paidAmt);
+          let currentPaid = salePaymentsMap.get(s.id) || 0;
+          let dueAmt = Math.max(0, totalAmt - currentPaid);
+
+          if (dueAmt > 0) {
+            let autoReconciledAmt = 0;
+            const sources: string[] = [];
+
+            for (const pay of unallocatedPayments) {
+              const payAmt = Number(pay.amount || 0);
+              const alreadyUsed = paymentConsumed.get(pay.id) || 0;
+              const remainingPay = Math.max(0, payAmt - alreadyUsed);
+
+              if (remainingPay > 0 && dueAmt > 0) {
+                const allocate = Math.min(dueAmt, remainingPay);
+                paymentConsumed.set(pay.id, alreadyUsed + allocate);
+                currentPaid += allocate;
+                dueAmt -= allocate;
+                autoReconciledAmt += allocate;
+                const payDateStr = pay.created_at ? format(new Date(pay.created_at), "dd/MM/yyyy") : "";
+                sources.push(`${fmt(allocate)}${payDateStr ? ` (${payDateStr})` : ""}`);
+              }
+              if (dueAmt <= 0) break;
+            }
+
+            if (autoReconciledAmt > 0) {
+              salePaymentsMap.set(s.id, currentPaid);
+              const noteText = lang === "NEP"
+                ? `स्वतः मिलान (Auto-Reconciled): खाता भुक्तानीबाट ${sources.join(", ")} मिलान भयो`
+                : `Auto-Reconciled: ${sources.join(", ")} allocated from on-account payments`;
+              saleReconcileNotes.set(s.id, noteText);
+            }
+          }
+
+          const finalPaid = salePaymentsMap.get(s.id) || 0;
+          const finalDue = Math.max(0, totalAmt - finalPaid);
           const orderItems = prodsMap[s.id] || [];
 
           items.push({
@@ -432,8 +498,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             payment_mode: s.payment_mode || "cash",
             paid_via: s.paid_via || null,
             amount: totalAmt,
-            paid_amount: paidAmt,
-            due_amount: dueAmt,
+            paid_amount: finalPaid,
+            due_amount: finalDue,
+            reconcile_info: saleReconcileNotes.get(s.id),
             created_at: s.created_at,
             note: s.note,
             invoice_type: s.invoice_type,
@@ -450,8 +517,20 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           });
         });
 
+        // 3. Ledger entries display
         ledgerData.forEach((l: any) => {
           if (l.reference_id && saleIdsSet.has(l.reference_id) && !l.is_settlement) return;
+          if (l.entry_type === "sale" && (saleIdsSet.has(l.reference_id) || Array.from(saleIdsSet).some(sid => l.note?.includes(sid)))) return;
+
+          const usedAmt = paymentConsumed.get(l.id) || 0;
+          let reconcileText: string | undefined;
+
+          if (usedAmt > 0 && !directPaymentIds.has(l.id)) {
+            reconcileText = lang === "NEP"
+              ? `स्वतः मिलान: ${fmt(usedAmt)} पुराना बिलहरूमा घटाइयो`
+              : `Auto-Allocated: ${fmt(usedAmt)} applied to pending bills`;
+          }
+
           items.push({
             id: l.id,
             entry_type: l.entry_type,
@@ -463,7 +542,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             bill_no: l.bill_no,
             reference_id: l.reference_id,
             is_settlement: l.is_settlement,
-            note: l.note
+            note: l.note,
+            reconcile_info: reconcileText
           });
         });
 
@@ -546,13 +626,84 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
         const items: Entry[] = [];
         const purIdsSet = new Set<string>();
+        const purVoucherNosSet = new Set<string>();
 
-        purData.forEach((pu: any) => {
+        // Sort purchases chronologically (oldest first) for accurate FIFO settlement
+        const sortedPurchases = [...purData].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        sortedPurchases.forEach((pu: any) => {
           purIdsSet.add(pu.id);
+          if (pu.voucher_no) purVoucherNosSet.add(pu.voucher_no);
+          if (pu.supplier_bill_no) purVoucherNosSet.add(pu.supplier_bill_no);
+        });
+
+        // Available payments for supplier
+        const paymentEntries = ledgerData.filter((l: any) => l.entry_type === "payment_out" || l.entry_type === "payment");
+        const paymentConsumed = new Map<string, number>();
+
+        // 1. Direct / Specific matches first
+        const purPaymentsMap = new Map<string, number>();
+        const directPaymentIds = new Set<string>();
+
+        sortedPurchases.forEach((pu: any) => {
+          const directPayments = paymentEntries.filter((l: any) => {
+            if (l.reference_id === pu.id) return true;
+            if (pu.voucher_no && (l.reference_id === pu.voucher_no || l.voucher_no === pu.voucher_no || (l.note && l.note.includes(pu.voucher_no)))) return true;
+            if (pu.supplier_bill_no && (l.reference_id === pu.supplier_bill_no || (l.note && l.note.includes(pu.supplier_bill_no)))) return true;
+            return false;
+          });
+          let directSum = 0;
+          directPayments.forEach((l: any) => {
+            directSum += Number(l.amount || 0);
+            directPaymentIds.add(l.id);
+            paymentConsumed.set(l.id, Number(l.amount || 0));
+          });
+          purPaymentsMap.set(pu.id, directSum);
+        });
+
+        // 2. FIFO Auto-Reconciliation of unallocated payments
+        const unallocatedPayments = paymentEntries
+          .filter((l: any) => !directPaymentIds.has(l.id))
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        const purReconcileNotes = new Map<string, string>();
+
+        sortedPurchases.forEach((pu: any) => {
           const totalAmt = Number(pu.total || 0);
-          const purPayments = ledgerData.filter((l: any) => l.reference_id === pu.id && (l.entry_type === "payment_out" || l.entry_type === "payment"));
-          const paidAmt = purPayments.reduce((sum: number, l: any) => sum + Number(l.amount || 0), 0);
-          const dueAmt = Math.max(0, totalAmt - paidAmt);
+          let currentPaid = purPaymentsMap.get(pu.id) || 0;
+          let dueAmt = Math.max(0, totalAmt - currentPaid);
+
+          if (dueAmt > 0) {
+            let autoReconciledAmt = 0;
+            const sources: string[] = [];
+
+            for (const pay of unallocatedPayments) {
+              const payAmt = Number(pay.amount || 0);
+              const alreadyUsed = paymentConsumed.get(pay.id) || 0;
+              const remainingPay = Math.max(0, payAmt - alreadyUsed);
+
+              if (remainingPay > 0 && dueAmt > 0) {
+                const allocate = Math.min(dueAmt, remainingPay);
+                paymentConsumed.set(pay.id, alreadyUsed + allocate);
+                currentPaid += allocate;
+                dueAmt -= allocate;
+                autoReconciledAmt += allocate;
+                const payDateStr = pay.created_at ? format(new Date(pay.created_at), "dd/MM/yyyy") : "";
+                sources.push(`${fmt(allocate)}${payDateStr ? ` (${payDateStr})` : ""}`);
+              }
+              if (dueAmt <= 0) break;
+            }
+
+            if (autoReconciledAmt > 0) {
+              purPaymentsMap.set(pu.id, currentPaid);
+              const noteText = lang === "NEP"
+                ? `स्वतः मिलान (Auto-Reconciled): खाता भुक्तानीबाट ${sources.join(", ")} मिलान भयो`
+                : `Auto-Reconciled: ${sources.join(", ")} allocated from on-account payments`;
+              purReconcileNotes.set(pu.id, noteText);
+            }
+          }
+
+          const finalPaid = purPaymentsMap.get(pu.id) || 0;
+          const finalDue = Math.max(0, totalAmt - finalPaid);
           const orderItems = prodsMap[pu.id] || [];
 
           items.push({
@@ -564,8 +715,9 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             payment_mode: pu.payment_mode || "cash",
             paid_via: pu.paid_via || null,
             amount: totalAmt,
-            paid_amount: paidAmt,
-            due_amount: dueAmt,
+            paid_amount: finalPaid,
+            due_amount: finalDue,
+            reconcile_info: purReconcileNotes.get(pu.id),
             created_at: pu.created_at,
             note: pu.note,
             is_vat_bill: pu.is_vat_bill,
@@ -579,8 +731,22 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
           });
         });
 
+        // 3. Ledger entries display
         ledgerData.forEach((l: any) => {
-          if (l.reference_id && purIdsSet.has(l.reference_id) && !l.is_settlement) return;
+          // If this is a direct payment tied to purchase and not a standalone settlement, skip
+          if (l.reference_id && (purIdsSet.has(l.reference_id) || purVoucherNosSet.has(l.reference_id)) && !l.is_settlement) return;
+          // Skip duplicate purchase entry from ledger_entries if already shown by purchases table
+          if (l.entry_type === "purchase" && (purIdsSet.has(l.reference_id) || Array.from(purIdsSet).some(pid => l.note?.includes(pid)))) return;
+
+          const usedAmt = paymentConsumed.get(l.id) || 0;
+          let reconcileText: string | undefined;
+
+          if (usedAmt > 0 && !directPaymentIds.has(l.id)) {
+            reconcileText = lang === "NEP"
+              ? `स्वतः मिलान: ${fmt(usedAmt)} पुराना बिलहरूमा घटाइयो`
+              : `Auto-Allocated: ${fmt(usedAmt)} applied to pending bills`;
+          }
+
           items.push({
             id: l.id,
             entry_type: l.entry_type,
@@ -592,7 +758,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             voucher_no: l.voucher_no || l.bill_no,
             reference_id: l.reference_id,
             is_settlement: l.is_settlement,
-            note: l.note
+            note: l.note,
+            reconcile_info: reconcileText
           });
         });
 
@@ -2127,6 +2294,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                         )}
 
                         {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
+                        {e.reconcile_info && (
+                          <div className="mt-1 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 text-[11px] font-medium w-fit">
+                            <span>⚡ {e.reconcile_info}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
@@ -2310,6 +2482,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                     )}
 
                     {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
+                    {e.reconcile_info && (
+                      <div className="mt-1 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 text-[11px] font-medium w-fit">
+                        <span>⚡ {e.reconcile_info}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="text-right shrink-0 flex flex-col items-end gap-1.5">

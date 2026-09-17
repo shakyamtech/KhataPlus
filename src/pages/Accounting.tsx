@@ -1265,10 +1265,52 @@ export default function Accounting() {
   // Unpaid sales bills for customer settlement
   const getCustomerUnpaidBills = (customerId: string) => {
     const cust = customersDocs.find(c => c.id === customerId);
-    const custSales = salesDocs.filter((s: any) => s.customer_id === customerId || (cust && s.customer_name === cust.name));
+    const custSales = salesDocs
+      .filter((s: any) => s.customer_id === customerId || (cust && s.customer_name === cust.name))
+      .sort((a: any, b: any) => new Date(a.created_at || a.date || 0).getTime() - new Date(b.created_at || b.date || 0).getTime());
+
+    const payments = ledgerDocs.filter((l: any) => (l.party_id === customerId || l.party_name === cust?.name) && (l.entry_type === "payment_in" || l.entry_type === "payment"));
+    const consumed = new Map<string, number>();
+
+    // 1. Direct matches
+    const salePaidMap = new Map<string, number>();
+    custSales.forEach((s: any) => {
+      const direct = payments.filter((l: any) => {
+        if (l.reference_id === s.id) return true;
+        if (s.bill_no && (l.reference_id === s.bill_no || l.bill_no === s.bill_no || l.note?.includes(s.bill_no))) return true;
+        return false;
+      });
+      let sum = 0;
+      direct.forEach((l: any) => {
+        sum += Number(l.amount || 0);
+        consumed.set(l.id, Number(l.amount || 0));
+      });
+      salePaidMap.set(s.id, sum);
+    });
+
+    // 2. Unallocated FIFO
+    const unallocated = payments.filter((l: any) => !consumed.has(l.id));
+    custSales.forEach((s: any) => {
+      let paid = salePaidMap.get(s.id) || 0;
+      let due = Math.max(0, Number(s.total || 0) - paid);
+      if (due > 0) {
+        for (const p of unallocated) {
+          const used = consumed.get(p.id) || 0;
+          const rem = Math.max(0, Number(p.amount || 0) - used);
+          if (rem > 0) {
+            const alloc = Math.min(due, rem);
+            consumed.set(p.id, used + alloc);
+            paid += alloc;
+            due -= alloc;
+          }
+          if (due <= 0) break;
+        }
+        salePaidMap.set(s.id, paid);
+      }
+    });
+
     return custSales.map((s: any) => {
-      const payments = ledgerDocs.filter((l: any) => l.reference_id === s.id && (l.entry_type === "payment_in" || l.entry_type === "payment"));
-      const paid = payments.reduce((sum: number, l: any) => sum + Number(l.amount || 0), 0);
+      const paid = salePaidMap.get(s.id) || 0;
       const due = Math.max(0, Number(s.total || 0) - paid);
       return {
         id: s.id,
@@ -1278,15 +1320,59 @@ export default function Accounting() {
         due,
         date: s.created_at || s.date || ""
       };
-    }).filter(b => b.due > 0).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }).filter(b => b.due > 0);
   };
 
   // Unpaid purchase bills for supplier settlement
   const getSupplierUnpaidBills = (supplierId: string) => {
-    const suppPurchases = purchasesDocs.filter((p: any) => p.supplier_id === supplierId);
+    const supp = suppliersDocs.find(s => s.id === supplierId);
+    const suppPurchases = purchasesDocs
+      .filter((p: any) => p.supplier_id === supplierId)
+      .sort((a: any, b: any) => new Date(a.created_at || a.date || 0).getTime() - new Date(b.created_at || b.date || 0).getTime());
+
+    const payments = ledgerDocs.filter((l: any) => (l.party_id === supplierId || l.party_name === supp?.name) && (l.entry_type === "payment_out" || l.entry_type === "payment"));
+    const consumed = new Map<string, number>();
+
+    // 1. Direct matches
+    const purPaidMap = new Map<string, number>();
+    suppPurchases.forEach((p: any) => {
+      const direct = payments.filter((l: any) => {
+        if (l.reference_id === p.id) return true;
+        if (p.voucher_no && (l.reference_id === p.voucher_no || l.voucher_no === p.voucher_no || l.note?.includes(p.voucher_no))) return true;
+        if (p.supplier_bill_no && (l.reference_id === p.supplier_bill_no || l.note?.includes(p.supplier_bill_no))) return true;
+        return false;
+      });
+      let sum = 0;
+      direct.forEach((l: any) => {
+        sum += Number(l.amount || 0);
+        consumed.set(l.id, Number(l.amount || 0));
+      });
+      purPaidMap.set(p.id, sum);
+    });
+
+    // 2. Unallocated FIFO
+    const unallocated = payments.filter((l: any) => !consumed.has(l.id));
+    suppPurchases.forEach((p: any) => {
+      let paid = purPaidMap.get(p.id) || 0;
+      let due = Math.max(0, Number(p.total || 0) - paid);
+      if (due > 0) {
+        for (const pay of unallocated) {
+          const used = consumed.get(pay.id) || 0;
+          const rem = Math.max(0, Number(pay.amount || 0) - used);
+          if (rem > 0) {
+            const alloc = Math.min(due, rem);
+            consumed.set(pay.id, used + alloc);
+            paid += alloc;
+            due -= alloc;
+          }
+          if (due <= 0) break;
+        }
+        purPaidMap.set(p.id, paid);
+      }
+    });
+
     return suppPurchases.map((p: any) => {
-      const payments = ledgerDocs.filter((l: any) => l.reference_id === p.id && (l.entry_type === "payment_out" || l.entry_type === "payment"));
-      const paid = payments.reduce((sum: number, l: any) => sum + Number(l.amount || 0), 0);
+      const paid = purPaidMap.get(p.id) || 0;
       const due = Math.max(0, Number(p.total || 0) - paid);
       return {
         id: p.id,
@@ -1296,7 +1382,7 @@ export default function Accounting() {
         due,
         date: p.created_at || p.date || ""
       };
-    }).filter(b => b.due > 0).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }).filter(b => b.due > 0);
   };
 
   const handleSelectReceiptAccount = (rowId: string, val: string) => {
