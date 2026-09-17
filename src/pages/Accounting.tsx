@@ -2328,31 +2328,31 @@ export default function Accounting() {
                   </div>
 
                   {/* Desktop Table Column Headers */}
-                  <div className="hidden sm:grid sm:grid-cols-12 gap-3 px-4 py-2 bg-muted/20 border-b text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    <div className="col-span-2">{lang === "NEP" ? "प्रकार (Dr./Cr.)" : "Type"}</div>
-                    <div className="col-span-6">{lang === "NEP" ? "खाता शीर्षक (Account)" : "Account"}</div>
-                    <div className="col-span-3 text-right">{lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}</div>
-                    <div className="col-span-1 text-center">{lang === "NEP" ? "हटाउने" : "Action"}</div>
+                  <div className="hidden sm:grid sm:grid-cols-[76px_1fr_150px_40px] gap-3 px-4 py-2 bg-muted/20 border-b text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    <div>{lang === "NEP" ? "Type" : "Type"}</div>
+                    <div>{lang === "NEP" ? "खाता शीर्षक (Account)" : "Account"}</div>
+                    <div className="text-right">{lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}</div>
+                    <div className="text-center">{lang === "NEP" ? "हटाउने" : "Action"}</div>
                   </div>
 
                   <div className="p-2.5 sm:p-3 space-y-2.5 max-h-72 sm:max-h-64 overflow-y-auto">
                     {journalRows.map((row, idx) => (
                       <div
                         key={row.id}
-                        className="flex flex-col sm:grid sm:grid-cols-12 items-stretch sm:items-center gap-2 sm:gap-2.5 p-2.5 sm:p-2 rounded-xl bg-card sm:bg-muted/10 hover:bg-muted/20 border shadow-xs sm:shadow-none transition-all"
+                        className="flex flex-col sm:grid sm:grid-cols-[76px_1fr_150px_40px] items-stretch sm:items-center gap-2 sm:gap-3 p-2.5 sm:p-2 rounded-xl bg-card sm:bg-muted/10 hover:bg-muted/20 border shadow-xs sm:shadow-none transition-all"
                       >
                         {/* Mobile Top Row: Type + Account + Actions */}
                         <div className="flex items-center gap-1.5 w-full sm:contents">
                           {/* Type Dr/Cr */}
-                          <div className="w-[72px] sm:w-auto sm:col-span-2 shrink-0">
+                          <div className="w-[72px] sm:w-full shrink-0">
                             <Select
                               value={row.type}
                               onValueChange={(val: "debit" | "credit") => handleUpdateJournalRow(row.id, "type", val)}
                             >
-                              <SelectTrigger className={`h-9 text-xs font-mono font-bold rounded-lg px-2 sm:px-3 ${row.type === "debit" ? "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" : "text-amber-600 border-amber-500/40 bg-amber-500/5"}`}>
+                              <SelectTrigger className={`h-9 text-xs font-mono font-bold rounded-lg px-2 ${row.type === "debit" ? "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" : "text-amber-600 border-amber-500/40 bg-amber-500/5"}`}>
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="min-w-[80px]">
                                 <SelectItem value="debit" className="text-xs font-mono font-bold text-emerald-600">
                                   Dr.
                                 </SelectItem>
@@ -2364,7 +2364,7 @@ export default function Accounting() {
                           </div>
 
                           {/* Account Selector + Inline Add Button */}
-                          <div className="flex-1 sm:col-span-6 flex items-center gap-1 min-w-0">
+                          <div className="flex-1 sm:w-full flex items-center gap-1 min-w-0">
                             <div className="flex-1 min-w-0">
                               <Select
                                 value={row.account_id}
@@ -2407,7 +2407,7 @@ export default function Accounting() {
                         </div>
 
                         {/* Amount on Mobile / Desktop */}
-                        <div className="flex items-center justify-between sm:block sm:col-span-3 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-0">
+                        <div className="flex items-center justify-between sm:block sm:w-full pt-1.5 sm:pt-0 border-t border-border/40 sm:border-0">
                           <span className="text-[11px] font-semibold text-muted-foreground sm:hidden">
                             {lang === "NEP" ? "रकम रु. (Amount)" : "Amount (Rs.)"}
                           </span>
@@ -2423,7 +2423,7 @@ export default function Accounting() {
                         </div>
 
                         {/* Desktop Delete Button */}
-                        <div className="hidden sm:flex sm:col-span-1 justify-center">
+                        <div className="hidden sm:flex justify-center">
                           <Button
                             type="button"
                             variant="ghost"
