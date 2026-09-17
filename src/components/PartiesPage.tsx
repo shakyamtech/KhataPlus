@@ -471,17 +471,18 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 currentPaid += allocate;
                 dueAmt -= allocate;
                 autoReconciledAmt += allocate;
-                const payDateStr = pay.created_at ? format(new Date(pay.created_at), "dd/MM/yyyy") : "";
-                sources.push(`${fmt(allocate)}${payDateStr ? ` (${payDateStr})` : ""}`);
+                const payDateStr = pay.created_at ? format(new Date(pay.created_at), "dd MMM yyyy") : "";
+                sources.push(`मिति ${payDateStr} मा प्राप्त ${fmt(payAmt)} को अन-अकाउन्ट रकमबाट ${fmt(allocate)} यस बिलमा मिलान भयो`);
               }
               if (dueAmt <= 0) break;
             }
 
             if (autoReconciledAmt > 0) {
               salePaymentsMap.set(s.id, currentPaid);
+              const statusTag = dueAmt <= 0 ? (lang === "NEP" ? "(बिल चुक्ता ✓)" : "(Bill Settled ✓)") : (lang === "NEP" ? `(बाँकी: ${fmt(dueAmt)})` : `(Due: ${fmt(dueAmt)})`);
               const noteText = lang === "NEP"
-                ? `स्वतः मिलान (Auto-Reconciled): खाता भुक्तानीबाट ${sources.join(", ")} मिलान भयो`
-                : `Auto-Reconciled: ${sources.join(", ")} allocated from on-account payments`;
+                ? `${sources.join(", ")} ${statusTag}।`
+                : `Allocated ${fmt(autoReconciledAmt)} to this bill from on-account payments ${statusTag}.`;
               saleReconcileNotes.set(s.id, noteText);
             }
           }
@@ -687,17 +688,18 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                 currentPaid += allocate;
                 dueAmt -= allocate;
                 autoReconciledAmt += allocate;
-                const payDateStr = pay.created_at ? format(new Date(pay.created_at), "dd/MM/yyyy") : "";
-                sources.push(`${fmt(allocate)}${payDateStr ? ` (${payDateStr})` : ""}`);
+                const payDateStr = pay.created_at ? format(new Date(pay.created_at), "dd MMM yyyy") : "";
+                sources.push(`मिति ${payDateStr} मा भुक्तानी ${fmt(payAmt)} को अन-अकाउन्ट रकमबाट ${fmt(allocate)} यस बिलमा मिलान भयो`);
               }
               if (dueAmt <= 0) break;
             }
 
             if (autoReconciledAmt > 0) {
               purPaymentsMap.set(pu.id, currentPaid);
+              const statusTag = dueAmt <= 0 ? (lang === "NEP" ? "(बिल चुक्ता ✓)" : "(Bill Settled ✓)") : (lang === "NEP" ? `(बाँकी: ${fmt(dueAmt)})` : `(Due: ${fmt(dueAmt)})`);
               const noteText = lang === "NEP"
-                ? `स्वतः मिलान (Auto-Reconciled): खाता भुक्तानीबाट ${sources.join(", ")} मिलान भयो`
-                : `Auto-Reconciled: ${sources.join(", ")} allocated from on-account payments`;
+                ? `${sources.join(", ")} ${statusTag}।`
+                : `Allocated ${fmt(autoReconciledAmt)} to this bill from on-account payments ${statusTag}.`;
               purReconcileNotes.set(pu.id, noteText);
             }
           }
@@ -2295,8 +2297,13 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                         {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
                         {e.reconcile_info && (
-                          <div className="mt-1 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 text-[11px] font-medium w-fit">
-                            <span>⚡ {e.reconcile_info}</span>
+                          <div className="mt-2 p-2.5 rounded-r-xl border-l-4 border-l-cyan-500 bg-cyan-950/20 dark:bg-cyan-950/30 border-y border-r border-cyan-500/20 text-xs space-y-0.5">
+                            <div className="font-bold text-cyan-500 dark:text-cyan-400 flex items-center gap-1.5 text-xs">
+                              <span>⚡ {lang === "NEP" ? "स्वतः मिलान (Auto-Reconciled):" : "Auto-Reconciled:"}</span>
+                            </div>
+                            <div className="italic text-[11px] text-foreground/90 font-normal leading-relaxed">
+                              {e.reconcile_info}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2483,8 +2490,13 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
 
                     {e.note ? <div className="italic text-[11px] text-muted-foreground truncate">💬 {e.note}</div> : null}
                     {e.reconcile_info && (
-                      <div className="mt-1 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 text-[11px] font-medium w-fit">
-                        <span>⚡ {e.reconcile_info}</span>
+                      <div className="mt-2 p-2.5 rounded-r-xl border-l-4 border-l-cyan-500 bg-cyan-950/20 dark:bg-cyan-950/30 border-y border-r border-cyan-500/20 text-xs space-y-0.5">
+                        <div className="font-bold text-cyan-500 dark:text-cyan-400 flex items-center gap-1.5 text-xs">
+                          <span>⚡ {lang === "NEP" ? "स्वतः मिलान (Auto-Reconciled):" : "Auto-Reconciled:"}</span>
+                        </div>
+                        <div className="italic text-[11px] text-foreground/90 font-normal leading-relaxed">
+                          {e.reconcile_info}
+                        </div>
                       </div>
                     )}
                   </div>
