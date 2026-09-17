@@ -2344,12 +2344,12 @@ export default function Accounting() {
                         {/* Mobile Top Row: Type + Account + Actions */}
                         <div className="flex items-center gap-1.5 w-full sm:contents">
                           {/* Type Dr/Cr */}
-                          <div className="w-[72px] sm:w-full shrink-0">
+                          <div className="w-[58px] sm:w-full shrink-0">
                             <Select
                               value={row.type}
                               onValueChange={(val: "debit" | "credit") => handleUpdateJournalRow(row.id, "type", val)}
                             >
-                              <SelectTrigger className={`h-9 text-xs font-mono font-bold rounded-lg px-2 ${row.type === "debit" ? "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" : "text-amber-600 border-amber-500/40 bg-amber-500/5"}`}>
+                              <SelectTrigger className={`h-9 text-xs font-mono font-bold rounded-lg px-1.5 sm:px-2 ${row.type === "debit" ? "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" : "text-amber-600 border-amber-500/40 bg-amber-500/5"}`}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="min-w-[80px]">
