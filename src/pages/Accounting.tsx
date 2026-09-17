@@ -59,7 +59,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { StockSummaryView } from "@/components/StockSummaryView";
-import { collection, query, where, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function Accounting() {
@@ -793,6 +793,27 @@ export default function Accounting() {
       toast.error(err.message || "Failed to update opening balance");
     } finally {
       setSavingEditAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = async (acc: Account) => {
+    if (acc.is_system) {
+      toast.error(lang === "NEP" ? "सिस्टम खाताहरू मेटाउन मिल्दैन" : "System accounts cannot be deleted");
+      return;
+    }
+
+    const confirmMsg = lang === "NEP"
+      ? `'${acc.name}' खाता हटाउन निश्चित हुनुहुन्छ?`
+      : `Are you sure you want to delete '${acc.name}'?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await deleteDoc(doc(db, "accounts", acc.id));
+      setAccounts(prev => prev.filter(a => a.id !== acc.id));
+      toast.success(lang === "NEP" ? `'${acc.name}' खाता सफलतापूर्वक हटाइयो!` : `'${acc.name}' deleted successfully!`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete account");
     }
   };
 
@@ -2179,6 +2200,17 @@ export default function Accounting() {
                             <Pencil className="h-3 w-3" />
                           </Button>
                         )}
+                        {!acc.is_system && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-60 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
+                            onClick={() => handleDeleteAccount(acc)}
+                            title={lang === "NEP" ? "खाता हटाउनुहोस्" : "Delete Account"}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2221,6 +2253,17 @@ export default function Accounting() {
                         >
                           <Pencil className="h-3 w-3" />
                         </Button>
+                        {!acc.is_system && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-60 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
+                            onClick={() => handleDeleteAccount(acc)}
+                            title={lang === "NEP" ? "खाता हटाउनुहोस्" : "Delete Account"}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2263,6 +2306,17 @@ export default function Accounting() {
                         >
                           <Pencil className="h-3 w-3" />
                         </Button>
+                        {!acc.is_system && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-60 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
+                            onClick={() => handleDeleteAccount(acc)}
+                            title={lang === "NEP" ? "खाता हटाउनुहोस्" : "Delete Account"}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
