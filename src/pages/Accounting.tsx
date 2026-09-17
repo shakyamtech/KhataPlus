@@ -2268,7 +2268,7 @@ export default function Accounting() {
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSubmitVoucher} className="space-y-4 pt-2 flex-1 overflow-y-auto pr-0.5 sm:pr-1">
+          <form onSubmit={handleSubmitVoucher} className="space-y-4 pt-2 pb-3 px-1 sm:px-1.5 flex-1 overflow-y-auto">
             {voucherType === "journal" ? (
               // MULTI-ROW COMPOUND JOURNAL ENTRY TABLE
               <div className="space-y-4">
@@ -2496,7 +2496,7 @@ export default function Accounting() {
                     placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                     value={narration}
                     onChange={e => setNarration(e.target.value)}
-                    className="h-9 sm:h-10 text-xs rounded-xl bg-background"
+                    className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all"
                   />
                 </div>
               </div>
@@ -2720,7 +2720,7 @@ export default function Accounting() {
                       placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                       value={narration}
                       onChange={e => setNarration(e.target.value)}
-                      className="h-9 sm:h-11 text-xs rounded-xl bg-background"
+                      className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all"
                     />
                   </div>
 
@@ -2961,7 +2961,7 @@ export default function Accounting() {
                       placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                       value={narration}
                       onChange={e => setNarration(e.target.value)}
-                      className="h-9 sm:h-11 text-xs rounded-xl bg-background"
+                      className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all"
                     />
                   </div>
 
@@ -3103,7 +3103,7 @@ export default function Accounting() {
                       placeholder={lang === "NEP" ? "कारोबारको छोटो विवरण..." : "Short note about transaction..."}
                       value={narration}
                       onChange={e => setNarration(e.target.value)}
-                      className="h-9 sm:h-11 text-xs rounded-xl bg-background"
+                      className="h-10 text-xs rounded-xl bg-background border-border/70 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 focus-visible:border-primary/60 shadow-xs transition-all"
                     />
                   </div>
 
