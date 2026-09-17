@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { fmt } from "@/lib/format";
-import { formatNepaliDate } from "@/lib/fiscalYear";
+import { formatNepaliDate, resolveDualDates } from "@/lib/fiscalYear";
 import { getShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { toast } from "sonner";
@@ -862,12 +862,13 @@ export default function Accounting() {
               ? v.entries.filter(e => e.type === "credit").map(e => e.account_name).join(", ")
               : (v.credit_account_name || "");
 
+            const { dateAd, dateBs } = resolveDualDates(v.date, v.date_bs);
             return {
               id: v.id,
               entryType: "voucher" as const,
               entryNo: v.voucher_no,
-              date: v.date,
-              dateBs: v.date_bs,
+              date: dateAd || v.date,
+              dateBs: dateBs,
               amount: Number(v.amount),
               debitLabel: drLabel,
               creditLabel: crLabel,
@@ -888,19 +889,22 @@ export default function Accounting() {
               (s.payment_mode || "").toLowerCase().includes(q)
             );
           })
-          .map(s => ({
-            id: s.id || s.bill_no || Math.random().toString(),
-            entryType: "sale" as const,
-            entryNo: s.bill_no || "—",
-            date: s.created_at || s.date || new Date().toISOString(),
-            dateBs: s.date_bs || "",
-            amount: Number(s.total || 0),
-            debitLabel: lang === "NEP" ? `नगद/बैंक (${s.payment_mode || "cash"})` : `Cash/Bank (${s.payment_mode || "cash"})`,
-            creditLabel: lang === "NEP" ? "बिक्री आम्दानी (Sales)" : "Sales Revenue A/C",
-            narration: s.customer_name ? `Sale to ${s.customer_name}` : "Walk-in Sale",
-            paymentMode: s.payment_mode,
-            originalSale: s
-          }))
+          .map(s => {
+            const { dateAd, dateBs } = resolveDualDates(s.created_at || s.date, s.date_bs || s.nepali_date);
+            return {
+              id: s.id || s.bill_no || Math.random().toString(),
+              entryType: "sale" as const,
+              entryNo: s.bill_no || "—",
+              date: dateAd || s.created_at || s.date || new Date().toISOString(),
+              dateBs: dateBs,
+              amount: Number(s.total || 0),
+              debitLabel: lang === "NEP" ? `नगद/बैंक (${s.payment_mode || "cash"})` : `Cash/Bank (${s.payment_mode || "cash"})`,
+              creditLabel: lang === "NEP" ? "बिक्री आम्दानी (Sales)" : "Sales Revenue A/C",
+              narration: s.customer_name ? `Sale to ${s.customer_name}` : "Walk-in Sale",
+              paymentMode: s.payment_mode,
+              originalSale: s
+            };
+          })
       : [];
 
     // 3. Purchases (read-only, shown as "PURCHASE" entries)
@@ -915,19 +919,22 @@ export default function Accounting() {
               (p.payment_mode || "").toLowerCase().includes(q)
             );
           })
-          .map(p => ({
-            id: p.id,
-            entryType: "purchase" as const,
-            entryNo: p.voucher_no || `PUR-${p.id?.slice(-4)?.toUpperCase() || "---"}`,
-            date: p.created_at || p.date || new Date().toISOString(),
-            dateBs: p.date_bs || "",
-            amount: Number(p.total || 0),
-            debitLabel: lang === "NEP" ? "खरिद खाता (Purchases)" : "Purchases A/C",
-            creditLabel: p.supplier_name ? `${p.supplier_name}` : (lang === "NEP" ? "नगद/साहु (Cash/Supplier)" : "Cash/Supplier A/C"),
-            narration: p.supplier_name ? `Purchase from ${p.supplier_name}` : "Purchase Entry",
-            paymentMode: p.payment_mode,
-            originalPurchase: p
-          }))
+          .map(p => {
+            const { dateAd, dateBs } = resolveDualDates(p.created_at || p.date, p.date_bs || p.nepali_date);
+            return {
+              id: p.id,
+              entryType: "purchase" as const,
+              entryNo: p.voucher_no || `PUR-${p.id?.slice(-4)?.toUpperCase() || "---"}`,
+              date: dateAd || p.created_at || p.date || new Date().toISOString(),
+              dateBs: dateBs,
+              amount: Number(p.total || 0),
+              debitLabel: lang === "NEP" ? "खरिद खाता (Purchases)" : "Purchases A/C",
+              creditLabel: p.supplier_name ? `${p.supplier_name}` : (lang === "NEP" ? "नगद/साहु (Cash/Supplier)" : "Cash/Supplier A/C"),
+              narration: p.supplier_name ? `Purchase from ${p.supplier_name}` : "Purchase Entry",
+              paymentMode: p.payment_mode,
+              originalPurchase: p
+            };
+          })
       : [];
 
     // Merge and sort by date descending
@@ -1747,8 +1754,12 @@ export default function Accounting() {
                         {entry.entryNo}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div>{entry.date.slice(0, 10)}</div>
-                        {entry.dateBs && <div className="text-[10px] text-muted-foreground">{entry.dateBs}</div>}
+                        <div className="font-semibold text-foreground">{entry.dateBs || entry.date.slice(0, 10)}</div>
+                        {entry.dateBs && (
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            ({entry.date.slice(0, 10)})
+                          </div>
+                        )}
                       </td>
                       <td className="py-2.5 px-3">
                         <Badge
@@ -1842,7 +1853,7 @@ export default function Accounting() {
                         {entry.entryNo}
                       </span>
                       <span className="text-[11px] text-muted-foreground font-mono">
-                        • {entry.date.slice(0, 10)} {entry.dateBs ? `(${entry.dateBs})` : ""}
+                        • {entry.dateBs || entry.date.slice(0, 10)} {entry.dateBs ? `(${entry.date.slice(0, 10)})` : ""}
                       </span>
                     </div>
 
@@ -2409,7 +2420,7 @@ export default function Accounting() {
                         className="h-9 sm:h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
                       />
                       <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium">
-                        📅 {formatNepaliDate(voucherDate)}
+                        📅 वि.सं. {resolveDualDates(voucherDate).primaryBsDisplay} <span className="font-mono text-[10px]">({resolveDualDates(voucherDate).secondaryAdDisplay})</span>
                       </span>
                     </div>
 
@@ -2653,7 +2664,7 @@ export default function Accounting() {
                         className="h-9 sm:h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
                       />
                       <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium">
-                        📅 {formatNepaliDate(voucherDate)}
+                        📅 वि.सं. {resolveDualDates(voucherDate).primaryBsDisplay} <span className="font-mono text-[10px]">({resolveDualDates(voucherDate).secondaryAdDisplay})</span>
                       </span>
                     </div>
 
@@ -2906,7 +2917,7 @@ export default function Accounting() {
                         className="h-9 sm:h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
                       />
                       <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium">
-                        📅 {formatNepaliDate(voucherDate)}
+                        📅 वि.सं. {resolveDualDates(voucherDate).primaryBsDisplay} <span className="font-mono text-[10px]">({resolveDualDates(voucherDate).secondaryAdDisplay})</span>
                       </span>
                     </div>
 
@@ -3158,7 +3169,7 @@ export default function Accounting() {
                         className="h-9 sm:h-10 text-xs rounded-xl bg-background shadow-xs font-medium"
                       />
                       <span className="text-[10px] sm:text-[11px] text-muted-foreground block font-medium">
-                        📅 {formatNepaliDate(voucherDate)}
+                        📅 वि.सं. {resolveDualDates(voucherDate).primaryBsDisplay} <span className="font-mono text-[10px]">({resolveDualDates(voucherDate).secondaryAdDisplay})</span>
                       </span>
                     </div>
 

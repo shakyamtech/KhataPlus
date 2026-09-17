@@ -13,7 +13,7 @@ import {
   limit,
   serverTimestamp
 } from "firebase/firestore";
-import { formatNepaliDate, getFiscalYearInfo } from "./fiscalYear";
+import { formatNepaliDate, getFiscalYearInfo, resolveDualDates } from "./fiscalYear";
 import { printHTML, escapeHtml } from "./print";
 import { fmt } from "./format";
 
@@ -284,7 +284,9 @@ export async function createVoucher(
 ): Promise<Voucher> {
   const voucherNo = await getNextVoucherNo(userId, data.voucher_type);
   const voucherRef = doc(collection(db, "vouchers"));
-  const dateBs = formatNepaliDate(data.date);
+  const dualDates = resolveDualDates(data.date);
+  const finalDate = dualDates.dateAd || data.date;
+  const dateBs = dualDates.dateBs || formatNepaliDate(finalDate);
 
   let totalAmount = Number(data.amount || 0);
   let debAccId = data.debit_account_id || "";
@@ -307,7 +309,7 @@ export async function createVoucher(
     user_id: userId,
     voucher_no: voucherNo,
     voucher_type: data.voucher_type,
-    date: data.date,
+    date: finalDate,
     date_bs: dateBs,
     amount: totalAmount,
     debit_account_id: debAccId,
@@ -325,7 +327,7 @@ export async function createVoucher(
 
   // Mirror cash changes to cash_transactions for Cashbook sync
   const txTime = new Date();
-  const txCreatedAt = data.date ? `${data.date}T${txTime.toTimeString().slice(0, 8)}` : txTime.toISOString();
+  const txCreatedAt = finalDate ? `${finalDate}T${txTime.toTimeString().slice(0, 8)}` : txTime.toISOString();
 
   if (data.entries && data.entries.length > 0) {
     const drCash = data.entries.filter(e => e.type === "debit" && e.account_name.toLowerCase().includes("cash"));
@@ -501,7 +503,7 @@ export function printVoucherSlip(voucher: Voucher, shopInfo: any) {
       <!-- Meta Info -->
       <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 16px; padding: 6px 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px;">
         <div><strong>Voucher No:</strong> <span style="font-family: monospace; font-size: 13px; font-weight: 700;">${escapeHtml(voucher.voucher_no)}</span></div>
-        <div><strong>Date:</strong> ${voucher.date.slice(0, 10)} (${voucher.date_bs || ""})</div>
+        <div><strong>Date:</strong> वि.सं. ${resolveDualDates(voucher.date, voucher.date_bs).primaryBsDisplay} <span style="color:#666; font-size:11px;">(${resolveDualDates(voucher.date, voucher.date_bs).secondaryAdDisplay})</span></div>
         ${voucher.reference_no ? `<div><strong>Ref No:</strong> ${escapeHtml(voucher.reference_no)}</div>` : ""}
       </div>
 

@@ -43,6 +43,85 @@ export function formatNepaliDate(dateStrOrDate?: string | Date | null, separator
   }
 }
 
+export interface DualDateResult {
+  dateAd: string; // YYYY-MM-DD
+  dateBs: string; // YYYY/MM/DD
+  primaryBsDisplay: string; // e.g. "2083/05/31"
+  secondaryAdDisplay: string; // e.g. "2026-09-16"
+}
+
+/**
+ * Resolves both Bikram Sambat (BS) and English (AD) dates from any date string or Date object.
+ * Handles dates entered in BS format (year >= 2050) as well as AD timestamps and explicit BS strings.
+ */
+export function resolveDualDates(
+  rawDate?: string | Date | null,
+  rawDateBs?: string | null
+): DualDateResult {
+  let ad = "";
+  let bs = (rawDateBs || "").trim().replace(/-/g, "/");
+
+  if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+    const y = rawDate.getFullYear();
+    const m = String(rawDate.getMonth() + 1).padStart(2, "0");
+    const d = String(rawDate.getDate()).padStart(2, "0");
+    ad = `${y}-${m}-${d}`;
+    if (!bs) {
+      bs = formatNepaliDate(rawDate);
+    }
+  } else if (typeof rawDate === "string") {
+    const trimmed = rawDate.trim();
+    // Check for YYYY-MM-DD or YYYY/MM/DD pattern
+    const match = trimmed.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (match) {
+      const parsedYear = parseInt(match[1], 10);
+      const parsedMonth = parseInt(match[2], 10);
+      const parsedDay = parseInt(match[3], 10);
+
+      if (parsedYear >= 2050 && parsedYear <= 2150) {
+        // Stored date is already Bikram Sambat (वि.सं.)
+        const monthIndex = Math.max(0, Math.min(11, parsedMonth - 1));
+        const day = Math.max(1, Math.min(32, parsedDay));
+        bs = `${parsedYear}/${String(monthIndex + 1).padStart(2, "0")}/${String(day).padStart(2, "0")}`;
+        ad = bsToAdDateString(parsedYear, monthIndex, day) || `${parsedYear}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      } else {
+        // Standard AD date
+        ad = `${parsedYear}-${String(parsedMonth).padStart(2, "0")}-${String(parsedDay).padStart(2, "0")}`;
+        if (!bs) {
+          bs = formatNepaliDate(trimmed);
+        }
+      }
+    } else {
+      try {
+        const d = new Date(trimmed);
+        if (!isNaN(d.getTime())) {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          ad = `${y}-${m}-${day}`;
+          if (!bs) bs = formatNepaliDate(d);
+        } else {
+          ad = trimmed;
+        }
+      } catch {
+        ad = trimmed;
+      }
+    }
+  }
+
+  // Fallback: if bs is still missing but we have valid ad
+  if (!bs && ad) {
+    bs = formatNepaliDate(ad);
+  }
+
+  return {
+    dateAd: ad,
+    dateBs: bs,
+    primaryBsDisplay: bs || ad,
+    secondaryAdDisplay: ad
+  };
+}
+
 export const NEPALI_MONTHS = [
   { index: 0, nepali: "बैशाख", english: "Baisakh", number: "01" },
   { index: 1, nepali: "जेठ", english: "Jestha", number: "02" },
