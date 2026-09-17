@@ -2349,18 +2349,15 @@ export default function Accounting() {
                               value={row.type}
                               onValueChange={(val: "debit" | "credit") => handleUpdateJournalRow(row.id, "type", val)}
                             >
-                              <SelectTrigger className={`h-9 text-xs font-bold rounded-lg px-2 sm:px-3 ${row.type === "debit" ? "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" : "text-amber-600 border-amber-500/40 bg-amber-500/5"}`}>
-                                <span className="sm:hidden font-mono font-black tracking-wide">{row.type === "debit" ? "Dr." : "Cr."}</span>
-                                <span className="hidden sm:inline">{row.type === "debit" ? "Dr. (डेबिट)" : "Cr. (क्रेडिट)"}</span>
+                              <SelectTrigger className={`h-9 text-xs font-mono font-bold rounded-lg px-2 sm:px-3 ${row.type === "debit" ? "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" : "text-amber-600 border-amber-500/40 bg-amber-500/5"}`}>
+                                <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="debit" className="text-xs font-bold text-emerald-600">
-                                  <span className="sm:hidden">Dr.</span>
-                                  <span className="hidden sm:inline">Dr. (डेबिट)</span>
+                                <SelectItem value="debit" className="text-xs font-mono font-bold text-emerald-600">
+                                  Dr.
                                 </SelectItem>
-                                <SelectItem value="credit" className="text-xs font-bold text-amber-600">
-                                  <span className="sm:hidden">Cr.</span>
-                                  <span className="hidden sm:inline">Cr. (क्रेडिट)</span>
+                                <SelectItem value="credit" className="text-xs font-mono font-bold text-amber-600">
+                                  Cr.
                                 </SelectItem>
                               </SelectContent>
                             </Select>
