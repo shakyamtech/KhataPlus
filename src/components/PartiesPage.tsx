@@ -2416,14 +2416,23 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                           {e.is_order && Number(e.due_amount || 0) > 0 && (
                             <Button
                               size="sm"
-                              className="h-7 px-2.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 shadow-xs"
+                              className={`h-7 px-2.5 text-xs font-semibold text-white flex items-center gap-1 shadow-xs transition-colors ${
+                                type === "customer"
+                                  ? "bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+                                  : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
+                              }`}
                               onClick={(evt) => {
                                 evt.stopPropagation();
                                 handlePaySingleBill(e);
                               }}
+                              title={type === "customer" ? `Receive remaining Rs. ${e.due_amount} for this bill` : `Pay remaining Rs. ${e.due_amount} for this bill`}
                             >
                               <Wallet className="h-3.5 w-3.5" />
-                              <span>Pay Bill</span>
+                              <span>
+                                {type === "customer"
+                                  ? (lang === "NEP" ? "रकम लिने" : "Receive")
+                                  : (lang === "NEP" ? "बिल तिर्ने" : "Pay Bill")}
+                              </span>
                             </Button>
                           )}
                           <Button
