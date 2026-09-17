@@ -2,6 +2,7 @@ import { db } from "./firebase";
 import {
   collection,
   doc,
+  getDoc,
   query,
   where,
   getDocs,
@@ -9,6 +10,7 @@ import {
   updateDoc,
   deleteDoc,
   writeBatch,
+  increment,
   orderBy,
   limit,
   serverTimestamp
@@ -52,7 +54,7 @@ export interface Account {
   created_at?: string;
 }
 
-export type VoucherType = "contra" | "journal" | "payment" | "receipt";
+export type VoucherType = "contra" | "journal" | "payment" | "receipt" | "debit_note" | "credit_note";
 
 export interface VoucherEntryItem {
   account_id: string;
@@ -65,6 +67,16 @@ export interface VoucherEntryItem {
   settlement_mode?: "specific" | "fifo" | "on_account";
   bill_id?: string;
   bill_no?: string;
+}
+
+export interface VoucherReturnItem {
+  product_id: string;
+  product_name: string;
+  qty: number;
+  unit?: string;
+  price: number;
+  total: number;
+  batch_id?: string;
 }
 
 export interface Voucher {
@@ -88,6 +100,13 @@ export interface Voucher {
   settlement_mode?: "specific" | "fifo" | "on_account";
   bill_id?: string;
   bill_no?: string;
+  return_items?: VoucherReturnItem[];
+  refund_mode?: "ledger" | "cash" | "bank" | "esewa" | "khalti";
+  refund_account_id?: string;
+  refund_account_name?: string;
+  subtotal?: number;
+  tax_amount?: number;
+  discount_amount?: number;
   created_at: string;
 }
 
@@ -148,7 +167,9 @@ export const DEFAULT_ACCOUNTS_TEMPLATE: (Omit<Account, "id" | "user_id"> & { key
   { key: "depreciation", name: "Depreciation Expense (ह्रासकट्टी खर्च)", type: "expense", group: "indirect_expenses", is_system: false },
   { key: "interest_expense", name: "Interest Expense (ऋणको ब्याज खर्च)", type: "expense", group: "indirect_expenses", is_system: false },
   { key: "bank_interest_income", name: "Bank Interest Income (बैंक ब्याज आम्दानी)", type: "income", group: "indirect_incomes", is_system: false },
-  { key: "discount_received", name: "Discount Received (पाएको छुट)", type: "income", group: "indirect_incomes", is_system: false }
+  { key: "discount_received", name: "Discount Received (पाएको छुट)", type: "income", group: "indirect_incomes", is_system: false },
+  { key: "sales_return", name: "Sales Return (बिक्री फिर्ता खाता)", type: "income", group: "direct_incomes", is_system: true },
+  { key: "purchase_return", name: "Purchase Return (खरिद फिर्ता खाता)", type: "expense", group: "direct_expenses", is_system: true }
 ];
 
 /**
@@ -262,7 +283,9 @@ export async function getNextVoucherNo(userId: string, type: VoucherType): Promi
     contra: "CV-",
     journal: "JV-",
     payment: "PV-",
-    receipt: "RV-"
+    receipt: "RV-",
+    debit_note: "DN-",
+    credit_note: "CN-"
   };
   const prefix = prefixMap[type] || "V-";
 
@@ -415,12 +438,184 @@ export async function createVoucher(
 }
 
 /**
+ * Parameters for creating a Credit Note or Debit Note voucher
+ */
+export interface CreateReturnVoucherParams {
+  userId: string;
+  voucher_type: "credit_note" | "debit_note";
+  party_id: string;
+  party_name: string;
+  party_type: "customer" | "supplier";
+  bill_id: string;
+  bill_no: string;
+  date: string;
+  date_bs?: string;
+  items: VoucherReturnItem[];
+  subtotal: number;
+  tax_amount?: number;
+  discount_amount?: number;
+  total: number;
+  refund_mode: "ledger" | "cash" | "bank" | "esewa" | "khalti";
+  refund_account_id?: string;
+  refund_account_name?: string;
+  narration?: string;
+}
+
+/**
+ * Creates a Credit Note (Sales Return) or Debit Note (Purchase Return) voucher,
+ * synchronizing inventory stock, party ledger dues, and cash/bank refunds in a single atomic batch.
+ */
+export async function createReturnVoucher(params: CreateReturnVoucherParams): Promise<Voucher> {
+  const {
+    userId,
+    voucher_type,
+    party_id,
+    party_name,
+    party_type,
+    bill_id,
+    bill_no,
+    date,
+    date_bs,
+    items,
+    subtotal,
+    tax_amount = 0,
+    discount_amount = 0,
+    total,
+    refund_mode,
+    refund_account_id,
+    refund_account_name,
+    narration
+  } = params;
+
+  const voucherNo = await getNextVoucherNo(userId, voucher_type);
+  const voucherRef = doc(collection(db, "vouchers"));
+  const dualDates = resolveDualDates(date, date_bs);
+  const finalDate = dualDates.dateAd || date;
+  const finalDateBs = dualDates.dateBs || formatNepaliDate(finalDate);
+  const nowIso = new Date().toISOString();
+
+  const isCreditNote = voucher_type === "credit_note";
+  const defaultNarration = isCreditNote
+    ? `Sales Return (Credit Note) for Bill #${bill_no} - ${party_name}`
+    : `Purchase Return (Debit Note) for Bill #${bill_no} - ${party_name}`;
+
+  const voucher: Voucher = {
+    id: voucherRef.id,
+    user_id: userId,
+    voucher_no: voucherNo,
+    voucher_type,
+    date: finalDate,
+    date_bs: finalDateBs,
+    amount: total,
+    party_id,
+    party_name,
+    party_type,
+    bill_id,
+    bill_no,
+    return_items: items,
+    subtotal,
+    tax_amount,
+    discount_amount,
+    refund_mode,
+    refund_account_id: refund_account_id || undefined,
+    refund_account_name: refund_account_name || undefined,
+    narration: (narration && narration.trim()) || defaultNarration,
+    created_at: nowIso
+  };
+
+  const batch = writeBatch(db);
+  batch.set(voucherRef, voucher);
+
+  // 1. Stock synchronization
+  items.forEach(it => {
+    if (!it.product_id || !it.qty || Number(it.qty) <= 0) return;
+    const qtyChange = isCreditNote ? Number(it.qty) : -Number(it.qty);
+    const pRef = doc(db, "products", it.product_id);
+    batch.update(pRef, { stock_qty: increment(qtyChange) });
+
+    if (it.batch_id && it.batch_id !== "no-batch") {
+      const bRef = doc(db, "product_batches", it.batch_id);
+      batch.update(bRef, { remaining_qty: increment(qtyChange) });
+    }
+  });
+
+  // 2. Party Ledger Entry
+  const ledgerRef = doc(collection(db, "ledger_entries"));
+  const ledgerNote = isCreditNote
+    ? `Credit Note #${voucherNo} (Sales Return for Bill #${bill_no})`
+    : `Debit Note #${voucherNo} (Purchase Return for Bill #${bill_no})`;
+
+  batch.set(ledgerRef, {
+    id: ledgerRef.id,
+    user_id: userId,
+    party_type,
+    party_id,
+    entry_type: isCreditNote ? "credit_note" : "debit_note",
+    party_name,
+    amount: total,
+    voucher_id: voucherRef.id,
+    reference_id: bill_id,
+    bill_no,
+    note: ledgerNote + (refund_mode !== "ledger" ? ` · Refunded via ${refund_account_name || refund_mode}` : ""),
+    created_at: nowIso
+  });
+
+  // 3. Cash / Bank refund transaction if instant refund
+  if (refund_mode !== "ledger") {
+    const cashRef = doc(collection(db, "cash_transactions"));
+    batch.set(cashRef, {
+      id: cashRef.id,
+      user_id: userId,
+      direction: isCreditNote ? "out" : "in", // Sales refund is OUT, Purchase refund is IN
+      category: isCreditNote ? "sales_refund" : "purchase_refund",
+      party_id,
+      party_name,
+      amount: total,
+      payment_mode: refund_mode,
+      bank_account_id: refund_mode === "bank" ? (refund_account_id || null) : null,
+      bank_account_name: refund_mode === "bank" ? (refund_account_name || null) : null,
+      voucher_id: voucherRef.id,
+      reference_id: bill_id,
+      note: isCreditNote
+        ? `Refund to ${party_name} for Credit Note #${voucherNo} (Bill #${bill_no})`
+        : `Refund from ${party_name} for Debit Note #${voucherNo} (Bill #${bill_no})`,
+      created_at: nowIso
+    });
+  }
+
+  await batch.commit();
+  return voucher;
+}
+
+/**
  * Deletes a voucher and removes any mirrored cash_transactions and party ledger_entries,
- * completely reversing settlements and restoring original party due balances.
+ * completely reversing settlements, restoring original party due balances, and reversing inventory stock for return vouchers.
  */
 export async function deleteVoucher(userId: string, voucherId: string): Promise<void> {
+  // Check if voucher exists and whether it has return_items to reverse stock
+  const vRef = doc(db, "vouchers", voucherId);
+  const vSnap = await getDoc(vRef);
   const batch = writeBatch(db);
-  batch.delete(doc(db, "vouchers", voucherId));
+  batch.delete(vRef);
+
+  if (vSnap.exists()) {
+    const v = vSnap.data() as Voucher;
+    if (v.return_items && Array.isArray(v.return_items) && v.return_items.length > 0) {
+      const isCreditNote = v.voucher_type === "credit_note";
+      v.return_items.forEach(it => {
+        if (!it.product_id || !it.qty || Number(it.qty) <= 0) return;
+        // Reversing: Credit Note originally increased stock, so deletion must decrease stock
+        const reverseQtyChange = isCreditNote ? -Number(it.qty) : Number(it.qty);
+        const pRef = doc(db, "products", it.product_id);
+        batch.update(pRef, { stock_qty: increment(reverseQtyChange) });
+
+        if (it.batch_id && it.batch_id !== "no-batch") {
+          const bRef = doc(db, "product_batches", it.batch_id);
+          batch.update(bRef, { remaining_qty: increment(reverseQtyChange) });
+        }
+      });
+    }
+  }
 
   // 1. Remove mirrored cash_transactions
   const cashByRefQ = query(
@@ -477,7 +672,9 @@ export function printVoucherSlip(voucher: Voucher, shopInfo: any) {
     contra: "कन्ट्रा भाउचर (CONTRA VOUCHER - F4)",
     payment: "भुक्तानी भाउचर (PAYMENT VOUCHER - F5)",
     receipt: "रसिद/आम्दानी भाउचर (RECEIPT VOUCHER - F6)",
-    journal: "जर्नल भाउचर (JOURNAL VOUCHER - F7)"
+    journal: "जर्नल भाउचर (JOURNAL VOUCHER - F7)",
+    debit_note: "डेबिट नोट / खरिद फिर्ता (DEBIT NOTE - Alt+F5)",
+    credit_note: "क्रेडिट नोट / बिक्री फिर्ता (CREDIT NOTE - Alt+F6)"
   };
 
   const hasMultiEntries = voucher.entries && voucher.entries.length > 0;
@@ -572,6 +769,37 @@ export function printVoucherSlip(voucher: Voucher, shopInfo: any) {
           </tr>
         </tfoot>
       </table>
+
+      ${voucher.return_items && voucher.return_items.length > 0 ? `
+      <!-- Returned Items Table -->
+      <div style="margin-bottom: 18px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden;">
+        <div style="background: #f1f5f9; padding: 6px 10px; font-weight: 700; font-size: 11.5px; border-bottom: 1px solid #cbd5e1; color: #1e293b;">
+          📦 फिर्ता गरिएका सामानहरूको विवरण (Returned Items Breakdown)
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+          <thead>
+            <tr style="background: #f8fafc; border-bottom: 1px solid #cbd5e1; color: #475569;">
+              <th style="padding: 6px 8px; text-align: center; width: 30px;">क्र.सं.</th>
+              <th style="padding: 6px 8px; text-align: left;">सामानको नाम (Product)</th>
+              <th style="padding: 6px 8px; text-align: center; width: 80px;">संख्या (Qty)</th>
+              <th style="padding: 6px 8px; text-align: right; width: 90px;">दर (Rate)</th>
+              <th style="padding: 6px 8px; text-align: right; width: 100px;">रकम (Total)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${voucher.return_items.map((it, idx) => `
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 6px 8px; text-align: center; color: #64748b;">${idx + 1}</td>
+                <td style="padding: 6px 8px; font-weight: 600;">${escapeHtml(it.product_name)}</td>
+                <td style="padding: 6px 8px; text-align: center;"><strong>${it.qty}</strong> ${it.unit || 'pcs'}</td>
+                <td style="padding: 6px 8px; text-align: right;">${fmt(it.price)}</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: 600;">${fmt(it.total)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+      ` : ""}
 
       <!-- Narration -->
       <div style="font-size: 12px; margin-bottom: 35px; padding: 8px 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 4px;">

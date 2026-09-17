@@ -25,6 +25,8 @@ import {
   getAccounts,
   getNextVoucherNo,
   createVoucher,
+  createReturnVoucher,
+  VoucherReturnItem,
   deleteVoucher,
   printVoucherSlip,
   getVoucherAccountImpacts,
@@ -56,7 +58,9 @@ import {
   Pencil,
   Package,
   Boxes,
-  Sparkles
+  Sparkles,
+  RotateCcw,
+  Check
 } from "lucide-react";
 import { StockSummaryView } from "@/components/StockSummaryView";
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
@@ -178,18 +182,348 @@ export default function Accounting() {
     setNewAccModalOpen(true);
   };
 
-  // Global Alt + C shortcut for Instant Account Creation
+  // ==========================================
+  // RETURN VOUCHER (DEBIT & CREDIT NOTE) STATE
+  // ==========================================
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnType, setReturnType] = useState<"credit_note" | "debit_note">("credit_note");
+  const [returnPartyId, setReturnPartyId] = useState<string>("");
+  const [returnPartyName, setReturnPartyName] = useState<string>("");
+  const [returnBillId, setReturnBillId] = useState<string>("");
+  const [returnBillNo, setReturnBillNo] = useState<string>("");
+  const [returnDate, setReturnDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [returnDateBs, setReturnDateBs] = useState<string>(formatNepaliDate(new Date().toISOString().slice(0, 10)));
+  
+  type ReturnItemRow = {
+    product_id: string;
+    product_name: string;
+    batch_id?: string;
+    batch_no?: string;
+    unit: string;
+    billed_qty: number;
+    return_qty: number;
+    price: number;
+    total: number;
+  };
+  const [returnItems, setReturnItems] = useState<ReturnItemRow[]>([]);
+  const [returnRefundMode, setReturnRefundMode] = useState<"ledger" | "cash" | "bank" | "esewa" | "khalti">("ledger");
+  const [returnRefundAccountId, setReturnRefundAccountId] = useState<string>("");
+  const [returnNarration, setReturnNarration] = useState<string>("");
+  const [previewReturnNo, setPreviewReturnNo] = useState<string>("");
+  const [loadingBillItems, setLoadingBillItems] = useState<boolean>(false);
+  const [submittingReturn, setSubmittingReturn] = useState<boolean>(false);
+  const [returnTaxRate, setReturnTaxRate] = useState<number>(0);
+
+  const loadBillItems = async (billId: string, currentReturnType: "credit_note" | "debit_note") => {
+    if (!billId) {
+      setReturnItems([]);
+      return;
+    }
+    setLoadingBillItems(true);
+    try {
+      if (currentReturnType === "credit_note") {
+        const q = query(collection(db, "sale_items"), where("sale_id", "==", billId));
+        const snap = await getDocs(q);
+        const items: ReturnItemRow[] = snap.docs.map(d => {
+          const data = d.data();
+          const price = Number(data.sell_price ?? data.price ?? 0);
+          const qty = Number(data.qty ?? data.quantity ?? 1);
+          return {
+            product_id: data.product_id || d.id,
+            product_name: data.product_name || "Item",
+            batch_id: data.batch_id || "",
+            batch_no: data.batch_no || "",
+            unit: data.unit || "pcs",
+            billed_qty: qty,
+            return_qty: 0,
+            price: price,
+            total: 0
+          };
+        });
+        setReturnItems(items);
+      } else {
+        const q = query(collection(db, "purchase_items"), where("purchase_id", "==", billId));
+        const snap = await getDocs(q);
+        const items: ReturnItemRow[] = snap.docs.map(d => {
+          const data = d.data();
+          const price = Number(data.cost_price ?? data.price ?? 0);
+          const qty = Number(data.qty ?? data.quantity ?? 1);
+          return {
+            product_id: data.product_id || d.id,
+            product_name: data.product_name || "Item",
+            batch_id: data.batch_id || "",
+            batch_no: data.batch_no || "",
+            unit: data.unit || "pcs",
+            billed_qty: qty,
+            return_qty: 0,
+            price: price,
+            total: 0
+          };
+        });
+        setReturnItems(items);
+      }
+    } catch (err: any) {
+      console.error("Failed to load bill items", err);
+      toast.error(lang === "NEP" ? "बिलका सामानहरू लोड गर्न सकिएन" : "Failed to load bill items");
+    } finally {
+      setLoadingBillItems(false);
+    }
+  };
+
+  const handleOpenReturnVoucher = async (type: "credit_note" | "debit_note", prePartyId?: string, preBillId?: string) => {
+    setReturnType(type);
+    const today = new Date().toISOString().slice(0, 10);
+    setReturnDate(today);
+    setReturnDateBs(formatNepaliDate(today));
+    setReturnNarration("");
+    setReturnRefundMode("ledger");
+    const defaultCash = accounts.find(a => a.group === "cash");
+    setReturnRefundAccountId(defaultCash ? defaultCash.id : "");
+    setReturnItems([]);
+    setReturnTaxRate(0);
+
+    if (user) {
+      getNextVoucherNo(user.uid, type).then(no => setPreviewReturnNo(no)).catch(() => {});
+    }
+
+    if (prePartyId) {
+      setReturnPartyId(prePartyId);
+      if (type === "credit_note") {
+        const c = customersDocs.find(x => x.id === prePartyId);
+        if (c) setReturnPartyName(c.name || "Customer");
+      } else {
+        const s = suppliersDocs.find(x => x.id === prePartyId);
+        if (s) setReturnPartyName(s.name || "Supplier");
+      }
+    } else {
+      setReturnPartyId("");
+      setReturnPartyName("");
+    }
+
+    if (preBillId) {
+      setReturnBillId(preBillId);
+      if (type === "credit_note") {
+        const sale = salesDocs.find(x => x.id === preBillId);
+        setReturnBillNo(sale?.bill_no || preBillId);
+        if (sale && (sale.vat_amount > 0 || sale.invoice_type === "tax_invoice")) {
+          setReturnTaxRate(0.13);
+        }
+      } else {
+        const pur = purchasesDocs.find(x => x.id === preBillId);
+        setReturnBillNo(pur?.voucher_no || pur?.invoice_no || preBillId);
+        if (pur && (pur.tax_amount > 0 || pur.is_vat_bill || pur.vat_amount > 0)) {
+          setReturnTaxRate(0.13);
+        }
+      }
+      loadBillItems(preBillId, type);
+    } else {
+      setReturnBillId("");
+      setReturnBillNo("");
+    }
+
+    setReturnModalOpen(true);
+  };
+
+  const partyBills = useMemo(() => {
+    if (!returnPartyId) return [];
+    if (returnType === "credit_note") {
+      return salesDocs.filter(s => s.customer_id === returnPartyId || s.customerId === returnPartyId);
+    } else {
+      return purchasesDocs.filter(p => p.supplier_id === returnPartyId || p.supplierId === returnPartyId);
+    }
+  }, [returnPartyId, returnType, salesDocs, purchasesDocs]);
+
+  const handleSelectReturnParty = (partyId: string) => {
+    setReturnPartyId(partyId);
+    setReturnBillId("");
+    setReturnBillNo("");
+    setReturnItems([]);
+    if (returnType === "credit_note") {
+      const c = customersDocs.find(x => x.id === partyId);
+      setReturnPartyName(c ? (c.name || "Customer") : "");
+    } else {
+      const s = suppliersDocs.find(x => x.id === partyId);
+      setReturnPartyName(s ? (s.name || "Supplier") : "");
+    }
+  };
+
+  const handleSelectReturnBill = (billId: string) => {
+    setReturnBillId(billId);
+    if (returnType === "credit_note") {
+      const s = salesDocs.find(x => x.id === billId);
+      setReturnBillNo(s?.bill_no || billId);
+      if (s && (s.vat_amount > 0 || s.invoice_type === "tax_invoice")) {
+        setReturnTaxRate(0.13);
+      } else {
+        setReturnTaxRate(0);
+      }
+    } else {
+      const p = purchasesDocs.find(x => x.id === billId);
+      setReturnBillNo(p?.voucher_no || p?.invoice_no || billId);
+      if (p && (p.tax_amount > 0 || p.is_vat_bill || p.vat_amount > 0)) {
+        setReturnTaxRate(0.13);
+      } else {
+        setReturnTaxRate(0);
+      }
+    }
+    loadBillItems(billId, returnType);
+  };
+
+  const handleItemReturnQtyChange = (index: number, valStr: string) => {
+    const val = parseFloat(valStr) || 0;
+    setReturnItems(prev => {
+      const next = [...prev];
+      const it = { ...next[index] };
+      const clamped = Math.min(it.billed_qty, Math.max(0, val));
+      it.return_qty = clamped;
+      it.total = Math.round(clamped * it.price * 100) / 100;
+      next[index] = it;
+      return next;
+    });
+  };
+
+  const handleReturnAllItems = () => {
+    setReturnItems(prev =>
+      prev.map(it => ({
+        ...it,
+        return_qty: it.billed_qty,
+        total: Math.round(it.billed_qty * it.price * 100) / 100
+      }))
+    );
+  };
+
+  const handleClearReturnItems = () => {
+    setReturnItems(prev =>
+      prev.map(it => ({
+        ...it,
+        return_qty: 0,
+        total: 0
+      }))
+    );
+  };
+
+  const returnSubtotal = useMemo(() => {
+    return returnItems.reduce((sum, item) => sum + (Number(item.return_qty || 0) * Number(item.price || 0)), 0);
+  }, [returnItems]);
+
+  const returnTaxAmount = useMemo(() => {
+    return Math.round(returnSubtotal * returnTaxRate * 100) / 100;
+  }, [returnSubtotal, returnTaxRate]);
+
+  const returnTotal = useMemo(() => {
+    return returnSubtotal + returnTaxAmount;
+  }, [returnSubtotal, returnTaxAmount]);
+
+  const refundAccounts = useMemo(() => {
+    return accounts.filter(a => a.group === "cash" || a.group === "bank_accounts");
+  }, [accounts]);
+
+  const handleSaveReturnVoucher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    if (!returnPartyId) {
+      toast.error(lang === "NEP" ? "कृपया पार्टी छान्नुहोस्" : "Please select a party");
+      return;
+    }
+    if (!returnBillId) {
+      toast.error(lang === "NEP" ? "सम्बन्धित बिल छान्नुहोस्" : "Please select the original bill");
+      return;
+    }
+    const selectedItems = returnItems.filter(it => it.return_qty > 0);
+    if (selectedItems.length === 0) {
+      toast.error(lang === "NEP" ? "कम्तिमा १ वटा सामानको फिर्ता परिमाण (Return Qty) राख्नुहोस्" : "Please enter return quantity for at least 1 item");
+      return;
+    }
+    if (returnTotal <= 0) {
+      toast.error(lang === "NEP" ? "फिर्ता रकम शून्य हुन सक्दैन" : "Return total cannot be 0");
+      return;
+    }
+
+    setSubmittingReturn(true);
+    try {
+      const createdVoucher = await createReturnVoucher({
+        userId: user.uid,
+        voucher_type: returnType,
+        party_id: returnPartyId,
+        party_name: returnPartyName,
+        party_type: returnType === "credit_note" ? "customer" : "supplier",
+        bill_id: returnBillId,
+        bill_no: returnBillNo,
+        date: returnDate,
+        date_bs: returnDateBs,
+        items: selectedItems.map(it => ({
+          product_id: it.product_id,
+          product_name: it.product_name,
+          batch_id: it.batch_id,
+          batch_no: it.batch_no,
+          qty: it.return_qty,
+          unit: it.unit,
+          price: it.price,
+          total: it.total
+        })),
+        subtotal: returnSubtotal,
+        tax_amount: returnTaxAmount,
+        discount_amount: 0,
+        total: returnTotal,
+        refund_mode: returnRefundMode,
+        refund_account_id: returnRefundAccountId,
+        refund_account_name: accounts.find(a => a.id === returnRefundAccountId)?.name,
+        narration: returnNarration || (returnType === "credit_note" ? `Sales Return for Bill #${returnBillNo}` : `Purchase Return for Bill #${returnBillNo}`)
+      });
+
+      toast.success(
+        returnType === "credit_note"
+          ? (lang === "NEP" ? `क्रेडिट नोट #${createdVoucher.voucher_no} सुरक्षित भयो!` : `Credit Note #${createdVoucher.voucher_no} created!`)
+          : (lang === "NEP" ? `डेबिट नोट #${createdVoucher.voucher_no} सुरक्षित भयो!` : `Debit Note #${createdVoucher.voucher_no} created!`),
+        {
+          action: {
+            label: lang === "NEP" ? "प्रिन्ट स्लिप" : "Print Slip",
+            onClick: () => printVoucherSlip(createdVoucher, shopInfo)
+          }
+        }
+      );
+
+      setReturnModalOpen(false);
+      await loadData();
+    } catch (err: any) {
+      console.error("Failed to create return voucher:", err);
+      toast.error(err.message || "Failed to save return voucher");
+    } finally {
+      setSubmittingReturn(false);
+    }
+  };
+
+  // Global Shortcuts: Alt+C (Account), Alt+F5 (Debit Note), Alt+F6 (Credit Note)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && (e.key === "c" || e.key === "C" || e.code === "KeyC")) {
         e.preventDefault();
         e.stopPropagation();
         openQuickCreateAccount();
+      } else if (e.altKey && (e.key === "F5" || e.code === "F5")) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleOpenReturnVoucher("debit_note");
+      } else if (e.altKey && (e.key === "F6" || e.code === "F6")) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleOpenReturnVoucher("credit_note");
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [voucherType, voucherModalOpen]);
+  }, [accounts, customersDocs, suppliersDocs, salesDocs, purchasesDocs, user]);
+
+  // Deep-link check for return voucher action (e.g. from Parties Page)
+  useEffect(() => {
+    const act = searchParams.get("action");
+    const rType = searchParams.get("type");
+    const pId = searchParams.get("partyId");
+    const bId = searchParams.get("billId");
+    if (act === "return" && (rType === "credit_note" || rType === "debit_note")) {
+      handleOpenReturnVoucher(rType, pId || undefined, bId || undefined);
+    }
+  }, [searchParams, customersDocs, suppliersDocs, salesDocs, purchasesDocs]);
 
   // Edit Account Opening Balance Modal
   const [editAccModalOpen, setEditAccModalOpen] = useState(false);
@@ -1089,7 +1423,7 @@ export default function Accounting() {
     const qClean = q.replace(/[-/.,\s]/g, "");
 
     // 1. Accounting Vouchers
-    const voucherEntries: DayBookEntry[] = (filterType === "all" || ["contra", "payment", "receipt", "journal"].includes(filterType))
+    const voucherEntries: DayBookEntry[] = (filterType === "all" || ["contra", "payment", "receipt", "journal", "debit_note", "credit_note"].includes(filterType))
       ? vouchers
           .filter(v => filterType === "all" || filterType === v.voucher_type)
           .map(v => {
@@ -2355,6 +2689,52 @@ export default function Accounting() {
                 </p>
               </div>
             </Card>
+
+            {/* Debit Note Alt+F5 */}
+            <Card
+              onClick={() => handleOpenReturnVoucher("debit_note")}
+              className="p-5 cursor-pointer border-rose-500/20 hover:border-rose-500/50 hover:shadow-md transition-all group bg-gradient-to-br from-rose-500/5 via-card to-card"
+            >
+              <div className="flex items-start justify-between">
+                <div className="h-10 w-10 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+                  <RotateCcw className="h-5 w-5" />
+                </div>
+                <Badge variant="outline" className="text-[10px] font-bold text-rose-600 border-rose-500/30">
+                  ALT+F5 DEBIT NOTE
+                </Badge>
+              </div>
+              <div className="mt-3">
+                <h3 className="font-bold text-sm group-hover:text-rose-600 transition-colors">
+                  {lang === "NEP" ? "डेबिट नोट (खरिद फिर्ता)" : "Debit Note (Purchase Return)"}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {lang === "NEP" ? "सप्लायरलाई सामान फिर्ता, मौज्दात कट्टी वा रकम फिर्ता" : "Return goods to supplier, deduct inventory & claim refund"}
+                </p>
+              </div>
+            </Card>
+
+            {/* Credit Note Alt+F6 */}
+            <Card
+              onClick={() => handleOpenReturnVoucher("credit_note")}
+              className="p-5 cursor-pointer border-cyan-500/20 hover:border-cyan-500/50 hover:shadow-md transition-all group bg-gradient-to-br from-cyan-500/5 via-card to-card"
+            >
+              <div className="flex items-start justify-between">
+                <div className="h-10 w-10 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
+                  <RotateCcw className="h-5 w-5" />
+                </div>
+                <Badge variant="outline" className="text-[10px] font-bold text-cyan-600 border-cyan-500/30">
+                  ALT+F6 CREDIT NOTE
+                </Badge>
+              </div>
+              <div className="mt-3">
+                <h3 className="font-bold text-sm group-hover:text-cyan-600 transition-colors">
+                  {lang === "NEP" ? "क्रेडिट नोट (बिक्री फिर्ता)" : "Credit Note (Sales Return)"}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {lang === "NEP" ? "ग्राहकबाट सामान फिर्ता, स्टक थप वा रकम फिर्ता" : "Receive goods returned by customer, restore stock & adjust dues"}
+                </p>
+              </div>
+            </Card>
           </div>
 
           {/* Guide banner for businesses */}
@@ -2399,6 +2779,8 @@ export default function Accounting() {
                   <SelectItem value="payment">Payment (F5)</SelectItem>
                   <SelectItem value="receipt">Receipt (F6)</SelectItem>
                   <SelectItem value="journal">Journal (F7)</SelectItem>
+                  <SelectItem value="debit_note">{lang === "NEP" ? "डेबिट नोट (खरिद फिर्ता)" : "Debit Note (Alt+F5)"}</SelectItem>
+                  <SelectItem value="credit_note">{lang === "NEP" ? "क्रेडिट नोट (बिक्री फिर्ता)" : "Credit Note (Alt+F6)"}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2458,10 +2840,22 @@ export default function Accounting() {
                               ? "border-amber-500/40 text-amber-600 bg-amber-500/5 text-[10px]"
                               : entry.originalVoucher?.voucher_type === "receipt"
                               ? "border-teal-500/40 text-teal-600 bg-teal-500/5 text-[10px]"
+                              : entry.originalVoucher?.voucher_type === "debit_note"
+                              ? "border-rose-500/40 text-rose-600 bg-rose-500/5 text-[10px]"
+                              : entry.originalVoucher?.voucher_type === "credit_note"
+                              ? "border-cyan-500/40 text-cyan-600 bg-cyan-500/5 text-[10px]"
                               : "border-purple-500/40 text-purple-600 bg-purple-500/5 text-[10px]"
                           }
                         >
-                          {entry.entryType === "sale" ? "SALE" : entry.entryType === "purchase" ? "PURCHASE" : (entry.originalVoucher?.voucher_type || "").toUpperCase()}
+                          {entry.entryType === "sale"
+                            ? "SALE"
+                            : entry.entryType === "purchase"
+                            ? "PURCHASE"
+                            : entry.originalVoucher?.voucher_type === "debit_note"
+                            ? "DEBIT NOTE"
+                            : entry.originalVoucher?.voucher_type === "credit_note"
+                            ? "CREDIT NOTE"
+                            : (entry.originalVoucher?.voucher_type || "").toUpperCase()}
                         </Badge>
                       </td>
                       <td className="py-2.5 px-3 font-medium text-emerald-700 dark:text-emerald-400 max-w-[160px] truncate" title={entry.debitLabel}>
@@ -2553,10 +2947,22 @@ export default function Accounting() {
                           ? "border-amber-500/40 text-amber-600 bg-amber-500/5 text-[10px] py-0 px-1.5 shrink-0"
                           : entry.originalVoucher?.voucher_type === "receipt"
                           ? "border-teal-500/40 text-teal-600 bg-teal-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                          : entry.originalVoucher?.voucher_type === "debit_note"
+                          ? "border-rose-500/40 text-rose-600 bg-rose-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                          : entry.originalVoucher?.voucher_type === "credit_note"
+                          ? "border-cyan-500/40 text-cyan-600 bg-cyan-500/5 text-[10px] py-0 px-1.5 shrink-0"
                           : "border-purple-500/40 text-purple-600 bg-purple-500/5 text-[10px] py-0 px-1.5 shrink-0"
                       }
                     >
-                      {entry.entryType === "sale" ? "SALE" : entry.entryType === "purchase" ? "PURCHASE" : (entry.originalVoucher?.voucher_type || "").toUpperCase()}
+                      {entry.entryType === "sale"
+                        ? "SALE"
+                        : entry.entryType === "purchase"
+                        ? "PURCHASE"
+                        : entry.originalVoucher?.voucher_type === "debit_note"
+                        ? "DEBIT NOTE"
+                        : entry.originalVoucher?.voucher_type === "credit_note"
+                        ? "CREDIT NOTE"
+                        : (entry.originalVoucher?.voucher_type || "").toUpperCase()}
                     </Badge>
                   </div>
 
@@ -4372,6 +4778,412 @@ export default function Accounting() {
                 className="h-10 px-6 text-xs bg-primary font-bold gap-2 text-primary-foreground rounded-xl shadow-md"
               >
                 {savingEditAccount ? "Saving..." : lang === "NEP" ? "सुरक्षित गर्नुहोस्" : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================= */}
+      {/* RETURN VOUCHER MODAL (DEBIT NOTE & CREDIT NOTE)           */}
+      {/* ========================================================= */}
+      <Dialog open={returnModalOpen} onOpenChange={setReturnModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
+          <DialogHeader className="border-b pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold ${
+                  returnType === "credit_note"
+                    ? "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400"
+                    : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                }`}>
+                  <RotateCcw className="h-5 w-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base sm:text-lg font-bold">
+                    {returnType === "credit_note"
+                      ? (lang === "NEP" ? "क्रेडिट नोट (बिक्री फिर्ता भाउचर)" : "Credit Note (Sales Return)")
+                      : (lang === "NEP" ? "डेबिट नोट (खरिद फिर्ता भाउचर)" : "Debit Note (Purchase Return)")}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground">
+                    {returnType === "credit_note"
+                      ? (lang === "NEP" ? "बिक्री भएको सामान ग्राहकबाट फिर्ता लिने र स्टक थप गर्ने" : "Record returned goods from customer & restore inventory stock")
+                      : (lang === "NEP" ? "खरिद गरिएको सामान सप्लायरलाई फिर्ता गर्ने र स्टक घटाउने" : "Return goods to supplier & deduct from inventory stock")}
+                  </DialogDescription>
+                </div>
+              </div>
+
+              {previewReturnNo && (
+                <Badge variant="outline" className={`font-mono text-xs px-2.5 py-1 font-bold ${
+                  returnType === "credit_note"
+                    ? "border-cyan-500/40 text-cyan-700 dark:text-cyan-300 bg-cyan-500/10"
+                    : "border-rose-500/40 text-rose-700 dark:text-rose-300 bg-rose-500/10"
+                }`}>
+                  #{previewReturnNo}
+                </Badge>
+              )}
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveReturnVoucher} className="space-y-4 pt-2">
+            {/* Top Grid: Party Selection, Original Bill Selection & Return Date */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* 1. Party Selector */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">
+                  {returnType === "credit_note"
+                    ? (lang === "NEP" ? "ग्राहक (Customer) *" : "Customer *")
+                    : (lang === "NEP" ? "सप्लायर (Supplier) *" : "Supplier *")}
+                </Label>
+                <Select value={returnPartyId} onValueChange={handleSelectReturnParty}>
+                  <SelectTrigger className="h-9 text-xs rounded-xl">
+                    <SelectValue placeholder={returnType === "credit_note" ? "Select Customer" : "Select Supplier"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    {returnType === "credit_note" ? (
+                      customersDocs.length === 0 ? (
+                        <div className="p-2 text-xs text-muted-foreground text-center">No customers found</div>
+                      ) : (
+                        customersDocs.map(c => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name} {c.phone ? `(${c.phone})` : ""}
+                          </SelectItem>
+                        ))
+                      )
+                    ) : (
+                      suppliersDocs.length === 0 ? (
+                        <div className="p-2 text-xs text-muted-foreground text-center">No suppliers found</div>
+                      ) : (
+                        suppliersDocs.map(s => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} {s.phone ? `(${s.phone})` : ""}
+                          </SelectItem>
+                        ))
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 2. Original Bill Selector */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">
+                  {lang === "NEP" ? "सम्बन्धित बिल (Original Bill) *" : "Original Bill / Invoice *"}
+                </Label>
+                <Select
+                  value={returnBillId}
+                  onValueChange={handleSelectReturnBill}
+                  disabled={!returnPartyId || partyBills.length === 0}
+                >
+                  <SelectTrigger className="h-9 text-xs rounded-xl font-mono">
+                    <SelectValue
+                      placeholder={
+                        !returnPartyId
+                          ? (lang === "NEP" ? "पहिले पार्टी छान्नुहोस्" : "Select party first")
+                          : partyBills.length === 0
+                          ? (lang === "NEP" ? "कुनै बिल भेटिएन" : "No bills found")
+                          : (lang === "NEP" ? "बिल छान्नुहोस्" : "Select Bill")
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    {partyBills.map(b => {
+                      const billNo = returnType === "credit_note" ? (b.bill_no || b.id) : (b.voucher_no || b.invoice_no || b.id);
+                      const amt = Number(b.total || 0);
+                      const dt = (b.date_bs || b.nepali_date || b.created_at || b.date || "").slice(0, 10);
+                      return (
+                        <SelectItem key={b.id} value={b.id}>
+                          #{billNo} • {fmt(amt)} • {dt}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 3. Return Date */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">
+                  {lang === "NEP" ? "फिर्ता मिति (Return Date)" : "Return Date"}
+                </Label>
+                <CustomDatePicker
+                  value={returnDate}
+                  onChange={(ad, bs) => {
+                    setReturnDate(ad);
+                    if (bs) setReturnDateBs(bs);
+                  }}
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Middle Section: Items Table */}
+            <div className="border rounded-xl p-3 bg-muted/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xs">
+                    {lang === "NEP" ? "📦 फिर्ता गरिने सामानहरूको विवरण" : "📦 Items to Return"}
+                  </span>
+                  {returnItems.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] font-mono">
+                      {returnItems.length} items
+                    </Badge>
+                  )}
+                </div>
+
+                {returnItems.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleReturnAllItems}
+                      className="h-7 px-2.5 text-[11px] font-semibold"
+                    >
+                      {lang === "NEP" ? "सबै फिर्ता (Return All)" : "Return All"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearReturnItems}
+                      className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      {lang === "NEP" ? "खाली गर्नुहोस्" : "Clear"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {loadingBillItems ? (
+                <div className="py-8 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span className="text-xs">{lang === "NEP" ? "बिलका सामानहरू खोज्दै..." : "Loading bill items..."}</span>
+                </div>
+              ) : !returnBillId ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  {lang === "NEP"
+                    ? "सामानहरू हेर्न माथिबाट पार्टी र मूल बिल छान्नुहोस्।"
+                    : "Please select a party and an original bill above to view billed items."}
+                </div>
+              ) : returnItems.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  {lang === "NEP"
+                    ? "यस बिलमा कुनै सामान प्रविष्ट गरिएको देखिएन।"
+                    : "No items recorded in this bill."}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="border-b text-muted-foreground font-semibold">
+                        <th className="py-2 px-2.5">{lang === "NEP" ? "सामान (Item)" : "Item Name"}</th>
+                        <th className="py-2 px-2 text-center w-24">{lang === "NEP" ? "बिल गरिएको (Billed)" : "Billed Qty"}</th>
+                        <th className="py-2 px-2 text-center w-28">{lang === "NEP" ? "फिर्ता परिमाण (Return)" : "Return Qty"}</th>
+                        <th className="py-2 px-2 text-right w-24">{lang === "NEP" ? "दर (Price)" : "Price"}</th>
+                        <th className="py-2 px-2.5 text-right w-28">{lang === "NEP" ? "जम्मा (Total)" : "Total"}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {returnItems.map((it, idx) => (
+                        <tr key={it.product_id + idx} className={`transition-colors ${it.return_qty > 0 ? "bg-primary/5 font-medium" : "hover:bg-muted/40"}`}>
+                          <td className="py-2 px-2.5">
+                            <div className="font-semibold text-foreground">{it.product_name}</div>
+                            {it.batch_no && (
+                              <div className="text-[10px] text-muted-foreground font-mono">
+                                Batch: {it.batch_no}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2 px-2 text-center font-mono text-muted-foreground">
+                            {it.billed_qty} {it.unit}
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            <Input
+                              type="number"
+                              min="0"
+                              max={it.billed_qty}
+                              step="any"
+                              value={it.return_qty === 0 ? "" : it.return_qty}
+                              onChange={e => handleItemReturnQtyChange(idx, e.target.value)}
+                              placeholder="0"
+                              className="h-8 text-xs font-mono font-bold text-center w-24 mx-auto rounded-lg"
+                            />
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono">
+                            {fmt(it.price)}
+                          </td>
+                          <td className="py-2 px-2.5 text-right font-mono font-bold text-foreground">
+                            {fmt(it.total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Calculations & Summary Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl border bg-card">
+              <div className="text-xs space-y-1">
+                <span className="text-muted-foreground">{lang === "NEP" ? "उप-जम्मा (Subtotal):" : "Return Subtotal:"}</span>
+                <div className="font-mono font-bold text-sm text-foreground">{fmt(returnSubtotal)}</div>
+              </div>
+
+              <div className="text-xs space-y-1">
+                <span className="text-muted-foreground">
+                  {lang === "NEP" ? "कर / भ्याट (VAT 13%):" : "Tax / VAT (13%):"}
+                </span>
+                <div className="font-mono font-semibold text-sm text-foreground">
+                  {returnTaxRate > 0 ? fmt(returnTaxAmount) : "रु. 0.00"}
+                  {returnTaxRate > 0 && <span className="text-[10px] text-muted-foreground ml-1">(applicable)</span>}
+                </div>
+              </div>
+
+              <div className="text-xs space-y-1 sm:text-right">
+                <span className="text-muted-foreground font-semibold">{lang === "NEP" ? "जम्मा फिर्ता रकम (Total Refund):" : "Total Return Amount:"}</span>
+                <div className="font-mono font-extrabold text-base sm:text-lg text-primary">{fmt(returnTotal)}</div>
+              </div>
+            </div>
+
+            {/* Settlement & Refund Mode */}
+            <div className="border rounded-xl p-3.5 space-y-2.5 bg-background">
+              <Label className="text-xs font-bold text-foreground">
+                {lang === "NEP" ? "हिसाब मिलान तथा भुक्तानी विधि (Settlement Mode) *" : "Settlement & Refund Method *"}
+              </Label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Option 1: Adjust in Ledger / Advance */}
+                <div
+                  onClick={() => setReturnRefundMode("ledger")}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                    returnRefundMode === "ledger"
+                      ? "border-primary bg-primary/10 shadow-xs"
+                      : "border-border hover:bg-muted/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${
+                      returnRefundMode === "ledger" ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"
+                    }`}>
+                      {returnRefundMode === "ledger" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                    </div>
+                    <span className="text-xs font-bold text-foreground">
+                      {lang === "NEP" ? "खातामा कट्टा वा अग्रिम जम्मा (Adjust in Ledger)" : "Adjust in Party Ledger / Advance"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1 ml-6 leading-tight">
+                    {returnType === "credit_note"
+                      ? (lang === "NEP" ? "ग्राहकको बाँकी हिसाब घटाइन्छ वा आगामी खरिदको लागि अग्रिम जम्मा रहन्छ।" : "Deduct from customer's outstanding balance or hold as credit advance.")
+                      : (lang === "NEP" ? "सप्लायरलाई तिर्नुपर्ने हिसाबबाट कट्टी गरिन्छ वा बक्यौता हिसाब घट्छ।" : "Deduct from amount payable to supplier or record as debit balance.")}
+                  </p>
+                </div>
+
+                {/* Option 2: Instant Cash / Bank Refund */}
+                <div
+                  onClick={() => setReturnRefundMode("cash")}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                    returnRefundMode !== "ledger"
+                      ? "border-primary bg-primary/10 shadow-xs"
+                      : "border-border hover:bg-muted/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${
+                      returnRefundMode !== "ledger" ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"
+                    }`}>
+                      {returnRefundMode !== "ledger" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                    </div>
+                    <span className="text-xs font-bold text-foreground">
+                      {lang === "NEP" ? "हातहातै नगद वा बैंक फिर्ता (Instant Refund)" : "Instant Cash / Bank Refund"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1 ml-6 leading-tight">
+                    {returnType === "credit_note"
+                      ? (lang === "NEP" ? "ग्राहकलाई नगद वा बैंक खाताबाट तुरुन्तै रकम फिर्ता दिने।" : "Pay cash or bank refund immediately to customer.")
+                      : (lang === "NEP" ? "सप्लायरबाट नगद वा बैंक खातामा तुरुन्तै फिर्ता रकम प्राप्त गर्ने।" : "Receive refund cash or bank deposit immediately from supplier.")}
+                  </p>
+                </div>
+              </div>
+
+              {/* If Instant Cash/Bank selected, show account dropdown */}
+              {returnRefundMode !== "ledger" && (
+                <div className="pt-2 border-t mt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <Label className="text-xs font-semibold shrink-0">
+                    {lang === "NEP" ? "कुन खाताबाट रकम फिर्ता दिने/लिने?" : "Refund Cash/Bank Account:"}
+                  </Label>
+                  <Select
+                    value={returnRefundAccountId}
+                    onValueChange={setReturnRefundAccountId}
+                  >
+                    <SelectTrigger className="h-9 text-xs rounded-xl sm:w-72">
+                      <SelectValue placeholder="Select Cash/Bank Account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {refundAccounts.map(a => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name} ({a.group.replace("_", " ")})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            {/* Narration */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">
+                {lang === "NEP" ? "कैफियत / टिप्पणी (Narration)" : "Narration / Reason for Return"}
+              </Label>
+              <Input
+                value={returnNarration}
+                onChange={e => setReturnNarration(e.target.value)}
+                placeholder={
+                  returnType === "credit_note"
+                    ? (lang === "NEP" ? "सामान बिग्रिएको वा ग्राहकले मन नपराएको कारण फिर्ता..." : "Reason for customer return (damaged goods, exchange, etc.)...")
+                    : (lang === "NEP" ? "मिति नाघेको वा गुणस्तर नमिलेकाले सप्लायरलाई फिर्ता..." : "Reason for supplier return (expired, damaged, specification mismatch)...")
+                }
+                className="h-9 text-xs rounded-xl"
+              />
+            </div>
+
+            <DialogFooter className="pt-3 border-t flex items-center justify-between gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setReturnModalOpen(false)}
+                disabled={submittingReturn}
+                className="h-9 px-4 text-xs font-semibold rounded-xl"
+              >
+                {lang === "NEP" ? "रद्द गर्नुहोस्" : "Cancel"}
+              </Button>
+
+              <Button
+                type="submit"
+                disabled={submittingReturn || returnTotal <= 0}
+                className={`h-9 px-6 text-xs font-bold gap-2 text-white rounded-xl shadow-md ${
+                  returnType === "credit_note"
+                    ? "bg-cyan-600 hover:bg-cyan-700"
+                    : "bg-rose-600 hover:bg-rose-700"
+                }`}
+              >
+                {submittingReturn ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>{lang === "NEP" ? "सुरक्षित गर्दै..." : "Saving..."}</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    <span>
+                      {returnType === "credit_note"
+                        ? (lang === "NEP" ? "क्रेडिट नोट सुरक्षित गर्नुहोस्" : "Save Credit Note")
+                        : (lang === "NEP" ? "डेबिट नोट सुरक्षित गर्नुहोस्" : "Save Debit Note")}
+                    </span>
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>

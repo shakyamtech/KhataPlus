@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { db } from "@/lib/firebase";
 import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil, CheckCircle2, Receipt, Landmark, Coins, AlertCircle } from "lucide-react";
+import { Plus, Trash2, BookOpen, ArrowLeft, Wallet, Printer, ShoppingCart, Loader2, Search, Pencil, CheckCircle2, Receipt, Landmark, Coins, AlertCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { printHTML, escapeHtml } from "@/lib/print";
@@ -156,6 +157,7 @@ function PartyAvatarRing({
 export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
   const { user } = useAuth();
   const { lang } = useLanguage();
+  const navigate = useNavigate();
   const table = type === "customer" ? "customers" : "suppliers";
   const labelPlural = type === "customer" ? "Customers" : "Suppliers";
   const dueLabel = type === "customer" ? "Receivable (Udhaar)" : "Payable";
@@ -585,7 +587,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             id: l.id,
             entry_type: l.entry_type,
             is_order: false,
-            title: l.entry_type === "payment_in" ? "Payment Received" : l.entry_type.replace("_", " "),
+            title: l.entry_type === "payment_in"
+              ? "Payment Received"
+              : l.entry_type === "credit_note"
+              ? (lang === "NEP" ? "बिक्री फिर्ता (Credit Note)" : "Credit Note (Sales Return)")
+              : l.entry_type.replace("_", " "),
             amount: Number(l.amount),
             created_at: l.created_at,
             payment_mode: l.payment_mode,
@@ -848,7 +854,11 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
             id: l.id,
             entry_type: l.entry_type,
             is_order: false,
-            title: l.entry_type === "payment_out" ? "Payment Made" : l.entry_type.replace("_", " "),
+            title: l.entry_type === "payment_out"
+              ? "Payment Made"
+              : l.entry_type === "debit_note"
+              ? (lang === "NEP" ? "खरिद फिर्ता (Debit Note)" : "Debit Note (Purchase Return)")
+              : l.entry_type.replace("_", " "),
             amount: Number(l.amount),
             created_at: l.created_at,
             payment_mode: l.payment_mode,
@@ -2448,6 +2458,22 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                             <Printer className="h-3.5 w-3.5" />
                             <span>{e.is_order ? "Bill" : "Voucher"}</span>
                           </Button>
+                          {e.is_order && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs flex items-center gap-1 border-rose-500/40 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                              onClick={(evt) => {
+                                evt.stopPropagation();
+                                if (!selected) return;
+                                navigate(`/accounting?tab=vouchers&action=return&type=debit_note&partyId=${selected.id}&partyName=${encodeURIComponent(selected.name)}&billId=${e.id}&billNo=${encodeURIComponent(e.bill_no || (e as any).voucher_no || e.id)}`);
+                              }}
+                              title={lang === "NEP" ? "खरिद फिर्ता (Debit Note) भाउचर जारी गर्नुहोस्" : "Issue Purchase Return (Debit Note)"}
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              <span>{lang === "NEP" ? "फिर्ता" : "Return"}</span>
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2641,6 +2667,22 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
                         <Printer className="h-3.5 w-3.5" />
                         <span>{e.is_order ? "Bill" : "Receipt"}</span>
                       </Button>
+                      {e.is_order && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs flex items-center gap-1 border-cyan-500/40 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                          onClick={(evt) => {
+                            evt.stopPropagation();
+                            if (!selected) return;
+                            navigate(`/accounting?tab=vouchers&action=return&type=credit_note&partyId=${selected.id}&partyName=${encodeURIComponent(selected.name)}&billId=${e.id}&billNo=${encodeURIComponent(e.bill_no || e.id)}`);
+                          }}
+                          title={lang === "NEP" ? "बिक्री फिर्ता (Credit Note) भाउचर जारी गर्नुहोस्" : "Issue Sales Return (Credit Note)"}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          <span>{lang === "NEP" ? "फिर्ता" : "Return"}</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
