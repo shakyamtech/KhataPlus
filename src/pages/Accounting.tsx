@@ -493,6 +493,58 @@ export default function Accounting() {
     }
   };
 
+  const handleAutoGenerateReturnNarration = () => {
+    const isNep = lang === "NEP";
+    if (!returnPartyName && !returnBillNo) {
+      toast.error(isNep ? "पहिले पार्टी र बिल छान्नुहोस्" : "Please select party and bill first");
+      return;
+    }
+
+    const selectedItems = returnItems.filter(it => it.return_qty > 0);
+    const itemsSummary = selectedItems.length > 0
+      ? selectedItems.map(it => `${it.product_name} (${it.return_qty} ${it.unit || "pcs"})`).join(", ")
+      : "";
+
+    const totalStr = returnTotal > 0 ? fmt(returnTotal) : "";
+
+    let settlementNote = "";
+    if (returnRefundMode === "ledger") {
+      settlementNote = isNep ? "खातामा समायोजन" : "Adjusted in Ledger";
+    } else {
+      const refundAccName = accounts.find(a => a.id === returnRefundAccountId)?.name;
+      const accLabel = refundAccName || (isNep ? "नगद/बैंक" : "Cash/Bank");
+      settlementNote = isNep ? `${accLabel} मार्फत हातहातै फिर्ता` : `Refunded via ${accLabel}`;
+    }
+
+    if (returnType === "credit_note") {
+      const billLabel = returnBillNo ? (isNep ? `बिल #${returnBillNo}` : `Bill #${returnBillNo}`) : "";
+      const partyLabel = returnPartyName ? (isNep ? `ग्राहक ${returnPartyName}` : `Customer ${returnPartyName}`) : "";
+      if (isNep) {
+        setReturnNarration(
+          `बिक्री फिर्ता (${billLabel}) - ${partyLabel}${itemsSummary ? ` [${itemsSummary}]` : ""} (${settlementNote})${totalStr ? ` - ${totalStr}` : ""}`
+        );
+      } else {
+        setReturnNarration(
+          `Sales Return (${billLabel}) from ${partyLabel}${itemsSummary ? ` [${itemsSummary}]` : ""} (${settlementNote})${totalStr ? ` [${totalStr}]` : ""}`
+        );
+      }
+    } else {
+      const billLabel = returnBillNo ? (isNep ? `बिल #${returnBillNo}` : `Bill #${returnBillNo}`) : "";
+      const partyLabel = returnPartyName ? (isNep ? `सप्लायर ${returnPartyName}` : `Supplier ${returnPartyName}`) : "";
+      if (isNep) {
+        setReturnNarration(
+          `खरिद फिर्ता (${billLabel}) - ${partyLabel}${itemsSummary ? ` [${itemsSummary}]` : ""} (${settlementNote})${totalStr ? ` - ${totalStr}` : ""}`
+        );
+      } else {
+        setReturnNarration(
+          `Purchase Return (${billLabel}) to ${partyLabel}${itemsSummary ? ` [${itemsSummary}]` : ""} (${settlementNote})${totalStr ? ` [${totalStr}]` : ""}`
+        );
+      }
+    }
+
+    toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
+  };
+
   // Global Shortcuts: Alt+C (Account), Alt+F5 (Debit Note), Alt+F6 (Credit Note)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -5132,21 +5184,33 @@ export default function Accounting() {
               )}
             </div>
 
-            {/* Narration */}
+            {/* Narration with Auto Generate Button */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">
                 {lang === "NEP" ? "कैफियत / टिप्पणी (Narration)" : "Narration / Reason for Return"}
               </Label>
-              <Input
-                value={returnNarration}
-                onChange={e => setReturnNarration(e.target.value)}
-                placeholder={
-                  returnType === "credit_note"
-                    ? (lang === "NEP" ? "सामान बिग्रिएको वा ग्राहकले मन नपराएको कारण फिर्ता..." : "Reason for customer return (damaged goods, exchange, etc.)...")
-                    : (lang === "NEP" ? "मिति नाघेको वा गुणस्तर नमिलेकाले सप्लायरलाई फिर्ता..." : "Reason for supplier return (expired, damaged, specification mismatch)...")
-                }
-                className="h-9 text-xs rounded-xl"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  value={returnNarration}
+                  onChange={e => setReturnNarration(e.target.value)}
+                  placeholder={
+                    returnType === "credit_note"
+                      ? (lang === "NEP" ? "सामान बिग्रिएको वा ग्राहकले मन नपराएको कारण फिर्ता..." : "Reason for customer return (damaged goods, exchange, etc.)...")
+                      : (lang === "NEP" ? "मिति नाघेको वा गुणस्तर नमिलेकाले सप्लायरलाई फिर्ता..." : "Reason for supplier return (expired, damaged, specification mismatch)...")
+                  }
+                  className="h-9 text-xs rounded-xl flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAutoGenerateReturnNarration}
+                  className="h-9 px-2.5 sm:px-3 shrink-0 rounded-xl border-dashed border-primary/40 text-primary hover:bg-primary/10 hover:border-primary shadow-xs text-xs font-semibold gap-1.5 flex items-center"
+                  title={lang === "NEP" ? "स्वचालित कैफियत तयार गर्नुहोस् (Auto Generate Narration)" : "Auto Generate Narration"}
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="text-[11px] sm:text-xs">Auto</span>
+                </Button>
+              </div>
             </div>
 
             <DialogFooter className="pt-3 border-t flex items-center justify-between gap-2">
