@@ -397,10 +397,10 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                     <td style="padding:6px 8px; border:1px solid #111;">सरकारबाट लिन बाँकी भ्याट (VAT Receivable / Credit)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.vatReceivable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>` : ''}
-                  ${d.fixedAssets > 0 ? `
+                  ${d.fixedAssets !== 0 ? `
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">स्थिर सम्पत्ति (Fixed Assets - Vehicle/Equip)</td>
-                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.fixedAssets.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">${d.fixedAssets >= 0 ? "स्थिर सम्पत्ति (Fixed Assets - Net)" : "ह्रासकट्टी कट्टा (Accumulated Depreciation)"}</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111; ${d.fixedAssets < 0 ? 'color:#c00;' : ''}">${d.fixedAssets >= 0 ? `Rs. ${d.fixedAssets.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `(Rs. ${Math.abs(d.fixedAssets).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}</td>
                   </tr>` : ''}
                   ${d.loansGiven > 0 ? `
                   <tr>
@@ -547,7 +547,12 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
               {d.bank > 0 && <Row label="अन्तिम बैंक मौज्दात (Closing Bank Balances)" value={d.bank} />}
               <Row label="अन्तिम स्टक मौज्दात (Closing Stock at Cost)" value={d.stock} />
               <Row label="ग्राहकबाट उठ्न बाँकी (Customer Receivables)" value={d.receivable} />
-              {d.fixedAssets > 0 && <Row label="स्थिर सम्पत्ति (Fixed Assets)" value={d.fixedAssets} />}
+              {d.fixedAssets !== 0 && (
+                <Row
+                  label={d.fixedAssets >= 0 ? "स्थिर सम्पत्ति (Fixed Assets - Net)" : "ह्रासकट्टी कट्टा (Accumulated Depreciation)"}
+                  value={d.fixedAssets}
+                />
+              )}
               {d.loansGiven > 0 && <Row label="दिएको ऋण तथा पेश्की (Loans Given & Advances)" value={d.loansGiven} />}
             </div>
           </div>

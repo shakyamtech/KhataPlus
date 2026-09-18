@@ -130,13 +130,13 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       return {
         id: b.id,
         name: b.name,
-        group: "Bank Accounts",
+        group: lang === "NEP" ? "बैंक खाताहरू" : "Bank Accounts",
         debit: bal >= 0 ? bal : 0,
         credit: bal < 0 ? Math.abs(bal) : 0
       };
     }).filter(r => r.debit > 0 || r.credit > 0);
 
-    // 6. Fixed Assets
+    // 6. Fixed Assets & Accumulated Depreciation
     const assetAccounts = accounts.filter(a => a.group === "fixed_assets");
     const cashFixedAssets = cashDocs
       .filter((c: any) => c.direction === "out" && (c.category === "fixed_asset" || c.account_group === "fixed_asset"))
@@ -154,8 +154,8 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       return {
         id: a.id,
         name: a.name,
-        group: "Fixed Assets",
-        debit: bal >= 0 ? bal : 0,
+        group: lang === "NEP" ? "स्थिर सम्पत्ति" : "Fixed Assets",
+        debit: bal > 0 ? bal : 0,
         credit: bal < 0 ? Math.abs(bal) : 0
       };
     }).filter(r => r.debit > 0 || r.credit > 0);
@@ -164,7 +164,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       fixedAssetRows.push({
         id: "cash_fixed_assets",
         name: lang === "NEP" ? "स्थिर सम्पत्ति (Fixed Assets)" : "Fixed Assets",
-        group: "Fixed Assets",
+        group: lang === "NEP" ? "स्थिर सम्पत्ति" : "Fixed Assets",
         debit: cashFixedAssets,
         credit: 0
       });
@@ -191,7 +191,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       return {
         id: l.id,
         name: l.name,
-        group: "Loans & Liabilities",
+        group: lang === "NEP" ? "ऋण तथा दायित्व" : "Loans & Liabilities",
         debit: bal < 0 ? Math.abs(bal) : 0,
         credit: bal >= 0 ? bal : 0
       };
@@ -201,13 +201,13 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       loanRows.push({
         id: "cash_loans",
         name: lang === "NEP" ? "ऋण दायित्व (Loans & Borrowings)" : "Loans & Borrowings",
-        group: "Loans & Liabilities",
+        group: lang === "NEP" ? "ऋण तथा दायित्व" : "Loans & Liabilities",
         debit: 0,
         credit: cashLoansTaken - cashLoansRepaid
       });
     }
 
-    // 8. Outstanding Liabilities
+    // 8. Outstanding Liabilities / Current Liabilities
     const currLiabAccounts = accounts.filter(a => a.group === "current_liabilities");
     const currLiabRows = currLiabAccounts.map(c => {
       let bal = Number(c.opening_balance || 0);
@@ -220,7 +220,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       return {
         id: c.id,
         name: c.name,
-        group: "Current Liabilities",
+        group: lang === "NEP" ? "चालू दायित्व" : "Current Liabilities",
         debit: bal < 0 ? Math.abs(bal) : 0,
         credit: bal >= 0 ? bal : 0
       };
@@ -228,38 +228,96 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
 
     // 9. Capital (Equity)
     const capitalAccounts = accounts.filter(a => a.group === "capital");
-    let capitalExtra = capitalAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
-    vouchers.forEach(v => {
-      const impacts = getVoucherAccountImpacts(v);
-      impacts.forEach(imp => {
-        if (capitalAccounts.some(c => c.id === imp.account_id)) {
-          capitalExtra += (imp.credit - imp.debit);
-        }
-      });
-    });
     const capitalCats = ["opening", "capital", "investment", "owner_investment"];
     const cashCapital = cashDocs
       .filter((c: any) => c.direction === "in" && (capitalCats.includes((c.category || "").toLowerCase()) || c.account_group === "capital"))
       .reduce((s, r: any) => s + +r.amount, 0);
-    const totalCapital = cashCapital + capitalExtra;
+
+    const capitalRows = capitalAccounts.map((c, idx) => {
+      let bal = Number(c.opening_balance || 0);
+      vouchers.forEach(v => {
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === c.id) bal += (imp.credit - imp.debit);
+        });
+      });
+      if (idx === 0) bal += cashCapital;
+      return {
+        id: c.id,
+        name: c.name,
+        group: lang === "NEP" ? "पुँजी खाता" : "Capital Account",
+        debit: bal < 0 ? Math.abs(bal) : 0,
+        credit: bal >= 0 ? bal : 0
+      };
+    }).filter(r => r.debit > 0 || r.credit > 0);
+
+    if (capitalRows.length === 0 && cashCapital > 0) {
+      capitalRows.push({
+        id: "cash_capital",
+        name: lang === "NEP" ? "मालिकको पुँजी (Owner's Capital)" : "Owner's Capital",
+        group: lang === "NEP" ? "पुँजी खाता" : "Capital Account",
+        debit: 0,
+        credit: cashCapital
+      });
+    }
 
     // 10. Drawings
     const drawingsAccounts = accounts.filter(a => a.group === "drawings");
-    let drawingsExtra = drawingsAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
-    vouchers.forEach(v => {
-      const impacts = getVoucherAccountImpacts(v);
-      impacts.forEach(imp => {
-        if (drawingsAccounts.some(d => d.id === imp.account_id)) {
-          drawingsExtra += (imp.debit - imp.credit);
-        }
-      });
-    });
     const cashDrawings = cashDocs
       .filter((c: any) => c.direction === "out" && ((c.category || "").toLowerCase() === "personal" || c.account_group === "drawings"))
       .reduce((s, r: any) => s + +r.amount, 0);
-    const totalDrawings = cashDrawings + drawingsExtra;
 
-    // 11. Expenses
+    const drawingsRows = drawingsAccounts.map((d, idx) => {
+      let bal = Number(d.opening_balance || 0);
+      vouchers.forEach(v => {
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === d.id) bal += (imp.debit - imp.credit);
+        });
+      });
+      if (idx === 0) bal += cashDrawings;
+      return {
+        id: d.id,
+        name: d.name,
+        group: lang === "NEP" ? "पुँजी (कट्टी)" : "Equity (Debit)",
+        debit: bal >= 0 ? bal : 0,
+        credit: bal < 0 ? Math.abs(bal) : 0
+      };
+    }).filter(r => r.debit > 0 || r.credit > 0);
+
+    if (drawingsRows.length === 0 && cashDrawings > 0) {
+      drawingsRows.push({
+        id: "cash_drawings",
+        name: lang === "NEP" ? "साहुको व्यक्तिगत खर्च (Owner's Drawings)" : "Owner's Drawings",
+        group: lang === "NEP" ? "पुँजी (कट्टी)" : "Equity (Debit)",
+        debit: cashDrawings,
+        credit: 0
+      });
+    }
+
+    // 11. Individual Expense Ledgers (Direct & Indirect)
+    const expAccounts = accounts.filter(a => a.type === "expense");
+    const expenseRows = expAccounts.map(e => {
+      let bal = Number(e.opening_balance || 0);
+      vouchers.forEach(v => {
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === e.id) bal += (imp.debit - imp.credit);
+        });
+      });
+      const grp = e.group === "direct_expenses"
+        ? (lang === "NEP" ? "प्रत्यक्ष खर्च" : "Direct Expenses")
+        : (lang === "NEP" ? "अप्रत्यक्ष खर्च" : "Indirect Expenses");
+      return {
+        id: e.id,
+        name: e.name,
+        group: grp,
+        debit: bal >= 0 ? bal : 0,
+        credit: bal < 0 ? Math.abs(bal) : 0
+      };
+    }).filter(r => r.debit > 0 || r.credit > 0);
+
+    // Other cash expenses not tagged in custom vouchers
     const nonExpenseCats = [
       "purchase", "purchases", "supplier_payment", "payment", "personal",
       "contra_bank_deposit", "contra_bank_withdrawal", "voucher_payment", "voucher_receipt",
@@ -276,17 +334,24 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const wastageAdjustments = stockAdjDocs.filter(d => d.responsibility === "loss");
     const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
 
-    const expAccounts = accounts.filter(a => a.type === "expense");
-    let voucherExpenses = 0;
-    vouchers.forEach(v => {
-      const impacts = getVoucherAccountImpacts(v);
-      impacts.forEach(imp => {
-        if (expAccounts.some(e => e.id === imp.account_id)) {
-          voucherExpenses += (imp.debit - imp.credit);
-        }
+    // Other Income Accounts
+    const incomeAccounts = accounts.filter(a => a.type === "income" && a.id !== `${user?.uid}_sales`);
+    const otherIncomeRows = incomeAccounts.map(inc => {
+      let bal = Number(inc.opening_balance || 0);
+      vouchers.forEach(v => {
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === inc.id) bal += (imp.credit - imp.debit);
+        });
       });
-    });
-    const totalExpenses = cashExpenses + wastageExpenses + voucherExpenses;
+      return {
+        id: inc.id,
+        name: inc.name,
+        group: inc.group === "direct_income" ? (lang === "NEP" ? "प्रत्यक्ष आम्दानी" : "Direct Incomes") : (lang === "NEP" ? "अन्य आम्दानी" : "Indirect Incomes"),
+        debit: bal < 0 ? Math.abs(bal) : 0,
+        credit: bal >= 0 ? bal : 0
+      };
+    }).filter(r => r.debit > 0 || r.credit > 0);
 
     // Construct unified Trial Balance Ledger Rows
     const rows: { id: string; name: string; group: string; debit: number; credit: number }[] = [];
@@ -325,10 +390,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     }
 
     // Bank Rows
-    bankRows.forEach(b => rows.push({
-      ...b,
-      group: lang === "NEP" ? "बैंक खाताहरू" : "Bank Accounts"
-    }));
+    bankRows.forEach(b => rows.push(b));
 
     // Stock
     if (stockVal > 0) {
@@ -353,10 +415,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     }
 
     // Fixed Assets
-    fixedAssetRows.forEach(a => rows.push({
-      ...a,
-      group: lang === "NEP" ? "स्थिर सम्पत्ति" : "Fixed Assets"
-    }));
+    fixedAssetRows.forEach(a => rows.push(a));
 
     // Cost of Goods Sold (COGS)
     if (cogs > 0) {
@@ -369,27 +428,33 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       });
     }
 
-    // Operating & Voucher Expenses
-    if (totalExpenses > 0) {
+    // Itemized Expense Accounts
+    expenseRows.forEach(e => rows.push(e));
+
+    // Misc Cash Expenses
+    if (cashExpenses > 0) {
       rows.push({
-        id: "operating_expenses",
-        name: lang === "NEP" ? "सञ्चालन तथा अन्य खर्चहरू (Operating Expenses)" : "Operating & Admin Expenses",
+        id: "cash_expenses_misc",
+        name: lang === "NEP" ? "दैनिक नगद खर्चहरू (General Cash Expenses)" : "General Cash Expenses",
         group: lang === "NEP" ? "अप्रत्यक्ष खर्च" : "Indirect Expenses",
-        debit: totalExpenses,
+        debit: cashExpenses,
+        credit: 0
+      });
+    }
+
+    // Wastage Loss
+    if (wastageExpenses > 0) {
+      rows.push({
+        id: "wastage_expenses",
+        name: lang === "NEP" ? "स्टक नोक्सानी (Inventory Wastage / Loss)" : "Stock Wastage & Loss",
+        group: lang === "NEP" ? "प्रत्यक्ष खर्च" : "Direct Expenses",
+        debit: wastageExpenses,
         credit: 0
       });
     }
 
     // Drawings
-    if (totalDrawings > 0) {
-      rows.push({
-        id: "drawings",
-        name: lang === "NEP" ? "साहुको व्यक्तिगत खर्च (Owner's Drawings)" : "Owner's Drawings",
-        group: lang === "NEP" ? "पुँजी (कट्टी)" : "Equity (Debit)",
-        debit: totalDrawings,
-        credit: 0
-      });
-    }
+    drawingsRows.forEach(d => rows.push(d));
 
     // Creditors / Payables
     if (payable > 0) {
@@ -403,16 +468,10 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     }
 
     // Loans
-    loanRows.forEach(l => rows.push({
-      ...l,
-      group: lang === "NEP" ? "ऋण तथा दायित्व" : "Loans & Liabilities"
-    }));
+    loanRows.forEach(l => rows.push(l));
 
     // Current Liabilities
-    currLiabRows.forEach(c => rows.push({
-      ...c,
-      group: lang === "NEP" ? "चालू दायित्व" : "Current Liabilities"
-    }));
+    currLiabRows.forEach(c => rows.push(c));
 
     // VAT Payable (Current Liabilities)
     if (vatPayable > 0) {
@@ -426,15 +485,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     }
 
     // Capital
-    if (totalCapital > 0) {
-      rows.push({
-        id: "capital",
-        name: lang === "NEP" ? "मालिकको पुँजी (Owner's Capital)" : "Owner's Capital",
-        group: lang === "NEP" ? "पुँजी खाता" : "Capital Account",
-        debit: 0,
-        credit: totalCapital
-      });
-    }
+    capitalRows.forEach(c => rows.push(c));
 
     // Sales Revenue
     if (revenue > 0) {
@@ -446,6 +497,9 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
         credit: revenue
       });
     }
+
+    // Other Incomes
+    otherIncomeRows.forEach(inc => rows.push(inc));
 
     const totalDebits = Math.round(rows.reduce((s, r) => s + r.debit, 0) * 100) / 100;
     const totalCredits = Math.round(rows.reduce((s, r) => s + r.credit, 0) * 100) / 100;
