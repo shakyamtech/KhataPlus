@@ -2386,6 +2386,7 @@ export default function Accounting() {
 
     // 4. Sales Revenue & Cost of Goods Sold
     const outputVat = salesDocs.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
+    const inputVat = purchasesDocs.reduce((s, p: any) => s + +(p.vat_amount || (p.is_vat_bill ? (+p.total - +p.total / 1.13) : 0)), 0);
     let vatPaid = 0;
     vouchers.forEach(v => {
       const impacts = getVoucherAccountImpacts(v);
@@ -2395,7 +2396,9 @@ export default function Accounting() {
         }
       });
     });
-    const vatPayable = Math.max(0, outputVat - vatPaid);
+    const netVat = outputVat - inputVat - vatPaid;
+    const vatPayable = netVat > 0 ? netVat : 0;
+    const vatReceivable = netVat < 0 ? Math.abs(netVat) : 0;
     const revenue = salesDocs.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
     const cogs = salesDocs.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
@@ -2714,6 +2717,17 @@ export default function Accounting() {
       });
     }
 
+    // VAT Receivable / Input Tax Credit (Current Assets)
+    if (vatReceivable > 0) {
+      rows.push({
+        id: "vat_receivable",
+        name: lang === "NEP" ? "भ्याट कट्टी मौज्दात (Input VAT Credit)" : "Input VAT Credit (Receivable)",
+        group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
+        debit: vatReceivable,
+        credit: 0
+      });
+    }
+
     // Capital
     if (totalCapital > 0) {
       rows.push({
@@ -2747,7 +2761,7 @@ export default function Accounting() {
       difference,
       isBalanced: difference < 0.05
     };
-  }, [cashDocs, productDocs, ledgerDocs, salesDocs, accounts, vouchers, stockAdjDocs, lang]);
+  }, [cashDocs, productDocs, ledgerDocs, salesDocs, purchasesDocs, accounts, vouchers, stockAdjDocs, lang]);
 
   // Live running balance calculation for each account in Chart of Accounts
   const accountLiveBalances = useMemo(() => {

@@ -30,13 +30,14 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
   const [stockAdjDocs, setStockAdjDocs] = useState<any[]>([]);
   const [customerDocs, setCustomerDocs] = useState<any[]>([]);
   const [supplierDocs, setSupplierDocs] = useState<any[]>([]);
+  const [purchasesDocs, setPurchasesDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const [accList, vSnap, cSnap, sSnap, lSnap, pSnap, saSnap, suppSnap, custSnap, sInfo] = await Promise.all([
+      const [accList, vSnap, cSnap, sSnap, lSnap, pSnap, saSnap, suppSnap, custSnap, purSnap, sInfo] = await Promise.all([
         getAccounts(user.uid),
         getDocs(query(collection(db, "vouchers"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "cash_transactions"), where("user_id", "==", user.uid))),
@@ -46,6 +47,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
         getDocs(query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "suppliers"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "customers"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "purchases"), where("user_id", "==", user.uid))),
         getShopInfo()
       ]);
 
@@ -58,6 +60,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       setStockAdjDocs(saSnap.docs.map(d => d.data()));
       setSupplierDocs(suppSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setCustomerDocs(custSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setPurchasesDocs(purSnap.docs.map(d => d.data()));
       setShopInfo(sInfo);
     } catch (err: any) {
       console.error("TrialBalanceView load error:", err);
@@ -128,8 +131,9 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       }
     });
 
-    // 4. Sales Revenue & Cost of Goods Sold & VAT Payable
+    // 4. Sales Revenue & Cost of Goods Sold & VAT Balance
     const outputVat = salesDocs.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
+    const inputVat = purchasesDocs.reduce((s, p: any) => s + +(p.vat_amount || (p.is_vat_bill ? (+p.total - +p.total / 1.13) : 0)), 0);
     let vatPaid = 0;
     vouchers.forEach(v => {
       const impacts = getVoucherAccountImpacts(v);
@@ -139,7 +143,9 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
         }
       });
     });
-    const vatPayable = Math.max(0, outputVat - vatPaid);
+    const netVat = outputVat - inputVat - vatPaid;
+    const vatPayable = netVat > 0 ? netVat : 0;
+    const vatReceivable = netVat < 0 ? Math.abs(netVat) : 0;
     const revenue = salesDocs.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
     const cogs = salesDocs.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
@@ -518,6 +524,17 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       });
     }
 
+    // VAT Receivable / Input Tax Credit (Current Assets)
+    if (vatReceivable > 0) {
+      rows.push({
+        id: "vat_receivable",
+        name: lang === "NEP" ? "भ्याट कट्टी मौज्दात (Input VAT Credit)" : "Input VAT Credit (Receivable)",
+        group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
+        debit: vatReceivable,
+        credit: 0
+      });
+    }
+
     // Capital
     capitalRows.forEach(c => rows.push(c));
 
@@ -546,7 +563,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       difference,
       isBalanced: difference < 0.05
     };
-  }, [accounts, vouchers, cashDocs, salesDocs, ledgerDocs, productDocs, stockAdjDocs, lang]);
+  }, [accounts, vouchers, cashDocs, salesDocs, purchasesDocs, ledgerDocs, productDocs, stockAdjDocs, lang]);
 
   const handlePrintTrialBalance = () => {
     if (!shopInfo) return;
