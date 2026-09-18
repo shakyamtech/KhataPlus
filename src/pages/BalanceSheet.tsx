@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,10 @@ import { fmt } from "@/lib/format";
 import { format } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Landmark } from "lucide-react";
+import { Printer, Landmark, Sparkles } from "lucide-react";
 import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
-import { getAccounts, Account, getVoucherAccountImpacts } from "@/lib/accounting";
+import { getAccounts, Account, Voucher, getVoucherAccountImpacts } from "@/lib/accounting";
+import { BalanceSheetAssistantModal } from "@/components/BalanceSheetAssistantModal";
 
 const Row = ({ label, value, bold }: { label: string; value: number; bold?: boolean }) => (
   <div className={`flex justify-between py-2 ${bold ? "font-display text-base border-t pt-3 mt-2" : "text-sm"}`}>
@@ -33,10 +35,24 @@ interface BalanceSheetProps {
 
 const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {}) => {
   const { user } = useAuth();
+  const { lang } = useLanguage();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [bankItems, setBankItems] = useState<LedgerBreakdownItem[]>([]);
   const [customerItems, setCustomerItems] = useState<LedgerBreakdownItem[]>([]);
   const [supplierItems, setSupplierItems] = useState<LedgerBreakdownItem[]>([]);
+
+  // Raw records for assistant audit engine
+  const [rawAccounts, setRawAccounts] = useState<Account[]>([]);
+  const [rawVouchers, setRawVouchers] = useState<Voucher[]>([]);
+  const [rawPurchases, setRawPurchases] = useState<any[]>([]);
+  const [rawSales, setRawSales] = useState<any[]>([]);
+  const [rawProducts, setRawProducts] = useState<any[]>([]);
+  const [rawCash, setRawCash] = useState<any[]>([]);
+
+  // Assistant modal state
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantTab, setAssistantTab] = useState<"diagnostics" | "retained" | "health">("diagnostics");
+
   const [d, setD] = useState({
     cash: 0,
     wallet: 0,
@@ -59,46 +75,52 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
     expenses: 0
   });
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!user) return;
-    (async () => {
-      try {
-        const cQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
-        const pQ = query(collection(db, "products"), where("user_id", "==", user.uid));
-        const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
-        const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid));
-        const wQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
-        const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
-        const suppQ = query(collection(db, "suppliers"), where("user_id", "==", user.uid));
-        const custQ = query(collection(db, "customers"), where("user_id", "==", user.uid));
-        const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid));
+    try {
+      const cQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
+      const pQ = query(collection(db, "products"), where("user_id", "==", user.uid));
+      const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
+      const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid));
+      const wQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
+      const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
+      const suppQ = query(collection(db, "suppliers"), where("user_id", "==", user.uid));
+      const custQ = query(collection(db, "customers"), where("user_id", "==", user.uid));
+      const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid));
 
-        const [cSnap, pSnap, lSnap, sSnap, wSnap, accList, vSnap, suppSnap, custSnap, purSnap, sInfo] = await Promise.all([
-          getDocs(cQ),
-          getDocs(pQ),
-          getDocs(lQ),
-          getDocs(sQ),
-          getDocs(wQ),
-          getAccounts(user.uid),
-          getDocs(vQ),
-          getDocs(suppQ),
-          getDocs(custQ),
-          getDocs(purQ),
-          getShopInfo()
-        ]);
+      const [cSnap, pSnap, lSnap, sSnap, wSnap, accList, vSnap, suppSnap, custSnap, purSnap, sInfo] = await Promise.all([
+        getDocs(cQ),
+        getDocs(pQ),
+        getDocs(lQ),
+        getDocs(sQ),
+        getDocs(wQ),
+        getAccounts(user.uid),
+        getDocs(vQ),
+        getDocs(suppQ),
+        getDocs(custSnap ? custQ : custQ),
+        getDocs(purQ),
+        getShopInfo()
+      ]);
 
-        setShopInfo(sInfo);
+      setShopInfo(sInfo);
 
-        const cash = cSnap.docs.map(d => d.data());
-        const products = pSnap.docs.map(d => d.data());
-        const ledger = lSnap.docs.map(d => d.data());
-        const sales = sSnap.docs.map(d => d.data());
-        const wastageAdjustments = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
-        const accounts = accList;
-        const vouchers = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const suppliers = suppSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const customers = custSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const purchases = purSnap.docs.map(d => d.data());
+      const cash = cSnap.docs.map(d => d.data());
+      const products = pSnap.docs.map(d => d.data());
+      const ledger = lSnap.docs.map(d => d.data());
+      const sales = sSnap.docs.map(d => d.data());
+      const wastageAdjustments = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
+      const accounts = accList;
+      const vouchers = vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher));
+      const suppliers = suppSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const customers = custSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const purchases = purSnap.docs.map(d => d.data());
+
+      setRawAccounts(accounts);
+      setRawVouchers(vouchers);
+      setRawPurchases(purchases);
+      setRawSales(sales);
+      setRawProducts(products);
+      setRawCash(cash);
 
         // Separate Physical Cash in Hand and Digital Wallets (eSewa, Khalti)
         const pureCashBal = cash
@@ -368,8 +390,11 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
       } catch (err: any) {
         console.error("BalanceSheet error:", err);
       }
-    })();
   }, [user]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const totalAssets = d.cash + d.wallet + d.bank + d.stock + d.receivable + d.fixedAssets + d.loansGiven + d.vatReceivable;
   const grossProfit = d.revenue - d.cogs;
@@ -630,6 +655,19 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 font-bold shadow-xs active:scale-95 cursor-pointer"
+            onClick={() => {
+              setAssistantTab("diagnostics");
+              setAssistantOpen(true);
+            }}
+          >
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <span>{lang === "NEP" ? "वासलात सहायक" : "Audit Assistant"}</span>
+          </Button>
+
           <Button onClick={handlePrintBalanceSheet} variant="outline" size="sm" className="gap-2 shrink-0">
             <Printer className="h-4 w-4 text-primary" />
             प्रिन्ट / PDF
@@ -756,7 +794,24 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
               {d.outstanding > 0 && <Row label="तिर्न बाँकी खर्च (Outstanding Liabilities)" value={d.outstanding} />}
               {d.vatPayable > 0 && <Row label="सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)" value={d.vatPayable} />}
               <Row label="साहुको पुँजी (Owner's Capital)" value={d.capital} />
-              <Row label="खुद व्यापारिक नाफा (Retained Earnings)" value={netProfit} />
+              <div className="flex justify-between items-center py-2 text-sm">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">खुद व्यापारिक नाफा (Retained Earnings)</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssistantTab("retained");
+                      setAssistantOpen(true);
+                    }}
+                    className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 flex items-center gap-0.5 cursor-pointer transition-colors"
+                    title="नाफा-नोक्सानको विस्तृत चिरफार हेर्नुहोस्"
+                  >
+                    <Sparkles className="h-2.5 w-2.5 text-blue-600 dark:text-blue-400" />
+                    <span>चिरफार</span>
+                  </button>
+                </div>
+                <span className="font-mono font-bold text-foreground">{fmt(netProfit)}</span>
+              </div>
               {d.drawings > 0 && <Row label="घटाउनुहोस्: निजी खर्च (Less: Drawings)" value={-d.drawings} />}
             </div>
           </div>
@@ -775,6 +830,26 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           📒 <strong className="text-foreground">Note:</strong> This is a simplified account derived from your recorded sales, purchases, cash and stock. For tax filing, consult an accountant.
         </div>
       </Card>
+
+      <BalanceSheetAssistantModal
+        isOpen={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+        totalAssets={totalAssets}
+        totalLiabilitiesAndEquity={totalLiabilitiesAndEquity}
+        d={d}
+        grossProfit={grossProfit}
+        netProfit={netProfit}
+        totalEquity={totalEquity}
+        accounts={rawAccounts}
+        vouchers={rawVouchers}
+        purchasesDocs={rawPurchases}
+        salesDocs={rawSales}
+        productDocs={rawProducts}
+        cashDocs={rawCash}
+        onFixed={loadData}
+        initialTab={assistantTab}
+        lang={lang as "ENG" | "NEP"}
+      />
     </div>
   );
 };
