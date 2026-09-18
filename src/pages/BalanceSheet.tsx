@@ -51,6 +51,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
     loans: 0,
     outstanding: 0,
     vatPayable: 0,
+    vatReceivable: 0,
     capital: 0,
     drawings: 0,
     revenue: 0,
@@ -70,8 +71,9 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
         const suppQ = query(collection(db, "suppliers"), where("user_id", "==", user.uid));
         const custQ = query(collection(db, "customers"), where("user_id", "==", user.uid));
+        const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid));
 
-        const [cSnap, pSnap, lSnap, sSnap, wSnap, accList, vSnap, suppSnap, custSnap, sInfo] = await Promise.all([
+        const [cSnap, pSnap, lSnap, sSnap, wSnap, accList, vSnap, suppSnap, custSnap, purSnap, sInfo] = await Promise.all([
           getDocs(cQ),
           getDocs(pQ),
           getDocs(lQ),
@@ -81,6 +83,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           getDocs(vQ),
           getDocs(suppQ),
           getDocs(custQ),
+          getDocs(purQ),
           getShopInfo()
         ]);
 
@@ -93,6 +96,9 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const wastageAdjustments = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
         const accounts = accList;
         const vouchers = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const suppliers = suppSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const customers = custSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const purchases = purSnap.docs.map(d => d.data());
 
         // Separate Physical Cash in Hand and Digital Wallets (eSewa, Khalti)
         const pureCashBal = cash
@@ -296,6 +302,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         setSupplierItems(supplierItemsList);
 
         const outputVat = sales.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
+        const inputVat = purchases.reduce((s, p: any) => s + +(p.vat_amount || (p.is_vat_bill ? (+p.total - +p.total / 1.13) : 0)), 0);
         let vatPaid = 0;
         vouchers.forEach((v: any) => {
           const impacts = getVoucherAccountImpacts(v);
@@ -305,7 +312,9 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
             }
           });
         });
-        const vatPayable = Math.max(0, outputVat - vatPaid);
+        const netVat = outputVat - inputVat - vatPaid;
+        const vatPayable = netVat > 0 ? netVat : 0;
+        const vatReceivable = netVat < 0 ? Math.abs(netVat) : 0;
         const revenue = sales.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
         const cogs = sales.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
@@ -349,6 +358,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           loans: loansTotal,
           outstanding: outstandingTotal,
           vatPayable,
+          vatReceivable,
           capital: totalCapital,
           drawings: totalDrawings,
           revenue,
@@ -361,7 +371,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
     })();
   }, [user]);
 
-  const totalAssets = d.cash + d.wallet + d.bank + d.stock + d.receivable + d.fixedAssets + d.loansGiven;
+  const totalAssets = d.cash + d.wallet + d.bank + d.stock + d.receivable + d.fixedAssets + d.loansGiven + d.vatReceivable;
   const grossProfit = d.revenue - d.cogs;
   const netProfit = grossProfit - d.expenses;
   const totalEquity = d.capital + netProfit - d.drawings;
@@ -687,6 +697,9 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                 )}
               </div>
 
+              {d.vatReceivable > 0 && (
+                <Row label="सरकारबाट लिन बाँकी भ्याट (VAT Receivable / Credit)" value={d.vatReceivable} />
+              )}
               {d.grossFixedAssets > 0 && (
                 <Row label="स्थिर सम्पत्ति (Gross Fixed Assets)" value={d.grossFixedAssets} />
               )}

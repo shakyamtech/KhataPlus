@@ -194,7 +194,7 @@ export default function Accounting() {
   const [returnBillNo, setReturnBillNo] = useState<string>("");
   const [returnDate, setReturnDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [returnDateBs, setReturnDateBs] = useState<string>(formatNepaliDate(new Date().toISOString().slice(0, 10)));
-  
+
   type ReturnItemRow = {
     product_id: string;
     product_name: string;
@@ -246,7 +246,7 @@ export default function Accounting() {
               });
             }
           });
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // 2. Fetch live product stock map
@@ -349,7 +349,7 @@ export default function Accounting() {
     setReturnTaxRate(0);
 
     if (user) {
-      getNextVoucherNo(user.uid, type).then(no => setPreviewReturnNo(no)).catch(() => {});
+      getNextVoucherNo(user.uid, type).then(no => setPreviewReturnNo(no)).catch(() => { });
     }
 
     if (prePartyId) {
@@ -751,7 +751,7 @@ export default function Accounting() {
     setPreviewVoucherNo("");
 
     if (user) {
-      getNextVoucherNo(user.uid, type).then(no => setPreviewVoucherNo(no)).catch(() => {});
+      getNextVoucherNo(user.uid, type).then(no => setPreviewVoucherNo(no)).catch(() => { });
     }
 
     // Set intelligent defaults for accounts based on voucher type
@@ -945,147 +945,33 @@ export default function Accounting() {
     const isNep = lang === "NEP";
 
     if (voucherType === "payment") {
+      const selectedNames = paymentRows
+        .map(r => accounts.find(a => a.id === r.account_id)?.name)
+        .filter(Boolean);
       const viaAcc = accounts.find(a => a.id === creditAccountId)?.name;
+      const namesStr = selectedNames.length > 0 ? selectedNames.join(", ") : (isNep ? "खर्च/पार्टी" : "Expense/Party");
       const viaStr = viaAcc || (isNep ? "नगद/बैंक" : "Cash/Bank");
+      const totalStr = paymentTotal > 0 ? fmt(paymentTotal) : "";
 
-      const rowNarrations = paymentRows.map(r => {
-        const rowAmt = Number(r.amount || 0);
-        const isParty = !!r.party_id || r.account_id?.startsWith("party_supplier_");
-        const suppId = r.party_id || (r.account_id?.startsWith("party_supplier_") ? r.account_id.replace("party_supplier_", "") : "");
-        const supp = suppliersDocs.find(s => s.id === suppId);
-        const partyName = r.party_name || supp?.name || accounts.find(a => a.id === r.account_id)?.name || (isNep ? "साहु/पार्टी" : "Supplier");
-
-        if (isParty && suppId) {
-          const totalDue = partyBalancesMap[`supplier_${suppId}`] || 0;
-          if (r.settlement_mode === "specific" && r.bill_no) {
-            const unpaid = getSupplierUnpaidBills(suppId);
-            const matchedBill = unpaid.find(b => b.id === r.bill_id || b.bill_no === r.bill_no);
-            const billDue = matchedBill ? matchedBill.due : 0;
-            if (billDue > 0 && rowAmt > 0 && rowAmt < billDue) {
-              const remDue = billDue - rowAmt;
-              return isNep
-                ? `${partyName} लाई बिल #${r.bill_no} बापत आंशिक भुक्तानी (${fmt(rowAmt)}) गरिएको (बाँकी तिर्नुपर्ने: ${fmt(remDue)})`
-                : `Partial payment of ${fmt(rowAmt)} made to ${partyName} against Bill #${r.bill_no} (Remaining Due: ${fmt(remDue)})`;
-            } else if (billDue > 0 && rowAmt >= billDue) {
-              return isNep
-                ? `${partyName} लाई बिल #${r.bill_no} को पूर्ण भुक्तानी (${fmt(rowAmt)}) गरिएको`
-                : `Full settlement of ${fmt(rowAmt)} made to ${partyName} against Bill #${r.bill_no}`;
-            } else {
-              return isNep
-                ? `${partyName} लाई बिल #${r.bill_no} बापत ${fmt(rowAmt)} भुक्तानी गरिएको`
-                : `Payment of ${fmt(rowAmt)} made to ${partyName} against Bill #${r.bill_no}`;
-            }
-          } else {
-            // On account or FIFO
-            if (totalDue > 0 && rowAmt > 0 && rowAmt < totalDue) {
-              const remBal = totalDue - rowAmt;
-              return isNep
-                ? `${partyName} लाई आंशिक भुक्तानी (${fmt(rowAmt)}) गरिएको (बाँकी खाता तिर्नुपर्ने: ${fmt(remBal)})`
-                : `Partial payment of ${fmt(rowAmt)} made to ${partyName} (Remaining Balance: ${fmt(remBal)})`;
-            } else if (totalDue > 0 && rowAmt >= totalDue) {
-              return isNep
-                ? `${partyName} लाई खाता चुक्ता बापत ${fmt(rowAmt)} भुक्तानी गरिएको`
-                : `Full account settlement of ${fmt(rowAmt)} made to ${partyName}`;
-            } else {
-              return isNep
-                ? `${partyName} लाई ${rowAmt > 0 ? fmt(rowAmt) : ""} भुक्तानी गरिएको`
-                : `Paid to ${partyName}${rowAmt > 0 ? ` [${fmt(rowAmt)}]` : ""}`;
-            }
-          }
-        } else {
-          const accName = accounts.find(a => a.id === r.account_id)?.name || (isNep ? "खर्च खाता" : "Expense Account");
-          return isNep
-            ? `${accName} बापत ${rowAmt > 0 ? fmt(rowAmt) : ""}`
-            : `Paid for ${accName}${rowAmt > 0 ? ` [${fmt(rowAmt)}]` : ""}`;
-        }
-      }).filter(Boolean);
-
-      if (rowNarrations.length > 0) {
-        const details = rowNarrations.join("; ");
-        if (isNep) {
-          setNarration(`${details} (${viaStr} मार्फत)`);
-        } else {
-          setNarration(`Being payment: ${details} via ${viaStr}`);
-        }
+      if (isNep) {
+        setNarration(`${namesStr} भुक्तानी गरिएको (${viaStr} मार्फत)${totalStr ? ` - ${totalStr}` : ""}`);
       } else {
-        const totalStr = paymentTotal > 0 ? fmt(paymentTotal) : "";
-        if (isNep) {
-          setNarration(`भुक्तानी गरिएको (${viaStr} मार्फत)${totalStr ? ` - ${totalStr}` : ""}`);
-        } else {
-          setNarration(`Paid via ${viaStr}${totalStr ? ` [Rs. ${paymentTotal}]` : ""}`);
-        }
+        setNarration(`Paid for ${namesStr} via ${viaStr}${totalStr ? ` [Rs. ${paymentTotal}]` : ""}`);
       }
       toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
     } else if (voucherType === "receipt") {
+      const selectedNames = receiptRows
+        .map(r => accounts.find(a => a.id === r.account_id)?.name)
+        .filter(Boolean);
       const destAcc = accounts.find(a => a.id === debitAccountId)?.name;
+      const namesStr = selectedNames.length > 0 ? selectedNames.join(", ") : (isNep ? "आम्दानी/पार्टी" : "Income/Party");
       const destStr = destAcc || (isNep ? "नगद/बैंक" : "Cash/Bank");
+      const totalStr = receiptTotal > 0 ? fmt(receiptTotal) : "";
 
-      const rowNarrations = receiptRows.map(r => {
-        const rowAmt = Number(r.amount || 0);
-        const isParty = !!r.party_id || r.account_id?.startsWith("party_customer_");
-        const custId = r.party_id || (r.account_id?.startsWith("party_customer_") ? r.account_id.replace("party_customer_", "") : "");
-        const cust = customersDocs.find(c => c.id === custId);
-        const partyName = r.party_name || cust?.name || accounts.find(a => a.id === r.account_id)?.name || (isNep ? "ग्राहक/पार्टी" : "Customer");
-
-        if (isParty && custId) {
-          const totalDue = partyBalancesMap[`customer_${custId}`] || 0;
-          if (r.settlement_mode === "specific" && r.bill_no) {
-            const unpaid = getCustomerUnpaidBills(custId);
-            const matchedBill = unpaid.find(b => b.id === r.bill_id || b.bill_no === r.bill_no);
-            const billDue = matchedBill ? matchedBill.due : 0;
-            if (billDue > 0 && rowAmt > 0 && rowAmt < billDue) {
-              const remDue = billDue - rowAmt;
-              return isNep
-                ? `${partyName} बाट बिल #${r.bill_no} बापत आंशिक रकम (${fmt(rowAmt)}) प्राप्त (बाँकी बक्यौता: ${fmt(remDue)})`
-                : `Partial receipt of ${fmt(rowAmt)} from ${partyName} against Bill #${r.bill_no} (Remaining Due: ${fmt(remDue)})`;
-            } else if (billDue > 0 && rowAmt >= billDue) {
-              return isNep
-                ? `${partyName} बाट बिल #${r.bill_no} को पूर्ण भुक्तानी (${fmt(rowAmt)}) प्राप्त`
-                : `Full settlement of ${fmt(rowAmt)} from ${partyName} against Bill #${r.bill_no}`;
-            } else {
-              return isNep
-                ? `${partyName} बाट बिल #${r.bill_no} बापत ${fmt(rowAmt)} प्राप्त`
-                : `Receipt of ${fmt(rowAmt)} from ${partyName} against Bill #${r.bill_no}`;
-            }
-          } else {
-            // On account or FIFO
-            if (totalDue > 0 && rowAmt > 0 && rowAmt < totalDue) {
-              const remBal = totalDue - rowAmt;
-              return isNep
-                ? `${partyName} बाट आंशिक रकम ${fmt(rowAmt)} प्राप्त (बाँकी खाता बक्यौता: ${fmt(remBal)})`
-                : `Partial payment of ${fmt(rowAmt)} received from ${partyName} (Remaining Balance: ${fmt(remBal)})`;
-            } else if (totalDue > 0 && rowAmt >= totalDue) {
-              return isNep
-                ? `${partyName} बाट खाता चुक्ता बापत ${fmt(rowAmt)} प्राप्त`
-                : `Full account settlement of ${fmt(rowAmt)} received from ${partyName}`;
-            } else {
-              return isNep
-                ? `${partyName} बाट रकम ${rowAmt > 0 ? fmt(rowAmt) : ""} प्राप्त`
-                : `Received from ${partyName}${rowAmt > 0 ? ` [${fmt(rowAmt)}]` : ""}`;
-            }
-          }
-        } else {
-          const accName = accounts.find(a => a.id === r.account_id)?.name || (isNep ? "आम्दानी खाता" : "Income Account");
-          return isNep
-            ? `${accName} बापतको रकम ${rowAmt > 0 ? fmt(rowAmt) : ""}`
-            : `Received for ${accName}${rowAmt > 0 ? ` [${fmt(rowAmt)}]` : ""}`;
-        }
-      }).filter(Boolean);
-
-      if (rowNarrations.length > 0) {
-        const details = rowNarrations.join("; ");
-        if (isNep) {
-          setNarration(`${details} -> ${destStr} मा दाखिला/जम्मा भएको`);
-        } else {
-          setNarration(`Being: ${details} deposited into ${destStr}`);
-        }
+      if (isNep) {
+        setNarration(`${namesStr} बापतको रकम ${destStr} मा दाखिला/प्राप्त भएको${totalStr ? ` - ${totalStr}` : ""}`);
       } else {
-        const totalStr = receiptTotal > 0 ? fmt(receiptTotal) : "";
-        if (isNep) {
-          setNarration(`रकम ${destStr} मा दाखिला/प्राप्त भएको${totalStr ? ` - ${totalStr}` : ""}`);
-        } else {
-          setNarration(`Received amount deposited into ${destStr}${totalStr ? ` [Rs. ${receiptTotal}]` : ""}`);
-        }
+        setNarration(`Received from ${namesStr} deposited into ${destStr}${totalStr ? ` [Rs. ${receiptTotal}]` : ""}`);
       }
       toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
     } else if (voucherType === "contra") {
@@ -1096,7 +982,7 @@ export default function Accounting() {
       if (isNep) {
         setNarration(`${fromAcc} बाट ${toAcc} मा रकम स्थानान्तरण / जम्मा गरिएको${amtStr ? ` - ${amtStr}` : ""}`);
       } else {
-        setNarration(`Being fund transferred from ${fromAcc} to ${toAcc}${voucherAmount ? ` [Rs. ${voucherAmount}]` : ""}`);
+        setNarration(`Fund transferred from ${fromAcc} to ${toAcc}${voucherAmount ? ` [Rs. ${voucherAmount}]` : ""}`);
       }
       toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
     } else if (voucherType === "journal") {
@@ -1739,7 +1625,7 @@ export default function Accounting() {
       setNewAccName("");
       setNewAccOpening("0");
       setQuickTarget(null);
-      loadData().catch(() => {});
+      loadData().catch(() => { });
       setNewAccOpening("0");
       setQuickTarget(null);
     } catch (err: any) {
@@ -1821,83 +1707,83 @@ export default function Accounting() {
     // 1. Accounting Vouchers
     const voucherEntries: DayBookEntry[] = (filterType === "all" || ["contra", "payment", "receipt", "journal", "debit_note", "credit_note"].includes(filterType))
       ? vouchers
-          .filter(v => filterType === "all" || filterType === v.voucher_type)
-          .map(v => {
-            const drLabel = v.entries && v.entries.length > 0
-              ? v.entries.filter(e => e.type === "debit").map(e => e.account_name).join(", ")
-              : (v.debit_account_name || "");
-            const crLabel = v.entries && v.entries.length > 0
-              ? v.entries.filter(e => e.type === "credit").map(e => e.account_name).join(", ")
-              : (v.credit_account_name || "");
+        .filter(v => filterType === "all" || filterType === v.voucher_type)
+        .map(v => {
+          const drLabel = v.entries && v.entries.length > 0
+            ? v.entries.filter(e => e.type === "debit").map(e => e.account_name).join(", ")
+            : (v.debit_account_name || "");
+          const crLabel = v.entries && v.entries.length > 0
+            ? v.entries.filter(e => e.type === "credit").map(e => e.account_name).join(", ")
+            : (v.credit_account_name || "");
 
-            const { dateAd, dateBs } = resolveDualDates(v.date, v.date_bs);
-            return {
-              id: v.id,
-              entryType: "voucher" as const,
-              entryNo: v.voucher_no,
-              date: dateAd || v.date,
-              dateBs: dateBs,
-              amount: Number(v.amount),
-              debitLabel: drLabel,
-              creditLabel: crLabel,
-              narration: v.narration || "",
-              originalVoucher: v
-            };
-          })
+          const { dateAd, dateBs } = resolveDualDates(v.date, v.date_bs);
+          return {
+            id: v.id,
+            entryType: "voucher" as const,
+            entryNo: v.voucher_no,
+            date: dateAd || v.date,
+            dateBs: dateBs,
+            amount: Number(v.amount),
+            debitLabel: drLabel,
+            creditLabel: crLabel,
+            narration: v.narration || "",
+            originalVoucher: v
+          };
+        })
       : [];
 
     // 2. POS Sales (read-only, shown as "SALE" entries)
     const saleEntries: DayBookEntry[] = (filterType === "all" || filterType === "sale")
       ? salesDocs.map(s => {
-          const { dateAd, dateBs } = resolveDualDates(s.created_at || s.date, s.date_bs || s.nepali_date);
-          const cust = customersDocs.find(c => c.id === s.customer_id || c.id === s.customerId);
-          const custName = s.customer_name || s.customerName || cust?.name;
-          
-          let drLabel = lang === "NEP" ? `नगद/बैंक (${s.payment_mode || "cash"})` : `Cash/Bank (${s.payment_mode || "cash"})`;
-          if (custName && (s.payment_mode === "credit" || !s.payment_mode)) {
-            drLabel = custName;
-          } else if (custName && s.payment_mode) {
-            drLabel = `${custName} (${s.payment_mode})`;
-          } else if (s.payment_mode === "credit") {
-            drLabel = lang === "NEP" ? "उधारो ग्राहक (Debtors)" : "Sundry Debtors (credit)";
-          }
+        const { dateAd, dateBs } = resolveDualDates(s.created_at || s.date, s.date_bs || s.nepali_date);
+        const cust = customersDocs.find(c => c.id === s.customer_id || c.id === s.customerId);
+        const custName = s.customer_name || s.customerName || cust?.name;
 
-          return {
-            id: s.id || s.bill_no || Math.random().toString(),
-            entryType: "sale" as const,
-            entryNo: s.bill_no || "—",
-            date: dateAd || s.created_at || s.date || new Date().toISOString(),
-            dateBs: dateBs,
-            amount: Number(s.total || 0),
-            debitLabel: drLabel,
-            creditLabel: lang === "NEP" ? "बिक्री आम्दानी (Sales)" : "Sales Revenue A/C",
-            narration: custName ? `Sale to ${custName}` : (s.narration || "Walk-in Sale"),
-            paymentMode: s.payment_mode,
-            originalSale: s
-          };
-        })
+        let drLabel = lang === "NEP" ? `नगद/बैंक (${s.payment_mode || "cash"})` : `Cash/Bank (${s.payment_mode || "cash"})`;
+        if (custName && (s.payment_mode === "credit" || !s.payment_mode)) {
+          drLabel = custName;
+        } else if (custName && s.payment_mode) {
+          drLabel = `${custName} (${s.payment_mode})`;
+        } else if (s.payment_mode === "credit") {
+          drLabel = lang === "NEP" ? "उधारो ग्राहक (Debtors)" : "Sundry Debtors (credit)";
+        }
+
+        return {
+          id: s.id || s.bill_no || Math.random().toString(),
+          entryType: "sale" as const,
+          entryNo: s.bill_no || "—",
+          date: dateAd || s.created_at || s.date || new Date().toISOString(),
+          dateBs: dateBs,
+          amount: Number(s.total || 0),
+          debitLabel: drLabel,
+          creditLabel: lang === "NEP" ? "बिक्री आम्दानी (Sales)" : "Sales Revenue A/C",
+          narration: custName ? `Sale to ${custName}` : (s.narration || "Walk-in Sale"),
+          paymentMode: s.payment_mode,
+          originalSale: s
+        };
+      })
       : [];
 
     // 3. Purchases (read-only, shown as "PURCHASE" entries)
     const purchaseEntries: DayBookEntry[] = (filterType === "all" || filterType === "purchase")
       ? purchasesDocs.map(p => {
-          const { dateAd, dateBs } = resolveDualDates(p.created_at || p.date, p.date_bs || p.nepali_date);
-          const supp = suppliersDocs.find(sp => sp.id === p.supplier_id || sp.id === p.supplierId);
-          const suppName = p.supplier_name || p.supplierName || supp?.name;
-          return {
-            id: p.id,
-            entryType: "purchase" as const,
-            entryNo: p.voucher_no || `PUR-${p.id?.slice(-4)?.toUpperCase() || "---"}`,
-            date: dateAd || p.created_at || p.date || new Date().toISOString(),
-            dateBs: dateBs,
-            amount: Number(p.total || 0),
-            debitLabel: lang === "NEP" ? "खरिद खाता (Purchases)" : "Purchases A/C",
-            creditLabel: suppName ? `${suppName}` : (lang === "NEP" ? "नगद/साहु (Cash/Supplier)" : "Cash/Supplier A/C"),
-            narration: suppName ? `Purchase from ${suppName}` : (p.narration || "Purchase Entry"),
-            paymentMode: p.payment_mode,
-            originalPurchase: p
-          };
-        })
+        const { dateAd, dateBs } = resolveDualDates(p.created_at || p.date, p.date_bs || p.nepali_date);
+        const supp = suppliersDocs.find(sp => sp.id === p.supplier_id || sp.id === p.supplierId);
+        const suppName = p.supplier_name || p.supplierName || supp?.name;
+        return {
+          id: p.id,
+          entryType: "purchase" as const,
+          entryNo: p.voucher_no || `PUR-${p.id?.slice(-4)?.toUpperCase() || "---"}`,
+          date: dateAd || p.created_at || p.date || new Date().toISOString(),
+          dateBs: dateBs,
+          amount: Number(p.total || 0),
+          debitLabel: lang === "NEP" ? "खरिद खाता (Purchases)" : "Purchases A/C",
+          creditLabel: suppName ? `${suppName}` : (lang === "NEP" ? "नगद/साहु (Cash/Supplier)" : "Cash/Supplier A/C"),
+          narration: suppName ? `Purchase from ${suppName}` : (p.narration || "Purchase Entry"),
+          paymentMode: p.payment_mode,
+          originalPurchase: p
+        };
+      })
       : [];
 
     // Merge all entries
@@ -3335,29 +3221,29 @@ export default function Accounting() {
                             entry.entryType === "sale"
                               ? "border-emerald-500/40 text-emerald-700 bg-emerald-500/5 text-[10px]"
                               : entry.entryType === "purchase"
-                              ? "border-orange-500/40 text-orange-700 bg-orange-500/5 text-[10px]"
-                              : entry.originalVoucher?.voucher_type === "contra"
-                              ? "border-blue-500/40 text-blue-600 bg-blue-500/5 text-[10px]"
-                              : entry.originalVoucher?.voucher_type === "payment"
-                              ? "border-amber-500/40 text-amber-600 bg-amber-500/5 text-[10px]"
-                              : entry.originalVoucher?.voucher_type === "receipt"
-                              ? "border-teal-500/40 text-teal-600 bg-teal-500/5 text-[10px]"
-                              : entry.originalVoucher?.voucher_type === "debit_note"
-                              ? "border-rose-500/40 text-rose-600 bg-rose-500/5 text-[10px]"
-                              : entry.originalVoucher?.voucher_type === "credit_note"
-                              ? "border-cyan-500/40 text-cyan-600 bg-cyan-500/5 text-[10px]"
-                              : "border-purple-500/40 text-purple-600 bg-purple-500/5 text-[10px]"
+                                ? "border-orange-500/40 text-orange-700 bg-orange-500/5 text-[10px]"
+                                : entry.originalVoucher?.voucher_type === "contra"
+                                  ? "border-blue-500/40 text-blue-600 bg-blue-500/5 text-[10px]"
+                                  : entry.originalVoucher?.voucher_type === "payment"
+                                    ? "border-amber-500/40 text-amber-600 bg-amber-500/5 text-[10px]"
+                                    : entry.originalVoucher?.voucher_type === "receipt"
+                                      ? "border-teal-500/40 text-teal-600 bg-teal-500/5 text-[10px]"
+                                      : entry.originalVoucher?.voucher_type === "debit_note"
+                                        ? "border-rose-500/40 text-rose-600 bg-rose-500/5 text-[10px]"
+                                        : entry.originalVoucher?.voucher_type === "credit_note"
+                                          ? "border-cyan-500/40 text-cyan-600 bg-cyan-500/5 text-[10px]"
+                                          : "border-purple-500/40 text-purple-600 bg-purple-500/5 text-[10px]"
                           }
                         >
                           {entry.entryType === "sale"
                             ? "SALE"
                             : entry.entryType === "purchase"
-                            ? "PURCHASE"
-                            : entry.originalVoucher?.voucher_type === "debit_note"
-                            ? "DEBIT NOTE"
-                            : entry.originalVoucher?.voucher_type === "credit_note"
-                            ? "CREDIT NOTE"
-                            : (entry.originalVoucher?.voucher_type || "").toUpperCase()}
+                              ? "PURCHASE"
+                              : entry.originalVoucher?.voucher_type === "debit_note"
+                                ? "DEBIT NOTE"
+                                : entry.originalVoucher?.voucher_type === "credit_note"
+                                  ? "CREDIT NOTE"
+                                  : (entry.originalVoucher?.voucher_type || "").toUpperCase()}
                         </Badge>
                       </td>
                       <td className="py-2.5 px-3 font-medium text-emerald-700 dark:text-emerald-400 max-w-[160px] truncate" title={entry.debitLabel}>
@@ -3442,29 +3328,29 @@ export default function Accounting() {
                         entry.entryType === "sale"
                           ? "border-emerald-500/40 text-emerald-700 bg-emerald-500/5 text-[10px] py-0 px-1.5 shrink-0"
                           : entry.entryType === "purchase"
-                          ? "border-orange-500/40 text-orange-700 bg-orange-500/5 text-[10px] py-0 px-1.5 shrink-0"
-                          : entry.originalVoucher?.voucher_type === "contra"
-                          ? "border-blue-500/40 text-blue-600 bg-blue-500/5 text-[10px] py-0 px-1.5 shrink-0"
-                          : entry.originalVoucher?.voucher_type === "payment"
-                          ? "border-amber-500/40 text-amber-600 bg-amber-500/5 text-[10px] py-0 px-1.5 shrink-0"
-                          : entry.originalVoucher?.voucher_type === "receipt"
-                          ? "border-teal-500/40 text-teal-600 bg-teal-500/5 text-[10px] py-0 px-1.5 shrink-0"
-                          : entry.originalVoucher?.voucher_type === "debit_note"
-                          ? "border-rose-500/40 text-rose-600 bg-rose-500/5 text-[10px] py-0 px-1.5 shrink-0"
-                          : entry.originalVoucher?.voucher_type === "credit_note"
-                          ? "border-cyan-500/40 text-cyan-600 bg-cyan-500/5 text-[10px] py-0 px-1.5 shrink-0"
-                          : "border-purple-500/40 text-purple-600 bg-purple-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                            ? "border-orange-500/40 text-orange-700 bg-orange-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                            : entry.originalVoucher?.voucher_type === "contra"
+                              ? "border-blue-500/40 text-blue-600 bg-blue-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                              : entry.originalVoucher?.voucher_type === "payment"
+                                ? "border-amber-500/40 text-amber-600 bg-amber-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                                : entry.originalVoucher?.voucher_type === "receipt"
+                                  ? "border-teal-500/40 text-teal-600 bg-teal-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                                  : entry.originalVoucher?.voucher_type === "debit_note"
+                                    ? "border-rose-500/40 text-rose-600 bg-rose-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                                    : entry.originalVoucher?.voucher_type === "credit_note"
+                                      ? "border-cyan-500/40 text-cyan-600 bg-cyan-500/5 text-[10px] py-0 px-1.5 shrink-0"
+                                      : "border-purple-500/40 text-purple-600 bg-purple-500/5 text-[10px] py-0 px-1.5 shrink-0"
                       }
                     >
                       {entry.entryType === "sale"
                         ? "SALE"
                         : entry.entryType === "purchase"
-                        ? "PURCHASE"
-                        : entry.originalVoucher?.voucher_type === "debit_note"
-                        ? "DEBIT NOTE"
-                        : entry.originalVoucher?.voucher_type === "credit_note"
-                        ? "CREDIT NOTE"
-                        : (entry.originalVoucher?.voucher_type || "").toUpperCase()}
+                          ? "PURCHASE"
+                          : entry.originalVoucher?.voucher_type === "debit_note"
+                            ? "DEBIT NOTE"
+                            : entry.originalVoucher?.voucher_type === "credit_note"
+                              ? "CREDIT NOTE"
+                              : (entry.originalVoucher?.voucher_type || "").toUpperCase()}
                     </Badge>
                   </div>
 
@@ -3744,11 +3630,10 @@ export default function Accounting() {
               <div className="pt-2 border-t border-border/60 flex justify-between items-center text-xs font-bold">
                 <span>{lang === "NEP" ? "फरक (Difference):" : "DIFFERENCE:"}</span>
                 <span
-                  className={`font-mono text-xs ${
-                    trialBalanceData.isBalanced
+                  className={`font-mono text-xs ${trialBalanceData.isBalanced
                       ? "text-emerald-600 dark:text-emerald-400"
                       : "text-destructive"
-                  }`}
+                    }`}
                 >
                   {fmt(trialBalanceData.difference)} {trialBalanceData.isBalanced ? "✓ Balanced" : "⚠️ Mismatch"}
                 </span>
@@ -3964,12 +3849,11 @@ export default function Accounting() {
           <DialogHeader className="pb-3 border-b shrink-0">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 ${
-                  voucherType === "contra" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
-                  voucherType === "payment" ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
-                  voucherType === "receipt" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
-                  "bg-purple-500/10 text-purple-500 border border-purple-500/20"
-                }`}>
+                <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 ${voucherType === "contra" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
+                    voucherType === "payment" ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
+                      voucherType === "receipt" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
+                        "bg-purple-500/10 text-purple-500 border border-purple-500/20"
+                  }`}>
                   {voucherType === "contra" && <ArrowRightLeft className="h-5 w-5 sm:h-6 sm:w-6" />}
                   {voucherType === "payment" && <ArrowUpRight className="h-5 w-5 sm:h-6 sm:w-6" />}
                   {voucherType === "receipt" && <ArrowDownLeft className="h-5 w-5 sm:h-6 sm:w-6" />}
@@ -3981,10 +3865,10 @@ export default function Accounting() {
                       {voucherType === "contra"
                         ? "कन्ट्रा भाउचर (Contra Entry)"
                         : voucherType === "payment"
-                        ? "भुक्तानी भाउचर (Payment Entry)"
-                        : voucherType === "receipt"
-                        ? "रसिद/आम्दानी भाउचर (Receipt Entry)"
-                        : "जर्नल भाउचर (Journal Entry)"}
+                          ? "भुक्तानी भाउचर (Payment Entry)"
+                          : voucherType === "receipt"
+                            ? "रसिद/आम्दानी भाउचर (Receipt Entry)"
+                            : "जर्नल भाउचर (Journal Entry)"}
                     </span>
                     {previewVoucherNo && (
                       <Badge variant="secondary" className="font-mono text-[11px] sm:text-xs font-bold px-2 py-0.5 bg-primary/10 text-primary border border-primary/25">
@@ -3999,10 +3883,10 @@ export default function Accounting() {
                     {voucherType === "contra"
                       ? "पसलको क्यास बैंकमा हाल्दा, झिक्दा वा बैंक ट्रान्सफरको लागि।"
                       : voucherType === "payment"
-                      ? "खर्च भुक्तानी, साहुको हिसाब वा सम्पत्ति खरिद दाखिलाका लागि।"
-                      : voucherType === "receipt"
-                      ? "पुँजी लगानी, आम्दानी दाखिला वा आसामीबाट रकम प्राप्तिका लागि।"
-                      : "ह्रासकट्टी (Depreciation), बक्यौता खर्च वा बहु-खाता (Compound Entry) समायोजनका लागि।"}
+                        ? "खर्च भुक्तानी, साहुको हिसाब वा सम्पत्ति खरिद दाखिलाका लागि।"
+                        : voucherType === "receipt"
+                          ? "पुँजी लगानी, आम्दानी दाखिला वा आसामीबाट रकम प्राप्तिका लागि।"
+                          : "ह्रासकट्टी (Depreciation), बक्यौता खर्च वा बहु-खाता (Compound Entry) समायोजनका लागि।"}
                   </DialogDescription>
                 </div>
               </div>
@@ -4504,33 +4388,30 @@ export default function Accounting() {
                                   <button
                                     type="button"
                                     onClick={() => handleUpdatePaymentSettlement(row.id, "specific")}
-                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
-                                      row.settlement_mode === "specific"
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${row.settlement_mode === "specific"
                                         ? "bg-amber-500 text-white shadow-xs"
                                         : "text-muted-foreground hover:text-foreground"
-                                    }`}
+                                      }`}
                                   >
                                     {lang === "NEP" ? "बिल अनुसार" : "Specific Bill"}
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleUpdatePaymentSettlement(row.id, "fifo")}
-                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
-                                      row.settlement_mode === "fifo"
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${row.settlement_mode === "fifo"
                                         ? "bg-amber-500 text-white shadow-xs"
                                         : "text-muted-foreground hover:text-foreground"
-                                    }`}
+                                      }`}
                                   >
                                     {lang === "NEP" ? "पहिलो बिलबाट (FIFO)" : "Auto FIFO"}
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleUpdatePaymentSettlement(row.id, "on_account")}
-                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
-                                      row.settlement_mode === "on_account"
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${row.settlement_mode === "on_account"
                                         ? "bg-amber-500 text-white shadow-xs"
                                         : "text-muted-foreground hover:text-foreground"
-                                    }`}
+                                      }`}
                                   >
                                     {lang === "NEP" ? "खातामा (On-Account)" : "On-Account"}
                                   </button>
@@ -4869,33 +4750,30 @@ export default function Accounting() {
                                   <button
                                     type="button"
                                     onClick={() => handleUpdateReceiptSettlement(row.id, "specific")}
-                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
-                                      row.settlement_mode === "specific"
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${row.settlement_mode === "specific"
                                         ? "bg-emerald-600 text-white shadow-xs"
                                         : "text-muted-foreground hover:text-foreground"
-                                    }`}
+                                      }`}
                                   >
                                     {lang === "NEP" ? "बिल अनुसार" : "Specific Bill"}
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleUpdateReceiptSettlement(row.id, "fifo")}
-                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
-                                      row.settlement_mode === "fifo"
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${row.settlement_mode === "fifo"
                                         ? "bg-emerald-600 text-white shadow-xs"
                                         : "text-muted-foreground hover:text-foreground"
-                                    }`}
+                                      }`}
                                   >
                                     {lang === "NEP" ? "पहिलो बिलबाट (FIFO)" : "Auto FIFO"}
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleUpdateReceiptSettlement(row.id, "on_account")}
-                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${
-                                      row.settlement_mode === "on_account"
+                                    className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-all ${row.settlement_mode === "on_account"
                                         ? "bg-emerald-600 text-white shadow-xs"
                                         : "text-muted-foreground hover:text-foreground"
-                                    }`}
+                                      }`}
                                   >
                                     {lang === "NEP" ? "खातामा (On-Account)" : "On-Account"}
                                   </button>
@@ -5354,11 +5232,10 @@ export default function Accounting() {
         <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
           <DialogHeader className="border-b pb-3">
             <div className="flex items-center gap-3 pr-6">
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-                returnType === "credit_note"
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${returnType === "credit_note"
                   ? "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400"
                   : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
-              }`}>
+                }`}>
                 <RotateCcw className="h-5 w-5" />
               </div>
               <div className="min-w-0">
@@ -5371,11 +5248,10 @@ export default function Accounting() {
                   {previewReturnNo && (
                     <Badge
                       variant="secondary"
-                      className={`font-mono text-[11px] sm:text-xs font-bold px-2 py-0.5 border ${
-                        returnType === "credit_note"
+                      className={`font-mono text-[11px] sm:text-xs font-bold px-2 py-0.5 border ${returnType === "credit_note"
                           ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/30"
                           : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"
-                      }`}
+                        }`}
                     >
                       #{previewReturnNo}
                     </Badge>
@@ -5449,8 +5325,8 @@ export default function Accounting() {
                         !returnPartyId
                           ? (lang === "NEP" ? "पहिले पार्टी छान्नुहोस्" : "Select party first")
                           : partyBills.length === 0
-                          ? (lang === "NEP" ? "कुनै बिल भेटिएन" : "No bills found")
-                          : (lang === "NEP" ? "बिल छान्नुहोस्" : "Select Bill")
+                            ? (lang === "NEP" ? "कुनै बिल भेटिएन" : "No bills found")
+                            : (lang === "NEP" ? "बिल छान्नुहोस्" : "Select Bill")
                       }
                     />
                   </SelectTrigger>
@@ -5548,11 +5424,11 @@ export default function Accounting() {
                       <span>
                         {returnItems.every(it => it.already_returned_qty >= it.billed_qty)
                           ? (lang === "NEP"
-                              ? "ℹ️ यस बिलका सबै सामानहरू पहिले नै सप्लायरलाई फिर्ता गरिसकिएको छ। थप फिर्ता गर्न बाँकी छैन।"
-                              : "ℹ️ All items in this bill have already been returned to the supplier.")
+                            ? "ℹ️ यस बिलका सबै सामानहरू पहिले नै सप्लायरलाई फिर्ता गरिसकिएको छ। थप फिर्ता गर्न बाँकी छैन।"
+                            : "ℹ️ All items in this bill have already been returned to the supplier.")
                           : (lang === "NEP"
-                              ? "⚠️ यस बिलका सबै सामानहरू ग्राहकलाई बिक्री भइसकेका छन् वा पसलमा मौज्दात (Stock) छैन। सप्लायरलाई फिर्ता गर्न मिल्दैन।"
-                              : "⚠️ All items in this bill are sold out or have 0 stock in store. Cannot return to supplier.")}
+                            ? "⚠️ यस बिलका सबै सामानहरू ग्राहकलाई बिक्री भइसकेका छन् वा पसलमा मौज्दात (Stock) छैन। सप्लायरलाई फिर्ता गर्न मिल्दैन।"
+                            : "⚠️ All items in this bill are sold out or have 0 stock in store. Cannot return to supplier.")}
                       </span>
                     </div>
                   )}
@@ -5681,16 +5557,14 @@ export default function Accounting() {
                 {/* Option 1: Adjust in Ledger / Advance */}
                 <div
                   onClick={() => setReturnRefundMode("ledger")}
-                  className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                    returnRefundMode === "ledger"
+                  className={`p-3 rounded-xl border cursor-pointer transition-all ${returnRefundMode === "ledger"
                       ? "border-primary bg-primary/10 shadow-xs"
                       : "border-border hover:bg-muted/40"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2">
-                    <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                      returnRefundMode === "ledger" ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"
-                    }`}>
+                    <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${returnRefundMode === "ledger" ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"
+                      }`}>
                       {returnRefundMode === "ledger" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                     </div>
                     <span className="text-xs font-bold text-foreground">
@@ -5707,16 +5581,14 @@ export default function Accounting() {
                 {/* Option 2: Instant Cash / Bank Refund */}
                 <div
                   onClick={() => setReturnRefundMode("cash")}
-                  className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                    returnRefundMode !== "ledger"
+                  className={`p-3 rounded-xl border cursor-pointer transition-all ${returnRefundMode !== "ledger"
                       ? "border-primary bg-primary/10 shadow-xs"
                       : "border-border hover:bg-muted/40"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2">
-                    <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                      returnRefundMode !== "ledger" ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"
-                    }`}>
+                    <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${returnRefundMode !== "ledger" ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"
+                      }`}>
                       {returnRefundMode !== "ledger" && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                     </div>
                     <span className="text-xs font-bold text-foreground">
@@ -5799,11 +5671,10 @@ export default function Accounting() {
               <Button
                 type="submit"
                 disabled={submittingReturn || returnTotal <= 0}
-                className={`h-9 px-6 text-xs font-bold gap-2 text-white rounded-xl shadow-md ${
-                  returnType === "credit_note"
+                className={`h-9 px-6 text-xs font-bold gap-2 text-white rounded-xl shadow-md ${returnType === "credit_note"
                     ? "bg-cyan-600 hover:bg-cyan-700"
                     : "bg-rose-600 hover:bg-rose-700"
-                }`}
+                  }`}
               >
                 {submittingReturn ? (
                   <>

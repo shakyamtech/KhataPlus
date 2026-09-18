@@ -841,11 +841,10 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
           <div className="pt-2 border-t border-border/60 flex justify-between items-center text-xs font-bold">
             <span>{lang === "NEP" ? "फरक (Difference):" : "DIFFERENCE:"}</span>
             <span
-              className={`font-mono text-xs ${
-                trialBalanceData.isBalanced
+              className={`font-mono text-xs ${trialBalanceData.isBalanced
                   ? "text-emerald-600 dark:text-emerald-400"
                   : "text-destructive"
-              }`}
+                }`}
             >
               {fmt(trialBalanceData.difference)} {trialBalanceData.isBalanced ? "✓ Balanced" : "⚠️ Mismatch"}
             </span>
