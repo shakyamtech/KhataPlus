@@ -9,13 +9,15 @@ import {
   FileSpreadsheet,
   Loader2,
   ShieldCheck,
-  BookOpen
+  BookOpen,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Account } from "@/lib/accounting";
+import { Account, Voucher, getVoucherAccountImpacts } from "@/lib/accounting";
 
 interface TrialBalanceDifferenceHelperModalProps {
   isOpen: boolean;
@@ -23,20 +25,20 @@ interface TrialBalanceDifferenceHelperModalProps {
   difference: number;
   totalDebits: number;
   totalCredits: number;
-  cashDocs: any[];
-  salesDocs: any[];
-  purchasesDocs: any[];
-  productDocs: any[];
-  ledgerDocs: any[];
+  cashDocs?: any[];
+  salesDocs?: any[];
+  purchasesDocs?: any[];
+  productDocs?: any[];
+  ledgerDocs?: any[];
   accounts: Account[];
-  vouchers: any[];
+  vouchers?: Voucher[];
   onFixed?: () => void;
   lang?: "ENG" | "NEP";
 }
 
 interface DiagnosisItem {
   id: string;
-  type: "purchase_discount" | "opening_stock" | "vat_adjustment" | "general_difference";
+  type: "purchase_discount" | "opening_stock" | "unbalanced_voucher" | "vat_adjustment" | "general_difference";
   titleNp: string;
   titleEn: string;
   confidence: "high" | "medium" | "low";
@@ -58,23 +60,28 @@ export function TrialBalanceDifferenceHelperModal({
   difference,
   totalDebits,
   totalCredits,
-  purchasesDocs,
-  salesDocs,
-  productDocs,
-  accounts,
+  purchasesDocs = [],
+  salesDocs = [],
+  productDocs = [],
+  ledgerDocs = [],
+  accounts = [],
+  vouchers = [],
   onFixed,
   lang = "NEP"
 }: TrialBalanceDifferenceHelperModalProps) {
   const { user } = useAuth();
-  const [applyingFix, setApplyingFix] = useState(false);
+  const [applyingFixId, setApplyingFixId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"auto" | "manual">("auto");
 
-  // Run comprehensive forensic diagnostics on live data
+  // Multi-Issue Forensic Audit Engine
   const diagnosisList: DiagnosisItem[] = useMemo(() => {
     if (!isOpen || difference <= 0) return [];
     const list: DiagnosisItem[] = [];
+    let explainedDifference = 0;
 
-    // Diagnostic 1: Purchase Discount Detection
+    // ----------------------------------------------------
+    // CHECK 1: Purchase Discount Detection (खरिद छुट)
+    // ----------------------------------------------------
     const totalPurchaseDiscount = purchasesDocs.reduce((s, p: any) => s + Number(p.discount || 0), 0);
     const discountAccountBalance = accounts
       .filter(
@@ -86,32 +93,33 @@ export function TrialBalanceDifferenceHelperModal({
 
     const unrecordedDiscount = Math.max(0, totalPurchaseDiscount - discountAccountBalance);
 
-    if (totalPurchaseDiscount > 0 && Math.abs(unrecordedDiscount - difference) < 2) {
+    if (unrecordedDiscount > 0.5) {
+      explainedDifference += unrecordedDiscount;
       list.push({
         id: "purchase_discount",
         type: "purchase_discount",
-        titleNp: "खरिद बिलको छुट आम्दानी समायोजन (Purchase Discount Income)",
-        titleEn: "Purchase Discount Income Adjustment",
+        titleNp: "खरिद बिलको छुट आम्दानी (Purchase Discount on Bills)",
+        titleEn: "Purchase Discount on Bills",
         confidence: "high",
         amount: unrecordedDiscount,
-        reasonNp: `खरिद बिलहरूमा जम्मा रु. ${fmt(totalPurchaseDiscount)} छुट पाइएको छ, तर त्यसलाई 'Discount Received' आम्दानी खातामा क्रेडिट गरिएको छैन। बेच्दा सामानको लागत पुरै मूल्यमा काटिएकाले डेबिट बढी भएको हो।`,
-        reasonEn: `Total purchase discount of Rs. ${fmt(totalPurchaseDiscount)} was received on purchase bills, but not credited to 'Discount Received' income account.`,
-        mathExplanationNp: `सामान खरिदमा तिरेको नगद: रु. ${fmt(purchasesDocs.reduce((s, p) => s + Number(p.total || 0), 0))} | बिकेको सामानको लागत (COGS): रु. ${fmt(salesDocs.reduce((s, r) => s + Number(r.cost_total || 0), 0))} | आवश्यक क्रेडिट: रु. ${fmt(unrecordedDiscount)}`,
-        mathExplanationEn: `Cash paid on purchase was discounted, but COGS was evaluated at gross cost. Missing Credit = Rs. ${fmt(unrecordedDiscount)}.`,
+        reasonNp: `खरिद बिलहरूमा जम्मा रु. ${fmt(totalPurchaseDiscount)} छुट पाइएको छ, तर त्यसलाई 'Discount Received' आम्दानी खातामा क्रेडिट गरिएको छैन। सामान बेच्दा सिस्टमले लागत (COGS) पुरै मूल्यमा हिसाब गर्दा डेबिट बढी हुन पुग्यो।`,
+        reasonEn: `Purchase discount of Rs. ${fmt(totalPurchaseDiscount)} was received on purchase bills, but not credited to 'Discount Received' income account.`,
+        mathExplanationNp: `खरिद छुट: रु. ${fmt(unrecordedDiscount)} | बिकेको सामानको लागत (COGS) मा छुट नघटेको | आवश्यक क्रेडिट (Cr): रु. ${fmt(unrecordedDiscount)}`,
+        mathExplanationEn: `Purchase Discount = Rs. ${fmt(unrecordedDiscount)} | Missing Income Credit = Rs. ${fmt(unrecordedDiscount)}.`,
         solutionStepsNp: [
           "Accounting ➔ Chart of Accounts (खाता सूची) मा जानुहोस्।",
           "'+ Create Account' थिचेर 'Discount Received (खरिद छुट आम्दानी)' नामको खाता बनाउनुहोस्।",
           `खाताको Group 'Indirect Incomes' र Opening Balance मा रु. ${fmt(unrecordedDiscount)} राख्नुहोस्।`,
-          "Save गर्नासाथ क्रेडिट थपिएर Trial Balance Diff: Rs. 0.00 हुन्छ।"
+          "Save गर्नासाथ छुट आम्दानी क्रेडिट भएर हिसाब मिल्छ।"
         ],
         solutionStepsEn: [
           "Go to Accounting ➔ Chart of Accounts.",
           "Click '+ Create Account' and create 'Discount Received'.",
           `Select Group 'Indirect Incomes' and set Opening Balance to Rs. ${fmt(unrecordedDiscount)}.`,
-          "Save to automatically balance the Trial Balance (Diff: Rs. 0.00)."
+          "Save to credit the discount income."
         ],
-        fixActionLabelNp: `✨ 'Discount Received' खाता बनाई रु. ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस् (१-क्लिक समाधान)`,
-        fixActionLabelEn: `✨ Create 'Discount Received' Account with Rs. ${fmt(unrecordedDiscount)} (1-Click Fix)`,
+        fixActionLabelNp: `✨ 'Discount Received' खाता बनाई रु. ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
+        fixActionLabelEn: `✨ Create 'Discount Received' Account (Rs. ${fmt(unrecordedDiscount)})`,
         fixAction: async () => {
           if (!user) return;
           const ref = doc(collection(db, "accounts"));
@@ -124,30 +132,33 @@ export function TrialBalanceDifferenceHelperModal({
             opening_balance: unrecordedDiscount,
             created_at: new Date().toISOString(),
             is_system: false,
-            notes: "Auto-created by Trial Balance Difference Assistant for purchase discount adjustment"
+            notes: "Auto-created by Trial Balance Assistant for purchase discount adjustment"
           });
         }
       });
     }
 
-    // Diagnostic 2: Opening Stock vs Capital Mismatch
+    // ----------------------------------------------------
+    // CHECK 2: Opening Stock without Capital Entry
+    // ----------------------------------------------------
     const openingStockVal = productDocs.reduce(
       (s, p: any) => s + Number(p.opening_stock_qty || 0) * Number(p.cost_price || 0),
       0
     );
     const capitalAccounts = accounts.filter(a => a.group === "capital");
 
-    if (openingStockVal > 0 && Math.abs(openingStockVal - difference) < 2) {
+    if (openingStockVal > 0.5) {
+      explainedDifference += openingStockVal;
       list.push({
         id: "opening_stock",
         type: "opening_stock",
-        titleNp: "सुरुवाती सामान मौज्दात र पुँजी बेमेल (Opening Stock vs Capital)",
-        titleEn: "Opening Stock vs Capital Mismatch",
+        titleNp: "सुरुवाती सामान मौज्दात (Opening Stock on Products)",
+        titleEn: "Opening Stock on Products",
         confidence: "high",
         amount: openingStockVal,
-        reasonNp: `सामानहरू दर्ता गर्दा रु. ${fmt(openingStockVal)} बराबरको सुरुवाती मौज्दात (Opening Stock) हालिएको थियो, तर त्यो साहुको सुरुवाती लगानी भएकोले साहुको पुँजी (Capital Account) मा जोडिएको थिएन।`,
+        reasonNp: `सामानहरू (Products) दर्ता गर्दा रु. ${fmt(openingStockVal)} बराबरको सुरुवाती मौज्दात हालिएको थियो, तर त्यसको मूल्य साहुको पुँजी (Capital Account) मा जोडिएको थिएन।`,
         reasonEn: `Opening stock worth Rs. ${fmt(openingStockVal)} was entered on products, but was not credited to Capital Account.`,
-        mathExplanationNp: `स्टक सम्पत्ति (Debit): + रु. ${fmt(openingStockVal)} | साहुको पुँजी (Credit): छुटेको रु. ${fmt(openingStockVal)}`,
+        mathExplanationNp: `स्टक मौज्दात (Debit): + रु. ${fmt(openingStockVal)} | साहुको पुँजी (Credit): छुटेको रु. ${fmt(openingStockVal)}`,
         mathExplanationEn: `Stock Asset (Debit): + Rs. ${fmt(openingStockVal)} | Capital Account (Credit): Missing Rs. ${fmt(openingStockVal)}`,
         solutionStepsNp: [
           "Accounting ➔ Chart of Accounts मा जानुहोस्।",
@@ -161,8 +172,8 @@ export function TrialBalanceDifferenceHelperModal({
           `Add Rs. ${fmt(openingStockVal)} to Opening Balance.`,
           "Save changes."
         ],
-        fixActionLabelNp: `✨ साहुको पुँजी खातामा रु. ${fmt(openingStockVal)} थपी सन्तुलित बनाउनुहोस्`,
-        fixActionLabelEn: `✨ Add Rs. ${fmt(openingStockVal)} to Capital Account to Balance`,
+        fixActionLabelNp: `✨ साहुको पुँजी खातामा रु. ${fmt(openingStockVal)} थप्नुहोस्`,
+        fixActionLabelEn: `✨ Add Rs. ${fmt(openingStockVal)} to Capital Account`,
         fixAction: async () => {
           if (!user) return;
           const capAcc = capitalAccounts[0];
@@ -187,43 +198,88 @@ export function TrialBalanceDifferenceHelperModal({
       });
     }
 
-    // Diagnostic 3: General Difference / Suspense Adjustment
-    if (list.length === 0) {
+    // ----------------------------------------------------
+    // CHECK 3: Unbalanced Custom Vouchers (असन्तुलित भौचर)
+    // ----------------------------------------------------
+    let unbalancedVoucherSum = 0;
+    vouchers.forEach((v: any) => {
+      const impacts = getVoucherAccountImpacts(v);
+      const totalDr = impacts.reduce((s, i) => s + i.debit, 0);
+      const totalCr = impacts.reduce((s, i) => s + i.credit, 0);
+      const diff = Math.abs(totalDr - totalCr);
+      if (diff > 0.01) {
+        unbalancedVoucherSum += diff;
+      }
+    });
+
+    if (unbalancedVoucherSum > 0.5) {
+      explainedDifference += unbalancedVoucherSum;
+      list.push({
+        id: "unbalanced_voucher",
+        type: "unbalanced_voucher",
+        titleNp: "असन्तुलित जर्नल/भौचर प्रविष्टि (Unbalanced Vouchers)",
+        titleEn: "Unbalanced Voucher Entries",
+        confidence: "high",
+        amount: unbalancedVoucherSum,
+        reasonNp: `केही भौचरहरूमा डेबिट र क्रेडिट रकम बराबर नभई कुल रु. ${fmt(unbalancedVoucherSum)} को असन्तुलन भेटिएको छ।`,
+        reasonEn: `Some vouchers have mismatch between total Debits and Credits with a discrepancy of Rs. ${fmt(unbalancedVoucherSum)}.`,
+        mathExplanationNp: `भौचर असन्तुलन: रु. ${fmt(unbalancedVoucherSum)} | दोहोरो लेखा प्रणाली अनुसार डेबिट = क्रेडिट हुनुपर्छ`,
+        mathExplanationEn: `Voucher Discrepancy = Rs. ${fmt(unbalancedVoucherSum)} | Debits must equal Credits.`,
+        solutionStepsNp: [
+          "Accounting ➔ Vouchers मा जानुहोस्।",
+          "Daybook / Vouchers सूचीमा गएर असन्तुलित भौचरहरू एडिट गरी डेबिट र क्रेडिट बराबर बनाउनुहोस्।"
+        ],
+        solutionStepsEn: [
+          "Go to Accounting ➔ Vouchers.",
+          "Check the Daybook and edit unbalanced vouchers to ensure Debits equal Credits."
+        ],
+        fixActionLabelNp: `📋 Vouchers सूची खोली मिलाउनुहोस्`,
+        fixActionLabelEn: `📋 Open Vouchers to Edit`,
+        fixAction: async () => {
+          onClose();
+        }
+      });
+    }
+
+    // ----------------------------------------------------
+    // CHECK 4: Remaining General Difference / Capital Discrepancy
+    // ----------------------------------------------------
+    const unexplainedDiff = Math.abs(difference - explainedDifference);
+    if (list.length === 0 || unexplainedDiff > 1) {
+      const amt = list.length === 0 ? difference : unexplainedDiff;
       const isDebitHigher = totalDebits > totalCredits;
       list.push({
         id: "general_difference",
         type: "general_difference",
-        titleNp: "सन्तुलन समायोजन (Trial Balance Difference Adjustment)",
-        titleEn: "Trial Balance Difference Adjustment",
+        titleNp: list.length === 0 ? "सन्तुलन समायोजन (Trial Balance Difference)" : "बाँकी फरक रकम समायोजन (Remaining Difference)",
+        titleEn: list.length === 0 ? "Trial Balance Difference" : "Remaining Variance Adjustment",
         confidence: "medium",
-        amount: difference,
+        amount: amt,
         reasonNp: isDebitHigher
-          ? `डेबिट तर्फको जोड (रु. ${fmt(totalDebits)}) क्रेडिट (रु. ${fmt(totalCredits)}) भन्दा रु. ${fmt(difference)} धेरै छ। यसलाई साहुको पुँजी वा छुट आम्दानीमा क्रेडिट गरी मिलाउन सकिन्छ।`
-          : `क्रेडिट तर्फको जोड (रु. ${fmt(totalCredits)}) डेबिट (रु. ${fmt(totalDebits)}) भन्दा रु. ${fmt(difference)} धेरै छ। यसलाई सम्पत्ति वा खर्चमा डेबिट गरी मिलाउन सकिन्छ।`,
+          ? `डेबिट तर्फको जोड (रु. ${fmt(totalDebits)}) क्रेडिट (रु. ${fmt(totalCredits)}) भन्दा रु. ${fmt(amt)} धेरै छ। यसलाई साहुको पुँजी (Capital) मा क्रेडिट गरी मिलाउन सकिन्छ।`
+          : `क्रेडिट तर्फको जोड (रु. ${fmt(totalCredits)}) डेबिट (रु. ${fmt(totalDebits)}) भन्दा रु. ${fmt(amt)} धेरै छ। यसलाई सम्पत्ति वा खर्चमा समायोजन गरी मिलाउन सकिन्छ।`,
         reasonEn: isDebitHigher
-          ? `Debits exceed Credits by Rs. ${fmt(difference)}. Can be resolved by crediting Capital / Income.`
-          : `Credits exceed Debits by Rs. ${fmt(difference)}. Can be resolved by debiting Asset / Expense.`,
-        mathExplanationNp: `कुल डेबिट: रु. ${fmt(totalDebits)} | कुल क्रेडिट: रु. ${fmt(totalCredits)} | फरक: रु. ${fmt(difference)}`,
-        mathExplanationEn: `Total Debits: Rs. ${fmt(totalDebits)} | Total Credits: Rs. ${fmt(totalCredits)} | Difference: Rs. ${fmt(difference)}`,
+          ? `Debits exceed Credits by Rs. ${fmt(amt)}. Can be resolved by crediting Capital Account.`
+          : `Credits exceed Debits by Rs. ${fmt(amt)}. Can be resolved by adjusting Asset/Expense.`,
+        mathExplanationNp: `बाँकी फरक: रु. ${fmt(amt)} | आवश्यक समायोजन: ${isDebitHigher ? "Credit" : "Debit"} रु. ${fmt(amt)}`,
+        mathExplanationEn: `Remaining Variance = Rs. ${fmt(amt)} | Required Action = ${isDebitHigher ? "Credit" : "Debit"} Rs. ${fmt(amt)}`,
         solutionStepsNp: [
           "Accounting ➔ Chart of Accounts मा गई सम्बन्धित खाताको Opening Balance जाँच गर्नुहोस्।",
-          "वा Accounting ➔ Vouchers मा गई Journal Voucher मार्फत समायोजन प्रविष्टि गर्नुहोस्।",
-          `क्रेडिट कम भए Capital Account मा रु. ${fmt(difference)} थप्न सकिन्छ।`
+          `क्रेडिट कम भएकोले Capital Account (साहुको पुँजी) मा रु. ${fmt(amt)} थप्न सकिन्छ।`
         ],
         solutionStepsEn: [
           "Check Opening Balances in Accounting ➔ Chart of Accounts.",
-          "Or create an Adjustment Journal Voucher in Accounting ➔ Vouchers.",
-          `If Credits are lower, add Rs. ${fmt(difference)} to Capital Account.`
+          `Add Rs. ${fmt(amt)} to Capital Account to balance Credits.`
         ],
-        fixActionLabelNp: `✨ साहुको पुँजी खातामा रु. ${fmt(difference)} समायोजन गरी १००% सन्तुलित बनाउनुहोस्`,
-        fixActionLabelEn: `✨ Adjust Rs. ${fmt(difference)} in Capital Account to Balance 100%`,
+        fixActionLabelNp: `✨ साहुको पुँजी खातामा रु. ${fmt(amt)} समायोजन गर्नुहोस्`,
+        fixActionLabelEn: `✨ Adjust Rs. ${fmt(amt)} in Capital Account`,
         fixAction: async () => {
           if (!user) return;
           const capAcc = capitalAccounts[0];
           if (capAcc) {
             const currentOp = Number(capAcc.opening_balance || 0);
             await updateDoc(doc(db, "accounts", capAcc.id), {
-              opening_balance: currentOp + difference
+              opening_balance: currentOp + (isDebitHigher ? amt : -amt)
             });
           } else {
             const ref = doc(collection(db, "accounts"));
@@ -233,7 +289,7 @@ export function TrialBalanceDifferenceHelperModal({
               name: "Capital Account (साहुको पुँजी)",
               type: "equity",
               group: "capital",
-              opening_balance: difference,
+              opening_balance: amt,
               created_at: new Date().toISOString()
             });
           }
@@ -242,24 +298,46 @@ export function TrialBalanceDifferenceHelperModal({
     }
 
     return list;
-  }, [isOpen, difference, totalDebits, totalCredits, purchasesDocs, salesDocs, productDocs, accounts, user]);
+  }, [isOpen, difference, totalDebits, totalCredits, purchasesDocs, salesDocs, productDocs, accounts, vouchers, user]);
 
   const handleApplyFix = async (item: DiagnosisItem) => {
-    setApplyingFix(true);
+    setApplyingFixId(item.id);
     try {
       await item.fixAction();
       toast.success(
         lang === "NEP"
-          ? "✓ फरक सफलतापूर्वक समाधान भयो! ट्रायल ब्यालेन्स पूर्ण सन्तुलित भएको छ।"
-          : "✓ Difference successfully resolved! Trial Balance is now 100% balanced."
+          ? `✓ '${item.titleNp}' सफलतापूर्वक समायोजन भयो!`
+          : `✓ '${item.titleEn}' successfully adjusted!`
       );
       if (onFixed) onFixed();
-      onClose();
     } catch (err: any) {
       console.error("Helper fix error:", err);
       toast.error(err.message || "समाधान लागू गर्न सकिएन");
     } finally {
-      setApplyingFix(false);
+      setApplyingFixId(null);
+    }
+  };
+
+  // One-click Fix All
+  const handleFixAll = async () => {
+    setApplyingFixId("all");
+    try {
+      for (const item of diagnosisList) {
+        if (item.type !== "unbalanced_voucher") {
+          await item.fixAction();
+        }
+      }
+      toast.success(
+        lang === "NEP"
+          ? "✓ सबै समस्याहरू सफलतापूर्वक समाधान भए! ट्रायल ब्यालेन्स पूर्ण सन्तुलित भएको छ।"
+          : "✓ All issues successfully resolved! Trial Balance is 100% balanced."
+      );
+      if (onFixed) onFixed();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || "समाधान गर्न सकिएन");
+    } finally {
+      setApplyingFixId(null);
     }
   };
 
@@ -282,8 +360,8 @@ export function TrialBalanceDifferenceHelperModal({
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
                   {lang === "NEP"
-                    ? "अन्तर्राष्ट्रिय लेखा मापदण्ड (NAS/IAS) अनुसार फरकका कारण र समाधानका उपायहरू"
-                    : "Intelligent root-cause diagnosis & standard accounting resolution"}
+                    ? `${diagnosisList.length} वटा सम्भावित कारणहरू फेला परे (Multi-Issue Forensic Audit)`
+                    : `${diagnosisList.length} detected discrepancy factor(s)`}
                 </DialogDescription>
               </div>
             </div>
@@ -292,6 +370,39 @@ export function TrialBalanceDifferenceHelperModal({
             </Badge>
           </div>
         </DialogHeader>
+
+        {/* Global Fix All Banner if multiple causes found */}
+        {diagnosisList.length > 1 && (
+          <div className="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 via-primary/10 to-emerald-500/10 border border-amber-500/30 flex items-center justify-between gap-2 flex-wrap mt-1">
+            <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+              <span>
+                {lang === "NEP"
+                  ? `कुल ${diagnosisList.length} वटा कारणहरूबाट फरक आएको छ।`
+                  : `Variance is composed of ${diagnosisList.length} separate items.`}
+              </span>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleFixAll}
+              disabled={!!applyingFixId}
+              className="h-8 px-3 text-xs font-bold gap-1.5 text-white bg-gradient-to-r from-amber-600 to-primary hover:from-amber-700 hover:to-primary/90 rounded-lg shadow-sm cursor-pointer"
+            >
+              {applyingFixId === "all" ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>{lang === "NEP" ? "मिलाउँदैछ..." : "Fixing..."}</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>{lang === "NEP" ? "सबै एकैपटक मिलाउनुहोस् (Fix All)" : "Fix All Issues"}</span>
+                </>
+              )}
+            </Button>
+          </div>
+        )}
 
         {/* Mode Toggle */}
         <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl border border-border/60 mt-1">
@@ -305,7 +416,7 @@ export function TrialBalanceDifferenceHelperModal({
             }`}
           >
             <Sparkles className="h-3.5 w-3.5" />
-            <span>{lang === "NEP" ? "स्वचालित अडिट तथा समाधान (Auto Fix)" : "Auto Diagnostic & Fix"}</span>
+            <span>{lang === "NEP" ? "स्वचालित समाधान (Auto Fix)" : "Auto Diagnostic & Fix"}</span>
           </button>
           <button
             type="button"
@@ -332,9 +443,12 @@ export function TrialBalanceDifferenceHelperModal({
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                      #{idx + 1}
+                    </span>
                     <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 font-semibold text-[10.5px]">
                       {item.confidence === "high"
-                        ? (lang === "NEP" ? "🎯 १००% निश्चित कारण" : "High Confidence Cause")
+                        ? (lang === "NEP" ? "🎯 निश्चित कारण" : "High Confidence")
                         : (lang === "NEP" ? "🔍 सम्भावित कारण" : "Probable Cause")}
                     </Badge>
                     <span className="text-xs font-bold text-foreground">
@@ -346,7 +460,7 @@ export function TrialBalanceDifferenceHelperModal({
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-[11px] text-muted-foreground font-medium">{lang === "NEP" ? "फरक रकम" : "Variance"}</div>
+                  <div className="text-[11px] text-muted-foreground font-medium">{lang === "NEP" ? "रकम" : "Amount"}</div>
                   <div className="text-sm font-bold font-mono text-destructive">Rs. {fmt(item.amount)}</div>
                 </div>
               </div>
@@ -362,18 +476,18 @@ export function TrialBalanceDifferenceHelperModal({
                 <div className="pt-2 border-t border-border/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                   <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                     <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>{lang === "NEP" ? "सुरक्षित लेखा प्रविष्टि (Safe Audit Trail Adjustment)" : "100% Safe Accounting Adjustment"}</span>
+                    <span>{lang === "NEP" ? "सुरक्षित लेखा प्रविष्टि (Safe Audit Trail)" : "Safe Accounting Adjustment"}</span>
                   </div>
                   <Button
                     type="button"
                     onClick={() => handleApplyFix(item)}
-                    disabled={applyingFix}
+                    disabled={!!applyingFixId}
                     className="h-9 px-4 text-xs font-bold gap-2 text-white bg-gradient-to-r from-amber-600 to-primary hover:from-amber-700 hover:to-primary/90 rounded-xl shadow-md cursor-pointer transition-all active:scale-95"
                   >
-                    {applyingFix ? (
+                    {applyingFixId === item.id ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>{lang === "NEP" ? "मिलाउँदैछ..." : "Applying Fix..."}</span>
+                        <span>{lang === "NEP" ? "मिलाउँदैछ..." : "Applying..."}</span>
                       </>
                     ) : (
                       <>
