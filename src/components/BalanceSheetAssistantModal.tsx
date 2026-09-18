@@ -184,14 +184,12 @@ export function BalanceSheetAssistantModal({
         mathFormulaNp: `खरिद छुट = ${fmt(unrecordedDiscount)} | आवश्यक क्रेडिट: ${fmt(unrecordedDiscount)}`,
         mathFormulaEn: `Unrecorded Discount = ${fmt(unrecordedDiscount)} | Required Credit: ${fmt(unrecordedDiscount)}`,
         solutionStepsNp: [
-          "Accounting ➔ Chart of Accounts मा जानुहोस्।",
-          "'+ Create Account' गरी 'Discount Received (खरिद छुट आम्दानी)' खाता बनाउनुहोस्।",
-          `Opening Balance मा ${fmt(unrecordedDiscount)} राख्नुहोस्।`
+          "विधि १ (Journal Voucher भौचर प्रविष्टि): Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्। Voucher Type 'JOURNAL' छानी Dr: Supplier/COGS A/c र Cr: Discount Received A/c (खरिद छुट आम्दानी) " + fmt(unrecordedDiscount) + " प्रविष्टि गर्नुहोस्।",
+          "विधि २ (Chart of Accounts ओपनिङ मौज्दात): Accounting ➔ Chart of Accounts मा गएर '+ Create Account' गरी 'Discount Received' (Group: Indirect Incomes) खाता खोल्नुहोस् र Opening Balance मा " + fmt(unrecordedDiscount) + " राख्नुहोस्।"
         ],
         solutionStepsEn: [
-          "Go to Accounting ➔ Chart of Accounts.",
-          "Create 'Discount Received' under 'Indirect Incomes'.",
-          `Set Opening Balance to ${fmt(unrecordedDiscount)}.`
+          "Method 1 (Journal Voucher Entry): Go to Accounting ➔ Vouchers ➔ New Voucher. Select 'JOURNAL' type. Enter Dr: Supplier/COGS A/c and Cr: Discount Received A/c with " + fmt(unrecordedDiscount) + ".",
+          "Method 2 (Chart of Accounts Opening Balance): Go to Accounting ➔ Chart of Accounts. Create 'Discount Received' under 'Indirect Incomes' with Opening Balance of " + fmt(unrecordedDiscount) + "."
         ],
         fixActionLabelNp: `✨ 'Discount Received' खाता बनाई ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
         fixActionLabelEn: `✨ Create 'Discount Received' Account (${fmt(unrecordedDiscount)})`,
@@ -232,7 +230,7 @@ export function BalanceSheetAssistantModal({
         solutionStepsNp: [
           "Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्।",
           "Voucher Type 'JOURNAL' छान्नुहोस्।",
-          "Dr: Depreciation Expense | Cr: Accumulated Depreciation (स्थिर सम्पत्ति खाता)।"
+          "Dr: Depreciation Expense A/c (ह्रासकट्टी खर्च) | Cr: Accumulated Depreciation A/c (स्थिर सम्पत्ति कट्टा खाता)।"
         ],
         solutionStepsEn: [
           "Go to Accounting ➔ Vouchers ➔ New Voucher.",
@@ -260,7 +258,7 @@ export function BalanceSheetAssistantModal({
         mathFormulaEn: `Capital (${fmt(d.capital)}) − Drawings (${fmt(d.drawings)}) = Net Capital`,
         solutionStepsNp: [
           "यो लेखा नियम अनुसार पूर्ण रूपमा सही छ।",
-          "यदि कुनै व्यक्तिगत खर्च झुक्किएर पसलको खर्चमा हालिएको छ भने त्यसलाई 'Personal / Drawings' वर्गमा सार्नुहोस्।"
+          "यदि कुनै व्यक्तिगत खर्च झुक्किएर पसलको खर्चमा हालिएको छ भने त्यसलाई 'Personal / Drawings' वर्गमा सार्नुहोस् वा Journal/Payment भौचर काट्नुहोस्।"
         ],
         solutionStepsEn: [
           "Correct accounting treatment under standard GAAP.",
@@ -317,12 +315,12 @@ export function BalanceSheetAssistantModal({
         mathFormulaNp: `सम्पत्ति: ${fmt(totalAssets)} | दायित्व र पुँजी: ${fmt(totalLiabilitiesAndEquity)} | फरक: ${fmt(difference)}`,
         mathFormulaEn: `Assets: ${fmt(totalAssets)} | Liab+Equity: ${fmt(totalLiabilitiesAndEquity)} | Diff: ${fmt(difference)}`,
         solutionStepsNp: [
-          "Accounting ➔ Chart of Accounts मा जानुहोस्।",
-          `Capital Account (साहुको पुँजी) मा ${fmt(difference)} थपिदिनुहोस् वा समायोजन भौचर काट्नुहोस्।`
+          "विधि १ (Journal Voucher भौचर प्रविष्टि): Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्। Voucher Type 'JOURNAL' छानी समायोजन प्रविष्टि गर्नुहोस्।",
+          "विधि २ (Chart of Accounts ओपनिङ मौज्दात): Accounting ➔ Chart of Accounts मा गएर Capital Account (साहुको पुँजी) मा " + fmt(difference) + " थपिदिनुहोस्।"
         ],
         solutionStepsEn: [
-          "Go to Accounting ➔ Chart of Accounts.",
-          `Adjust ${fmt(difference)} in Capital Account to balance.`
+          "Method 1 (Journal Voucher Entry): Go to Accounting ➔ Vouchers ➔ New Voucher. Select 'JOURNAL' type and post adjustment entry.",
+          "Method 2 (Chart of Accounts Opening Balance): Go to Accounting ➔ Chart of Accounts. Adjust " + fmt(difference) + " in Capital Account to balance."
         ],
         fixActionLabelNp: `✨ साहुको पुँजी खातामा ${fmt(difference)} समायोजन गरी वासलात तुरुन्तै मिलाउनुहोस्`,
         fixActionLabelEn: `✨ Adjust ${fmt(difference)} in Capital Account`,

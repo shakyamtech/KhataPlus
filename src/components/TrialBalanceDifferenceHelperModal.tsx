@@ -107,16 +107,12 @@ export function TrialBalanceDifferenceHelperModal({
         mathExplanationNp: `खरिद छुट: रु. ${fmt(unrecordedDiscount)} | बिकेको सामानको लागत (COGS) मा छुट नघटेको | आवश्यक क्रेडिट (Cr): रु. ${fmt(unrecordedDiscount)}`,
         mathExplanationEn: `Purchase Discount = Rs. ${fmt(unrecordedDiscount)} | Missing Income Credit = Rs. ${fmt(unrecordedDiscount)}.`,
         solutionStepsNp: [
-          "Accounting ➔ Chart of Accounts (खाता सूची) मा जानुहोस्।",
-          "'+ Create Account' थिचेर 'Discount Received (खरिद छुट आम्दानी)' नामको खाता बनाउनुहोस्।",
-          `खाताको Group 'Indirect Incomes' र Opening Balance मा रु. ${fmt(unrecordedDiscount)} राख्नुहोस्।`,
-          "Save गर्नासाथ छुट आम्दानी क्रेडिट भएर हिसाब मिल्छ।"
+          "विधि १ (Journal Voucher भौचर प्रविष्टि): Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्। Voucher Type 'JOURNAL' छानी Dr: Supplier/COGS A/c र Cr: Discount Received A/c (खरिद छुट आम्दानी) रु. " + fmt(unrecordedDiscount) + " प्रविष्टि गर्नुहोस्।",
+          "विधि २ (Chart of Accounts ओपनिङ मौज्दात): Accounting ➔ Chart of Accounts मा गएर '+ Create Account' गरी 'Discount Received' (Group: Indirect Incomes) खाता बनाउनुहोस् र Opening Balance मा रु. " + fmt(unrecordedDiscount) + " राख्नुहोस्।"
         ],
         solutionStepsEn: [
-          "Go to Accounting ➔ Chart of Accounts.",
-          "Click '+ Create Account' and create 'Discount Received'.",
-          `Select Group 'Indirect Incomes' and set Opening Balance to Rs. ${fmt(unrecordedDiscount)}.`,
-          "Save to credit the discount income."
+          "Method 1 (Journal Voucher Entry): Go to Accounting ➔ Vouchers ➔ New Voucher. Select 'JOURNAL' type. Enter Dr: Supplier/COGS A/c and Cr: Discount Received A/c with Rs. " + fmt(unrecordedDiscount) + ".",
+          "Method 2 (Chart of Accounts Opening Balance): Go to Accounting ➔ Chart of Accounts. Create 'Discount Received' under 'Indirect Incomes' group with Opening Balance of Rs. " + fmt(unrecordedDiscount) + "."
         ],
         fixActionLabelNp: `✨ 'Discount Received' खाता बनाई रु. ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
         fixActionLabelEn: `✨ Create 'Discount Received' Account (Rs. ${fmt(unrecordedDiscount)})`,
@@ -161,16 +157,12 @@ export function TrialBalanceDifferenceHelperModal({
         mathExplanationNp: `स्टक मौज्दात (Debit): + रु. ${fmt(openingStockVal)} | साहुको पुँजी (Credit): छुटेको रु. ${fmt(openingStockVal)}`,
         mathExplanationEn: `Stock Asset (Debit): + Rs. ${fmt(openingStockVal)} | Capital Account (Credit): Missing Rs. ${fmt(openingStockVal)}`,
         solutionStepsNp: [
-          "Accounting ➔ Chart of Accounts मा जानुहोस्।",
-          "Capital Account (साहुको पुँजी) लाई Edit गर्नुहोस्।",
-          `Opening Balance मा रु. ${fmt(openingStockVal)} थपिदिनुहोस्।`,
-          "Save गर्नुहोस्।"
+          "विधि १ (Journal Voucher भौचर प्रविष्टि): Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्। Voucher Type 'JOURNAL' छानी Dr: Opening Stock / Inventory A/c (रु. " + fmt(openingStockVal) + ") र Cr: Capital Account (साहुको पुँजी रु. " + fmt(openingStockVal) + ") प्रविष्टि गर्नुहोस्।",
+          "विधि २ (Chart of Accounts ओपनिङ मौज्दात): Accounting ➔ Chart of Accounts मा गएर Capital Account Edit गरी Opening Balance मा रु. " + fmt(openingStockVal) + " थपिदिनुहोस्।"
         ],
         solutionStepsEn: [
-          "Go to Accounting ➔ Chart of Accounts.",
-          "Edit Capital Account.",
-          `Add Rs. ${fmt(openingStockVal)} to Opening Balance.`,
-          "Save changes."
+          "Method 1 (Journal Voucher Entry): Go to Accounting ➔ Vouchers ➔ New Voucher. Select 'JOURNAL' type. Enter Dr: Opening Stock A/c and Cr: Capital Account with Rs. " + fmt(openingStockVal) + ".",
+          "Method 2 (Chart of Accounts Opening Balance): Go to Accounting ➔ Chart of Accounts. Edit Capital Account and add Rs. " + fmt(openingStockVal) + " to Opening Balance."
         ],
         fixActionLabelNp: `✨ साहुको पुँजी खातामा रु. ${fmt(openingStockVal)} थप्नुहोस्`,
         fixActionLabelEn: `✨ Add Rs. ${fmt(openingStockVal)} to Capital Account`,
