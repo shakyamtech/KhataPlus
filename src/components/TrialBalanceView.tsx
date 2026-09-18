@@ -913,6 +913,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
         cashDocs={cashDocs}
         salesDocs={salesDocs}
         purchasesDocs={purchasesDocs}
+        supplierDocs={supplierDocs}
         productDocs={productDocs}
         ledgerDocs={ledgerDocs}
         accounts={accounts}

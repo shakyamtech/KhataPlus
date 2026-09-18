@@ -3699,6 +3699,7 @@ export default function Accounting() {
             cashDocs={cashDocs}
             salesDocs={salesDocs}
             purchasesDocs={purchasesDocs}
+            supplierDocs={suppliersDocs}
             productDocs={productDocs}
             ledgerDocs={ledgerDocs}
             accounts={accounts}

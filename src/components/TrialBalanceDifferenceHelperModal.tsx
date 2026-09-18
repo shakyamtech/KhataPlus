@@ -28,6 +28,7 @@ interface TrialBalanceDifferenceHelperModalProps {
   cashDocs?: any[];
   salesDocs?: any[];
   purchasesDocs?: any[];
+  supplierDocs?: any[];
   productDocs?: any[];
   ledgerDocs?: any[];
   accounts: Account[];
@@ -60,8 +61,10 @@ export function TrialBalanceDifferenceHelperModal({
   difference,
   totalDebits,
   totalCredits,
-  purchasesDocs = [],
+  cashDocs = [],
   salesDocs = [],
+  purchasesDocs = [],
+  supplierDocs = [],
   productDocs = [],
   ledgerDocs = [],
   accounts = [],
@@ -94,10 +97,17 @@ export function TrialBalanceDifferenceHelperModal({
     const unrecordedDiscount = Math.max(0, totalPurchaseDiscount - discountAccountBalance);
 
     // Extract exact supplier name(s) with discount
-    const discountedPurchases = purchasesDocs.filter((p: any) => Number(p.discount || 0) > 0);
+    const discountedPurchases = (purchasesDocs || []).filter((p: any) => Number(p.discount || 0) > 0);
     const suppDiscMap: Record<string, number> = {};
     discountedPurchases.forEach((p: any) => {
-      const name = p.supplier_name || p.supplierName || p.party_name || "Supplier / COGS";
+      let name = p.supplier_name || p.supplierName || p.party_name;
+      if (!name && p.supplier_id && supplierDocs.length > 0) {
+        const found = supplierDocs.find((s: any) => s.id === p.supplier_id);
+        if (found) name = found.name;
+      }
+      if (!name) {
+        name = p.payment_mode === "cash" ? "Cash Purchase (नगद खरिद)" : "Supplier / COGS";
+      }
       suppDiscMap[name] = (suppDiscMap[name] || 0) + Number(p.discount || 0);
     });
     const suppEntries = Object.entries(suppDiscMap);
@@ -373,7 +383,7 @@ export function TrialBalanceDifferenceHelperModal({
               </div>
             </div>
             <Badge variant="destructive" className="font-mono text-xs px-2.5 py-1">
-              Diff: Rs. {fmt(difference)}
+              Diff: {fmt(difference)}
             </Badge>
           </div>
         </DialogHeader>
@@ -468,7 +478,7 @@ export function TrialBalanceDifferenceHelperModal({
                 </div>
                 <div className="text-right shrink-0">
                   <div className="text-[11px] text-muted-foreground font-medium">{lang === "NEP" ? "रकम" : "Amount"}</div>
-                  <div className="text-sm font-bold font-mono text-destructive">Rs. {fmt(item.amount)}</div>
+                  <div className="text-sm font-bold font-mono text-destructive">{fmt(item.amount)}</div>
                 </div>
               </div>
 

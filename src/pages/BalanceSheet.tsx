@@ -45,6 +45,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
   const [rawAccounts, setRawAccounts] = useState<Account[]>([]);
   const [rawVouchers, setRawVouchers] = useState<Voucher[]>([]);
   const [rawPurchases, setRawPurchases] = useState<any[]>([]);
+  const [rawSuppliers, setRawSuppliers] = useState<any[]>([]);
   const [rawSales, setRawSales] = useState<any[]>([]);
   const [rawProducts, setRawProducts] = useState<any[]>([]);
   const [rawCash, setRawCash] = useState<any[]>([]);
@@ -118,6 +119,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
       setRawAccounts(accounts);
       setRawVouchers(vouchers);
       setRawPurchases(purchases);
+      setRawSuppliers(suppliers);
       setRawSales(sales);
       setRawProducts(products);
       setRawCash(cash);
@@ -843,6 +845,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         accounts={rawAccounts}
         vouchers={rawVouchers}
         purchasesDocs={rawPurchases}
+        supplierDocs={rawSuppliers}
         salesDocs={rawSales}
         productDocs={rawProducts}
         cashDocs={rawCash}

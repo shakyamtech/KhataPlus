@@ -59,6 +59,7 @@ interface BalanceSheetAssistantModalProps {
   accounts: Account[];
   vouchers: Voucher[];
   purchasesDocs: any[];
+  supplierDocs?: any[];
   salesDocs: any[];
   productDocs: any[];
   cashDocs: any[];
@@ -98,6 +99,7 @@ export function BalanceSheetAssistantModal({
   accounts,
   vouchers,
   purchasesDocs,
+  supplierDocs = [],
   salesDocs,
   productDocs,
   cashDocs,
@@ -163,10 +165,17 @@ export function BalanceSheetAssistantModal({
     const discountExplainsDifference = !isBalanced && Math.abs(unrecordedDiscount - difference) < 1;
 
     // Extract exact supplier name(s) with discount
-    const discountedPurchases = purchasesDocs.filter((p: any) => Number(p.discount || 0) > 0);
+    const discountedPurchases = (purchasesDocs || []).filter((p: any) => Number(p.discount || 0) > 0);
     const suppDiscMap: Record<string, number> = {};
     discountedPurchases.forEach((p: any) => {
-      const name = p.supplier_name || p.supplierName || p.party_name || "Supplier / COGS";
+      let name = p.supplier_name || p.supplierName || p.party_name;
+      if (!name && p.supplier_id && supplierDocs && supplierDocs.length > 0) {
+        const found = supplierDocs.find((s: any) => s.id === p.supplier_id);
+        if (found) name = found.name;
+      }
+      if (!name) {
+        name = p.payment_mode === "cash" ? "Cash Purchase (नगद खरिद)" : "Supplier / COGS";
+      }
       suppDiscMap[name] = (suppDiscMap[name] || 0) + Number(p.discount || 0);
     });
     const suppEntries = Object.entries(suppDiscMap);
