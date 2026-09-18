@@ -842,12 +842,16 @@ const POS = () => {
         ? new Date(`${billDate}T12:00:00`).toISOString()
         : new Date().toISOString();
       
+      const selectedCustomer = customerId !== "walk-in" ? customers.find((c: any) => c.id === customerId) : null;
+      const customerName = selectedCustomer?.name || (customerId === "walk-in" ? null : null);
+
       batch.set(saleRef, {
         id: saleRef.id,
         bill_no: generatedBillNo,
         bill_sequence: currentNo,
         user_id: user!.uid,
         customer_id: customerId === "walk-in" ? null : customerId,
+        customer_name: customerName,
         payment_mode: paymentMode,
         paid_via: paymentMode === "credit" && paid > 0 ? partialMode : null,
         amount_paid: paid,

@@ -1736,6 +1736,18 @@ export default function Accounting() {
     const saleEntries: DayBookEntry[] = (filterType === "all" || filterType === "sale")
       ? salesDocs.map(s => {
           const { dateAd, dateBs } = resolveDualDates(s.created_at || s.date, s.date_bs || s.nepali_date);
+          const cust = customersDocs.find(c => c.id === s.customer_id || c.id === s.customerId);
+          const custName = s.customer_name || s.customerName || cust?.name;
+          
+          let drLabel = lang === "NEP" ? `नगद/बैंक (${s.payment_mode || "cash"})` : `Cash/Bank (${s.payment_mode || "cash"})`;
+          if (custName && (s.payment_mode === "credit" || !s.payment_mode)) {
+            drLabel = custName;
+          } else if (custName && s.payment_mode) {
+            drLabel = `${custName} (${s.payment_mode})`;
+          } else if (s.payment_mode === "credit") {
+            drLabel = lang === "NEP" ? "उधारो ग्राहक (Debtors)" : "Sundry Debtors (credit)";
+          }
+
           return {
             id: s.id || s.bill_no || Math.random().toString(),
             entryType: "sale" as const,
@@ -1743,9 +1755,9 @@ export default function Accounting() {
             date: dateAd || s.created_at || s.date || new Date().toISOString(),
             dateBs: dateBs,
             amount: Number(s.total || 0),
-            debitLabel: lang === "NEP" ? `नगद/बैंक (${s.payment_mode || "cash"})` : `Cash/Bank (${s.payment_mode || "cash"})`,
+            debitLabel: drLabel,
             creditLabel: lang === "NEP" ? "बिक्री आम्दानी (Sales)" : "Sales Revenue A/C",
-            narration: s.customer_name ? `Sale to ${s.customer_name}` : "Walk-in Sale",
+            narration: custName ? `Sale to ${custName}` : (s.narration || "Walk-in Sale"),
             paymentMode: s.payment_mode,
             originalSale: s
           };
@@ -1756,6 +1768,8 @@ export default function Accounting() {
     const purchaseEntries: DayBookEntry[] = (filterType === "all" || filterType === "purchase")
       ? purchasesDocs.map(p => {
           const { dateAd, dateBs } = resolveDualDates(p.created_at || p.date, p.date_bs || p.nepali_date);
+          const supp = suppliersDocs.find(sp => sp.id === p.supplier_id || sp.id === p.supplierId);
+          const suppName = p.supplier_name || p.supplierName || supp?.name;
           return {
             id: p.id,
             entryType: "purchase" as const,
@@ -1764,8 +1778,8 @@ export default function Accounting() {
             dateBs: dateBs,
             amount: Number(p.total || 0),
             debitLabel: lang === "NEP" ? "खरिद खाता (Purchases)" : "Purchases A/C",
-            creditLabel: p.supplier_name ? `${p.supplier_name}` : (lang === "NEP" ? "नगद/साहु (Cash/Supplier)" : "Cash/Supplier A/C"),
-            narration: p.supplier_name ? `Purchase from ${p.supplier_name}` : "Purchase Entry",
+            creditLabel: suppName ? `${suppName}` : (lang === "NEP" ? "नगद/साहु (Cash/Supplier)" : "Cash/Supplier A/C"),
+            narration: suppName ? `Purchase from ${suppName}` : (p.narration || "Purchase Entry"),
             paymentMode: p.payment_mode,
             originalPurchase: p
           };
@@ -1812,7 +1826,7 @@ export default function Accounting() {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
     return all;
-  }, [vouchers, salesDocs, purchasesDocs, filterType, searchQuery, lang]);
+  }, [vouchers, salesDocs, purchasesDocs, customersDocs, suppliersDocs, filterType, searchQuery, lang]);
 
   // Keep filteredVouchers for backward compatibility (used only by voucher-specific operations)
   const filteredVouchers = useMemo(() => vouchers.filter(v => {
