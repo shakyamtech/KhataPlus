@@ -671,13 +671,23 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-card p-4 rounded-xl shadow-card border border-border/40">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-lg font-bold text-foreground">अन्तिम हिसाब तथा वासलात (Financial Position)</h2>
+            <h2 className="text-lg font-bold text-foreground">
+              {lang === "NEP" ? "अन्तिम हिसाब तथा वासलात (Financial Position)" : "Financial Position (Balance Sheet)"}
+            </h2>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-              <Landmark className="h-3 w-3" /> {getFiscalYearInfo(new Date()).labelNp} ({getFiscalYearInfo(new Date()).labelEn})
+              <Landmark className="h-3 w-3" /> {lang === "NEP" ? getFiscalYearInfo(new Date()).labelNp : getFiscalYearInfo(new Date()).labelEn}
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            पसल: <strong className="text-foreground">{shopInfo?.name || "Shop"}</strong> {shopInfo?.pan ? <>· PAN: <strong className="text-foreground">{shopInfo.pan}</strong></> : null} · आर्थिक वर्ष: <strong className="text-foreground">{getFiscalYearInfo(new Date()).labelNp}</strong> · विवरण मिति: <strong className="text-foreground">{format(new Date(), "dd MMMM yyyy")}</strong>
+            {lang === "NEP" ? (
+              <>
+                पसल: <strong className="text-foreground">{shopInfo?.name || "Shop"}</strong> {shopInfo?.pan ? <>· PAN: <strong className="text-foreground">{shopInfo.pan}</strong></> : null} · आर्थिक वर्ष: <strong className="text-foreground">{getFiscalYearInfo(new Date()).labelNp}</strong> · विवरण मिति: <strong className="text-foreground">{format(new Date(), "dd MMMM yyyy")}</strong>
+              </>
+            ) : (
+              <>
+                Shop: <strong className="text-foreground">{shopInfo?.name || "Shop"}</strong> {shopInfo?.pan ? <>· PAN: <strong className="text-foreground">{shopInfo.pan}</strong></> : null} · FY: <strong className="text-foreground">{getFiscalYearInfo(new Date()).labelEn}</strong> · Date: <strong className="text-foreground">{format(new Date(), "dd MMMM yyyy")}</strong>
+              </>
+            )}
           </p>
         </div>
 
@@ -710,7 +720,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
 
           <Button onClick={handlePrintBalanceSheet} variant="outline" size="sm" className="gap-2 shrink-0">
             <Printer className="h-4 w-4 text-primary" />
-            प्रिन्ट / PDF
+            {lang === "NEP" ? "प्रिन्ट / PDF" : "Print / PDF"}
           </Button>
         </div>
       </div>
@@ -725,21 +735,29 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                   ASSETS
                 </span>
                 <div>
-                  <h3 className="font-display text-lg font-bold text-foreground">सम्पत्ति (Assets)</h3>
-                  <p className="text-[11px] text-muted-foreground">Cash, Bank, Stock & Fixed Assets</p>
+                  <h3 className="font-display text-lg font-bold text-foreground">
+                    {lang === "NEP" ? "सम्पत्ति (Assets)" : "Assets"}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {lang === "NEP" ? "नगद, बैंक, स्टक तथा स्थिर सम्पत्ति" : "Cash, Bank, Stock & Fixed Assets"}
+                  </p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-1 divide-y divide-border/20">
-              <Row label="अन्तिम नगद मौज्दात (Closing Cash in Hand)" value={d.cash} />
-              {d.wallet > 0 && <Row label="डिजिटल वालेट मौज्दात (Closing Wallets - eSewa/Khalti)" value={d.wallet} />}
+              <Row label={lang === "NEP" ? "अन्तिम नगद मौज्दात (Closing Cash in Hand)" : "Closing Cash in Hand"} value={d.cash} />
+              {d.wallet > 0 && (
+                <Row label={lang === "NEP" ? "डिजिटल वालेट मौज्दात (Closing Wallets - eSewa/Khalti)" : "Closing Wallets (eSewa/Khalti)"} value={d.wallet} />
+              )}
               
               {/* Bank Balances with Ledger Breakdown */}
               {d.bank > 0 && (
                 <div className="py-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground font-medium">अन्तिम बैंक मौज्दात (Closing Bank Balances)</span>
+                    <span className="text-muted-foreground font-medium">
+                      {lang === "NEP" ? "अन्तिम बैंक मौज्दात (Closing Bank Balances)" : "Closing Bank Balances"}
+                    </span>
                     <span className="font-semibold">{fmt(d.bank)}</span>
                   </div>
                   {bankItems.length > 0 && (
@@ -755,12 +773,14 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                 </div>
               )}
 
-              <Row label="अन्तिम स्टक मौज्दात (Closing Stock at Cost)" value={d.stock} />
+              <Row label={lang === "NEP" ? "अन्तिम स्टक मौज्दात (Closing Stock at Cost)" : "Closing Stock at Cost"} value={d.stock} />
               
               {/* Customer Receivables with Party Breakdown */}
               <div className="py-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground font-medium">ग्राहकबाट उठ्न बाँकी (Customer Receivables)</span>
+                  <span className="text-muted-foreground font-medium">
+                    {lang === "NEP" ? "ग्राहकबाट उठ्न बाँकी (Customer Receivables)" : "Customer Receivables (Debtors)"}
+                  </span>
                   <span className="font-semibold">{fmt(d.receivable)}</span>
                 </div>
                 {customerItems.length > 0 && (
@@ -776,21 +796,25 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
               </div>
 
               {d.vatReceivable > 0 && (
-                <Row label="सरकारबाट लिन बाँकी भ्याट (VAT Receivable / Credit)" value={d.vatReceivable} />
+                <Row label={lang === "NEP" ? "सरकारबाट लिन बाँकी भ्याट (VAT Receivable / Credit)" : "VAT Receivable / Input Tax Credit"} value={d.vatReceivable} />
               )}
               {d.grossFixedAssets > 0 && (
-                <Row label="स्थिर सम्पत्ति (Gross Fixed Assets)" value={d.grossFixedAssets} />
+                <Row label={lang === "NEP" ? "स्थिर सम्पत्ति (Gross Fixed Assets)" : "Gross Fixed Assets"} value={d.grossFixedAssets} />
               )}
               {d.accumulatedDep > 0 && (
-                <Row label="कट्टा: ह्रासकट्टी (Less: Accumulated Depreciation)" value={-d.accumulatedDep} />
+                <Row label={lang === "NEP" ? "कट्टा: ह्रासकट्टी (Less: Accumulated Depreciation)" : "Less: Accumulated Depreciation"} value={-d.accumulatedDep} />
               )}
-              {d.loansGiven > 0 && <Row label="दिएको ऋण तथा पेश्की (Loans Given & Advances)" value={d.loansGiven} />}
+              {d.loansGiven > 0 && (
+                <Row label={lang === "NEP" ? "दिएको ऋण तथा पेश्की (Loans Given & Advances)" : "Loans Given & Advances"} value={d.loansGiven} />
+              )}
             </div>
           </div>
 
           <div className="mt-6 pt-3 border-t-2 border-border/80">
             <div className="flex justify-between items-center py-2.5 px-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-              <span className="font-display font-bold text-sm text-foreground">कुल सम्पत्ति (Total Assets)</span>
+              <span className="font-display font-bold text-sm text-foreground">
+                {lang === "NEP" ? "कुल सम्पत्ति (Total Assets)" : "Total Assets"}
+              </span>
               <span className="font-mono font-extrabold text-base text-emerald-600 dark:text-emerald-400">{fmt(totalAssets)}</span>
             </div>
           </div>
@@ -805,8 +829,12 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                   LIABILITIES
                 </span>
                 <div>
-                  <h3 className="font-display text-lg font-bold text-foreground">दायित्व तथा पुँजी (Liabilities & Equity)</h3>
-                  <p className="text-[11px] text-muted-foreground">Payables, Tax Due, Capital & Profits</p>
+                  <h3 className="font-display text-lg font-bold text-foreground">
+                    {lang === "NEP" ? "दायित्व तथा पुँजी (Liabilities & Equity)" : "Liabilities & Equity"}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {lang === "NEP" ? "साहु बक्यौता, कर, पुँजी तथा नाफा" : "Payables, Tax Due, Capital & Profits"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -815,7 +843,9 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
               {/* Supplier Payables with Party Breakdown */}
               <div className="py-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground font-medium">सप्लायरलाई तिर्न बाँकी (Supplier Payables)</span>
+                  <span className="text-muted-foreground font-medium">
+                    {lang === "NEP" ? "सप्लायरलाई तिर्न बाँकी (Supplier Payables)" : "Supplier Payables (Creditors)"}
+                  </span>
                   <span className="font-semibold">{fmt(d.payable)}</span>
                 </div>
                 {supplierItems.length > 0 && (
@@ -830,13 +860,21 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                 )}
               </div>
 
-              {d.loans > 0 && <Row label="बैंक ऋण दायित्व (Bank Loans & Borrowings)" value={d.loans} />}
-              {d.outstanding > 0 && <Row label="तिर्न बाँकी खर्च (Outstanding Liabilities)" value={d.outstanding} />}
-              {d.vatPayable > 0 && <Row label="सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)" value={d.vatPayable} />}
-              <Row label="साहुको पुँजी (Owner's Capital)" value={d.capital} />
+              {d.loans > 0 && (
+                <Row label={lang === "NEP" ? "बैंक ऋण दायित्व (Bank Loans & Borrowings)" : "Bank Loans & Borrowings"} value={d.loans} />
+              )}
+              {d.outstanding > 0 && (
+                <Row label={lang === "NEP" ? "तिर्न बाँकी खर्च (Outstanding Liabilities)" : "Outstanding Liabilities"} value={d.outstanding} />
+              )}
+              {d.vatPayable > 0 && (
+                <Row label={lang === "NEP" ? "सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)" : "VAT Payable (Tax Due)"} value={d.vatPayable} />
+              )}
+              <Row label={lang === "NEP" ? "साहुको पुँजी (Owner's Capital)" : "Owner's Capital (Equity)"} value={d.capital} />
               <div className="flex justify-between items-center py-2 text-sm">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">खुद व्यापारिक नाफा (Retained Earnings)</span>
+                  <span className="text-muted-foreground">
+                    {lang === "NEP" ? "खुद व्यापारिक नाफा (Retained Earnings)" : "Retained Earnings (Net Profit)"}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -844,21 +882,25 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                       setAssistantOpen(true);
                     }}
                     className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 flex items-center gap-0.5 cursor-pointer transition-colors"
-                    title="नाफा-नोक्सानको विस्तृत चिरफार हेर्नुहोस्"
+                    title={lang === "NEP" ? "नाफा-नोक्सानको विस्तृत चिरफार हेर्नुहोस्" : "View Retained Earnings Drill-Down"}
                   >
                     <Sparkles className="h-2.5 w-2.5 text-blue-600 dark:text-blue-400" />
-                    <span>चिरफार</span>
+                    <span>{lang === "NEP" ? "चिरफार" : "Breakdown"}</span>
                   </button>
                 </div>
                 <span className="font-mono font-bold text-foreground">{fmt(netProfit)}</span>
               </div>
-              {d.drawings > 0 && <Row label="घटाउनुहोस्: निजी खर्च (Less: Drawings)" value={-d.drawings} />}
+              {d.drawings > 0 && (
+                <Row label={lang === "NEP" ? "घटाउनुहोस्: निजी खर्च (Less: Drawings)" : "Less: Owner's Drawings"} value={-d.drawings} />
+              )}
             </div>
           </div>
 
           <div className="mt-6 pt-3 border-t-2 border-border/80">
             <div className="flex justify-between items-center py-2.5 px-3.5 rounded-xl bg-blue-500/10 border border-blue-500/30">
-              <span className="font-display font-bold text-sm text-foreground">कुल दायित्व तथा पुँजी (Total)</span>
+              <span className="font-display font-bold text-sm text-foreground">
+                {lang === "NEP" ? "कुल दायित्व तथा पुँजी (Total)" : "Total Liabilities & Equity"}
+              </span>
               <span className="font-mono font-extrabold text-base text-blue-600 dark:text-blue-400">{fmt(totalLiabilitiesAndEquity)}</span>
             </div>
           </div>
