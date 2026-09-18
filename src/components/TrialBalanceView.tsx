@@ -10,6 +10,7 @@ import { fmt } from "@/lib/format";
 import { Account, Voucher, getAccounts, getVoucherAccountImpacts } from "@/lib/accounting";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Printer, Scale, CheckCircle2, AlertCircle, Loader2, Sparkles } from "lucide-react";
 import { TrialBalanceDifferenceHelperModal } from "@/components/TrialBalanceDifferenceHelperModal";
 
