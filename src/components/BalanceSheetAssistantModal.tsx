@@ -126,14 +126,14 @@ export function BalanceSheetAssistantModal({
         id: "net_loss_info",
         categoryNp: "नाफा-नोक्सान विश्लेषण",
         categoryEn: "P&L Analysis",
-        titleNp: `खुद व्यापारिक नोक्सान (Retained Loss: रु. ${fmt(Math.abs(netProfit))})`,
-        titleEn: `Retained Net Loss (Rs. ${fmt(Math.abs(netProfit))})`,
+        titleNp: `खुद व्यापारिक नोक्सान (Retained Loss: ${fmt(Math.abs(netProfit))})`,
+        titleEn: `Retained Net Loss (${fmt(Math.abs(netProfit))})`,
         severity: "info",
         amount: Math.abs(netProfit),
-        explanationNp: `पसलको बिक्री नाफा (Gross Profit) रु. ${fmt(grossProfit)} भन्दा पसलका कुल सञ्चालन खर्चहरू रु. ${fmt(d.expenses)} बढी भएकाले खुद नाफा -रु. ${fmt(Math.abs(netProfit))} हुन गएको हो। यसले साहुको पुँजीलाई रु. ${fmt(Math.abs(netProfit))} ले घटाएको छ।`,
-        explanationEn: `Operating expenses (Rs. ${fmt(d.expenses)}) exceeded Gross Profit (Rs. ${fmt(grossProfit)}), resulting in a Retained Loss of Rs. ${fmt(Math.abs(netProfit))}.`,
-        mathFormulaNp: `Gross Profit (रु. ${fmt(grossProfit)}) − Expenses (रु. ${fmt(d.expenses)}) = Retained Earnings (-रु. ${fmt(Math.abs(netProfit))})`,
-        mathFormulaEn: `Gross Profit (Rs. ${fmt(grossProfit)}) − Expenses (Rs. ${fmt(d.expenses)}) = Retained Loss (Rs. ${fmt(Math.abs(netProfit))})`,
+        explanationNp: `पसलको बिक्री नाफा (Gross Profit) ${fmt(grossProfit)} भन्दा पसलका कुल सञ्चालन खर्चहरू ${fmt(d.expenses)} बढी भएकाले खुद नाफा -${fmt(Math.abs(netProfit))} हुन गएको हो। यसले साहुको पुँजीलाई ${fmt(Math.abs(netProfit))} ले घटाएको छ।`,
+        explanationEn: `Operating expenses (${fmt(d.expenses)}) exceeded Gross Profit (${fmt(grossProfit)}), resulting in a Retained Loss of ${fmt(Math.abs(netProfit))}.`,
+        mathFormulaNp: `Gross Profit (${fmt(grossProfit)}) − Expenses (${fmt(d.expenses)}) = Retained Earnings (-${fmt(Math.abs(netProfit))})`,
+        mathFormulaEn: `Gross Profit (${fmt(grossProfit)}) − Expenses (${fmt(d.expenses)}) = Retained Loss (${fmt(Math.abs(netProfit))})`,
         solutionStepsNp: [
           "यो सामान्य व्यापारिक नोक्सानको स्वाभाविक नतिजा हो (कुनै गल्ती होइन)।",
           "Reports ➔ Profit & Loss ट्याबमा गएर भाडा, बिजुली वा तलब खर्चको विस्तृत विवरण हेर्न सक्नुहुन्छ।",
@@ -160,32 +160,41 @@ export function BalanceSheetAssistantModal({
       .reduce((s, a) => s + Number(a.opening_balance || 0), 0);
 
     const unrecordedDiscount = Math.max(0, totalPurchaseDiscount - discountAccountBalance);
+    const discountExplainsDifference = !isBalanced && Math.abs(unrecordedDiscount - difference) < 1;
 
     if (unrecordedDiscount > 0.5) {
       list.push({
         id: "purchase_discount",
-        categoryNp: "खरिद छुट आम्दानी",
-        categoryEn: "Purchase Discount",
-        titleNp: "खरिद बिलमा प्राप्त छुट आम्दानी मिलान",
-        titleEn: "Purchase Discount Income Adjustment",
-        severity: "warning",
+        categoryNp: discountExplainsDifference ? "मुख्य कारण: खरिद छुट" : "खरिद छुट आम्दानी",
+        categoryEn: discountExplainsDifference ? "Root Cause: Discount" : "Purchase Discount",
+        titleNp: discountExplainsDifference
+          ? `वासलात फरकको मुख्य कारण: खरिद बिलमा प्राप्त छुट आम्दानी (${fmt(unrecordedDiscount)})`
+          : `खरिद बिलमा प्राप्त छुट आम्दानी मिलान (${fmt(unrecordedDiscount)})`,
+        titleEn: discountExplainsDifference
+          ? `Root Cause of Imbalance: Purchase Discount Income (${fmt(unrecordedDiscount)})`
+          : `Purchase Discount Income Adjustment (${fmt(unrecordedDiscount)})`,
+        severity: discountExplainsDifference ? "error" : "warning",
         amount: unrecordedDiscount,
-        explanationNp: `खरिद बिलहरूमा कुल रु. ${fmt(totalPurchaseDiscount)} छुट पाइएको छ तर 'Discount Received' खाता नभएकोले COGS लागत बढी देखिन सक्छ।`,
-        explanationEn: `Purchase discount of Rs. ${fmt(totalPurchaseDiscount)} was received but missing a dedicated 'Discount Received' income ledger.`,
-        mathFormulaNp: `खरिद छुट = रु. ${fmt(unrecordedDiscount)} | आवश्यक क्रेडिट: रु. ${fmt(unrecordedDiscount)}`,
-        mathFormulaEn: `Unrecorded Discount = Rs. ${fmt(unrecordedDiscount)} | Required Credit: Rs. ${fmt(unrecordedDiscount)}`,
+        explanationNp: discountExplainsDifference
+          ? `वासलातमा देखिएको ${fmt(difference)} फरकको मुख्य कारण खरिद बिलमा प्राप्त कुल ${fmt(totalPurchaseDiscount)} छुट हो। 'Discount Received' आम्दानी खाता नबनाइएकोले यो रकम पुँजीमा जोडिन पाएको छैन। यो खाता बनाउनासाथ वासलात १००% सन्तुलित हुन्छ।`
+          : `खरिद बिलहरूमा कुल ${fmt(totalPurchaseDiscount)} छुट पाइएको छ तर 'Discount Received' खाता नभएकोले COGS लागत बढी देखिन सक्छ।`,
+        explanationEn: discountExplainsDifference
+          ? `The entire imbalance of ${fmt(difference)} is caused by purchase discounts received (${fmt(totalPurchaseDiscount)}) without a dedicated 'Discount Received' income ledger. Creating it will 100% balance the Balance Sheet.`
+          : `Purchase discount of ${fmt(totalPurchaseDiscount)} was received but missing a dedicated 'Discount Received' income ledger.`,
+        mathFormulaNp: `खरिद छुट = ${fmt(unrecordedDiscount)} | आवश्यक क्रेडिट: ${fmt(unrecordedDiscount)}`,
+        mathFormulaEn: `Unrecorded Discount = ${fmt(unrecordedDiscount)} | Required Credit: ${fmt(unrecordedDiscount)}`,
         solutionStepsNp: [
           "Accounting ➔ Chart of Accounts मा जानुहोस्।",
           "'+ Create Account' गरी 'Discount Received (खरिद छुट आम्दानी)' खाता बनाउनुहोस्।",
-          `Opening Balance मा रु. ${fmt(unrecordedDiscount)} राख्नुहोस्।`
+          `Opening Balance मा ${fmt(unrecordedDiscount)} राख्नुहोस्।`
         ],
         solutionStepsEn: [
           "Go to Accounting ➔ Chart of Accounts.",
           "Create 'Discount Received' under 'Indirect Incomes'.",
-          `Set Opening Balance to Rs. ${fmt(unrecordedDiscount)}.`
+          `Set Opening Balance to ${fmt(unrecordedDiscount)}.`
         ],
-        fixActionLabelNp: `✨ 'Discount Received' खाता बनाई रु. ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
-        fixActionLabelEn: `✨ Create 'Discount Received' Account (Rs. ${fmt(unrecordedDiscount)})`,
+        fixActionLabelNp: `✨ 'Discount Received' खाता बनाई ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
+        fixActionLabelEn: `✨ Create 'Discount Received' Account (${fmt(unrecordedDiscount)})`,
         fixAction: async () => {
           if (!user) return;
           const ref = doc(collection(db, "accounts"));
@@ -216,10 +225,10 @@ export function BalanceSheetAssistantModal({
         titleEn: "Annual Depreciation Review",
         severity: "info",
         amount: d.grossFixedAssets,
-        explanationNp: `पसलमा रु. ${fmt(d.grossFixedAssets)} बराबरको स्थिर सम्पत्ति (फर्निचर, कम्प्युटर आदि) छ तर यो वर्ष ह्रासकट्टी (Depreciation Expense) काटिएको छैन। कर ऐन अनुसार वर्षको अन्त्यमा ह्रासकट्टी काट्नु पर्छ।`,
-        explanationEn: `Fixed assets worth Rs. ${fmt(d.grossFixedAssets)} recorded without any accumulated depreciation entry for the fiscal year.`,
-        mathFormulaNp: `स्थिर सम्पत्ति: रु. ${fmt(d.grossFixedAssets)} | ह्रासकट्टी दर: ५% देखि २५% (सम्पत्तिको वर्ग अनुसार)`,
-        mathFormulaEn: `Gross Assets = Rs. ${fmt(d.grossFixedAssets)} | Standard Tax Rate: 5% - 25% based on asset block.`,
+        explanationNp: `पसलमा ${fmt(d.grossFixedAssets)} बराबरको स्थिर सम्पत्ति (फर्निचर, कम्प्युटर आदि) छ तर यो वर्ष ह्रासकट्टी (Depreciation Expense) काटिएको छैन। कर ऐन अनुसार वर्षको अन्त्यमा ह्रासकट्टी काट्नु पर्छ।`,
+        explanationEn: `Fixed assets worth ${fmt(d.grossFixedAssets)} recorded without any accumulated depreciation entry for the fiscal year.`,
+        mathFormulaNp: `स्थिर सम्पत्ति: ${fmt(d.grossFixedAssets)} | ह्रासकट्टी दर: ५% देखि २५% (सम्पत्तिको वर्ग अनुसार)`,
+        mathFormulaEn: `Gross Assets = ${fmt(d.grossFixedAssets)} | Standard Tax Rate: 5% - 25% based on asset block.`,
         solutionStepsNp: [
           "Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्।",
           "Voucher Type 'JOURNAL' छान्नुहोस्।",
@@ -241,14 +250,14 @@ export function BalanceSheetAssistantModal({
         id: "owner_drawings",
         categoryNp: "पुँजी तथा व्यक्तिगत खर्च",
         categoryEn: "Equity & Drawings",
-        titleNp: `साहुको व्यक्तिगत कट्टी (Drawings: रु. ${fmt(d.drawings)})`,
-        titleEn: `Owner's Drawings Deduction (Rs. ${fmt(d.drawings)})`,
+        titleNp: `साहुको व्यक्तिगत कट्टी (Drawings: ${fmt(d.drawings)})`,
+        titleEn: `Owner's Drawings Deduction (${fmt(d.drawings)})`,
         severity: "info",
         amount: d.drawings,
-        explanationNp: `साहुले पसलबाट व्यक्तिगत प्रयोजनका लागि रु. ${fmt(d.drawings)} झिक्नुभएको छ। यसले पसलको खुद पुँजी (Net Equity) लाई घटाएको छ।`,
-        explanationEn: `Owner withdrew Rs. ${fmt(d.drawings)} for personal use, which correctly reduces net owner equity.`,
-        mathFormulaNp: `साहुको सुरु पुँजी (रु. ${fmt(d.capital)}) − व्यक्तिगत खर्च (रु. ${fmt(d.drawings)}) = बाँकी पुँजी`,
-        mathFormulaEn: `Capital (Rs. ${fmt(d.capital)}) − Drawings (Rs. ${fmt(d.drawings)}) = Net Capital`,
+        explanationNp: `साहुले पसलबाट व्यक्तिगत प्रयोजनका लागि ${fmt(d.drawings)} झिक्नुभएको छ। यसले पसलको खुद पुँजी (Net Equity) लाई घटाएको छ।`,
+        explanationEn: `Owner withdrew ${fmt(d.drawings)} for personal use, which correctly reduces net owner equity.`,
+        mathFormulaNp: `साहुको सुरु पुँजी (${fmt(d.capital)}) − व्यक्तिगत खर्च (${fmt(d.drawings)}) = बाँकी पुँजी`,
+        mathFormulaEn: `Capital (${fmt(d.capital)}) − Drawings (${fmt(d.drawings)}) = Net Capital`,
         solutionStepsNp: [
           "यो लेखा नियम अनुसार पूर्ण रूपमा सही छ।",
           "यदि कुनै व्यक्तिगत खर्च झुक्किएर पसलको खर्चमा हालिएको छ भने त्यसलाई 'Personal / Drawings' वर्गमा सार्नुहोस्।"
@@ -268,15 +277,15 @@ export function BalanceSheetAssistantModal({
         id: "vat_credit",
         categoryNp: "भ्याट कट्टी मौज्दात",
         categoryEn: "VAT Input Credit",
-        titleNp: `सरकारबाट लिन/कट्टी गर्न बाँकी भ्याट (रु. ${fmt(d.vatReceivable)})`,
-        titleEn: `VAT Input Credit Receivable (Rs. ${fmt(d.vatReceivable)})`,
+        titleNp: `सरकारबाट लिन/कट्टी गर्न बाँकी भ्याट (${fmt(d.vatReceivable)})`,
+        titleEn: `VAT Input Credit Receivable (${fmt(d.vatReceivable)})`,
         severity: "info",
         amount: d.vatReceivable,
-        explanationNp: `सामान खरिद गर्दा तिरेको भ्याट बिक्री गर्दा उठाएको भ्याटभन्दा रु. ${fmt(d.vatReceivable)} धेरै भएकाले यो रकम पसलको चालू सम्पत्ति (Current Asset) मा बसेको छ। अर्को महिना बिक्री भ्याटबाट कट्टी गर्न मिल्छ।`,
-        explanationEn: `Input VAT paid on purchases exceeded Output VAT collected by Rs. ${fmt(d.vatReceivable)}, safely carried forward as an Asset.`,
+        explanationNp: `सामान खरिद गर्दा तिरेको भ्याट बिक्री गर्दा उठाएको भ्याटभन्दा ${fmt(d.vatReceivable)} धेरै भएकाले यो रकम पसलको चालू सम्पत्ति (Current Asset) मा बसेको छ। अर्को महिना बिक्री भ्याटबाट कट्टी गर्न मिल्छ।`,
+        explanationEn: `Input VAT paid on purchases exceeded Output VAT collected by ${fmt(d.vatReceivable)}, safely carried forward as an Asset.`,
         solutionStepsNp: [
           "यस महिना कुनै कर बुझाउनु पर्दैन।",
-          "अर्को महिना बिक्री भ्याट धेरै हुँदा यो रु. " + fmt(d.vatReceivable) + " स्वतः कट्टी हुनेछ।"
+          "अर्को महिना बिक्री भ्याट धेरै हुँदा यो " + fmt(d.vatReceivable) + " स्वतः कट्टी हुनेछ।"
         ],
         solutionStepsEn: [
           "No tax payment due to IRD for this period.",
@@ -286,37 +295,37 @@ export function BalanceSheetAssistantModal({
     }
 
     // ----------------------------------------------------
-    // CHECK 6: Imbalance / Variance Resolution
+    // CHECK 6: Imbalance / Variance Resolution (Only if not already fully explained by specific root cause)
     // ----------------------------------------------------
-    if (!isBalanced) {
+    if (!isBalanced && !discountExplainsDifference) {
       const isAssetsHigher = totalAssets > totalLiabilitiesAndEquity;
       const capitalAccounts = accounts.filter(a => a.group === "capital");
       list.unshift({
         id: "imbalance_alert",
         categoryNp: "सन्तुलन समायोजन",
         categoryEn: "Imbalance Alert",
-        titleNp: `वासलात असन्तुलन (फरक: रु. ${fmt(difference)})`,
-        titleEn: `Balance Sheet Imbalance (Diff: Rs. ${fmt(difference)})`,
+        titleNp: `वासलात असन्तुलन (फरक: ${fmt(difference)})`,
+        titleEn: `Balance Sheet Imbalance (Diff: ${fmt(difference)})`,
         severity: "error",
         amount: difference,
         explanationNp: isAssetsHigher
-          ? `कुल सम्पत्ति (रु. ${fmt(totalAssets)}) दायित्व तथा पुँजी (रु. ${fmt(totalLiabilitiesAndEquity)}) भन्दा रु. ${fmt(difference)} धेरै छ। सुरुवाती पुँजी वा छुट आम्दानी समायोजन गरी यसलाई १००% सन्तुलित बनाउन सकिन्छ।`
-          : `कुल दायित्व तथा पुँजी (रु. ${fmt(totalLiabilitiesAndEquity)}) कुल सम्पत्ति (रु. ${fmt(totalAssets)}) भन्दा रु. ${fmt(difference)} धेरै छ।`,
+          ? `कुल सम्पत्ति (${fmt(totalAssets)}) दायित्व तथा पुँजी (${fmt(totalLiabilitiesAndEquity)}) भन्दा ${fmt(difference)} धेरै छ। सुरुवाती पुँजी वा छुट आम्दानी समायोजन गरी यसलाई १००% सन्तुलित बनाउन सकिन्छ।`
+          : `कुल दायित्व तथा पुँजी (${fmt(totalLiabilitiesAndEquity)}) कुल सम्पत्ति (${fmt(totalAssets)}) भन्दा ${fmt(difference)} धेरै छ।`,
         explanationEn: isAssetsHigher
-          ? `Assets exceed Liabilities & Equity by Rs. ${fmt(difference)}. Can be resolved by adjusting Capital Account.`
-          : `Liabilities & Equity exceed Assets by Rs. ${fmt(difference)}.`,
-        mathFormulaNp: `सम्पत्ति: रु. ${fmt(totalAssets)} | दायित्व र पुँजी: रु. ${fmt(totalLiabilitiesAndEquity)} | फरक: रु. ${fmt(difference)}`,
-        mathFormulaEn: `Assets: Rs. ${fmt(totalAssets)} | Liab+Equity: Rs. ${fmt(totalLiabilitiesAndEquity)} | Diff: Rs. ${fmt(difference)}`,
+          ? `Assets exceed Liabilities & Equity by ${fmt(difference)}. Can be resolved by adjusting Capital Account.`
+          : `Liabilities & Equity exceed Assets by ${fmt(difference)}.`,
+        mathFormulaNp: `सम्पत्ति: ${fmt(totalAssets)} | दायित्व र पुँजी: ${fmt(totalLiabilitiesAndEquity)} | फरक: ${fmt(difference)}`,
+        mathFormulaEn: `Assets: ${fmt(totalAssets)} | Liab+Equity: ${fmt(totalLiabilitiesAndEquity)} | Diff: ${fmt(difference)}`,
         solutionStepsNp: [
           "Accounting ➔ Chart of Accounts मा जानुहोस्।",
-          `Capital Account (साहुको पुँजी) मा रु. ${fmt(difference)} थपिदिनुहोस् वा समायोजन भौचर काट्नुहोस्।`
+          `Capital Account (साहुको पुँजी) मा ${fmt(difference)} थपिदिनुहोस् वा समायोजन भौचर काट्नुहोस्।`
         ],
         solutionStepsEn: [
           "Go to Accounting ➔ Chart of Accounts.",
-          `Adjust Rs. ${fmt(difference)} in Capital Account to balance.`
+          `Adjust ${fmt(difference)} in Capital Account to balance.`
         ],
-        fixActionLabelNp: `✨ साहुको पुँजी खातामा रु. ${fmt(difference)} समायोजन गरी वासलात तुरुन्तै मिलाउनुहोस्`,
-        fixActionLabelEn: `✨ Adjust Rs. ${fmt(difference)} in Capital Account`,
+        fixActionLabelNp: `✨ साहुको पुँजी खातामा ${fmt(difference)} समायोजन गरी वासलात तुरुन्तै मिलाउनुहोस्`,
+        fixActionLabelEn: `✨ Adjust ${fmt(difference)} in Capital Account`,
         fixAction: async () => {
           if (!user) return;
           const capAcc = capitalAccounts[0];
@@ -412,7 +421,7 @@ export function BalanceSheetAssistantModal({
                 </Badge>
               ) : (
                 <Badge variant="destructive" className="font-mono text-xs px-3 py-1 animate-pulse">
-                  Diff: Rs. {fmt(difference)}
+                  Diff: {fmt(difference)}
                 </Badge>
               )}
             </div>
@@ -523,7 +532,7 @@ export function BalanceSheetAssistantModal({
                     {item.amount !== undefined && (
                       <div className="text-right shrink-0">
                         <div className="text-[10px] text-muted-foreground font-semibold uppercase">{lang === "NEP" ? "सम्बन्धित रकम" : "Amount"}</div>
-                        <div className="text-xs sm:text-sm font-bold font-mono text-foreground">Rs. {fmt(item.amount)}</div>
+                        <div className="text-xs sm:text-sm font-bold font-mono text-foreground">{fmt(item.amount)}</div>
                       </div>
                     )}
                   </div>
@@ -594,7 +603,7 @@ export function BalanceSheetAssistantModal({
                   <span>{lang === "NEP" ? "सञ्चित नाफा-नोक्सान चिरफार (Retained Earnings Forensic Math)" : "Retained Earnings Forensic Math"}</span>
                 </span>
                 <span className="font-mono font-extrabold text-sm text-primary">
-                  Rs. {fmt(netProfit)}
+                  {fmt(netProfit)}
                 </span>
               </div>
 
@@ -648,7 +657,7 @@ export function BalanceSheetAssistantModal({
                   </div>
                 </div>
                 <div className={`font-mono font-extrabold text-base sm:text-lg ${netProfit >= 0 ? "text-emerald-600" : "text-destructive"}`}>
-                  Rs. {fmt(netProfit)}
+                  {fmt(netProfit)}
                 </div>
               </div>
             </Card>
@@ -661,7 +670,7 @@ export function BalanceSheetAssistantModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Card className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-1.5">
                 <div className="text-xs text-muted-foreground font-semibold uppercase">{lang === "NEP" ? "पसलको खुद सम्पत्ति (Net Worth)" : "Business Net Worth"}</div>
-                <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">Rs. {fmt(netWorth)}</div>
+                <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{fmt(netWorth)}</div>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   {lang === "NEP"
                     ? "सबै सप्लायर र ऋण तिरेपछि पसलको हातमा बाँकी रहने वास्तविक सम्पत्ति।"
