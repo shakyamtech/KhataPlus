@@ -285,7 +285,20 @@ export default function Accounting() {
         setReturnItems(items);
       } else {
         const q = query(collection(db, "purchase_items"), where("purchase_id", "==", billId));
-        const snap = await getDocs(q);
+        const pbQ = query(collection(db, "product_batches"), where("purchase_id", "==", billId));
+        const [snap, pbSnap] = await Promise.all([getDocs(q), getDocs(pbQ)]);
+
+        const batchByProductMap: Record<string, { id: string; name: string }> = {};
+        pbSnap.docs.forEach(bDoc => {
+          const bData = bDoc.data();
+          if (bData.product_id) {
+            batchByProductMap[bData.product_id] = {
+              id: bDoc.id,
+              name: bData.batch_name || ""
+            };
+          }
+        });
+
         const items: ReturnItemRow[] = snap.docs.map(d => {
           const data = d.data();
           const pId = data.product_id || d.id;
@@ -296,12 +309,13 @@ export default function Accounting() {
           const currentStock = Math.max(0, productStockMap[pId] ?? 0);
           // For Debit Note (Purchase return): you cannot return more than what was unreturned AND what is physically in store
           const maxReturnable = Math.max(0, Math.min(unreturnedBilled, currentStock));
+          const matchedBatch = batchByProductMap[pId];
 
           return {
             product_id: pId,
             product_name: data.product_name || "Item",
-            batch_id: data.batch_id || "",
-            batch_no: data.batch_no || "",
+            batch_id: matchedBatch?.id || data.batch_id || "",
+            batch_no: matchedBatch?.name || data.batch_no || "",
             unit: data.unit || "pcs",
             billed_qty: qty,
             available_stock: currentStock,

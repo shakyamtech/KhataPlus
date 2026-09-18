@@ -526,7 +526,7 @@ export async function createReturnVoucher(params: CreateReturnVoucherParams): Pr
   const batch = writeBatch(db);
   batch.set(voucherRef, voucher);
 
-  // 1. Stock synchronization & validation for Debit Note
+  // 1. Stock & Batch synchronization & validation for Debit Note
   if (!isCreditNote) {
     for (const it of items) {
       if (!it.product_id || !it.qty || Number(it.qty) <= 0) continue;
@@ -541,8 +541,8 @@ export async function createReturnVoucher(params: CreateReturnVoucherParams): Pr
     }
   }
 
-  items.forEach(it => {
-    if (!it.product_id || !it.qty || Number(it.qty) <= 0) return;
+  for (const it of items) {
+    if (!it.product_id || !it.qty || Number(it.qty) <= 0) continue;
     const qtyChange = isCreditNote ? Number(it.qty) : -Number(it.qty);
     const pRef = doc(db, "products", it.product_id);
     batch.update(pRef, { stock_qty: increment(qtyChange) });
@@ -550,8 +550,34 @@ export async function createReturnVoucher(params: CreateReturnVoucherParams): Pr
     if (it.batch_id && it.batch_id !== "no-batch") {
       const bRef = doc(db, "product_batches", it.batch_id);
       batch.update(bRef, { remaining_qty: increment(qtyChange) });
+    } else if (!isCreditNote) {
+      // Find batch for this purchase or deduct from active batches
+      const pbQ = query(
+        collection(db, "product_batches"),
+        where("user_id", "==", userId),
+        where("product_id", "==", it.product_id)
+      );
+      const pbSnap = await getDocs(pbQ);
+      let toDeduct = Number(it.qty);
+      const sortedBatches = pbSnap.docs.map(d => ({ id: d.id, ...d.data() as any }))
+        .sort((a, b) => {
+          if (a.purchase_id === bill_id && b.purchase_id !== bill_id) return -1;
+          if (b.purchase_id === bill_id && a.purchase_id !== bill_id) return 1;
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        });
+
+      for (const bDoc of sortedBatches) {
+        if (toDeduct <= 0) break;
+        const bRem = Number(bDoc.remaining_qty || 0);
+        if (bRem > 0) {
+          const deductFromThis = Math.min(toDeduct, bRem);
+          const bRef = doc(db, "product_batches", bDoc.id);
+          batch.update(bRef, { remaining_qty: increment(-deductFromThis) });
+          toDeduct -= deductFromThis;
+        }
+      }
     }
-  });
+  }
 
   // 2. Party Ledger Entry
   const ledgerRef = doc(collection(db, "ledger_entries"));
