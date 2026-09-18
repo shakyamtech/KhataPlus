@@ -647,7 +647,26 @@ export default function Accounting() {
       if (e.altKey && (e.key === "c" || e.key === "C" || e.code === "KeyC")) {
         e.preventDefault();
         e.stopPropagation();
-        openQuickCreateAccount();
+        if (voucherModalOpen) {
+          if (voucherType === "journal") {
+            const firstEmpty = journalRows.find(r => !r.account_id);
+            const targetId = firstEmpty ? firstEmpty.id : (journalRows[0]?.id || "1");
+            openQuickCreateAccount({ type: "journalRow", id: targetId });
+          } else if (voucherType === "payment") {
+            const firstEmpty = paymentRows.find(r => !r.account_id);
+            const targetId = firstEmpty ? firstEmpty.id : (paymentRows[0]?.id || "1");
+            openQuickCreateAccount({ type: "paymentRow", id: targetId }, "indirect_expenses");
+          } else if (voucherType === "receipt") {
+            const firstEmpty = receiptRows.find(r => !r.account_id);
+            const targetId = firstEmpty ? firstEmpty.id : (receiptRows[0]?.id || "1");
+            openQuickCreateAccount({ type: "receiptRow", id: targetId }, "indirect_incomes");
+          } else if (voucherType === "contra") {
+            const targetType = !debitAccountId ? "debitAccountId" : "creditAccountId";
+            openQuickCreateAccount({ type: targetType }, "bank_accounts");
+          }
+        } else {
+          openQuickCreateAccount();
+        }
       } else if (e.altKey && (e.key === "F5" || e.code === "F5")) {
         e.preventDefault();
         e.stopPropagation();
@@ -660,7 +679,7 @@ export default function Accounting() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [accounts, customersDocs, suppliersDocs, salesDocs, purchasesDocs, user]);
+  }, [accounts, customersDocs, suppliersDocs, salesDocs, purchasesDocs, user, voucherModalOpen, voucherType, journalRows, paymentRows, receiptRows, debitAccountId, creditAccountId]);
 
   // Deep-link check for return voucher action (e.g. from Parties Page)
   useEffect(() => {
@@ -1447,9 +1466,9 @@ export default function Accounting() {
       // Auto-assign to the targeted voucher field
       if (quickTarget) {
         if (quickTarget.type === "paymentRow") {
-          setPaymentRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id } : r));
+          setPaymentRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined } : r));
         } else if (quickTarget.type === "receiptRow") {
-          setReceiptRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id } : r));
+          setReceiptRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined } : r));
         } else if (quickTarget.type === "journalRow") {
           setJournalRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id } : r));
         } else if (quickTarget.type === "debitAccountId") {
@@ -1458,42 +1477,43 @@ export default function Accounting() {
           setCreditAccountId(newAcc.id);
         }
       } else if (voucherModalOpen) {
-        // If no explicit row target was given, assign to the first empty row
+        // If no explicit row target was given, assign to the first empty row or row 0
         if (voucherType === "payment") {
           setPaymentRows(prev => {
             const emptyIdx = prev.findIndex(r => !r.account_id);
-            if (emptyIdx !== -1) {
-              const updated = [...prev];
-              updated[emptyIdx] = { ...updated[emptyIdx], account_id: newAcc.id };
-              return updated;
-            }
-            return prev;
+            const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+            const updated = [...prev];
+            updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined };
+            return updated;
           });
         } else if (voucherType === "receipt") {
           setReceiptRows(prev => {
             const emptyIdx = prev.findIndex(r => !r.account_id);
-            if (emptyIdx !== -1) {
-              const updated = [...prev];
-              updated[emptyIdx] = { ...updated[emptyIdx], account_id: newAcc.id };
-              return updated;
-            }
-            return prev;
+            const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+            const updated = [...prev];
+            updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined };
+            return updated;
           });
         } else if (voucherType === "journal") {
           setJournalRows(prev => {
             const emptyIdx = prev.findIndex(r => !r.account_id);
-            if (emptyIdx !== -1) {
-              const updated = [...prev];
-              updated[emptyIdx] = { ...updated[emptyIdx], account_id: newAcc.id };
-              return updated;
-            }
-            return prev;
+            const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+            const updated = [...prev];
+            updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id };
+            return updated;
           });
+        } else if (voucherType === "contra") {
+          if (!debitAccountId) setDebitAccountId(newAcc.id);
+          else if (!creditAccountId) setCreditAccountId(newAcc.id);
+          else setDebitAccountId(newAcc.id);
         }
       }
 
       setNewAccModalOpen(false);
       setNewAccName("");
+      setNewAccOpening("0");
+      setQuickTarget(null);
+      loadData().catch(() => {});
       setNewAccOpening("0");
       setQuickTarget(null);
     } catch (err: any) {
@@ -3752,7 +3772,24 @@ export default function Accounting() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => openQuickCreateAccount()}
+                onClick={() => {
+                  if (voucherType === "journal") {
+                    const firstEmpty = journalRows.find(r => !r.account_id);
+                    const targetId = firstEmpty ? firstEmpty.id : (journalRows[0]?.id || "1");
+                    openQuickCreateAccount({ type: "journalRow", id: targetId });
+                  } else if (voucherType === "payment") {
+                    const firstEmpty = paymentRows.find(r => !r.account_id);
+                    const targetId = firstEmpty ? firstEmpty.id : (paymentRows[0]?.id || "1");
+                    openQuickCreateAccount({ type: "paymentRow", id: targetId }, "indirect_expenses");
+                  } else if (voucherType === "receipt") {
+                    const firstEmpty = receiptRows.find(r => !r.account_id);
+                    const targetId = firstEmpty ? firstEmpty.id : (receiptRows[0]?.id || "1");
+                    openQuickCreateAccount({ type: "receiptRow", id: targetId }, "indirect_incomes");
+                  } else if (voucherType === "contra") {
+                    const targetType = !debitAccountId ? "debitAccountId" : "creditAccountId";
+                    openQuickCreateAccount({ type: targetType }, "bank_accounts");
+                  }
+                }}
                 className="text-[11px] sm:text-xs h-7 sm:h-8 px-2.5 sm:px-3 gap-1 sm:gap-1.5 border-dashed font-semibold bg-background hover:bg-primary/5 hover:border-primary/50 text-primary rounded-xl shrink-0 shadow-xs ml-auto"
                 title="Alt + C थिचेर सिधै नयाँ खाता बनाउनुहोस्"
               >
@@ -3864,8 +3901,10 @@ export default function Accounting() {
                                 value={row.account_id}
                                 onValueChange={(val) => handleUpdateJournalRow(row.id, "account_id", val)}
                               >
-                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left">
-                                  <SelectValue placeholder={lang === "NEP" ? `खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`} />
+                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left font-medium">
+                                  <SelectValue placeholder={lang === "NEP" ? `खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`}>
+                                    {row.account_id && accounts.find(a => a.id === row.account_id)?.name}
+                                  </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                   {renderGroupedAccountOptions(accounts, true)}
@@ -4132,8 +4171,12 @@ export default function Accounting() {
                                   value={row.account_id}
                                   onValueChange={(val) => handleSelectPaymentAccount(row.id, val)}
                                 >
-                                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left">
-                                    <SelectValue placeholder={lang === "NEP" ? `खर्च वा साहु खाता #${idx + 1}...` : `Select Account / Supplier #${idx + 1}...`} />
+                                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left font-medium">
+                                    <SelectValue placeholder={lang === "NEP" ? `खर्च वा साहु खाता #${idx + 1}...` : `Select Account / Supplier #${idx + 1}...`}>
+                                      {row.party_name
+                                        ? `🏢 ${row.party_name}`
+                                        : (row.account_id && accounts.find(a => a.id === row.account_id)?.name)}
+                                    </SelectValue>
                                   </SelectTrigger>
                                   <SelectContent>
                                     {renderGroupedAccountOptions(accounts.filter(a => a.id !== creditAccountId), true, "supplier")}
@@ -4493,8 +4536,12 @@ export default function Accounting() {
                                   value={row.account_id}
                                   onValueChange={(val) => handleSelectReceiptAccount(row.id, val)}
                                 >
-                                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left">
-                                    <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा ग्राहक खाता #${idx + 1}...` : `Select Account / Customer #${idx + 1}...`} />
+                                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left font-medium">
+                                    <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा ग्राहक खाता #${idx + 1}...` : `Select Account / Customer #${idx + 1}...`}>
+                                      {row.party_name
+                                        ? `👥 ${row.party_name}`
+                                        : (row.account_id && accounts.find(a => a.id === row.account_id)?.name)}
+                                    </SelectValue>
                                   </SelectTrigger>
                                   <SelectContent>
                                     {renderGroupedAccountOptions(accounts.filter(a => a.id !== debitAccountId), true, "customer")}
@@ -4792,7 +4839,9 @@ export default function Accounting() {
                       </Label>
                       <Select value={creditAccountId} onValueChange={setCreditAccountId}>
                         <SelectTrigger className="h-9 sm:h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
-                          <SelectValue placeholder="कहाँबाट..." />
+                          <SelectValue placeholder="कहाँबाट...">
+                            {creditAccountId && accounts.find(a => a.id === creditAccountId)?.name}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {renderGroupedAccountOptions(
@@ -4826,7 +4875,9 @@ export default function Accounting() {
                       </Label>
                       <Select value={debitAccountId} onValueChange={setDebitAccountId}>
                         <SelectTrigger className="h-9 sm:h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
-                          <SelectValue placeholder="कहाँ पुग्यो..." />
+                          <SelectValue placeholder="कहाँ पुग्यो...">
+                            {debitAccountId && accounts.find(a => a.id === debitAccountId)?.name}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {renderGroupedAccountOptions(
