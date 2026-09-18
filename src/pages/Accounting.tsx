@@ -63,6 +63,7 @@ import {
   Check
 } from "lucide-react";
 import { StockSummaryView } from "@/components/StockSummaryView";
+import { TrialBalanceDifferenceHelperModal } from "@/components/TrialBalanceDifferenceHelperModal";
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -89,6 +90,7 @@ export default function Accounting() {
   // Parties for Voucher Settlement
   const [customersDocs, setCustomersDocs] = useState<any[]>([]);
   const [suppliersDocs, setSuppliersDocs] = useState<any[]>([]);
+  const [helperModalOpen, setHelperModalOpen] = useState(false);
 
   // Sync tab with URL search params
   useEffect(() => {
@@ -3460,9 +3462,17 @@ export default function Accounting() {
                     {lang === "NEP" ? "सन्तुलित (Difference: ०.००)" : "Balanced (0.00 Diff)"}
                   </Badge>
                 ) : (
-                  <Badge variant="destructive" className="text-[10px] font-bold">
-                    {lang === "NEP" ? `फरक: Rs. ${trialBalanceData.difference}` : `Diff: Rs. ${trialBalanceData.difference}`}
-                  </Badge>
+                  <button
+                    type="button"
+                    onClick={() => setHelperModalOpen(true)}
+                    className="cursor-pointer transition-transform hover:scale-105 active:scale-95 flex items-center gap-1"
+                    title={lang === "NEP" ? "फरकको कारण र समाधान हेर्न क्लिक गर्नुहोस्" : "Click to view root cause and fix"}
+                  >
+                    <Badge variant="destructive" className="text-[10px] font-bold flex items-center gap-1">
+                      <Sparkles className="h-2.5 w-2.5" />
+                      <span>{lang === "NEP" ? `फरक: Rs. ${trialBalanceData.difference}` : `Diff: Rs. ${trialBalanceData.difference}`}</span>
+                    </Badge>
+                  </button>
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -3473,6 +3483,17 @@ export default function Accounting() {
             </div>
 
             <div className="flex items-center gap-2">
+              {!trialBalanceData.isBalanced && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 font-bold shadow-xs active:scale-95 cursor-pointer"
+                  onClick={() => setHelperModalOpen(true)}
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                  <span>{lang === "NEP" ? "समाधान सहायक" : "Fix Assistant"}</span>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -3505,9 +3526,22 @@ export default function Accounting() {
               </div>
             </Card>
 
-            <Card className={`p-2.5 sm:p-4 bg-gradient-to-br ${trialBalanceData.isBalanced ? "from-emerald-500/10 border-emerald-500/30" : "from-destructive/10 border-destructive/30"} via-card to-card`}>
-              <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold truncate">
-                {lang === "NEP" ? "फरक (Diff)" : "Difference"}
+            <Card className={`p-2.5 sm:p-4 bg-gradient-to-br ${trialBalanceData.isBalanced ? "from-emerald-500/10 border-emerald-500/30" : "from-destructive/10 border-destructive/30"} via-card to-card flex flex-col justify-between`}>
+              <div className="flex items-center justify-between gap-1">
+                <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold truncate">
+                  {lang === "NEP" ? "फरक (Diff)" : "Difference"}
+                </div>
+                {!trialBalanceData.isBalanced && (
+                  <button
+                    type="button"
+                    onClick={() => setHelperModalOpen(true)}
+                    className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-400 hover:bg-amber-500/30 border border-amber-500/40 flex items-center gap-1 cursor-pointer transition-all shadow-xs active:scale-95"
+                    title={lang === "NEP" ? "फरकको कारण र समाधान हेर्नुहोस्" : "View Root Cause & Auto Fix"}
+                  >
+                    <Sparkles className="h-2.5 w-2.5" />
+                    <span>{lang === "NEP" ? "समाधान" : "Fix"}</span>
+                  </button>
+                )}
               </div>
               <div className={`text-xs sm:text-base md:text-xl font-bold font-mono mt-1 truncate ${trialBalanceData.isBalanced ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                 {fmt(trialBalanceData.difference)}
@@ -3654,6 +3688,24 @@ export default function Accounting() {
               </div>
             </div>
           </div>
+
+          {/* Helper Modal for Audit and Fix */}
+          <TrialBalanceDifferenceHelperModal
+            isOpen={helperModalOpen}
+            onClose={() => setHelperModalOpen(false)}
+            difference={trialBalanceData.difference}
+            totalDebits={trialBalanceData.totalDebits}
+            totalCredits={trialBalanceData.totalCredits}
+            cashDocs={cashDocs}
+            salesDocs={salesDocs}
+            purchasesDocs={purchasesDocs}
+            productDocs={productDocs}
+            ledgerDocs={ledgerDocs}
+            accounts={accounts}
+            vouchers={vouchers}
+            onFixed={loadData}
+            lang={lang}
+          />
         </TabsContent>
 
         {/* TAB 4: CHART OF ACCOUNTS */}
