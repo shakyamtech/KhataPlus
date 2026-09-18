@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { printSaleInvoice, printPurchaseVoucher } from "@/lib/invoicePrinter";
 import { getFiscalYearInfo, getFiscalYearForMonth, getRecentFiscalYears, isDateInFiscalYear, FiscalYearInfo, formatNepaliDate, resolveDualDates } from "@/lib/fiscalYear";
+import { getAccounts, Account, Voucher, getVoucherAccountImpacts } from "@/lib/accounting";
 import BalanceSheet from "@/pages/BalanceSheet";
 import { TrialBalanceView } from "@/components/TrialBalanceView";
 import { RatioAnalysisView } from "@/components/RatioAnalysisView";
@@ -49,6 +50,8 @@ const Reports = () => {
   const [allPurchases, setAllPurchases] = useState<any[]>([]);
   const [allExpenses, setAllExpenses] = useState<any[]>([]);
   const [allWastage, setAllWastage] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [allVouchers, setAllVouchers] = useState<Voucher[]>([]);
   const [plPeriodMode, setPlPeriodMode] = useState<"month" | "days" | "fy">("month");
   const [plMonth, setPlMonth] = useState<{ year: number; month: number }>(() => {
     const now = new Date();
@@ -138,18 +141,23 @@ const Reports = () => {
       const custQ = query(collection(db, "customers"), where("user_id", "==", user.uid));
       const expQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
       const wQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
+      const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
 
-      const [sSnap, purSnap, suppSnap, custSnap, eSnap, wSnap, sInfo] = await Promise.all([
+      const [sSnap, purSnap, suppSnap, custSnap, eSnap, wSnap, vSnap, accList, sInfo] = await Promise.all([
         getDocs(sQ),
         getDocs(purQ),
         getDocs(suppQ),
         getDocs(custQ),
         getDocs(expQ),
         getDocs(wQ),
+        getDocs(vQ),
+        getAccounts(user.uid),
         getShopInfo()
       ]);
 
       setShopInfo(sInfo);
+      setAccounts(accList);
+      setAllVouchers(vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher)));
       setSuppliers(suppSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setCustomers(custSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       // Store unfiltered data for monthly VAT and P&L calculations
@@ -1259,6 +1267,7 @@ const Reports = () => {
     let targetPurchases = purchases;
     let targetExpenses = expenses;
     let targetWastageVal = wastage;
+    let targetVouchers = allVouchers;
 
     if (plPeriodMode === "month") {
       const isInMonth = (dateStr: string) => {
@@ -1270,14 +1279,19 @@ const Reports = () => {
       targetSales = allSales.filter(s => isInMonth(s.created_at));
       targetPurchases = allPurchases.filter(p => isInMonth(p.created_at));
       targetExpenses = allExpenses.filter(e => isInMonth(e.created_at));
+      targetVouchers = allVouchers.filter(v => isInMonth(v.date || v.created_at));
       const wLoss = allWastage.filter(w => isInMonth(w.created_at));
       targetWastageVal = wLoss.reduce((sum, r) => sum + Number(r.total_value || 0), 0);
     } else if (plPeriodMode === "fy") {
       targetSales = allSales.filter(s => isDateInFiscalYear(s.created_at, plFiscalYear.bsStartYear));
       targetPurchases = allPurchases.filter(p => isDateInFiscalYear(p.created_at, plFiscalYear.bsStartYear));
       targetExpenses = allExpenses.filter(e => isDateInFiscalYear(e.created_at, plFiscalYear.bsStartYear));
+      targetVouchers = allVouchers.filter(v => isDateInFiscalYear(v.date || v.created_at, plFiscalYear.bsStartYear));
       const wLoss = allWastage.filter(w => isDateInFiscalYear(w.created_at, plFiscalYear.bsStartYear));
       targetWastageVal = wLoss.reduce((sum, r) => sum + Number(r.total_value || 0), 0);
+    } else {
+      const since = startOfDay(subDays(new Date(), Number(range))).toISOString();
+      targetVouchers = allVouchers.filter(v => (v.date || v.created_at) >= since);
     }
 
     const grossRevenue = targetSales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
@@ -1286,8 +1300,49 @@ const Reports = () => {
     const discountReceived = targetPurchases.reduce((s, r) => s + Number(r.discount || 0), 0);
     const revenue = targetSales.reduce((s, r) => s + (Number(r.total || 0) - Number(r.vat_amount || 0)), 0);
     const cogs = targetSales.reduce((s, r) => s + Number(r.cost_total), 0);
-    const exp = targetExpenses.reduce((s, r) => s + Number(r.amount), 0);
-    const totalExp = exp + targetWastageVal;
+
+    // Dynamic Expense Ledgers from Vouchers
+    const expAccounts = accounts.filter(a => a.type === "expense");
+    const itemizedExpenses: { id: string; name: string; amount: number }[] = [];
+    let totalVoucherExp = 0;
+
+    expAccounts.forEach(e => {
+      let bal = 0;
+      targetVouchers.forEach(v => {
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === e.id) bal += (imp.debit - imp.credit);
+        });
+      });
+      if (bal > 0) {
+        itemizedExpenses.push({ id: e.id, name: e.name, amount: bal });
+        totalVoucherExp += bal;
+      }
+    });
+
+    // Unassigned Cash expenses (not linked to a voucher)
+    const nonExpenseCategories = ["purchase", "purchases", "supplier_payment", "payment", "personal", "contra_bank_deposit", "contra_bank_withdrawal", "voucher_payment", "voucher_receipt", "fixed_asset", "loan_repayment"];
+    const miscCashExp = targetExpenses
+      .filter(tx => !nonExpenseCategories.includes(tx.category) && !tx.voucher_id && !(tx.account_group && ["fixed_asset", "loan", "loan_repayment", "drawings", "capital"].includes(tx.account_group)))
+      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+    if (miscCashExp > 0) {
+      itemizedExpenses.push({
+        id: "misc_cash",
+        name: lang === "NEP" ? "दैनिक पसल खर्चहरू (Cash Expenses)" : "General Store Expenses",
+        amount: miscCashExp
+      });
+    }
+
+    if (targetWastageVal > 0) {
+      itemizedExpenses.push({
+        id: "wastage",
+        name: lang === "NEP" ? "टुटफुट तथा म्याद नाघेको नोक्सान (Wastage & Loss)" : "Wastage & Damage Loss",
+        amount: targetWastageVal
+      });
+    }
+
+    const totalExp = totalVoucherExp + miscCashExp + targetWastageVal;
     const gross = revenue - cogs;
     const net = gross + discountReceived - totalExp;
 
@@ -1300,12 +1355,13 @@ const Reports = () => {
       cogs,
       gross,
       exp: totalExp,
-      storeExp: exp,
+      storeExp: miscCashExp,
       wastage: targetWastageVal,
+      itemizedExpenses,
       net,
       salesCount: targetSales.length
     };
-  }, [plPeriodMode, plMonth, plFiscalYear, allSales, allPurchases, allExpenses, allWastage, sales, purchases, expenses, wastage]);
+  }, [plPeriodMode, plMonth, plFiscalYear, allSales, allPurchases, allExpenses, allWastage, allVouchers, accounts, sales, purchases, expenses, wastage, range, lang]);
 
   const handlePrintPlReport = () => {
     if (!shopInfo) return;
@@ -1391,16 +1447,17 @@ const Reports = () => {
                 <td style="padding:7px 10px; text-align:right; font-weight:600; border:1px solid #111;">+Rs. ${(plTotals.discountReceived).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
               ` : ''}
+              ${plTotals.itemizedExpenses && plTotals.itemizedExpenses.length > 0 ? plTotals.itemizedExpenses.map(it => `
               <tr>
-                <td style="padding:7px 10px; border:1px solid #111;">Store Expenses & Bills (पसल खर्च तथा बिलहरू)</td>
-                <td style="padding:7px 10px; text-align:right; font-weight:600; border:1px solid #111;">(Rs. ${(plTotals.storeExp).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
+                <td style="padding:7px 10px; border:1px solid #111;">${escapeHtml(it.name)}</td>
+                <td style="padding:7px 10px; text-align:right; font-weight:600; border:1px solid #111;">(Rs. ${it.amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
               </tr>
-              ${plTotals.wastage > 0 ? `
+              `).join('') : `
               <tr>
-                <td style="padding:7px 10px; border:1px solid #111;">Wastage & Damage Loss (टुटफुट तथा म्याद नाघेको नोक्सान)</td>
-                <td style="padding:7px 10px; text-align:right; font-weight:600; border:1px solid #111;">(Rs. ${(plTotals.wastage).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
+                <td style="padding:7px 10px; border:1px solid #111;">Operating Expenses (सञ्चालन खर्च)</td>
+                <td style="padding:7px 10px; text-align:right; font-weight:600; border:1px solid #111;">(Rs. 0.00)</td>
               </tr>
-              ` : ''}
+              `}
               <tr style="background:#f9fafb; font-weight:700;">
                 <td style="padding:7px 10px; border:1px solid #111;">Total Operating Expenses (जम्मा सञ्चालन खर्च)</td>
                 <td style="padding:7px 10px; text-align:right; border:1px solid #111; color:#c00;">(Rs. ${(plTotals.exp).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
@@ -2210,19 +2267,22 @@ const Reports = () => {
                       <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b pb-1.5">
                         Operating Expenses (सञ्चालन खर्च)
                       </h3>
-                      <div className="flex justify-between items-center py-1">
-                        <span className="text-sm">Store Expenses & Bills</span>
-                        <span className="font-medium text-destructive">({fmt(plTotals.storeExp)})</span>
-                      </div>
-                      {plTotals.wastage > 0 && (
-                        <div className="flex justify-between items-center py-1">
-                          <span className="text-sm">Wastage & Damage Loss</span>
-                          <span className="font-medium text-destructive">({fmt(plTotals.wastage)})</span>
+                      {plTotals.itemizedExpenses && plTotals.itemizedExpenses.length > 0 ? (
+                        plTotals.itemizedExpenses.map(it => (
+                          <div key={it.id} className="flex justify-between items-center py-1">
+                            <span className="text-sm text-foreground font-medium">{it.name}</span>
+                            <span className="font-medium text-destructive font-mono">({fmt(it.amount)})</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex justify-between items-center py-1 text-sm text-muted-foreground">
+                          <span>No operating expenses recorded</span>
+                          <span>Rs. 0</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center py-2 border-t font-semibold">
                         <span>Total Expenses</span>
-                        <span className="text-destructive">({fmt(plTotals.exp)})</span>
+                        <span className="text-destructive font-mono font-bold">({fmt(plTotals.exp)})</span>
                       </div>
                     </section>
                   </div>
