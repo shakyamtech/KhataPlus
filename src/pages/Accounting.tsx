@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSearchParams } from "react-router-dom";
@@ -69,7 +69,8 @@ import { db } from "@/lib/firebase";
 export default function Accounting() {
   const { user } = useAuth();
   const { lang } = useLanguage();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const lastHandledReturnRef = useRef<string>("");
 
   const [activeTab, setActiveTab] = useState<"vouchers" | "daybook" | "stock" | "trial" | "chart">("vouchers");
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -545,13 +546,32 @@ export default function Accounting() {
         }
       );
 
-      setReturnModalOpen(false);
+      handleCloseReturnModal(false);
       await loadData();
     } catch (err: any) {
       console.error("Failed to create return voucher:", err);
       toast.error(err.message || "Failed to save return voucher");
     } finally {
       setSubmittingReturn(false);
+    }
+  };
+
+  const handleCloseReturnModal = (open: boolean) => {
+    setReturnModalOpen(open);
+    if (!open) {
+      lastHandledReturnRef.current = "";
+      if (searchParams.get("action") === "return") {
+        setSearchParams(prev => {
+          const next = new URLSearchParams(prev);
+          next.delete("action");
+          next.delete("type");
+          next.delete("partyId");
+          next.delete("partyName");
+          next.delete("billId");
+          next.delete("billNo");
+          return next;
+        }, { replace: true });
+      }
     }
   };
 
@@ -634,10 +654,12 @@ export default function Accounting() {
     const rType = searchParams.get("type");
     const pId = searchParams.get("partyId");
     const bId = searchParams.get("billId");
-    if (act === "return" && (rType === "credit_note" || rType === "debit_note")) {
+    const key = `${act}_${rType}_${pId}_${bId}`;
+    if (act === "return" && (rType === "credit_note" || rType === "debit_note") && lastHandledReturnRef.current !== key) {
+      lastHandledReturnRef.current = key;
       handleOpenReturnVoucher(rType, pId || undefined, bId || undefined);
     }
-  }, [searchParams, customersDocs, suppliersDocs, salesDocs, purchasesDocs]);
+  }, [searchParams]);
 
   // Edit Account Opening Balance Modal
   const [editAccModalOpen, setEditAccModalOpen] = useState(false);
@@ -4901,7 +4923,7 @@ export default function Accounting() {
       {/* ========================================================= */}
       {/* RETURN VOUCHER MODAL (DEBIT NOTE & CREDIT NOTE)           */}
       {/* ========================================================= */}
-      <Dialog open={returnModalOpen} onOpenChange={setReturnModalOpen}>
+      <Dialog open={returnModalOpen} onOpenChange={handleCloseReturnModal}>
         <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
           <DialogHeader className="border-b pb-3">
             <div className="flex items-center gap-3 pr-6">
@@ -5097,9 +5119,13 @@ export default function Accounting() {
                     <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 shrink-0" />
                       <span>
-                        {lang === "NEP"
-                          ? "⚠️ यस बिलका सबै सामानहरू ग्राहकलाई बिक्री भइसकेका छन् वा पसलमा मौज्दात (Stock) छैन। सप्लायरलाई फिर्ता गर्न मिल्दैन।"
-                          : "⚠️ All items in this bill are sold out or have 0 stock in store. Cannot return to supplier."}
+                        {returnItems.every(it => it.already_returned_qty >= it.billed_qty)
+                          ? (lang === "NEP"
+                              ? "ℹ️ यस बिलका सबै सामानहरू पहिले नै सप्लायरलाई फिर्ता गरिसकिएको छ। थप फिर्ता गर्न बाँकी छैन।"
+                              : "ℹ️ All items in this bill have already been returned to the supplier.")
+                          : (lang === "NEP"
+                              ? "⚠️ यस बिलका सबै सामानहरू ग्राहकलाई बिक्री भइसकेका छन् वा पसलमा मौज्दात (Stock) छैन। सप्लायरलाई फिर्ता गर्न मिल्दैन।"
+                              : "⚠️ All items in this bill are sold out or have 0 stock in store. Cannot return to supplier.")}
                       </span>
                     </div>
                   )}
@@ -5123,16 +5149,21 @@ export default function Accounting() {
                       <tbody className="divide-y divide-border/60">
                         {returnItems.map((it, idx) => {
                           const isZeroStock = it.max_returnable <= 0;
+                          const isAlreadyReturned = it.already_returned_qty >= it.billed_qty;
                           return (
                             <tr key={it.product_id + idx} className={`transition-colors ${isZeroStock ? "bg-muted/30 opacity-75" : it.return_qty > 0 ? "bg-primary/5 font-medium" : "hover:bg-muted/40"}`}>
                               <td className="py-2 px-2.5">
                                 <div className="font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
                                   <span>{it.product_name}</span>
-                                  {isZeroStock && (
+                                  {isAlreadyReturned ? (
+                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                                      {lang === "NEP" ? "फिर्ता भइसक्यो (Returned)" : "Already Returned"}
+                                    </Badge>
+                                  ) : isZeroStock ? (
                                     <Badge variant="destructive" className="text-[9px] px-1.5 py-0 font-bold">
                                       {lang === "NEP" ? "स्टक छैन (Sold Out)" : "Sold Out"}
                                     </Badge>
-                                  )}
+                                  ) : null}
                                 </div>
                                 {it.batch_no && (
                                   <div className="text-[10px] text-muted-foreground font-mono">
@@ -5331,7 +5362,7 @@ export default function Accounting() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setReturnModalOpen(false)}
+                onClick={() => handleCloseReturnModal(false)}
                 disabled={submittingReturn}
                 className="h-9 px-4 text-xs font-semibold rounded-xl"
               >
