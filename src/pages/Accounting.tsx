@@ -945,33 +945,147 @@ export default function Accounting() {
     const isNep = lang === "NEP";
 
     if (voucherType === "payment") {
-      const selectedNames = paymentRows
-        .map(r => accounts.find(a => a.id === r.account_id)?.name)
-        .filter(Boolean);
       const viaAcc = accounts.find(a => a.id === creditAccountId)?.name;
-      const namesStr = selectedNames.length > 0 ? selectedNames.join(", ") : (isNep ? "खर्च/पार्टी" : "Expense/Party");
       const viaStr = viaAcc || (isNep ? "नगद/बैंक" : "Cash/Bank");
-      const totalStr = paymentTotal > 0 ? fmt(paymentTotal) : "";
 
-      if (isNep) {
-        setNarration(`${namesStr} भुक्तानी गरिएको (${viaStr} मार्फत)${totalStr ? ` - ${totalStr}` : ""}`);
+      const rowNarrations = paymentRows.map(r => {
+        const rowAmt = Number(r.amount || 0);
+        const isParty = !!r.party_id || r.account_id?.startsWith("party_supplier_");
+        const suppId = r.party_id || (r.account_id?.startsWith("party_supplier_") ? r.account_id.replace("party_supplier_", "") : "");
+        const supp = suppliersDocs.find(s => s.id === suppId);
+        const partyName = r.party_name || supp?.name || accounts.find(a => a.id === r.account_id)?.name || (isNep ? "साहु/पार्टी" : "Supplier");
+
+        if (isParty && suppId) {
+          const totalDue = partyBalancesMap[`supplier_${suppId}`] || 0;
+          if (r.settlement_mode === "specific" && r.bill_no) {
+            const unpaid = getSupplierUnpaidBills(suppId);
+            const matchedBill = unpaid.find(b => b.id === r.bill_id || b.bill_no === r.bill_no);
+            const billDue = matchedBill ? matchedBill.due : 0;
+            if (billDue > 0 && rowAmt > 0 && rowAmt < billDue) {
+              const remDue = billDue - rowAmt;
+              return isNep
+                ? `${partyName} लाई बिल #${r.bill_no} बापत आंशिक भुक्तानी (${fmt(rowAmt)}) गरिएको (बाँकी तिर्नुपर्ने: ${fmt(remDue)})`
+                : `Partial payment of ${fmt(rowAmt)} made to ${partyName} against Bill #${r.bill_no} (Remaining Due: ${fmt(remDue)})`;
+            } else if (billDue > 0 && rowAmt >= billDue) {
+              return isNep
+                ? `${partyName} लाई बिल #${r.bill_no} को पूर्ण भुक्तानी (${fmt(rowAmt)}) गरिएको`
+                : `Full settlement of ${fmt(rowAmt)} made to ${partyName} against Bill #${r.bill_no}`;
+            } else {
+              return isNep
+                ? `${partyName} लाई बिल #${r.bill_no} बापत ${fmt(rowAmt)} भुक्तानी गरिएको`
+                : `Payment of ${fmt(rowAmt)} made to ${partyName} against Bill #${r.bill_no}`;
+            }
+          } else {
+            // On account or FIFO
+            if (totalDue > 0 && rowAmt > 0 && rowAmt < totalDue) {
+              const remBal = totalDue - rowAmt;
+              return isNep
+                ? `${partyName} लाई आंशिक भुक्तानी (${fmt(rowAmt)}) गरिएको (बाँकी खाता तिर्नुपर्ने: ${fmt(remBal)})`
+                : `Partial payment of ${fmt(rowAmt)} made to ${partyName} (Remaining Balance: ${fmt(remBal)})`;
+            } else if (totalDue > 0 && rowAmt >= totalDue) {
+              return isNep
+                ? `${partyName} लाई खाता चुक्ता बापत ${fmt(rowAmt)} भुक्तानी गरिएको`
+                : `Full account settlement of ${fmt(rowAmt)} made to ${partyName}`;
+            } else {
+              return isNep
+                ? `${partyName} लाई ${rowAmt > 0 ? fmt(rowAmt) : ""} भुक्तानी गरिएको`
+                : `Paid to ${partyName}${rowAmt > 0 ? ` [${fmt(rowAmt)}]` : ""}`;
+            }
+          }
+        } else {
+          const accName = accounts.find(a => a.id === r.account_id)?.name || (isNep ? "खर्च खाता" : "Expense Account");
+          return isNep
+            ? `${accName} बापत ${rowAmt > 0 ? fmt(rowAmt) : ""}`
+            : `Paid for ${accName}${rowAmt > 0 ? ` [${fmt(rowAmt)}]` : ""}`;
+        }
+      }).filter(Boolean);
+
+      if (rowNarrations.length > 0) {
+        const details = rowNarrations.join("; ");
+        if (isNep) {
+          setNarration(`${details} (${viaStr} मार्फत)`);
+        } else {
+          setNarration(`Being payment: ${details} via ${viaStr}`);
+        }
       } else {
-        setNarration(`Paid for ${namesStr} via ${viaStr}${totalStr ? ` [Rs. ${paymentTotal}]` : ""}`);
+        const totalStr = paymentTotal > 0 ? fmt(paymentTotal) : "";
+        if (isNep) {
+          setNarration(`भुक्तानी गरिएको (${viaStr} मार्फत)${totalStr ? ` - ${totalStr}` : ""}`);
+        } else {
+          setNarration(`Paid via ${viaStr}${totalStr ? ` [Rs. ${paymentTotal}]` : ""}`);
+        }
       }
       toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
     } else if (voucherType === "receipt") {
-      const selectedNames = receiptRows
-        .map(r => accounts.find(a => a.id === r.account_id)?.name)
-        .filter(Boolean);
       const destAcc = accounts.find(a => a.id === debitAccountId)?.name;
-      const namesStr = selectedNames.length > 0 ? selectedNames.join(", ") : (isNep ? "आम्दानी/पार्टी" : "Income/Party");
       const destStr = destAcc || (isNep ? "नगद/बैंक" : "Cash/Bank");
-      const totalStr = receiptTotal > 0 ? fmt(receiptTotal) : "";
 
-      if (isNep) {
-        setNarration(`${namesStr} बापतको रकम ${destStr} मा दाखिला/प्राप्त भएको${totalStr ? ` - ${totalStr}` : ""}`);
+      const rowNarrations = receiptRows.map(r => {
+        const rowAmt = Number(r.amount || 0);
+        const isParty = !!r.party_id || r.account_id?.startsWith("party_customer_");
+        const custId = r.party_id || (r.account_id?.startsWith("party_customer_") ? r.account_id.replace("party_customer_", "") : "");
+        const cust = customersDocs.find(c => c.id === custId);
+        const partyName = r.party_name || cust?.name || accounts.find(a => a.id === r.account_id)?.name || (isNep ? "ग्राहक/पार्टी" : "Customer");
+
+        if (isParty && custId) {
+          const totalDue = partyBalancesMap[`customer_${custId}`] || 0;
+          if (r.settlement_mode === "specific" && r.bill_no) {
+            const unpaid = getCustomerUnpaidBills(custId);
+            const matchedBill = unpaid.find(b => b.id === r.bill_id || b.bill_no === r.bill_no);
+            const billDue = matchedBill ? matchedBill.due : 0;
+            if (billDue > 0 && rowAmt > 0 && rowAmt < billDue) {
+              const remDue = billDue - rowAmt;
+              return isNep
+                ? `${partyName} बाट बिल #${r.bill_no} बापत आंशिक रकम (${fmt(rowAmt)}) प्राप्त (बाँकी बक्यौता: ${fmt(remDue)})`
+                : `Partial receipt of ${fmt(rowAmt)} from ${partyName} against Bill #${r.bill_no} (Remaining Due: ${fmt(remDue)})`;
+            } else if (billDue > 0 && rowAmt >= billDue) {
+              return isNep
+                ? `${partyName} बाट बिल #${r.bill_no} को पूर्ण भुक्तानी (${fmt(rowAmt)}) प्राप्त`
+                : `Full settlement of ${fmt(rowAmt)} from ${partyName} against Bill #${r.bill_no}`;
+            } else {
+              return isNep
+                ? `${partyName} बाट बिल #${r.bill_no} बापत ${fmt(rowAmt)} प्राप्त`
+                : `Receipt of ${fmt(rowAmt)} from ${partyName} against Bill #${r.bill_no}`;
+            }
+          } else {
+            // On account or FIFO
+            if (totalDue > 0 && rowAmt > 0 && rowAmt < totalDue) {
+              const remBal = totalDue - rowAmt;
+              return isNep
+                ? `${partyName} बाट आंशिक रकम ${fmt(rowAmt)} प्राप्त (बाँकी खाता बक्यौता: ${fmt(remBal)})`
+                : `Partial payment of ${fmt(rowAmt)} received from ${partyName} (Remaining Balance: ${fmt(remBal)})`;
+            } else if (totalDue > 0 && rowAmt >= totalDue) {
+              return isNep
+                ? `${partyName} बाट खाता चुक्ता बापत ${fmt(rowAmt)} प्राप्त`
+                : `Full account settlement of ${fmt(rowAmt)} received from ${partyName}`;
+            } else {
+              return isNep
+                ? `${partyName} बाट रकम ${rowAmt > 0 ? fmt(rowAmt) : ""} प्राप्त`
+                : `Received from ${partyName}${rowAmt > 0 ? ` [${fmt(rowAmt)}]` : ""}`;
+            }
+          }
+        } else {
+          const accName = accounts.find(a => a.id === r.account_id)?.name || (isNep ? "आम्दानी खाता" : "Income Account");
+          return isNep
+            ? `${accName} बापतको रकम ${rowAmt > 0 ? fmt(rowAmt) : ""}`
+            : `Received for ${accName}${rowAmt > 0 ? ` [${fmt(rowAmt)}]` : ""}`;
+        }
+      }).filter(Boolean);
+
+      if (rowNarrations.length > 0) {
+        const details = rowNarrations.join("; ");
+        if (isNep) {
+          setNarration(`${details} -> ${destStr} मा दाखिला/जम्मा भएको`);
+        } else {
+          setNarration(`Being: ${details} deposited into ${destStr}`);
+        }
       } else {
-        setNarration(`Received from ${namesStr} deposited into ${destStr}${totalStr ? ` [Rs. ${receiptTotal}]` : ""}`);
+        const totalStr = receiptTotal > 0 ? fmt(receiptTotal) : "";
+        if (isNep) {
+          setNarration(`रकम ${destStr} मा दाखिला/प्राप्त भएको${totalStr ? ` - ${totalStr}` : ""}`);
+        } else {
+          setNarration(`Received amount deposited into ${destStr}${totalStr ? ` [Rs. ${receiptTotal}]` : ""}`);
+        }
       }
       toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
     } else if (voucherType === "contra") {
@@ -982,7 +1096,7 @@ export default function Accounting() {
       if (isNep) {
         setNarration(`${fromAcc} बाट ${toAcc} मा रकम स्थानान्तरण / जम्मा गरिएको${amtStr ? ` - ${amtStr}` : ""}`);
       } else {
-        setNarration(`Fund transferred from ${fromAcc} to ${toAcc}${voucherAmount ? ` [Rs. ${voucherAmount}]` : ""}`);
+        setNarration(`Being fund transferred from ${fromAcc} to ${toAcc}${voucherAmount ? ` [Rs. ${voucherAmount}]` : ""}`);
       }
       toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
     } else if (voucherType === "journal") {
