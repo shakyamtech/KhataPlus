@@ -208,12 +208,28 @@ export function BalanceSheetAssistantModal({
         mathFormulaNp: `खरिद छुट = ${fmt(unrecordedDiscount)} | आवश्यक क्रेडिट: ${fmt(unrecordedDiscount)}`,
         mathFormulaEn: `Unrecorded Discount = ${fmt(unrecordedDiscount)} | Required Credit: ${fmt(unrecordedDiscount)}`,
         solutionStepsNp: [
-          "विधि १ (Journal Voucher भौचर प्रविष्टि): Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्। Voucher Type 'JOURNAL' छानी Dr: " + supplierTextNp + " र Cr: Discount Received A/c (खरिद छुट आम्दानी " + fmt(unrecordedDiscount) + ") प्रविष्टि गर्नुहोस्।",
-          "विधि २ (Chart of Accounts ओपनिङ मौज्दात): Accounting ➔ Chart of Accounts मा गएर '+ Create Account' गरी 'Discount Received' (Group: Indirect Incomes) खाता खोल्नुहोस् र Opening Balance मा " + fmt(unrecordedDiscount) + " राख्नुहोस्।"
+          "📌 विधि १: Journal Voucher (जर्नल भौचर प्रविष्टि - Recommended):",
+          "• Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्।",
+          "• Voucher Type मा 'JOURNAL' छान्नुहोस्।",
+          `• डेबिट (Dr): ${supplierTextNp}`,
+          `• क्रेडिट (Cr): Discount Received A/c (खरिद छुट आम्दानी) (${fmt(unrecordedDiscount)})`,
+          "• Narration मा 'खरिद बिलमा प्राप्त छुट आम्दानी समायोजन' लेखी भौचर Save गर्नुहोस्।",
+          "📌 विधि २: Chart of Accounts (ओपनिङ मौज्दात - Quick Setup):",
+          "• Accounting ➔ Chart of Accounts मा जानुहोस्।",
+          "• '+ Create Account' गरी 'Discount Received' (Group: Indirect Incomes) खाता बनाउनुहोस्।",
+          `• Opening Balance मा ${fmt(unrecordedDiscount)} राखेर Save गर्नुहोस्।`
         ],
         solutionStepsEn: [
-          "Method 1 (Journal Voucher Entry): Go to Accounting ➔ Vouchers ➔ New Voucher. Select 'JOURNAL' type. Enter Dr: " + supplierTextEn + " and Cr: Discount Received A/c with " + fmt(unrecordedDiscount) + ".",
-          "Method 2 (Chart of Accounts Opening Balance): Go to Accounting ➔ Chart of Accounts. Create 'Discount Received' under 'Indirect Incomes' with Opening Balance of " + fmt(unrecordedDiscount) + "."
+          "📌 Method 1: Journal Voucher Entry (Recommended):",
+          "• Go to Accounting ➔ Vouchers ➔ New Voucher.",
+          "• Select Voucher Type: 'JOURNAL'.",
+          `• Debit (Dr): ${supplierTextEn}`,
+          `• Credit (Cr): Discount Received A/c (${fmt(unrecordedDiscount)})`,
+          "• Enter Narration and Save Voucher.",
+          "📌 Method 2: Chart of Accounts Opening Balance (Quick Setup):",
+          "• Go to Accounting ➔ Chart of Accounts.",
+          "• Click '+ Create Account' and create 'Discount Received' under 'Indirect Incomes'.",
+          `• Set Opening Balance to ${fmt(unrecordedDiscount)} and Save.`
         ],
         fixActionLabelNp: `✨ 'Discount Received' खाता बनाई ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
         fixActionLabelEn: `✨ Create 'Discount Received' Account (${fmt(unrecordedDiscount)})`,
@@ -252,14 +268,20 @@ export function BalanceSheetAssistantModal({
         mathFormulaNp: `स्थिर सम्पत्ति: ${fmt(d.grossFixedAssets)} | ह्रासकट्टी दर: ५% देखि २५% (सम्पत्तिको वर्ग अनुसार)`,
         mathFormulaEn: `Gross Assets = ${fmt(d.grossFixedAssets)} | Standard Tax Rate: 5% - 25% based on asset block.`,
         solutionStepsNp: [
-          "Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्।",
-          "Voucher Type 'JOURNAL' छान्नुहोस्।",
-          "Dr: Depreciation Expense A/c (ह्रासकट्टी खर्च) | Cr: Accumulated Depreciation A/c (स्थिर सम्पत्ति कट्टा खाता)।"
+          "📌 ह्रासकट्टी जर्नल प्रविष्टि (Depreciation Journal Entry):",
+          "• Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्।",
+          "• Voucher Type मा 'JOURNAL' छान्नुहोस्।",
+          "• डेबिट (Dr): Depreciation Expense A/c (ह्रासकट्टी खर्च खाता)",
+          "• क्रेडिट (Cr): Accumulated Depreciation A/c (सम्पत्ति ह्रासकट्टी कट्टा खाता)",
+          "• सम्बन्धित स्थिर सम्पत्तिको वार्षिक दर अनुसार रकम हिसाब गरी Save गर्नुहोस्।"
         ],
         solutionStepsEn: [
-          "Go to Accounting ➔ Vouchers ➔ New Voucher.",
-          "Select 'JOURNAL' type.",
-          "Dr: Depreciation Expense | Cr: Accumulated Depreciation."
+          "📌 Depreciation Journal Entry:",
+          "• Go to Accounting ➔ Vouchers ➔ New Voucher.",
+          "• Select Voucher Type: 'JOURNAL'.",
+          "• Debit (Dr): Depreciation Expense A/c",
+          "• Credit (Cr): Accumulated Depreciation A/c",
+          "• Calculate depreciation based on tax rates and Save Voucher."
         ]
       });
     }
@@ -281,12 +303,18 @@ export function BalanceSheetAssistantModal({
         mathFormulaNp: `साहुको सुरु पुँजी (${fmt(d.capital)}) − व्यक्तिगत खर्च (${fmt(d.drawings)}) = बाँकी पुँजी`,
         mathFormulaEn: `Capital (${fmt(d.capital)}) − Drawings (${fmt(d.drawings)}) = Net Capital`,
         solutionStepsNp: [
-          "यो लेखा नियम अनुसार पूर्ण रूपमा सही छ।",
-          "यदि कुनै व्यक्तिगत खर्च झुक्किएर पसलको खर्चमा हालिएको छ भने त्यसलाई 'Personal / Drawings' वर्गमा सार्नुहोस् वा Journal/Payment भौचर काट्नुहोस्।"
+          "📌 साहुको व्यक्तिगत खर्च समायोजन (Drawings Treatment):",
+          "• यो दोहोरो लेखा नियम अनुसार पूर्ण रूपमा सही छ र कुल पुँजीबाट घटाइएको छ।",
+          "• यदि नयाँ व्यक्तिगत झिकाइ प्रविष्टि गर्नुपरेमा Accounting ➔ Vouchers मा 'PAYMENT' वा 'JOURNAL' छान्नुहोस्।",
+          `• डेबिट (Dr): Owner's Drawings (साहुको व्यक्तिगत खाता) (${fmt(d.drawings)})`,
+          `• क्रेडिट (Cr): Cash / Bank A/c (${fmt(d.drawings)})`
         ],
         solutionStepsEn: [
-          "Correct accounting treatment under standard GAAP.",
-          "Ensure personal expenses are tagged as Drawings, not operating expenses."
+          "📌 Owner's Drawings Treatment:",
+          "• Properly recorded and deducted from Net Equity under standard GAAP.",
+          "• To record personal withdrawals, go to Accounting ➔ Vouchers and select 'PAYMENT' or 'JOURNAL'.",
+          `• Debit (Dr): Owner's Drawings A/c (${fmt(d.drawings)})`,
+          `• Credit (Cr): Cash / Bank A/c (${fmt(d.drawings)})`
         ]
       });
     }
@@ -306,12 +334,14 @@ export function BalanceSheetAssistantModal({
         explanationNp: `सामान खरिद गर्दा तिरेको भ्याट बिक्री गर्दा उठाएको भ्याटभन्दा ${fmt(d.vatReceivable)} धेरै भएकाले यो रकम पसलको चालू सम्पत्ति (Current Asset) मा बसेको छ। अर्को महिना बिक्री भ्याटबाट कट्टी गर्न मिल्छ।`,
         explanationEn: `Input VAT paid on purchases exceeded Output VAT collected by ${fmt(d.vatReceivable)}, safely carried forward as an Asset.`,
         solutionStepsNp: [
-          "यस महिना कुनै कर बुझाउनु पर्दैन।",
-          "अर्को महिना बिक्री भ्याट धेरै हुँदा यो " + fmt(d.vatReceivable) + " स्वतः कट्टी हुनेछ।"
+          "📌 भ्याट कट्टी नियम (VAT Credit Settlement):",
+          "• खरिद गर्दा तिरेको भ्याट बिक्री भ्याटभन्दा बढी भएकोले यस अवधिमा कुनै कर बुझाउनु पर्दैन।",
+          `• यो ${fmt(d.vatReceivable)} रकम आगामी महिनाको बिक्री भ्याट दायित्वसँग स्वतः मिलान (Offset) हुनेछ।`
         ],
         solutionStepsEn: [
-          "No tax payment due to IRD for this period.",
-          "Will automatically offset against future output VAT liabilities."
+          "📌 VAT Input Credit Settlement:",
+          "• No tax payment due to IRD for this tax period.",
+          `• The ${fmt(d.vatReceivable)} credit balance will automatically offset against future VAT liabilities.`
         ]
       });
     }
@@ -339,12 +369,24 @@ export function BalanceSheetAssistantModal({
         mathFormulaNp: `सम्पत्ति: ${fmt(totalAssets)} | दायित्व र पुँजी: ${fmt(totalLiabilitiesAndEquity)} | फरक: ${fmt(difference)}`,
         mathFormulaEn: `Assets: ${fmt(totalAssets)} | Liab+Equity: ${fmt(totalLiabilitiesAndEquity)} | Diff: ${fmt(difference)}`,
         solutionStepsNp: [
-          "विधि १ (Journal Voucher भौचर प्रविष्टि): Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्। Voucher Type 'JOURNAL' छानी समायोजन प्रविष्टि गर्नुहोस्।",
-          "विधि २ (Chart of Accounts ओपनिङ मौज्दात): Accounting ➔ Chart of Accounts मा गएर Capital Account (साहुको पुँजी) मा " + fmt(difference) + " थपिदिनुहोस्।"
+          "📌 विधि १: Chart of Accounts (ओपनिङ मौज्दात समायोजन - Quick Setup):",
+          "• Accounting ➔ Chart of Accounts मा जानुहोस्।",
+          `• Capital Account (साहुको पुँजी) मा ${fmt(difference)} समायोजन गरी Save गर्नुहोस्।`,
+          "📌 विधि २: Journal Voucher (जर्नल भौचर प्रविष्टि):",
+          "• Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्।",
+          "• Voucher Type 'JOURNAL' छानी समायोजन प्रविष्टि गर्नुहोस्।",
+          `• ${isAssetsHigher ? `डेबिट (Dr): Suspense / Assets (${fmt(difference)})` : `डेबिट (Dr): Owner's Capital (${fmt(difference)})`}`,
+          `• ${isAssetsHigher ? `क्रेडिट (Cr): Owner's Capital (साहुको पुँजी) (${fmt(difference)})` : `क्रेडिट (Cr): Suspense / Assets (${fmt(difference)})`}`
         ],
         solutionStepsEn: [
-          "Method 1 (Journal Voucher Entry): Go to Accounting ➔ Vouchers ➔ New Voucher. Select 'JOURNAL' type and post adjustment entry.",
-          "Method 2 (Chart of Accounts Opening Balance): Go to Accounting ➔ Chart of Accounts. Adjust " + fmt(difference) + " in Capital Account to balance."
+          "📌 Method 1: Chart of Accounts Opening Balance (Quick Setup):",
+          "• Go to Accounting ➔ Chart of Accounts.",
+          `• Adjust ${fmt(difference)} in Capital Account Opening Balance to balance.`,
+          "📌 Method 2: Journal Voucher Entry:",
+          "• Go to Accounting ➔ Vouchers ➔ New Voucher.",
+          "• Select Voucher Type: 'JOURNAL'.",
+          `• ${isAssetsHigher ? `Debit (Dr): Suspense / Asset A/c (${fmt(difference)})` : `Debit (Dr): Capital Account (${fmt(difference)})`}`,
+          `• ${isAssetsHigher ? `Credit (Cr): Capital Account (${fmt(difference)})` : `Credit (Cr): Suspense / Asset A/c (${fmt(difference)})`}`
         ],
         fixActionLabelNp: `✨ साहुको पुँजी खातामा ${fmt(difference)} समायोजन गरी वासलात तुरुन्तै मिलाउनुहोस्`,
         fixActionLabelEn: `✨ Adjust ${fmt(difference)} in Capital Account`,
@@ -595,18 +637,55 @@ export function BalanceSheetAssistantModal({
                   )}
 
                   {activeMode === "manual" && (
-                    <div className="pt-2 border-t border-border/60 space-y-1.5">
+                    <div className="pt-3 border-t border-border/60 space-y-3">
                       <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                        <BookOpen className="h-3.5 w-3.5 text-primary" />
-                        <span>{lang === "NEP" ? "विद्यार्थीहरूका लागि म्यानुअल प्रक्रिया (Process Steps):" : "Student Process Steps:"}</span>
+                        <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                        <span>
+                          {lang === "NEP"
+                            ? "विद्यार्थी तथा प्रयोगकर्ताका लागि चरणबद्ध इन्ट्री गाइड (Step-by-Step Guide):"
+                            : "Step-by-Step Manual Process Guide for Students:"}
+                        </span>
                       </div>
-                      <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground pl-1">
-                        {(lang === "NEP" ? item.solutionStepsNp : item.solutionStepsEn).map((step, sIdx) => (
-                          <li key={sIdx} className="leading-normal">
-                            <span className="text-foreground font-medium">{step}</span>
-                          </li>
-                        ))}
-                      </ol>
+
+                      <div className="space-y-1.5 text-xs">
+                        {(lang === "NEP" ? item.solutionStepsNp : item.solutionStepsEn).map((step, sIdx) => {
+                          const isHeader = step.startsWith("📌");
+                          const isBullet = step.startsWith("•");
+                          const isDr = step.includes("डेबिट (Dr):") || step.includes("Debit (Dr):");
+                          const isCr = step.includes("क्रेडिट (Cr):") || step.includes("Credit (Cr):");
+
+                          if (isHeader) {
+                            return (
+                              <div
+                                key={sIdx}
+                                className="font-bold text-[12px] text-primary pt-3 pb-1 flex items-center gap-1.5 border-b border-border/40"
+                              >
+                                <span>{step}</span>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div
+                              key={sIdx}
+                              className={`flex items-start gap-2.5 px-3 py-1.5 leading-relaxed rounded-lg transition-colors ${
+                                isDr
+                                  ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-semibold my-1 border border-emerald-500/25"
+                                  : isCr
+                                  ? "bg-blue-500/10 text-blue-800 dark:text-blue-300 font-semibold my-1 border border-blue-500/25"
+                                  : "text-muted-foreground bg-muted/30"
+                              }`}
+                            >
+                              <span className="shrink-0 text-primary font-bold">
+                                {isBullet ? "•" : `${sIdx + 1}.`}
+                              </span>
+                              <span className={isDr || isCr ? "font-semibold text-foreground" : "text-foreground/90 font-medium"}>
+                                {step.replace(/^[•📌]\s*/, "")}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </Card>

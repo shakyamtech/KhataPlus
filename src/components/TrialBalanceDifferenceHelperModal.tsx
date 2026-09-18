@@ -132,15 +132,31 @@ export function TrialBalanceDifferenceHelperModal({
         mathExplanationNp: `खरिद छुट: ${fmt(unrecordedDiscount)} | बिकेको सामानको लागत (COGS) मा छुट नघटेको | आवश्यक क्रेडिट (Cr): ${fmt(unrecordedDiscount)}`,
         mathExplanationEn: `Purchase Discount = ${fmt(unrecordedDiscount)} | Missing Income Credit = ${fmt(unrecordedDiscount)}.`,
         solutionStepsNp: [
-          "विधि १ (Journal Voucher भौचर प्रविष्टि): Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्। Voucher Type 'JOURNAL' छानी Dr: " + supplierTextNp + " र Cr: Discount Received A/c (खरिद छुट आम्दानी " + fmt(unrecordedDiscount) + ") प्रविष्टि गर्नुहोस्।",
-          "विधि २ (Chart of Accounts ओपनिङ मौज्दात): Accounting ➔ Chart of Accounts मा गएर '+ Create Account' गरी 'Discount Received' (Group: Indirect Incomes) खाता बनाउनुहोस् र Opening Balance मा " + fmt(unrecordedDiscount) + " राख्नुहोस्।"
+          "📌 विधि १: Journal Voucher (जर्नल भौचर प्रविष्टि - Recommended):",
+          "• Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्।",
+          "• Voucher Type मा 'JOURNAL' छान्नुहोस्।",
+          `• डेबिट (Dr): ${supplierTextNp}`,
+          `• क्रेडिट (Cr): Discount Received A/c (खरिद छुट आम्दानी) ${fmt(unrecordedDiscount)}`,
+          "• Narration मा 'खरिद बिलमा प्राप्त छुट आम्दानी समायोजन' लेखी भौचर Save गर्नुहोस्।",
+          "📌 विधि २: Chart of Accounts (ओपनिङ मौज्दात - Quick Setup):",
+          "• Accounting ➔ Chart of Accounts मा जानुहोस्।",
+          "• '+ Create Account' गरी 'Discount Received' (Group: Indirect Incomes) खाता बनाउनुहोस्।",
+          `• Opening Balance मा ${fmt(unrecordedDiscount)} राखेर Save गर्नुहोस्।`
         ],
         solutionStepsEn: [
-          "Method 1 (Journal Voucher Entry): Go to Accounting ➔ Vouchers ➔ New Voucher. Select 'JOURNAL' type. Enter Dr: " + supplierTextEn + " and Cr: Discount Received A/c with " + fmt(unrecordedDiscount) + ".",
-          "Method 2 (Chart of Accounts Opening Balance): Go to Accounting ➔ Chart of Accounts. Create 'Discount Received' under 'Indirect Incomes' group with Opening Balance of " + fmt(unrecordedDiscount) + "."
+          "📌 Method 1: Journal Voucher Entry (Recommended):",
+          "• Go to Accounting ➔ Vouchers ➔ New Voucher.",
+          "• Select Voucher Type: 'JOURNAL'.",
+          `• Debit (Dr): ${supplierTextEn}`,
+          `• Credit (Cr): Discount Received A/c (${fmt(unrecordedDiscount)})`,
+          "• Enter Narration and Save Voucher.",
+          "📌 Method 2: Chart of Accounts Opening Balance (Quick Setup):",
+          "• Go to Accounting ➔ Chart of Accounts.",
+          "• Click '+ Create Account' and create 'Discount Received' (Group: Indirect Incomes).",
+          `• Set Opening Balance to ${fmt(unrecordedDiscount)} and Save.`
         ],
-        fixActionLabelNp: `✨ 'Discount Received' खाता बनाई रु. ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
-        fixActionLabelEn: `✨ Create 'Discount Received' Account (Rs. ${fmt(unrecordedDiscount)})`,
+        fixActionLabelNp: `✨ 'Discount Received' खाता बनाई ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
+        fixActionLabelEn: `✨ Create 'Discount Received' Account (${fmt(unrecordedDiscount)})`,
         fixAction: async () => {
           if (!user) return;
           const ref = doc(collection(db, "accounts"));
@@ -177,20 +193,34 @@ export function TrialBalanceDifferenceHelperModal({
         titleEn: "Opening Stock on Products",
         confidence: "high",
         amount: openingStockVal,
-        reasonNp: `सामानहरू (Products) दर्ता गर्दा रु. ${fmt(openingStockVal)} बराबरको सुरुवाती मौज्दात हालिएको थियो, तर त्यसको मूल्य साहुको पुँजी (Capital Account) मा जोडिएको थिएन।`,
-        reasonEn: `Opening stock worth Rs. ${fmt(openingStockVal)} was entered on products, but was not credited to Capital Account.`,
-        mathExplanationNp: `स्टक मौज्दात (Debit): + रु. ${fmt(openingStockVal)} | साहुको पुँजी (Credit): छुटेको रु. ${fmt(openingStockVal)}`,
-        mathExplanationEn: `Stock Asset (Debit): + Rs. ${fmt(openingStockVal)} | Capital Account (Credit): Missing Rs. ${fmt(openingStockVal)}`,
+        reasonNp: `सामानहरू (Products) दर्ता गर्दा ${fmt(openingStockVal)} बराबरको सुरुवाती मौज्दात हालिएको थियो, तर त्यसको मूल्य साहुको पुँजी (Capital Account) मा जोडिएको थिएन।`,
+        reasonEn: `Opening stock worth ${fmt(openingStockVal)} was entered on products, but was not credited to Capital Account.`,
+        mathExplanationNp: `स्टक मौज्दात (Debit): + ${fmt(openingStockVal)} | साहुको पुँजी (Credit): छुटेको ${fmt(openingStockVal)}`,
+        mathExplanationEn: `Stock Asset (Debit): + ${fmt(openingStockVal)} | Capital Account (Credit): Missing ${fmt(openingStockVal)}`,
         solutionStepsNp: [
-          "विधि १ (Journal Voucher भौचर प्रविष्टि): Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्। Voucher Type 'JOURNAL' छानी Dr: Opening Stock / Inventory A/c (रु. " + fmt(openingStockVal) + ") र Cr: Capital Account (साहुको पुँजी रु. " + fmt(openingStockVal) + ") प्रविष्टि गर्नुहोस्।",
-          "विधि २ (Chart of Accounts ओपनिङ मौज्दात): Accounting ➔ Chart of Accounts मा गएर Capital Account Edit गरी Opening Balance मा रु. " + fmt(openingStockVal) + " थपिदिनुहोस्।"
+          "📌 विधि १: Journal Voucher (जर्नल भौचर प्रविष्टि - Recommended):",
+          "• Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्।",
+          "• Voucher Type मा 'JOURNAL' छान्नुहोस्।",
+          `• डेबिट (Dr): Opening Stock / Inventory A/c (${fmt(openingStockVal)})`,
+          `• क्रेडिट (Cr): Owner's Capital (साहुको पुँजी) (${fmt(openingStockVal)})`,
+          "• Narration मा 'सुरुवाती स्टक मौज्दात पुँजीमा समावेश' लेखी Save गर्नुहोस्।",
+          "📌 विधि २: Chart of Accounts (ओपनिङ मौज्दात - Quick Setup):",
+          "• Accounting ➔ Chart of Accounts मा जानुहोस्।",
+          `• Capital Account (साहुको पुँजी) लाई Edit गरी Opening Balance मा ${fmt(openingStockVal)} थपिदिनुहोस्।`
         ],
         solutionStepsEn: [
-          "Method 1 (Journal Voucher Entry): Go to Accounting ➔ Vouchers ➔ New Voucher. Select 'JOURNAL' type. Enter Dr: Opening Stock A/c and Cr: Capital Account with Rs. " + fmt(openingStockVal) + ".",
-          "Method 2 (Chart of Accounts Opening Balance): Go to Accounting ➔ Chart of Accounts. Edit Capital Account and add Rs. " + fmt(openingStockVal) + " to Opening Balance."
+          "📌 Method 1: Journal Voucher Entry (Recommended):",
+          "• Go to Accounting ➔ Vouchers ➔ New Voucher.",
+          "• Select Voucher Type: 'JOURNAL'.",
+          `• Debit (Dr): Opening Stock / Inventory A/c (${fmt(openingStockVal)})`,
+          `• Credit (Cr): Owner's Capital (${fmt(openingStockVal)})`,
+          "• Enter Narration and Save Voucher.",
+          "📌 Method 2: Chart of Accounts Opening Balance (Quick Setup):",
+          "• Go to Accounting ➔ Chart of Accounts.",
+          `• Edit Capital Account and add ${fmt(openingStockVal)} to Opening Balance.`
         ],
-        fixActionLabelNp: `✨ साहुको पुँजी खातामा रु. ${fmt(openingStockVal)} थप्नुहोस्`,
-        fixActionLabelEn: `✨ Add Rs. ${fmt(openingStockVal)} to Capital Account`,
+        fixActionLabelNp: `✨ साहुको पुँजी खातामा ${fmt(openingStockVal)} थप्नुहोस्`,
+        fixActionLabelEn: `✨ Add ${fmt(openingStockVal)} to Capital Account`,
         fixAction: async () => {
           if (!user) return;
           const capAcc = capitalAccounts[0];
@@ -238,17 +268,19 @@ export function TrialBalanceDifferenceHelperModal({
         titleEn: "Unbalanced Voucher Entries",
         confidence: "high",
         amount: unbalancedVoucherSum,
-        reasonNp: `केही भौचरहरूमा डेबिट र क्रेडिट रकम बराबर नभई कुल रु. ${fmt(unbalancedVoucherSum)} को असन्तुलन भेटिएको छ।`,
-        reasonEn: `Some vouchers have mismatch between total Debits and Credits with a discrepancy of Rs. ${fmt(unbalancedVoucherSum)}.`,
-        mathExplanationNp: `भौचर असन्तुलन: रु. ${fmt(unbalancedVoucherSum)} | दोहोरो लेखा प्रणाली अनुसार डेबिट = क्रेडिट हुनुपर्छ`,
-        mathExplanationEn: `Voucher Discrepancy = Rs. ${fmt(unbalancedVoucherSum)} | Debits must equal Credits.`,
+        reasonNp: `केही भौचरहरूमा डेबिट र क्रेडिट रकम बराबर नभई कुल ${fmt(unbalancedVoucherSum)} को असन्तुलन भेटिएको छ।`,
+        reasonEn: `Some vouchers have mismatch between total Debits and Credits with a discrepancy of ${fmt(unbalancedVoucherSum)}.`,
+        mathExplanationNp: `भौचर असन्तुलन: ${fmt(unbalancedVoucherSum)} | दोहोरो लेखा प्रणाली अनुसार डेबिट = क्रेडिट हुनुपर्छ`,
+        mathExplanationEn: `Voucher Discrepancy = ${fmt(unbalancedVoucherSum)} | Debits must equal Credits.`,
         solutionStepsNp: [
-          "Accounting ➔ Vouchers मा जानुहोस्।",
-          "Daybook / Vouchers सूचीमा गएर असन्तुलित भौचरहरू एडिट गरी डेबिट र क्रेडिट बराबर बनाउनुहोस्।"
+          "• Accounting ➔ Vouchers मा जानुहोस्।",
+          "• Daybook / Vouchers सूचीमा गएर असन्तुलित भौचरहरू एडिट गर्नुहोस्।",
+          "• डेबिट र क्रेडिट दुवै तर्फ बराबर रकम भएको सुनिश्चित गरी Save गर्नुहोस्।"
         ],
         solutionStepsEn: [
-          "Go to Accounting ➔ Vouchers.",
-          "Check the Daybook and edit unbalanced vouchers to ensure Debits equal Credits."
+          "• Go to Accounting ➔ Vouchers.",
+          "• Open the Daybook and locate unbalanced vouchers.",
+          "• Ensure total Debits equal total Credits and Save."
         ],
         fixActionLabelNp: `📋 Vouchers सूची खोली मिलाउनुहोस्`,
         fixActionLabelEn: `📋 Open Vouchers to Edit`,
@@ -273,20 +305,32 @@ export function TrialBalanceDifferenceHelperModal({
         confidence: "medium",
         amount: amt,
         reasonNp: isDebitHigher
-          ? `डेबिट तर्फको जोड (रु. ${fmt(totalDebits)}) क्रेडिट (रु. ${fmt(totalCredits)}) भन्दा रु. ${fmt(amt)} धेरै छ। यसलाई साहुको पुँजी (Capital) मा क्रेडिट गरी मिलाउन सकिन्छ।`
-          : `क्रेडिट तर्फको जोड (रु. ${fmt(totalCredits)}) डेबिट (रु. ${fmt(totalDebits)}) भन्दा रु. ${fmt(amt)} धेरै छ। यसलाई सम्पत्ति वा खर्चमा समायोजन गरी मिलाउन सकिन्छ।`,
+          ? `डेबिट तर्फको जोड (${fmt(totalDebits)}) क्रेडिट (${fmt(totalCredits)}) भन्दा ${fmt(amt)} धेरै छ। यसलाई साहुको पुँजी (Capital) मा क्रेडिट गरी मिलाउन सकिन्छ।`
+          : `क्रेडिट तर्फको जोड (${fmt(totalCredits)}) डेबिट (${fmt(totalDebits)}) भन्दा ${fmt(amt)} धेरै छ। यसलाई सम्पत्ति वा खर्चमा समायोजन गरी मिलाउन सकिन्छ।`,
         reasonEn: isDebitHigher
-          ? `Debits exceed Credits by Rs. ${fmt(amt)}. Can be resolved by crediting Capital Account.`
-          : `Credits exceed Debits by Rs. ${fmt(amt)}. Can be resolved by adjusting Asset/Expense.`,
-        mathExplanationNp: `बाँकी फरक: रु. ${fmt(amt)} | आवश्यक समायोजन: ${isDebitHigher ? "Credit" : "Debit"} रु. ${fmt(amt)}`,
-        mathExplanationEn: `Remaining Variance = Rs. ${fmt(amt)} | Required Action = ${isDebitHigher ? "Credit" : "Debit"} Rs. ${fmt(amt)}`,
+          ? `Debits exceed Credits by ${fmt(amt)}. Can be resolved by crediting Capital Account.`
+          : `Credits exceed Debits by ${fmt(amt)}. Can be resolved by adjusting Asset/Expense.`,
+        mathExplanationNp: `बाँकी फरक: ${fmt(amt)} | आवश्यक समायोजन: ${isDebitHigher ? "Credit" : "Debit"} ${fmt(amt)}`,
+        mathExplanationEn: `Remaining Variance = ${fmt(amt)} | Required Action = ${isDebitHigher ? "Credit" : "Debit"} ${fmt(amt)}`,
         solutionStepsNp: [
-          "Accounting ➔ Chart of Accounts मा गई सम्बन्धित खाताको Opening Balance जाँच गर्नुहोस्।",
-          `क्रेडिट कम भएकोले Capital Account (साहुको पुँजी) मा रु. ${fmt(amt)} थप्न सकिन्छ।`
+          "📌 विधि १: Chart of Accounts (ओपनिङ मौज्दात समायोजन - Quick Setup):",
+          "• Accounting ➔ Chart of Accounts मा जानुहोस्।",
+          `• Capital Account (साहुको पुँजी) लाई Edit गरी Opening Balance मा ${fmt(amt)} थपिदिनुहोस्।`,
+          "📌 विधि २: Journal Voucher (जर्नल भौचर प्रविष्टि):",
+          "• Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्।",
+          "• Voucher Type 'JOURNAL' छानी समायोजन प्रविष्टि गर्नुहोस्।",
+          `• ${isDebitHigher ? `डेबिट (Dr): Suspense / Cash / Bank (${fmt(amt)})` : `डेबिट (Dr): Owner's Capital (${fmt(amt)})`}`,
+          `• ${isDebitHigher ? `क्रेडिट (Cr): Owner's Capital (साहुको पुँजी) (${fmt(amt)})` : `क्रेडिट (Cr): Suspense / Cash / Bank (${fmt(amt)})`}`
         ],
         solutionStepsEn: [
-          "Check Opening Balances in Accounting ➔ Chart of Accounts.",
-          `Add Rs. ${fmt(amt)} to Capital Account to balance Credits.`
+          "📌 Method 1: Chart of Accounts Opening Balance (Quick Setup):",
+          "• Go to Accounting ➔ Chart of Accounts.",
+          `• Edit Capital Account and add ${fmt(amt)} to Opening Balance.`,
+          "📌 Method 2: Journal Voucher Entry:",
+          "• Go to Accounting ➔ Vouchers ➔ New Voucher.",
+          "• Select Voucher Type: 'JOURNAL'.",
+          `• ${isDebitHigher ? `Debit (Dr): Suspense / Cash / Bank (${fmt(amt)})` : `Debit (Dr): Owner's Capital (${fmt(amt)})`}`,
+          `• ${isDebitHigher ? `Credit (Cr): Owner's Capital (${fmt(amt)})` : `Credit (Cr): Suspense / Cash / Bank (${fmt(amt)})`}`
         ],
         fixActionLabelNp: `✨ साहुको पुँजी खातामा रु. ${fmt(amt)} समायोजन गर्नुहोस्`,
         fixActionLabelEn: `✨ Adjust Rs. ${fmt(amt)} in Capital Account`,
@@ -518,18 +562,55 @@ export function TrialBalanceDifferenceHelperModal({
 
               {/* Tab: Manual Steps for Students */}
               {activeTab === "manual" && (
-                <div className="pt-2 border-t border-border/60 space-y-2">
+                <div className="pt-3 border-t border-border/60 space-y-3">
                   <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <BookOpen className="h-3.5 w-3.5 text-primary" />
-                    <span>{lang === "NEP" ? "विद्यार्थीहरूका लागि आफैँ इन्ट्री गर्ने चरणहरू (Manual Steps):" : "Manual Step-by-Step Process:"}</span>
+                    <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                    <span>
+                      {lang === "NEP"
+                        ? "विद्यार्थी तथा प्रयोगकर्ताका लागि चरणबद्ध इन्ट्री गाइड (Step-by-Step Guide):"
+                        : "Step-by-Step Manual Process Guide for Students:"}
+                    </span>
                   </div>
-                  <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground pl-1">
-                    {(lang === "NEP" ? item.solutionStepsNp : item.solutionStepsEn).map((step, sIdx) => (
-                      <li key={sIdx} className="leading-normal">
-                        <span className="text-foreground font-medium">{step}</span>
-                      </li>
-                    ))}
-                  </ol>
+
+                  <div className="space-y-1.5 text-xs">
+                    {(lang === "NEP" ? item.solutionStepsNp : item.solutionStepsEn).map((step, sIdx) => {
+                      const isHeader = step.startsWith("📌");
+                      const isBullet = step.startsWith("•");
+                      const isDr = step.includes("डेबिट (Dr):") || step.includes("Debit (Dr):");
+                      const isCr = step.includes("क्रेडिट (Cr):") || step.includes("Credit (Cr):");
+
+                      if (isHeader) {
+                        return (
+                          <div
+                            key={sIdx}
+                            className="font-bold text-[12px] text-primary pt-3 pb-1 flex items-center gap-1.5 border-b border-border/40"
+                          >
+                            <span>{step}</span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={sIdx}
+                          className={`flex items-start gap-2.5 px-3 py-1.5 leading-relaxed rounded-lg transition-colors ${
+                            isDr
+                              ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-semibold my-1 border border-emerald-500/25"
+                              : isCr
+                              ? "bg-blue-500/10 text-blue-800 dark:text-blue-300 font-semibold my-1 border border-blue-500/25"
+                              : "text-muted-foreground bg-muted/30"
+                          }`}
+                        >
+                          <span className="shrink-0 text-primary font-bold">
+                            {isBullet ? "•" : `${sIdx + 1}.`}
+                          </span>
+                          <span className={isDr || isCr ? "font-semibold text-foreground" : "text-foreground/90 font-medium"}>
+                            {step.replace(/^[•📌]\s*/, "")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </Card>
