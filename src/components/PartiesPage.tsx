@@ -645,6 +645,8 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
         const ledgerData = lSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         const prodsMap: Record<string, OrderItem[]> = {};
+        const productHsMap: Record<string, string> = {};
+        const productStockMap: Record<string, number> = {};
         const purIds = purData.map(p => p.id);
         const purChunks = [];
         for (let i = 0; i < purIds.length; i += 10) purChunks.push(purIds.slice(i, i + 10));
@@ -664,8 +666,6 @@ export const PartiesPage = ({ type }: { type: "customer" | "supplier" }) => {
               }
             });
 
-            const productHsMap: Record<string, string> = {};
-            const productStockMap: Record<string, number> = {};
             if (allProductIds.size > 0) {
               const prodIdChunks = [];
               const idsArr = Array.from(allProductIds);
