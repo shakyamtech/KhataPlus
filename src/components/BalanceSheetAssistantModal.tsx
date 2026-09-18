@@ -162,6 +162,21 @@ export function BalanceSheetAssistantModal({
     const unrecordedDiscount = Math.max(0, totalPurchaseDiscount - discountAccountBalance);
     const discountExplainsDifference = !isBalanced && Math.abs(unrecordedDiscount - difference) < 1;
 
+    // Extract exact supplier name(s) with discount
+    const discountedPurchases = purchasesDocs.filter((p: any) => Number(p.discount || 0) > 0);
+    const suppDiscMap: Record<string, number> = {};
+    discountedPurchases.forEach((p: any) => {
+      const name = p.supplier_name || p.supplierName || p.party_name || "Supplier / COGS";
+      suppDiscMap[name] = (suppDiscMap[name] || 0) + Number(p.discount || 0);
+    });
+    const suppEntries = Object.entries(suppDiscMap);
+    const supplierTextNp = suppEntries.length > 0
+      ? suppEntries.map(([name, amt]) => `${name} (${fmt(amt)})`).join(" + ")
+      : "Supplier / COGS";
+    const supplierTextEn = suppEntries.length > 0
+      ? suppEntries.map(([name, amt]) => `${name} (${fmt(amt)})`).join(" + ")
+      : "Supplier / COGS";
+
     if (unrecordedDiscount > 0.5) {
       list.push({
         id: "purchase_discount",
@@ -184,11 +199,11 @@ export function BalanceSheetAssistantModal({
         mathFormulaNp: `खरिद छुट = ${fmt(unrecordedDiscount)} | आवश्यक क्रेडिट: ${fmt(unrecordedDiscount)}`,
         mathFormulaEn: `Unrecorded Discount = ${fmt(unrecordedDiscount)} | Required Credit: ${fmt(unrecordedDiscount)}`,
         solutionStepsNp: [
-          "विधि १ (Journal Voucher भौचर प्रविष्टि): Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्। Voucher Type 'JOURNAL' छानी Dr: Supplier/COGS A/c र Cr: Discount Received A/c (खरिद छुट आम्दानी) " + fmt(unrecordedDiscount) + " प्रविष्टि गर्नुहोस्।",
+          "विधि १ (Journal Voucher भौचर प्रविष्टि): Accounting ➔ Vouchers ➔ New Voucher मा जानुहोस्। Voucher Type 'JOURNAL' छानी Dr: " + supplierTextNp + " र Cr: Discount Received A/c (खरिद छुट आम्दानी " + fmt(unrecordedDiscount) + ") प्रविष्टि गर्नुहोस्।",
           "विधि २ (Chart of Accounts ओपनिङ मौज्दात): Accounting ➔ Chart of Accounts मा गएर '+ Create Account' गरी 'Discount Received' (Group: Indirect Incomes) खाता खोल्नुहोस् र Opening Balance मा " + fmt(unrecordedDiscount) + " राख्नुहोस्।"
         ],
         solutionStepsEn: [
-          "Method 1 (Journal Voucher Entry): Go to Accounting ➔ Vouchers ➔ New Voucher. Select 'JOURNAL' type. Enter Dr: Supplier/COGS A/c and Cr: Discount Received A/c with " + fmt(unrecordedDiscount) + ".",
+          "Method 1 (Journal Voucher Entry): Go to Accounting ➔ Vouchers ➔ New Voucher. Select 'JOURNAL' type. Enter Dr: " + supplierTextEn + " and Cr: Discount Received A/c with " + fmt(unrecordedDiscount) + ".",
           "Method 2 (Chart of Accounts Opening Balance): Go to Accounting ➔ Chart of Accounts. Create 'Discount Received' under 'Indirect Incomes' with Opening Balance of " + fmt(unrecordedDiscount) + "."
         ],
         fixActionLabelNp: `✨ 'Discount Received' खाता बनाई ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
