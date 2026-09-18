@@ -2834,6 +2834,43 @@ export default function Accounting() {
       });
     }
 
+    // Other Income Accounts & Purchase Discounts
+    const totalPurchaseDiscount = purchasesDocs.reduce((s, p: any) => s + Number(p.discount || 0), 0);
+    const incomeAccounts = accounts.filter(a => a.type === "income" && a.id !== `${user?.uid}_sales`);
+    const otherIncomeRows = incomeAccounts.map(inc => {
+      let bal = Number(inc.opening_balance || 0);
+      vouchers.forEach(v => {
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === inc.id) bal += (imp.credit - imp.debit);
+        });
+      });
+      const isDisc = (inc.name || "").toLowerCase().includes("discount") || (inc.name || "").includes("छुट");
+      if (isDisc && totalPurchaseDiscount > 0 && bal < totalPurchaseDiscount) {
+        bal = totalPurchaseDiscount;
+      }
+      return {
+        id: inc.id,
+        name: inc.name,
+        group: inc.group === "direct_income" ? (lang === "NEP" ? "प्रत्यक्ष आम्दानी" : "Direct Incomes") : (lang === "NEP" ? "अन्य आम्दानी" : "Indirect Incomes"),
+        debit: bal < 0 ? Math.abs(bal) : 0,
+        credit: bal >= 0 ? bal : 0
+      };
+    }).filter(r => r.debit > 0 || r.credit > 0);
+
+    const hasDiscountRow = otherIncomeRows.some(r => r.name.toLowerCase().includes("discount") || r.name.includes("छुट"));
+    if (!hasDiscountRow && totalPurchaseDiscount > 0) {
+      otherIncomeRows.push({
+        id: "purchase_discount_auto",
+        name: lang === "NEP" ? "खरिद छुट आम्दानी (Discount Received)" : "Discount Received (Purchase Discount)",
+        group: lang === "NEP" ? "अन्य आम्दानी" : "Indirect Incomes",
+        debit: 0,
+        credit: totalPurchaseDiscount
+      });
+    }
+
+    otherIncomeRows.forEach(r => rows.push(r));
+
     const totalDebits = Math.round(rows.reduce((s, r) => s + r.debit, 0) * 100) / 100;
     const totalCredits = Math.round(rows.reduce((s, r) => s + r.credit, 0) * 100) / 100;
     const difference = Math.round(Math.abs(totalDebits - totalCredits) * 100) / 100;

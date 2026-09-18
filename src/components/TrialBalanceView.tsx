@@ -368,7 +368,8 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const wastageAdjustments = stockAdjDocs.filter(d => d.responsibility === "loss");
     const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
 
-    // Other Income Accounts
+    // Other Income Accounts & Purchase Discounts
+    const totalPurchaseDiscount = purchasesDocs.reduce((s, p: any) => s + Number(p.discount || 0), 0);
     const incomeAccounts = accounts.filter(a => a.type === "income" && a.id !== `${user?.uid}_sales`);
     const otherIncomeRows = incomeAccounts.map(inc => {
       let bal = Number(inc.opening_balance || 0);
@@ -378,6 +379,10 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
           if (imp.account_id === inc.id) bal += (imp.credit - imp.debit);
         });
       });
+      const isDisc = (inc.name || "").toLowerCase().includes("discount") || (inc.name || "").includes("छुट");
+      if (isDisc && totalPurchaseDiscount > 0 && bal < totalPurchaseDiscount) {
+        bal = totalPurchaseDiscount;
+      }
       return {
         id: inc.id,
         name: inc.name,
@@ -386,6 +391,17 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
         credit: bal >= 0 ? bal : 0
       };
     }).filter(r => r.debit > 0 || r.credit > 0);
+
+    const hasDiscountRow = otherIncomeRows.some(r => r.name.toLowerCase().includes("discount") || r.name.includes("छुट"));
+    if (!hasDiscountRow && totalPurchaseDiscount > 0) {
+      otherIncomeRows.push({
+        id: "purchase_discount_auto",
+        name: lang === "NEP" ? "खरिद छुट आम्दानी (Discount Received)" : "Discount Received (Purchase Discount)",
+        group: lang === "NEP" ? "अन्य आम्दानी" : "Indirect Incomes",
+        debit: 0,
+        credit: totalPurchaseDiscount
+      });
+    }
 
     // Construct unified Trial Balance Ledger Rows
     const rows: { id: string; name: string; group: string; debit: number; credit: number }[] = [];

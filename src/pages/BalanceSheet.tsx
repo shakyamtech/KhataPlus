@@ -73,7 +73,8 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
     drawings: 0,
     revenue: 0,
     cogs: 0,
-    expenses: 0
+    expenses: 0,
+    otherIncomes: 0
   });
 
   const loadData = useCallback(async () => {
@@ -368,6 +369,27 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
         const totalExpenses = cashExpenses + wastageExpenses + voucherExpenses;
 
+        // 8. Other Incomes & Purchase Discounts
+        const totalPurchaseDiscount = purchases.reduce((s: number, p: any) => s + Number(p.discount || 0), 0);
+        const incomeAccounts = accounts.filter((a: any) => a.type === "income" && a.id !== `${user?.uid}_sales`);
+        let otherIncomesTotal = 0;
+        let recordedDiscIncome = 0;
+        incomeAccounts.forEach((inc: any) => {
+          let bal = Number(inc.opening_balance || 0);
+          vouchers.forEach((v: any) => {
+            const impacts = getVoucherAccountImpacts(v);
+            impacts.forEach(imp => {
+              if (imp.account_id === inc.id) bal += (imp.credit - imp.debit);
+            });
+          });
+          const isDisc = (inc.name || "").toLowerCase().includes("discount") || (inc.name || "").includes("छुट");
+          if (isDisc) recordedDiscIncome += bal;
+          otherIncomesTotal += bal;
+        });
+        if (totalPurchaseDiscount > recordedDiscIncome) {
+          otherIncomesTotal += (totalPurchaseDiscount - recordedDiscIncome);
+        }
+
         setD({
           cash: totalCash,
           wallet: walletBal,
@@ -387,7 +409,8 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           drawings: totalDrawings,
           revenue,
           cogs,
-          expenses: totalExpenses
+          expenses: totalExpenses,
+          otherIncomes: otherIncomesTotal
         });
       } catch (err: any) {
         console.error("BalanceSheet error:", err);
@@ -400,7 +423,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
 
   const totalAssets = d.cash + d.wallet + d.bank + d.stock + d.receivable + d.fixedAssets + d.loansGiven + d.vatReceivable;
   const grossProfit = d.revenue - d.cogs;
-  const netProfit = grossProfit - d.expenses;
+  const netProfit = grossProfit + (d.otherIncomes || 0) - d.expenses;
   const totalEquity = d.capital + netProfit - d.drawings;
   const totalLiabilitiesAndEquity = d.payable + d.loans + d.outstanding + d.vatPayable + totalEquity;
 
