@@ -20,6 +20,12 @@ const Row = ({ label, value, bold }: { label: string; value: number; bold?: bool
   </div>
 );
 
+interface LedgerBreakdownItem {
+  id: string;
+  name: string;
+  balance: number;
+}
+
 interface BalanceSheetProps {
   hideHeader?: boolean;
   onNavigateToTrial?: () => void;
@@ -28,6 +34,9 @@ interface BalanceSheetProps {
 const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {}) => {
   const { user } = useAuth();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
+  const [bankItems, setBankItems] = useState<LedgerBreakdownItem[]>([]);
+  const [customerItems, setCustomerItems] = useState<LedgerBreakdownItem[]>([]);
+  const [supplierItems, setSupplierItems] = useState<LedgerBreakdownItem[]>([]);
   const [d, setD] = useState({
     cash: 0,
     wallet: 0,
@@ -59,8 +68,10 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid));
         const wQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
         const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
+        const suppQ = query(collection(db, "suppliers"), where("user_id", "==", user.uid));
+        const custQ = query(collection(db, "customers"), where("user_id", "==", user.uid));
 
-        const [cSnap, pSnap, lSnap, sSnap, wSnap, accList, vSnap, sInfo] = await Promise.all([
+        const [cSnap, pSnap, lSnap, sSnap, wSnap, accList, vSnap, suppSnap, custSnap, sInfo] = await Promise.all([
           getDocs(cQ),
           getDocs(pQ),
           getDocs(lQ),
@@ -68,6 +79,8 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           getDocs(wQ),
           getAccounts(user.uid),
           getDocs(vQ),
+          getDocs(suppQ),
+          getDocs(custQ),
           getShopInfo()
         ]);
 
@@ -99,15 +112,21 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
 
         // 1. Calculate Bank Balances
         const bankAccounts = accounts.filter((a: any) => a.group === "bank_accounts");
-        let bankTotal = bankAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
-        vouchers.forEach((v: any) => {
-          const impacts = getVoucherAccountImpacts(v);
-          impacts.forEach(imp => {
-            if (bankAccounts.some((b: any) => b.id === imp.account_id)) {
-              bankTotal += (imp.debit - imp.credit);
-            }
+        let bankTotal = 0;
+        const bankItemsList = bankAccounts.map((b: any) => {
+          let bal = Number(b.opening_balance || 0);
+          vouchers.forEach((v: any) => {
+            const impacts = getVoucherAccountImpacts(v);
+            impacts.forEach(imp => {
+              if (imp.account_id === b.id) {
+                bal += (imp.debit - imp.credit);
+              }
+            });
           });
-        });
+          bankTotal += bal;
+          return { id: b.id, name: b.name, balance: bal };
+        }).filter(b => b.balance !== 0);
+        setBankItems(bankItemsList);
 
         // 2. Calculate Fixed Assets (Vehicles, Computers, Furniture, etc.) & Accumulated Depreciation
         const assetAccounts = accounts.filter((a: any) => a.group === "fixed_assets");
@@ -235,6 +254,46 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
 
         const receivable = Object.entries(partyBalances).filter(([k]) => k.startsWith("customer_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
         const payable = Object.entries(partyBalances).filter(([k]) => k.startsWith("supplier_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
+
+        const customerMap = new Map<string, string>();
+        custSnap.docs.forEach(d => {
+          const c = d.data();
+          customerMap.set(d.id, c.name || c.party_name || `Customer #${d.id.slice(0, 6)}`);
+        });
+        ledger.forEach((e: any) => {
+          if (e.party_type === "customer" && e.party_name && !customerMap.has(e.party_id)) {
+            customerMap.set(e.party_id, e.party_name);
+          }
+        });
+
+        const customerItemsList = Object.entries(partyBalances)
+          .filter(([k, b]) => k.startsWith("customer_") && b > 0)
+          .map(([k, b]) => {
+            const id = k.replace("customer_", "");
+            return { id, name: customerMap.get(id) || `Customer #${id.slice(0, 6)}`, balance: b };
+          })
+          .sort((a, b) => b.balance - a.balance);
+        setCustomerItems(customerItemsList);
+
+        const supplierMap = new Map<string, string>();
+        suppSnap.docs.forEach(d => {
+          const s = d.data();
+          supplierMap.set(d.id, s.name || s.party_name || `Supplier #${d.id.slice(0, 6)}`);
+        });
+        ledger.forEach((e: any) => {
+          if (e.party_type === "supplier" && e.party_name && !supplierMap.has(e.party_id)) {
+            supplierMap.set(e.party_id, e.party_name);
+          }
+        });
+
+        const supplierItemsList = Object.entries(partyBalances)
+          .filter(([k, b]) => k.startsWith("supplier_") && b > 0)
+          .map(([k, b]) => {
+            const id = k.replace("supplier_", "");
+            return { id, name: supplierMap.get(id) || `Supplier #${id.slice(0, 6)}`, balance: b };
+          })
+          .sort((a, b) => b.balance - a.balance);
+        setSupplierItems(supplierItemsList);
 
         const outputVat = sales.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
         let vatPaid = 0;
@@ -401,16 +460,28 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                   </tr>` : ''}
                   ${d.bank > 0 ? `
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">अन्तिम बैंक मौज्दात (Closing Bank Balances)</td>
-                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.bank.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">
+                      <div>अन्तिम बैंक मौज्दात (Closing Bank Balances)</div>
+                      ${bankItems.length > 0 ? `
+                      <div style="margin-top:3px; padding-left:8px; font-size:10.5px; color:#4b5563; line-height:1.3;">
+                        ${bankItems.map(b => `• ${escapeHtml(b.name)}: <strong>Rs. ${b.balance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>`).join('<br/>')}
+                      </div>` : ''}
+                    </td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111; vertical-align:top;">Rs. ${d.bank.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>` : ''}
                   <tr>
                     <td style="padding:6px 8px; border:1px solid #111;">अन्तिम स्टक मौज्दात (Closing Stock at Cost)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.stock.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">ग्राहकबाट उठ्न बाँकी (Customer Receivables)</td>
-                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.receivable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">
+                      <div>ग्राहकबाट उठ्न बाँकी (Customer Receivables)</div>
+                      ${customerItems.length > 0 ? `
+                      <div style="margin-top:3px; padding-left:8px; font-size:10.5px; color:#4b5563; line-height:1.3;">
+                        ${customerItems.map(c => `• ${escapeHtml(c.name)}: <strong>Rs. ${c.balance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>`).join('<br/>')}
+                      </div>` : ''}
+                    </td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111; vertical-align:top;">Rs. ${d.receivable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   ${d.vatReceivable > 0 ? `
                   <tr>
@@ -452,8 +523,14 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">सप्लायरलाई तिर्न बाँकी (Payables)</td>
-                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.payable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">
+                      <div>सप्लायरलाई तिर्न बाँकी (Supplier Payables)</div>
+                      ${supplierItems.length > 0 ? `
+                      <div style="margin-top:3px; padding-left:8px; font-size:10.5px; color:#4b5563; line-height:1.3;">
+                        ${supplierItems.map(s => `• ${escapeHtml(s.name)}: <strong>Rs. ${s.balance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>`).join('<br/>')}
+                      </div>` : ''}
+                    </td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111; vertical-align:top;">Rs. ${d.payable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                   ${d.loans > 0 ? `
                   <tr>
@@ -569,9 +646,47 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
             <div className="space-y-1 divide-y divide-border/20">
               <Row label="अन्तिम नगद मौज्दात (Closing Cash in Hand)" value={d.cash} />
               {d.wallet > 0 && <Row label="डिजिटल वालेट मौज्दात (Closing Wallets - eSewa/Khalti)" value={d.wallet} />}
-              {d.bank > 0 && <Row label="अन्तिम बैंक मौज्दात (Closing Bank Balances)" value={d.bank} />}
+              
+              {/* Bank Balances with Ledger Breakdown */}
+              {d.bank > 0 && (
+                <div className="py-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground font-medium">अन्तिम बैंक मौज्दात (Closing Bank Balances)</span>
+                    <span className="font-semibold">{fmt(d.bank)}</span>
+                  </div>
+                  {bankItems.length > 0 && (
+                    <div className="mt-1.5 pl-3 border-l-2 border-primary/40 space-y-1">
+                      {bankItems.map(b => (
+                        <div key={b.id} className="flex justify-between text-xs text-muted-foreground">
+                          <span className="truncate pr-2">• {b.name}</span>
+                          <span className="font-mono font-medium text-foreground">{fmt(b.balance)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Row label="अन्तिम स्टक मौज्दात (Closing Stock at Cost)" value={d.stock} />
-              <Row label="ग्राहकबाट उठ्न बाँकी (Customer Receivables)" value={d.receivable} />
+              
+              {/* Customer Receivables with Party Breakdown */}
+              <div className="py-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground font-medium">ग्राहकबाट उठ्न बाँकी (Customer Receivables)</span>
+                  <span className="font-semibold">{fmt(d.receivable)}</span>
+                </div>
+                {customerItems.length > 0 && (
+                  <div className="mt-1.5 pl-3 border-l-2 border-emerald-500/40 space-y-1 max-h-48 overflow-y-auto pr-1">
+                    {customerItems.map(c => (
+                      <div key={c.id} className="flex justify-between text-xs text-muted-foreground">
+                        <span className="truncate pr-2">• {c.name}</span>
+                        <span className="font-mono font-medium text-foreground shrink-0">{fmt(c.balance)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {d.grossFixedAssets > 0 && (
                 <Row label="स्थिर सम्पत्ति (Gross Fixed Assets)" value={d.grossFixedAssets} />
               )}
@@ -606,7 +721,24 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
             </div>
 
             <div className="space-y-1 divide-y divide-border/20">
-              <Row label="सप्लायरलाई तिर्न बाँकी (Supplier Payables)" value={d.payable} />
+              {/* Supplier Payables with Party Breakdown */}
+              <div className="py-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground font-medium">सप्लायरलाई तिर्न बाँकी (Supplier Payables)</span>
+                  <span className="font-semibold">{fmt(d.payable)}</span>
+                </div>
+                {supplierItems.length > 0 && (
+                  <div className="mt-1.5 pl-3 border-l-2 border-blue-500/40 space-y-1 max-h-48 overflow-y-auto pr-1">
+                    {supplierItems.map(s => (
+                      <div key={s.id} className="flex justify-between text-xs text-muted-foreground">
+                        <span className="truncate pr-2">• {s.name}</span>
+                        <span className="font-mono font-medium text-foreground shrink-0">{fmt(s.balance)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {d.loans > 0 && <Row label="बैंक ऋण दायित्व (Bank Loans & Borrowings)" value={d.loans} />}
               {d.outstanding > 0 && <Row label="तिर्न बाँकी खर्च (Outstanding Liabilities)" value={d.outstanding} />}
               {d.vatPayable > 0 && <Row label="सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)" value={d.vatPayable} />}

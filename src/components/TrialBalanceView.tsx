@@ -28,13 +28,15 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
   const [ledgerDocs, setLedgerDocs] = useState<any[]>([]);
   const [productDocs, setProductDocs] = useState<any[]>([]);
   const [stockAdjDocs, setStockAdjDocs] = useState<any[]>([]);
+  const [customerDocs, setCustomerDocs] = useState<any[]>([]);
+  const [supplierDocs, setSupplierDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const [accList, vSnap, cSnap, sSnap, lSnap, pSnap, saSnap, sInfo] = await Promise.all([
+      const [accList, vSnap, cSnap, sSnap, lSnap, pSnap, saSnap, suppSnap, custSnap, sInfo] = await Promise.all([
         getAccounts(user.uid),
         getDocs(query(collection(db, "vouchers"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "cash_transactions"), where("user_id", "==", user.uid))),
@@ -42,6 +44,8 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
         getDocs(query(collection(db, "ledger_entries"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "products"), where("user_id", "==", user.uid))),
         getDocs(query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "suppliers"), where("user_id", "==", user.uid))),
+        getDocs(query(collection(db, "customers"), where("user_id", "==", user.uid))),
         getShopInfo()
       ]);
 
@@ -52,6 +56,8 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       setLedgerDocs(lSnap.docs.map(d => d.data()));
       setProductDocs(pSnap.docs.map(d => d.data()));
       setStockAdjDocs(saSnap.docs.map(d => d.data()));
+      setSupplierDocs(suppSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setCustomerDocs(custSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setShopInfo(sInfo);
     } catch (err: any) {
       console.error("TrialBalanceView load error:", err);
@@ -101,6 +107,26 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     });
     const receivable = Object.entries(partyBalances).filter(([k]) => k.startsWith("customer_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
     const payable = Object.entries(partyBalances).filter(([k]) => k.startsWith("supplier_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
+
+    const customerMap = new Map<string, string>();
+    customerDocs.forEach(c => {
+      customerMap.set(c.id, c.name || c.party_name || `Customer #${c.id.slice(0, 6)}`);
+    });
+    ledgerDocs.forEach((e: any) => {
+      if (e.party_type === "customer" && e.party_name && !customerMap.has(e.party_id)) {
+        customerMap.set(e.party_id, e.party_name);
+      }
+    });
+
+    const supplierMap = new Map<string, string>();
+    supplierDocs.forEach(s => {
+      supplierMap.set(s.id, s.name || s.party_name || `Supplier #${s.id.slice(0, 6)}`);
+    });
+    ledgerDocs.forEach((e: any) => {
+      if (e.party_type === "supplier" && e.party_name && !supplierMap.has(e.party_id)) {
+        supplierMap.set(e.party_id, e.party_name);
+      }
+    });
 
     // 4. Sales Revenue & Cost of Goods Sold & VAT Payable
     const outputVat = salesDocs.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
@@ -403,16 +429,20 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       });
     }
 
-    // Debtors / Receivables
-    if (receivable > 0) {
-      rows.push({
-        id: "sundry_debtors",
-        name: lang === "NEP" ? "ग्राहकबाट उठ्न बाँकी (Sundry Debtors)" : "Sundry Debtors (Receivables)",
-        group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
-        debit: receivable,
-        credit: 0
+    // Individual Debtors / Customer Receivables
+    Object.entries(partyBalances)
+      .filter(([k, b]) => k.startsWith("customer_") && b !== 0)
+      .forEach(([k, b]) => {
+        const id = k.replace("customer_", "");
+        const partyName = customerMap.get(id) || `Customer #${id.slice(0, 6)}`;
+        rows.push({
+          id: `debtor_${id}`,
+          name: `${partyName} (${lang === "NEP" ? "ग्राहक बक्यौता" : "Debtor"})`,
+          group: lang === "NEP" ? "चालू सम्पत्ति" : "Current Assets",
+          debit: b > 0 ? b : 0,
+          credit: b < 0 ? Math.abs(b) : 0
+        });
       });
-    }
 
     // Fixed Assets
     fixedAssetRows.forEach(a => rows.push(a));
@@ -456,16 +486,20 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     // Drawings
     drawingsRows.forEach(d => rows.push(d));
 
-    // Creditors / Payables
-    if (payable > 0) {
-      rows.push({
-        id: "sundry_creditors",
-        name: lang === "NEP" ? "सप्लायरलाई तिर्न बाँकी (Sundry Creditors)" : "Sundry Creditors (Payables)",
-        group: lang === "NEP" ? "चालू दायित्व" : "Current Liabilities",
-        debit: 0,
-        credit: payable
+    // Individual Creditors / Supplier Payables
+    Object.entries(partyBalances)
+      .filter(([k, b]) => k.startsWith("supplier_") && b !== 0)
+      .forEach(([k, b]) => {
+        const id = k.replace("supplier_", "");
+        const partyName = supplierMap.get(id) || `Supplier #${id.slice(0, 6)}`;
+        rows.push({
+          id: `creditor_${id}`,
+          name: `${partyName} (${lang === "NEP" ? "सप्लायर बक्यौता" : "Creditor"})`,
+          group: lang === "NEP" ? "चालू दायित्व" : "Current Liabilities",
+          debit: b < 0 ? Math.abs(b) : 0,
+          credit: b > 0 ? b : 0
+        });
       });
-    }
 
     // Loans
     loanRows.forEach(l => rows.push(l));
