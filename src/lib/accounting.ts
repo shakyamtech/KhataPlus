@@ -339,7 +339,7 @@ export async function createVoucher(
     credAccId = crItems[0]?.account_id || credAccId;
   }
 
-  const voucher: Voucher = {
+  const voucher: any = {
     id: voucherRef.id,
     user_id: userId,
     voucher_no: voucherNo,
@@ -351,11 +351,14 @@ export async function createVoucher(
     debit_account_name: debAccName,
     credit_account_id: credAccId,
     credit_account_name: credAccName,
-    entries: data.entries && data.entries.length > 0 ? data.entries : undefined,
     narration: data.narration.trim(),
     reference_no: data.reference_no?.trim() || "",
     created_at: new Date().toISOString()
   };
+
+  if (data.entries && data.entries.length > 0) {
+    voucher.entries = data.entries;
+  }
 
   const batch = writeBatch(db);
   batch.set(voucherRef, voucher);
@@ -499,7 +502,7 @@ export async function createReturnVoucher(params: CreateReturnVoucherParams): Pr
     ? `Sales Return (Credit Note) for Bill #${bill_no} - ${party_name}`
     : `Purchase Return (Debit Note) for Bill #${bill_no} - ${party_name}`;
 
-  const voucher: Voucher = {
+  const voucher: any = {
     id: voucherRef.id,
     user_id: userId,
     voucher_no: voucherNo,
@@ -507,21 +510,26 @@ export async function createReturnVoucher(params: CreateReturnVoucherParams): Pr
     date: finalDate,
     date_bs: finalDateBs,
     amount: total,
-    party_id,
-    party_name,
-    party_type,
-    bill_id,
-    bill_no,
+    party_id: party_id || "",
+    party_name: party_name || "",
+    party_type: party_type || "",
+    bill_id: bill_id || "",
+    bill_no: bill_no || "",
     return_items: items,
     subtotal,
     tax_amount,
     discount_amount,
-    refund_mode,
-    refund_account_id: refund_account_id || undefined,
-    refund_account_name: refund_account_name || undefined,
+    refund_mode: refund_mode || "adjust_ledger",
     narration: (narration && narration.trim()) || defaultNarration,
     created_at: nowIso
   };
+
+  if (refund_account_id) {
+    voucher.refund_account_id = refund_account_id;
+  }
+  if (refund_account_name) {
+    voucher.refund_account_name = refund_account_name;
+  }
 
   const batch = writeBatch(db);
   batch.set(voucherRef, voucher);
