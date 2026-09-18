@@ -34,7 +34,10 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
     bank: 0,
     stock: 0,
     receivable: 0,
+    grossFixedAssets: 0,
+    accumulatedDep: 0,
     fixedAssets: 0,
+    loansGiven: 0,
     payable: 0,
     loans: 0,
     outstanding: 0,
@@ -106,22 +109,37 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           });
         });
 
-        // 2. Calculate Fixed Assets (Vehicles, Computers, Furniture, etc.)
+        // 2. Calculate Fixed Assets (Vehicles, Computers, Furniture, etc.) & Accumulated Depreciation
         const assetAccounts = accounts.filter((a: any) => a.group === "fixed_assets");
-        let fixedAssetsTotal = assetAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
-        vouchers.forEach((v: any) => {
-          const impacts = getVoucherAccountImpacts(v);
-          impacts.forEach(imp => {
-            if (assetAccounts.some((a: any) => a.id === imp.account_id)) {
-              fixedAssetsTotal += (imp.debit - imp.credit);
-            }
-          });
-        });
-        // Include Cashbook fixed asset purchases (e.g. vehicle, computer, furniture bought via Cash)
+        let grossFixedAssets = 0;
+        let accumulatedDep = 0;
+
         const cashFixedAssets = cash
           .filter((c: any) => c.direction === "out" && (c.category === "fixed_asset" || c.account_group === "fixed_asset"))
           .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
-        fixedAssetsTotal += cashFixedAssets;
+
+        assetAccounts.forEach((a: any, idx: number) => {
+          let bal = Number(a.opening_balance || 0);
+          vouchers.forEach((v: any) => {
+            const impacts = getVoucherAccountImpacts(v);
+            impacts.forEach(imp => {
+              if (imp.account_id === a.id) bal += (imp.debit - imp.credit);
+            });
+          });
+          if (idx === 0) bal += cashFixedAssets;
+
+          if (bal > 0) {
+            grossFixedAssets += bal;
+          } else if (bal < 0) {
+            accumulatedDep += Math.abs(bal);
+          }
+        });
+
+        if (assetAccounts.length === 0 && cashFixedAssets > 0) {
+          grossFixedAssets += cashFixedAssets;
+        }
+
+        const fixedAssetsTotal = grossFixedAssets - accumulatedDep;
 
         // 2b. Loans Given & Advances (Asset side - money we gave to others)
         const loansGivenAccounts = accounts.filter((a: any) => a.group === "loans_advances_asset");
@@ -264,6 +282,8 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           bank: bankTotal,
           stock,
           receivable,
+          grossFixedAssets,
+          accumulatedDep,
           fixedAssets: fixedAssetsTotal,
           loansGiven: loansGivenTotal,
           payable,
@@ -397,10 +417,15 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                     <td style="padding:6px 8px; border:1px solid #111;">सरकारबाट लिन बाँकी भ्याट (VAT Receivable / Credit)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.vatReceivable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>` : ''}
-                  ${d.fixedAssets !== 0 ? `
+                  ${d.grossFixedAssets > 0 ? `
                   <tr>
-                    <td style="padding:6px 8px; border:1px solid #111;">${d.fixedAssets >= 0 ? "स्थिर सम्पत्ति (Fixed Assets - Net)" : "ह्रासकट्टी कट्टा (Accumulated Depreciation)"}</td>
-                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111; ${d.fixedAssets < 0 ? 'color:#c00;' : ''}">${d.fixedAssets >= 0 ? `Rs. ${d.fixedAssets.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `(Rs. ${Math.abs(d.fixedAssets).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}</td>
+                    <td style="padding:6px 8px; border:1px solid #111;">स्थिर सम्पत्ति (Gross Fixed Assets)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111;">Rs. ${d.grossFixedAssets.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>` : ''}
+                  ${d.accumulatedDep > 0 ? `
+                  <tr>
+                    <td style="padding:6px 8px; border:1px solid #111; color:#c00;">कट्टा: ह्रासकट्टी (Less: Accumulated Depreciation)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111; color:#c00;">(Rs. ${d.accumulatedDep.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</td>
                   </tr>` : ''}
                   ${d.loansGiven > 0 ? `
                   <tr>
@@ -547,11 +572,11 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
               {d.bank > 0 && <Row label="अन्तिम बैंक मौज्दात (Closing Bank Balances)" value={d.bank} />}
               <Row label="अन्तिम स्टक मौज्दात (Closing Stock at Cost)" value={d.stock} />
               <Row label="ग्राहकबाट उठ्न बाँकी (Customer Receivables)" value={d.receivable} />
-              {d.fixedAssets !== 0 && (
-                <Row
-                  label={d.fixedAssets >= 0 ? "स्थिर सम्पत्ति (Fixed Assets - Net)" : "ह्रासकट्टी कट्टा (Accumulated Depreciation)"}
-                  value={d.fixedAssets}
-                />
+              {d.grossFixedAssets > 0 && (
+                <Row label="स्थिर सम्पत्ति (Gross Fixed Assets)" value={d.grossFixedAssets} />
+              )}
+              {d.accumulatedDep > 0 && (
+                <Row label="कट्टा: ह्रासकट्टी (Less: Accumulated Depreciation)" value={-d.accumulatedDep} />
               )}
               {d.loansGiven > 0 && <Row label="दिएको ऋण तथा पेश्की (Loans Given & Advances)" value={d.loansGiven} />}
             </div>
