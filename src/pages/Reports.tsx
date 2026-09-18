@@ -2068,22 +2068,24 @@ const Reports = () => {
         <TabsContent value="pl" className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-card p-4 rounded-xl shadow-card border border-border/40">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h2 className="text-base sm:text-lg font-bold text-foreground">Profit & Loss Statement (नाफा-नोक्सान विवरण)</h2>
+              <h2 className="text-base sm:text-lg font-bold text-foreground">
+                {lang === "NEP" ? "नाफा-नोक्सान विवरण (Profit & Loss Statement)" : "Profit & Loss Statement"}
+              </h2>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
                     className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
-                    title="आर्थिक वर्ष परिवर्तन गर्नुहोस्"
+                    title={lang === "NEP" ? "आर्थिक वर्ष परिवर्तन गर्नुहोस्" : "Change Fiscal Year"}
                   >
                     <Landmark className="h-3 w-3" />
-                    <span>{plFiscalYear.labelNp} ({plFiscalYear.labelEn})</span>
+                    <span>{lang === "NEP" ? `${plFiscalYear.labelNp} (${plFiscalYear.labelEn})` : plFiscalYear.labelEn}</span>
                     <ChevronDown className="h-3 w-3 opacity-70" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-56">
                   <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
-                    आर्थिक वर्ष छान्नुहोस् (Select Fiscal Year)
+                    {lang === "NEP" ? "आर्थिक वर्ष छान्नुहोस् (Select Fiscal Year)" : "Select Fiscal Year"}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {fyOptions.map((fy) => {
@@ -2098,7 +2100,7 @@ const Reports = () => {
                       >
                         <div className="flex items-center gap-2">
                           <Landmark className="h-3.5 w-3.5 text-primary" />
-                          <span>{fy.labelNp} ({fy.labelEn})</span>
+                          <span>{lang === "NEP" ? `${fy.labelNp} (${fy.labelEn})` : fy.labelEn}</span>
                         </div>
                         {isSelected && <span className="text-[10px] font-bold text-primary">✓</span>}
                       </DropdownMenuItem>
@@ -2117,7 +2119,7 @@ const Reports = () => {
                   size="icon"
                   className="h-7 w-7"
                   onClick={goToPrevPlMonth}
-                  title="अघिल्लो महिना"
+                  title={lang === "NEP" ? "अघिल्लो महिना" : "Previous Month"}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -2127,7 +2129,7 @@ const Reports = () => {
                     <button
                       type="button"
                       className="font-semibold text-xs px-2.5 py-1 min-w-[110px] text-center select-none text-foreground hover:bg-background/80 rounded transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                      title="महिना छान्नुहोस् (Select Month)"
+                      title={lang === "NEP" ? "महिना छान्नुहोस् (Select Month)" : "Select Month"}
                     >
                       <span>{plMonthLabel}</span>
                       <ChevronDown className="h-3 w-3 opacity-60" />
@@ -2135,7 +2137,7 @@ const Reports = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="center" className="w-48 max-h-72 overflow-y-auto">
                     <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
-                      <span>महिना छान्नुहोस्</span>
+                      <span>{lang === "NEP" ? "महिना छान्नुहोस्" : "Select Month"}</span>
                       <span className="font-bold text-foreground">{plMonth.year}</span>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -2166,7 +2168,7 @@ const Reports = () => {
                   className="h-7 w-7"
                   onClick={goToNextPlMonth}
                   disabled={plMonth.year === new Date().getFullYear() && plMonth.month === new Date().getMonth()}
-                  title="पछिल्लो महिना"
+                  title={lang === "NEP" ? "पछिल्लो महिना" : "Next Month"}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -2175,7 +2177,7 @@ const Reports = () => {
               {/* Print Button */}
               <Button onClick={handlePrintPlReport} variant="outline" size="sm" className="h-8 gap-1.5 shrink-0">
                 <Printer className="h-3.5 w-3.5 text-primary" />
-                प्रिन्ट / PDF
+                {lang === "NEP" ? "प्रिन्ट / PDF" : "Print / PDF"}
               </Button>
             </div>
           </div>
@@ -2190,8 +2192,12 @@ const Reports = () => {
                       TRADING
                     </span>
                     <div>
-                      <h3 className="font-display text-lg font-bold text-foreground">व्यापार तथा बिक्री आम्दानी (Trading Income)</h3>
-                      <p className="text-[11px] text-muted-foreground">Sales Revenue, COGS & Gross Profit</p>
+                      <h3 className="font-display text-lg font-bold text-foreground">
+                        {lang === "NEP" ? "व्यापार तथा बिक्री आम्दानी (Trading Income)" : "Trading Income"}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        {lang === "NEP" ? "बिक्री आम्दानी, सामान लागत (COGS) र कुल नाफा" : "Sales Revenue, COGS & Gross Profit"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -2200,20 +2206,22 @@ const Reports = () => {
                   {/* Gross Sales & Deductions */}
                   <div className="py-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground font-medium">कुल बिक्री आम्दानी (Gross Sales)</span>
+                      <span className="text-muted-foreground font-medium">
+                        {lang === "NEP" ? "कुल बिक्री आम्दानी (Gross Sales)" : "Gross Sales Revenue"}
+                      </span>
                       <span className="font-semibold">{fmt(plTotals.grossRevenue)}</span>
                     </div>
                     {(plTotals.discountAllowed > 0 || plTotals.vatCollected > 0) && (
                       <div className="mt-1.5 pl-3 border-l-2 border-primary/40 space-y-1">
                         {plTotals.discountAllowed > 0 && (
                           <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>• ग्राहकलाई दिएको छुट (Discount Allowed)</span>
+                            <span>{lang === "NEP" ? "• ग्राहकलाई दिएको छुट (Discount Allowed)" : "• Discount Allowed to Customers"}</span>
                             <span className="font-mono text-destructive">({fmt(plTotals.discountAllowed)})</span>
                           </div>
                         )}
                         {plTotals.vatCollected > 0 && (
                           <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>• उठेको सरकारी भ्याट (Government VAT)</span>
+                            <span>{lang === "NEP" ? "• उठेको सरकारी भ्याट (Government VAT)" : "• Government VAT Collected"}</span>
                             <span className="font-mono text-amber-600 dark:text-amber-400">({fmt(plTotals.vatCollected)})</span>
                           </div>
                         )}
@@ -2223,18 +2231,22 @@ const Reports = () => {
 
                   {/* Net Sales */}
                   <div className="flex justify-between py-2 text-sm font-semibold">
-                    <span className="text-foreground">खुद बिक्री आम्दानी (Net Sales Revenue)</span>
+                    <span className="text-foreground">
+                      {lang === "NEP" ? "खुद बिक्री आम्दानी (Net Sales Revenue)" : "Net Sales Revenue"}
+                    </span>
                     <span className="text-primary font-mono">{fmt(plTotals.revenue)}</span>
                   </div>
 
                   {/* COGS */}
                   <div className="py-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground font-medium">बिक्री भएको सामानको लागत (Cost of Goods Sold - COGS)</span>
+                      <span className="text-muted-foreground font-medium">
+                        {lang === "NEP" ? "बिक्री भएको सामानको लागत (Cost of Goods Sold - COGS)" : "Cost of Goods Sold (COGS)"}
+                      </span>
                       <span className="font-semibold text-destructive font-mono">({fmt(plTotals.cogs)})</span>
                     </div>
                     <div className="mt-1 pl-3 border-l-2 border-amber-500/40 text-[11px] text-muted-foreground">
-                      • सुरुवाती स्टक + कुल खरिद - अन्तिम स्टक मौज्दात
+                      {lang === "NEP" ? "• सुरुवाती स्टक + कुल खरिद - अन्तिम स्टक मौज्दात" : "• Opening Stock + Total Purchases - Closing Stock"}
                     </div>
                   </div>
 
@@ -2242,7 +2254,9 @@ const Reports = () => {
                   {plTotals.wastage > 0 && (
                     <div className="py-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground font-medium">स्टक नोक्सानी (Inventory Wastage / Loss)</span>
+                        <span className="text-muted-foreground font-medium">
+                          {lang === "NEP" ? "स्टक नोक्सानी (Inventory Wastage / Loss)" : "Inventory Wastage & Loss"}
+                        </span>
                         <span className="font-semibold text-destructive font-mono">({fmt(plTotals.wastage)})</span>
                       </div>
                     </div>
@@ -2252,7 +2266,9 @@ const Reports = () => {
 
               <div className="mt-6 pt-3 border-t-2 border-border/80">
                 <div className="flex justify-between items-center py-2.5 px-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-                  <span className="font-display font-bold text-sm text-foreground">कुल नाफा (Gross Profit)</span>
+                  <span className="font-display font-bold text-sm text-foreground">
+                    {lang === "NEP" ? "कुल नाफा (Gross Profit)" : "Gross Profit"}
+                  </span>
                   <span className="font-mono font-extrabold text-base text-emerald-600 dark:text-emerald-400">{fmt(plTotals.gross)}</span>
                 </div>
               </div>
@@ -2267,8 +2283,12 @@ const Reports = () => {
                       EXPENSES
                     </span>
                     <div>
-                      <h3 className="font-display text-lg font-bold text-foreground">सञ्चालन खर्च तथा बचत (Expenses & Other Income)</h3>
-                      <p className="text-[11px] text-muted-foreground">Rent, Utilities, Depreciation & Discounts</p>
+                      <h3 className="font-display text-lg font-bold text-foreground">
+                        {lang === "NEP" ? "सञ्चालन खर्च तथा बचत (Expenses & Other Income)" : "Expenses & Other Income"}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        {lang === "NEP" ? "भाडा, बिजुली, ह्रासकट्टी र खरिद छुट आम्दानी" : "Rent, Utilities, Depreciation & Discounts"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -2278,11 +2298,13 @@ const Reports = () => {
                   {plTotals.discountReceived > 0 && (
                     <div className="py-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground font-medium">खरिदमा पाएको छुट (Discount Received)</span>
+                        <span className="text-muted-foreground font-medium">
+                          {lang === "NEP" ? "खरिदमा पाएको छुट (Discount Received)" : "Discount Received (Purchase Discount)"}
+                        </span>
                         <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono">+{fmt(plTotals.discountReceived)}</span>
                       </div>
                       <div className="mt-1 pl-3 border-l-2 border-emerald-500/40 text-xs text-muted-foreground">
-                        • खरिद बिलहरूबाट प्राप्त कुल व्यापारिक छुट
+                        {lang === "NEP" ? "• खरिद बिलहरूबाट प्राप्त कुल व्यापारिक छुट" : "• Commercial discounts received on purchase bills"}
                       </div>
                     </div>
                   )}
@@ -2290,7 +2312,9 @@ const Reports = () => {
                   {/* Operating & Indirect Expenses with Sub-ledger breakdown */}
                   <div className="py-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground font-medium">सञ्चालन तथा अन्य खर्चहरू (Operating Expenses)</span>
+                      <span className="text-muted-foreground font-medium">
+                        {lang === "NEP" ? "सञ्चालन तथा अन्य खर्चहरू (Operating Expenses)" : "Operating & Administrative Expenses"}
+                      </span>
                       <span className="font-semibold text-destructive font-mono">({fmt(plTotals.exp)})</span>
                     </div>
                     {plTotals.itemizedExpenses && plTotals.itemizedExpenses.length > 0 ? (
@@ -2304,7 +2328,7 @@ const Reports = () => {
                       </div>
                     ) : (
                       <div className="mt-1 pl-3 border-l-2 border-border/40 text-xs text-muted-foreground">
-                        कुनै सञ्चालन खर्च प्रविष्टि छैन (Rs. ०.००)
+                        {lang === "NEP" ? "कुनै सञ्चालन खर्च प्रविष्टि छैन (Rs. ०.००)" : "No operating expenses recorded (Rs. 0.00)"}
                       </div>
                     )}
                   </div>
@@ -2313,7 +2337,9 @@ const Reports = () => {
 
               <div className="mt-6 pt-3 border-t-2 border-border/80">
                 <div className={`flex justify-between items-center py-2.5 px-3.5 rounded-xl ${plTotals.net >= 0 ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400"}`}>
-                  <span className="font-display font-bold text-sm text-foreground">खुद व्यापारिक नाफा / नोक्सान (Net Profit)</span>
+                  <span className="font-display font-bold text-sm text-foreground">
+                    {lang === "NEP" ? "खुद व्यापारिक नाफा / नोक्सान (Net Profit)" : (plTotals.net >= 0 ? "Net Profit" : "Net Loss")}
+                  </span>
                   <span className="font-mono font-extrabold text-base">{fmt(plTotals.net)}</span>
                 </div>
               </div>
@@ -2323,9 +2349,13 @@ const Reports = () => {
           {/* Net Business Profit Section (Full Width Banner) */}
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 p-5 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/25 rounded-2xl shadow-sm">
             <div>
-              <div className="text-xs font-bold text-primary uppercase tracking-widest">Net Business Profit (अन्तिम खुद नाफा)</div>
+              <div className="text-xs font-bold text-primary uppercase tracking-widest">
+                {lang === "NEP" ? "अन्तिम खुद नाफा (Net Business Profit)" : "Net Business Profit"}
+              </div>
               <div className="text-[11px] text-muted-foreground mt-1">
-                Calculated as: Gross Profit {plTotals.discountReceived > 0 ? "+ Other Income " : ""}- Total Expenses
+                {lang === "NEP"
+                  ? `हिसाब: कुल नाफा ${plTotals.discountReceived > 0 ? "+ अन्य आम्दानी " : ""}- कुल खर्च`
+                  : `Calculated as: Gross Profit ${plTotals.discountReceived > 0 ? "+ Other Income " : ""}- Total Expenses`}
               </div>
             </div>
             <div className={`text-3xl md:text-4xl font-display font-bold ${plTotals.net >= 0 ? "text-primary" : "text-destructive"}`}>
