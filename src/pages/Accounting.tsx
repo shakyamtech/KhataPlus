@@ -838,9 +838,28 @@ export default function Accounting() {
   const handleAddJournalRow = () => {
     const lastRow = journalRows[journalRows.length - 1];
     const nextType: "debit" | "credit" = lastRow?.type === "debit" ? "credit" : "debit";
+
+    // Calculate current difference between total Dr and total Cr
+    let dr = 0;
+    let cr = 0;
+    journalRows.forEach(r => {
+      const amt = Number(r.amount || 0);
+      if (r.type === "debit") dr += amt;
+      else cr += amt;
+    });
+
+    let autoAmt = "";
+    if (nextType === "credit" && dr > cr) {
+      const diff = Math.round((dr - cr) * 100) / 100;
+      if (diff > 0) autoAmt = String(diff);
+    } else if (nextType === "debit" && cr > dr) {
+      const diff = Math.round((cr - dr) * 100) / 100;
+      if (diff > 0) autoAmt = String(diff);
+    }
+
     setJournalRows(prev => [
       ...prev,
-      { id: Math.random().toString(36).slice(2, 9), type: nextType, account_id: "", amount: "" }
+      { id: Math.random().toString(36).slice(2, 9), type: nextType, account_id: "", amount: autoAmt }
     ]);
   };
 
@@ -853,7 +872,60 @@ export default function Accounting() {
   };
 
   const handleUpdateJournalRow = (id: string, field: keyof JournalRow, value: any) => {
-    setJournalRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+    setJournalRows(prev => {
+      const targetRow = prev.find(r => r.id === id);
+      if (!targetRow) return prev;
+
+      // If user selected an account and the amount is currently empty or 0, auto-balance!
+      if (field === "account_id" && value && (!targetRow.amount || Number(targetRow.amount) === 0)) {
+        let otherDr = 0;
+        let otherCr = 0;
+        prev.forEach(r => {
+          if (r.id === id) return;
+          const amt = Number(r.amount || 0);
+          if (r.type === "debit") otherDr += amt;
+          else otherCr += amt;
+        });
+
+        let autoAmt = targetRow.amount;
+        if (targetRow.type === "credit" && otherDr > otherCr) {
+          const diff = Math.round((otherDr - otherCr) * 100) / 100;
+          if (diff > 0) autoAmt = String(diff);
+        } else if (targetRow.type === "debit" && otherCr > otherDr) {
+          const diff = Math.round((otherCr - otherDr) * 100) / 100;
+          if (diff > 0) autoAmt = String(diff);
+        }
+
+        return prev.map(r => r.id === id ? { ...r, account_id: value, amount: autoAmt } : r);
+      }
+
+      // If user switched Dr / Cr type and amount is empty or 0, check balancing
+      if (field === "type") {
+        const newType: "debit" | "credit" = value;
+        let otherDr = 0;
+        let otherCr = 0;
+        prev.forEach(r => {
+          if (r.id === id) return;
+          const amt = Number(r.amount || 0);
+          if (r.type === "debit") otherDr += amt;
+          else otherCr += amt;
+        });
+
+        let autoAmt = targetRow.amount;
+        if (!targetRow.amount || Number(targetRow.amount) === 0) {
+          if (newType === "credit" && otherDr > otherCr) {
+            const diff = Math.round((otherDr - otherCr) * 100) / 100;
+            if (diff > 0) autoAmt = String(diff);
+          } else if (newType === "debit" && otherCr > otherDr) {
+            const diff = Math.round((otherCr - otherDr) * 100) / 100;
+            if (diff > 0) autoAmt = String(diff);
+          }
+        }
+        return prev.map(r => r.id === id ? { ...r, type: newType, amount: autoAmt } : r);
+      }
+
+      return prev.map(r => r.id === id ? { ...r, [field]: value } : r);
+    });
   };
 
   const journalTotals = useMemo(() => {
@@ -1470,7 +1542,28 @@ export default function Accounting() {
         } else if (quickTarget.type === "receiptRow") {
           setReceiptRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined } : r));
         } else if (quickTarget.type === "journalRow") {
-          setJournalRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id } : r));
+          setJournalRows(prev => prev.map(r => {
+            if (r.id !== quickTarget.id) return r;
+            let autoAmt = r.amount;
+            if (!r.amount || Number(r.amount) === 0) {
+              let otherDr = 0;
+              let otherCr = 0;
+              prev.forEach(x => {
+                if (x.id === r.id) return;
+                const amt = Number(x.amount || 0);
+                if (x.type === "debit") otherDr += amt;
+                else otherCr += amt;
+              });
+              if (r.type === "credit" && otherDr > otherCr) {
+                const diff = Math.round((otherDr - otherCr) * 100) / 100;
+                if (diff > 0) autoAmt = String(diff);
+              } else if (r.type === "debit" && otherCr > otherDr) {
+                const diff = Math.round((otherCr - otherDr) * 100) / 100;
+                if (diff > 0) autoAmt = String(diff);
+              }
+            }
+            return { ...r, account_id: newAcc.id, amount: autoAmt };
+          }));
         } else if (quickTarget.type === "debitAccountId") {
           setDebitAccountId(newAcc.id);
         } else if (quickTarget.type === "creditAccountId") {
@@ -1499,7 +1592,26 @@ export default function Accounting() {
             const emptyIdx = prev.findIndex(r => !r.account_id);
             const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
             const updated = [...prev];
-            updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id };
+            const targetRow = updated[targetIdx];
+            let autoAmt = targetRow?.amount || "";
+            if (!autoAmt || Number(autoAmt) === 0) {
+              let otherDr = 0;
+              let otherCr = 0;
+              prev.forEach((x, idx) => {
+                if (idx === targetIdx) return;
+                const amt = Number(x.amount || 0);
+                if (x.type === "debit") otherDr += amt;
+                else otherCr += amt;
+              });
+              if (targetRow?.type === "credit" && otherDr > otherCr) {
+                const diff = Math.round((otherDr - otherCr) * 100) / 100;
+                if (diff > 0) autoAmt = String(diff);
+              } else if (targetRow?.type === "debit" && otherCr > otherDr) {
+                const diff = Math.round((otherCr - otherDr) * 100) / 100;
+                if (diff > 0) autoAmt = String(diff);
+              }
+            }
+            updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id, amount: autoAmt };
             return updated;
           });
         } else if (voucherType === "contra") {
