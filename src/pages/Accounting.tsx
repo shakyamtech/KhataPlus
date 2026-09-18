@@ -988,13 +988,26 @@ export default function Accounting() {
       }
       toast.success(isNep ? "कैफियत तयार भयो (Auto Generated)" : "Narration auto-generated");
     } else if (voucherType === "journal") {
+      const getAccName = (accId: string) => {
+        if (!accId) return "";
+        if (accId.startsWith("party_customer_")) {
+          const cId = accId.replace("party_customer_", "");
+          return customersDocs.find(c => c.id === cId)?.name || "Customer";
+        }
+        if (accId.startsWith("party_supplier_")) {
+          const sId = accId.replace("party_supplier_", "");
+          return suppliersDocs.find(s => s.id === sId)?.name || "Supplier";
+        }
+        return accounts.find(a => a.id === accId)?.name || "";
+      };
+
       const drNames = journalRows
         .filter(r => r.type === "debit")
-        .map(r => accounts.find(a => a.id === r.account_id)?.name)
+        .map(r => getAccName(r.account_id))
         .filter(Boolean);
       const crNames = journalRows
         .filter(r => r.type === "credit")
-        .map(r => accounts.find(a => a.id === r.account_id)?.name)
+        .map(r => getAccName(r.account_id))
         .filter(Boolean);
 
       const drStr = drNames.length > 0 ? drNames.join(", ") : (isNep ? "डेबिट खाता" : "Dr. Account");
@@ -1042,10 +1055,22 @@ export default function Accounting() {
       }
 
       const entries: VoucherEntryItem[] = journalRows.map(r => {
-        const acc = accounts.find(a => a.id === r.account_id);
+        let name = "";
+        if (r.account_id.startsWith("party_customer_")) {
+          const cId = r.account_id.replace("party_customer_", "");
+          const c = customersDocs.find(x => x.id === cId);
+          name = c ? `${c.name} (Customer)` : "Customer";
+        } else if (r.account_id.startsWith("party_supplier_")) {
+          const sId = r.account_id.replace("party_supplier_", "");
+          const s = suppliersDocs.find(x => x.id === sId);
+          name = s ? `${s.name} (Supplier)` : "Supplier";
+        } else {
+          const acc = accounts.find(a => a.id === r.account_id);
+          name = acc?.name || "";
+        }
         return {
           account_id: r.account_id,
-          account_name: acc?.name || "",
+          account_name: name,
           type: r.type,
           amount: Number(r.amount)
         };
@@ -1060,6 +1085,63 @@ export default function Accounting() {
           narration: narration || "JOURNAL voucher entry",
           reference_no: referenceNo
         });
+
+        // Sync party ledger entries for any party involved in journal
+        const hasParty = journalRows.some(r => r.account_id.startsWith("party_customer_") || r.account_id.startsWith("party_supplier_"));
+        if (hasParty) {
+          const batch = writeBatch(db);
+          const now = new Date().toISOString();
+          const dualDates = resolveDualDates(voucherDate);
+          const entryDate = dualDates.dateAd || voucherDate;
+
+          for (const r of journalRows) {
+            const rowAmt = Number(r.amount);
+            if (rowAmt <= 0) continue;
+
+            if (r.account_id.startsWith("party_customer_")) {
+              const custId = r.account_id.replace("party_customer_", "");
+              const cust = customersDocs.find(c => c.id === custId);
+              const lRef = doc(collection(db, "ledger_entries"));
+              batch.set(lRef, {
+                id: lRef.id,
+                user_id: user.uid,
+                party_type: "customer",
+                party_id: custId,
+                entry_type: r.type === "debit" ? "debit" : "credit",
+                party_name: cust?.name || "Customer",
+                amount: rowAmt,
+                payment_mode: "journal",
+                voucher_id: newV.id,
+                voucher_no: newV.voucher_no,
+                is_settlement: false,
+                note: narration ? `${narration} · JV #${newV.voucher_no}` : `Journal Adjustment (${newV.voucher_no})`,
+                created_at: now,
+                date: entryDate
+              });
+            } else if (r.account_id.startsWith("party_supplier_")) {
+              const suppId = r.account_id.replace("party_supplier_", "");
+              const supp = suppliersDocs.find(s => s.id === suppId);
+              const lRef = doc(collection(db, "ledger_entries"));
+              batch.set(lRef, {
+                id: lRef.id,
+                user_id: user.uid,
+                party_type: "supplier",
+                party_id: suppId,
+                entry_type: r.type === "debit" ? "debit" : "credit",
+                party_name: supp?.name || "Supplier",
+                amount: rowAmt,
+                payment_mode: "journal",
+                voucher_id: newV.id,
+                voucher_no: newV.voucher_no,
+                is_settlement: false,
+                note: narration ? `${narration} · JV #${newV.voucher_no}` : `Journal Adjustment (${newV.voucher_no})`,
+                created_at: now,
+                date: entryDate
+              });
+            }
+          }
+          await batch.commit();
+        }
 
         toast.success(
           lang === "NEP"
@@ -4093,12 +4175,24 @@ export default function Accounting() {
                                 onValueChange={(val) => handleUpdateJournalRow(row.id, "account_id", val)}
                               >
                                 <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left font-medium">
-                                  <SelectValue placeholder={lang === "NEP" ? `खाता छान्नुहोस् #${idx + 1}...` : `Select Account #${idx + 1}...`}>
-                                    {row.account_id && accounts.find(a => a.id === row.account_id)?.name}
+                                  <SelectValue placeholder={lang === "NEP" ? `खाता वा पार्टी छान्नुहोस् #${idx + 1}...` : `Select Account / Party #${idx + 1}...`}>
+                                    {row.account_id && (() => {
+                                      if (row.account_id.startsWith("party_customer_")) {
+                                        const cId = row.account_id.replace("party_customer_", "");
+                                        const c = customersDocs.find(x => x.id === cId);
+                                        return c ? `👥 ${c.name}` : row.account_id;
+                                      }
+                                      if (row.account_id.startsWith("party_supplier_")) {
+                                        const sId = row.account_id.replace("party_supplier_", "");
+                                        const s = suppliersDocs.find(x => x.id === sId);
+                                        return s ? `🏢 ${s.name}` : row.account_id;
+                                      }
+                                      return accounts.find(a => a.id === row.account_id)?.name;
+                                    })()}
                                   </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {renderGroupedAccountOptions(accounts, true)}
+                                  {renderGroupedAccountOptions(accounts, true, "both")}
                                 </SelectContent>
                               </Select>
                             </div>
