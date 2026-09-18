@@ -2603,6 +2603,98 @@ export default function Accounting() {
     };
   }, [cashDocs, productDocs, ledgerDocs, salesDocs, accounts, vouchers, stockAdjDocs, lang]);
 
+  // Live running balance calculation for each account in Chart of Accounts
+  const accountLiveBalances = useMemo(() => {
+    const map: Record<string, number> = {};
+
+    // 1. Physical Cash & Wallets
+    const cashChannelDocs = cashDocs.filter((c: any) => (c.payment_method || "cash").toLowerCase() === "cash");
+    const cashIn = cashChannelDocs.filter((c: any) => c.direction === "in").reduce((s, r: any) => s + +r.amount, 0);
+    const cashOut = cashChannelDocs.filter((c: any) => c.direction === "out").reduce((s, r: any) => s + +r.amount, 0);
+    const physicalCashBal = cashIn - cashOut;
+
+    // 2. Cashbook Category Summaries
+    const capitalCats = ["opening", "capital", "investment", "owner_investment"];
+    const cashCapital = cashDocs
+      .filter((c: any) => c.direction === "in" && (capitalCats.includes((c.category || "").toLowerCase()) || c.account_group === "capital"))
+      .reduce((s, r: any) => s + +r.amount, 0);
+
+    const cashDrawings = cashDocs
+      .filter((c: any) => c.direction === "out" && ((c.category || "").toLowerCase() === "personal" || c.account_group === "drawings"))
+      .reduce((s, r: any) => s + +r.amount, 0);
+
+    const cashFixedAssets = cashDocs
+      .filter((c: any) => c.direction === "out" && (c.category === "fixed_asset" || c.account_group === "fixed_asset"))
+      .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+
+    const cashLoansTaken = cashDocs
+      .filter((c: any) => c.direction === "in" && (c.category === "loan" || c.account_group === "loan"))
+      .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+    const cashLoansRepaid = cashDocs
+      .filter((c: any) => c.direction === "out" && (c.category === "loan_repayment" || c.account_group === "loan" || c.account_group === "loan_repayment"))
+      .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+    const netCashLoans = cashLoansTaken - cashLoansRepaid;
+
+    // 3. Voucher impacts
+    const voucherImpactsMap: Record<string, { dr: number; cr: number }> = {};
+    vouchers.forEach(v => {
+      const impacts = getVoucherAccountImpacts(v);
+      impacts.forEach(imp => {
+        if (!voucherImpactsMap[imp.account_id]) {
+          voucherImpactsMap[imp.account_id] = { dr: 0, cr: 0 };
+        }
+        voucherImpactsMap[imp.account_id].dr += imp.debit;
+        voucherImpactsMap[imp.account_id].cr += imp.credit;
+      });
+    });
+
+    const firstCapAcc = accounts.find(a => a.group === "capital");
+    const firstDrawAcc = accounts.find(a => a.group === "drawings");
+    const firstAssetAcc = accounts.find(a => a.group === "fixed_assets");
+    const firstLoanAcc = accounts.find(a => a.group === "loans_liabilities");
+
+    accounts.forEach(acc => {
+      const op = Number(acc.opening_balance || 0);
+      const vImp = voucherImpactsMap[acc.id] || { dr: 0, cr: 0 };
+
+      if (acc.group === "cash") {
+        map[acc.id] = physicalCashBal;
+      } else if (acc.group === "bank_accounts") {
+        map[acc.id] = op + (vImp.dr - vImp.cr);
+      } else if (acc.group === "fixed_assets") {
+        let bal = op + (vImp.dr - vImp.cr);
+        if (acc.id === firstAssetAcc?.id) bal += cashFixedAssets;
+        map[acc.id] = bal;
+      } else if (acc.group === "loans_advances_asset" || acc.group === "current_assets") {
+        map[acc.id] = op + (vImp.dr - vImp.cr);
+      } else if (acc.group === "capital") {
+        let bal = op + (vImp.cr - vImp.dr);
+        if (acc.id === firstCapAcc?.id) bal += cashCapital;
+        map[acc.id] = bal;
+      } else if (acc.group === "drawings") {
+        let bal = op + (vImp.dr - vImp.cr);
+        if (acc.id === firstDrawAcc?.id) bal += cashDrawings;
+        map[acc.id] = bal;
+      } else if (acc.group === "loans_liabilities") {
+        let bal = op + (vImp.cr - vImp.dr);
+        if (acc.id === firstLoanAcc?.id) bal += netCashLoans;
+        map[acc.id] = bal;
+      } else if (acc.group === "current_liabilities" || acc.group === "duties_taxes") {
+        map[acc.id] = op + (vImp.cr - vImp.dr);
+      } else if (acc.type === "expense") {
+        map[acc.id] = op + (vImp.dr - vImp.cr);
+      } else if (acc.type === "income") {
+        map[acc.id] = op + (vImp.cr - vImp.dr);
+      } else {
+        map[acc.id] = acc.type === "asset" || acc.type === "expense"
+          ? op + (vImp.dr - vImp.cr)
+          : op + (vImp.cr - vImp.dr);
+      }
+    });
+
+    return map;
+  }, [accounts, vouchers, cashDocs]);
+
   const handlePrintTrialBalance = () => {
     if (!shopInfo) return;
     const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
@@ -3422,24 +3514,29 @@ export default function Accounting() {
               <div className="space-y-2">
                 {accounts
                   .filter(a => a.type === "asset")
-                  .map(acc => (
-                    <div
-                      key={acc.id}
-                      className="p-3 rounded-lg border bg-card/60 hover:border-primary/40 transition-colors flex items-center justify-between text-xs group"
-                    >
-                      <div>
-                        <div className="font-semibold text-foreground">{acc.name}</div>
-                        <div className="text-[10px] text-muted-foreground">{groupLabel(acc.group)}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-right font-mono font-bold">
-                          {acc.is_system && acc.group === "cash" ? (
-                            <span className="text-[11px] text-primary">Live Shop Cash</span>
-                          ) : (
-                            <span>{fmt(acc.opening_balance || 0)}</span>
-                          )}
+                  .map(acc => {
+                    const liveBal = accountLiveBalances[acc.id] ?? (acc.opening_balance || 0);
+                    const hasOp = Number(acc.opening_balance || 0) !== 0;
+                    return (
+                      <div
+                        key={acc.id}
+                        className="p-3 rounded-lg border bg-card/60 hover:border-primary/40 transition-colors flex items-center justify-between text-xs group"
+                      >
+                        <div>
+                          <div className="font-semibold text-foreground">{acc.name}</div>
+                          <div className="text-[10px] text-muted-foreground">{groupLabel(acc.group)}</div>
                         </div>
-                        {!(acc.is_system && acc.group === "cash") && (
+                        <div className="flex items-center gap-2">
+                          <div className="text-right font-mono">
+                            <div className="font-bold text-foreground">
+                              {fmt(liveBal)}
+                            </div>
+                            {hasOp && (
+                              <div className="text-[10px] text-muted-foreground">
+                                Op: {fmt(acc.opening_balance || 0)}
+                              </div>
+                            )}
+                          </div>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -3449,21 +3546,21 @@ export default function Accounting() {
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
-                        )}
-                        {!acc.is_system && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-60 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
-                            onClick={() => handleDeleteAccount(acc)}
-                            title={lang === "NEP" ? "खाता हटाउनुहोस्" : "Delete Account"}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
+                          {!acc.is_system && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-60 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
+                              onClick={() => handleDeleteAccount(acc)}
+                              title={lang === "NEP" ? "खाता हटाउनुहोस्" : "Delete Account"}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
 
@@ -3481,42 +3578,53 @@ export default function Accounting() {
               <div className="space-y-2">
                 {accounts
                   .filter(a => a.type === "liability" || a.type === "equity")
-                  .map(acc => (
-                    <div
-                      key={acc.id}
-                      className="p-3 rounded-lg border bg-card/60 hover:border-primary/40 transition-colors flex items-center justify-between text-xs group"
-                    >
-                      <div>
-                        <div className="font-semibold text-foreground">{acc.name}</div>
-                        <div className="text-[10px] text-muted-foreground">{groupLabel(acc.group)}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-right font-mono font-bold">
-                          <span>{fmt(acc.opening_balance || 0)}</span>
+                  .map(acc => {
+                    const liveBal = accountLiveBalances[acc.id] ?? (acc.opening_balance || 0);
+                    const hasOp = Number(acc.opening_balance || 0) !== 0;
+                    return (
+                      <div
+                        key={acc.id}
+                        className="p-3 rounded-lg border bg-card/60 hover:border-primary/40 transition-colors flex items-center justify-between text-xs group"
+                      >
+                        <div>
+                          <div className="font-semibold text-foreground">{acc.name}</div>
+                          <div className="text-[10px] text-muted-foreground">{groupLabel(acc.group)}</div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-60 group-hover:opacity-100 hover:text-primary transition-opacity"
-                          onClick={() => handleOpenEditAccount(acc)}
-                          title={lang === "NEP" ? "सुरुवाती मौज्दात सम्पादन" : "Edit Opening Balance"}
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        {!acc.is_system && (
+                        <div className="flex items-center gap-2">
+                          <div className="text-right font-mono">
+                            <div className="font-bold text-foreground">
+                              {fmt(liveBal)}
+                            </div>
+                            {hasOp && (
+                              <div className="text-[10px] text-muted-foreground">
+                                Op: {fmt(acc.opening_balance || 0)}
+                              </div>
+                            )}
+                          </div>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 opacity-60 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
-                            onClick={() => handleDeleteAccount(acc)}
-                            title={lang === "NEP" ? "खाता हटाउनुहोस्" : "Delete Account"}
+                            className="h-6 w-6 opacity-60 group-hover:opacity-100 hover:text-primary transition-opacity"
+                            onClick={() => handleOpenEditAccount(acc)}
+                            title={lang === "NEP" ? "सुरुवाती मौज्दात सम्पादन" : "Edit Opening Balance"}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Pencil className="h-3 w-3" />
                           </Button>
-                        )}
+                          {!acc.is_system && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-60 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
+                              onClick={() => handleDeleteAccount(acc)}
+                              title={lang === "NEP" ? "खाता हटाउनुहोस्" : "Delete Account"}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
 
@@ -3534,42 +3642,56 @@ export default function Accounting() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {accounts
                   .filter(a => a.type === "expense" || a.type === "income")
-                  .map(acc => (
-                    <div
-                      key={acc.id}
-                      className="p-3 rounded-lg border bg-card/60 hover:border-primary/40 transition-colors flex items-center justify-between text-xs group"
-                    >
-                      <div>
-                        <div className="font-semibold text-foreground">{acc.name}</div>
-                        <div className="text-[10px] text-muted-foreground">{groupLabel(acc.group)}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px]">
-                          {acc.type.toUpperCase()}
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-60 group-hover:opacity-100 hover:text-primary transition-opacity"
-                          onClick={() => handleOpenEditAccount(acc)}
-                          title={lang === "NEP" ? "सुरुवाती मौज्दात सम्पादन" : "Edit Opening Balance"}
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        {!acc.is_system && (
+                  .map(acc => {
+                    const liveBal = accountLiveBalances[acc.id] ?? (acc.opening_balance || 0);
+                    const hasOp = Number(acc.opening_balance || 0) !== 0;
+                    return (
+                      <div
+                        key={acc.id}
+                        className="p-3 rounded-lg border bg-card/60 hover:border-primary/40 transition-colors flex items-center justify-between text-xs group"
+                      >
+                        <div>
+                          <div className="font-semibold text-foreground">{acc.name}</div>
+                          <div className="text-[10px] text-muted-foreground">{groupLabel(acc.group)}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right font-mono">
+                            <div className="font-bold text-foreground">
+                              {fmt(liveBal)}
+                            </div>
+                            {hasOp && (
+                              <div className="text-[10px] text-muted-foreground">
+                                Op: {fmt(acc.opening_balance || 0)}
+                              </div>
+                            )}
+                          </div>
+                          <Badge variant="outline" className="text-[10px]">
+                            {acc.type.toUpperCase()}
+                          </Badge>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 opacity-60 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
-                            onClick={() => handleDeleteAccount(acc)}
-                            title={lang === "NEP" ? "खाता हटाउनुहोस्" : "Delete Account"}
+                            className="h-6 w-6 opacity-60 group-hover:opacity-100 hover:text-primary transition-opacity"
+                            onClick={() => handleOpenEditAccount(acc)}
+                            title={lang === "NEP" ? "सुरुवाती मौज्दात सम्पादन" : "Edit Opening Balance"}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Pencil className="h-3 w-3" />
                           </Button>
-                        )}
+                          {!acc.is_system && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-60 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
+                              onClick={() => handleDeleteAccount(acc)}
+                              title={lang === "NEP" ? "खाता हटाउनुहोस्" : "Delete Account"}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
           </div>
