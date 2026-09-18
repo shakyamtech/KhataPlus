@@ -10,7 +10,7 @@ import { fmt } from "@/lib/format";
 import { format } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Landmark, Sparkles } from "lucide-react";
+import { Printer, Landmark, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
 import { getAccounts, Account, Voucher, getVoucherAccountImpacts } from "@/lib/accounting";
 import { BalanceSheetAssistantModal } from "@/components/BalanceSheetAssistantModal";
@@ -426,6 +426,8 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
   const netProfit = grossProfit + (d.otherIncomes || 0) - d.expenses;
   const totalEquity = d.capital + netProfit - d.drawings;
   const totalLiabilitiesAndEquity = d.payable + d.loans + d.outstanding + d.vatPayable + totalEquity;
+  const difference = Math.round(Math.abs(totalAssets - totalLiabilitiesAndEquity) * 100) / 100;
+  const isBalanced = difference < 0.05;
 
   const handlePrintBalanceSheet = () => {
     if (!shopInfo) return;
@@ -683,14 +685,27 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           <Button
             variant="outline"
             size="sm"
-            className="gap-1.5 border-primary/40 text-primary bg-primary/10 hover:bg-primary/20 font-bold shadow-xs active:scale-95 cursor-pointer"
+            className={`gap-1.5 font-bold shadow-xs active:scale-95 cursor-pointer ${
+              !isBalanced
+                ? "border-destructive/50 text-destructive bg-destructive/10 hover:bg-destructive/20 animate-pulse"
+                : "border-primary/40 text-primary bg-primary/10 hover:bg-primary/20"
+            }`}
             onClick={() => {
-              setAssistantTab("diagnostics");
+              setAssistantTab(isBalanced ? "health" : "diagnostics");
               setAssistantOpen(true);
             }}
           >
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span>{lang === "NEP" ? "वासलात सहायक" : "Audit Assistant"}</span>
+            {isBalanced ? (
+              <>
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span>{lang === "NEP" ? "वासलात विश्लेषण तथा स्वास्थ्य" : "Financial Insights"}</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                <span>{lang === "NEP" ? `वासलात मिलान सहायक (फरक: ${fmt(difference)})` : `Fix Imbalance (${fmt(difference)})`}</span>
+              </>
+            )}
           </Button>
 
           <Button onClick={handlePrintBalanceSheet} variant="outline" size="sm" className="gap-2 shrink-0">

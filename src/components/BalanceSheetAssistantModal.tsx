@@ -186,7 +186,7 @@ export function BalanceSheetAssistantModal({
       ? suppEntries.map(([name, amt]) => `${name} (${fmt(amt)})`).join(" + ")
       : "Supplier / COGS";
 
-    if (unrecordedDiscount > 0.5) {
+    if (!isBalanced && unrecordedDiscount > 0.5) {
       list.push({
         id: "purchase_discount",
         categoryNp: discountExplainsDifference ? "मुख्य कारण: खरिद छुट" : "खरिद छुट आम्दानी",
@@ -568,128 +568,168 @@ export function BalanceSheetAssistantModal({
             </div>
 
             <div className="space-y-3.5">
-              {diagnosisList.map((item, idx) => (
-                <Card
-                  key={item.id + idx}
-                  className={`p-4 rounded-xl border-2 space-y-3 shadow-xs ${
-                    item.severity === "error"
-                      ? "border-destructive/40 bg-destructive/5"
-                      : item.severity === "warning"
-                      ? "border-amber-500/40 bg-amber-500/5"
-                      : "border-primary/20 bg-card"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider">
-                          {lang === "NEP" ? item.categoryNp : item.categoryEn}
-                        </Badge>
-                        <span className="text-xs font-bold text-foreground">
-                          {lang === "NEP" ? item.titleNp : item.titleEn}
-                        </span>
+              {diagnosisList.length === 0 ? (
+                <Card className="p-6 sm:p-8 rounded-xl border border-emerald-500/30 bg-emerald-500/5 text-center space-y-4">
+                  <div className="h-14 w-14 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
+                    <CheckCircle2 className="h-7 w-7" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-base font-bold text-foreground">
+                      {lang === "NEP" ? "वासलात १००% सन्तुलित छ (Perfectly Balanced)" : "Balance Sheet is 100% Balanced"}
+                    </h4>
+                    <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+                      {lang === "NEP"
+                        ? "तपाईंको कुल सम्पत्ति र कुल दायित्व तथा पुँजी पूर्ण रूपमा मिलेको छ (Difference = ०.००)। कुनै पनि बेमेल वा त्रुटि छैन।"
+                        : "Your total assets and liabilities + equity are perfectly reconciled with zero difference."}
+                    </p>
+                  </div>
+                  <div className="pt-2 flex items-center justify-center gap-2.5 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveTab("retained")}
+                      className="text-xs font-semibold gap-1.5 border-blue-500/30 text-blue-600 hover:bg-blue-500/10 cursor-pointer"
+                    >
+                      <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
+                      <span>{lang === "NEP" ? "नाफा-नोक्सान चिरफार हेर्नुहोस्" : "View Profit Drill-Down"}</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveTab("health")}
+                      className="text-xs font-semibold gap-1.5 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 cursor-pointer"
+                    >
+                      <Scale className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>{lang === "NEP" ? "वित्तीय स्वास्थ्य तथा अनुपात हेर्नुहोस्" : "View Financial Health"}</span>
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
+                diagnosisList.map((item, idx) => (
+                  <Card
+                    key={item.id + idx}
+                    className={`p-4 rounded-xl border-2 space-y-3 shadow-xs ${
+                      item.severity === "error"
+                        ? "border-destructive/40 bg-destructive/5"
+                        : item.severity === "warning"
+                        ? "border-amber-500/40 bg-amber-500/5"
+                        : "border-primary/20 bg-card"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider">
+                            {lang === "NEP" ? item.categoryNp : item.categoryEn}
+                          </Badge>
+                          <span className="text-xs font-bold text-foreground">
+                            {lang === "NEP" ? item.titleNp : item.titleEn}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {lang === "NEP" ? item.explanationNp : item.explanationEn}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {lang === "NEP" ? item.explanationNp : item.explanationEn}
-                      </p>
+                      {item.amount !== undefined && (
+                        <div className="text-right shrink-0">
+                          <div className="text-[10px] text-muted-foreground font-semibold uppercase">{lang === "NEP" ? "सम्बन्धित रकम" : "Amount"}</div>
+                          <div className="text-xs sm:text-sm font-bold font-mono text-foreground">{fmt(item.amount)}</div>
+                        </div>
+                      )}
                     </div>
-                    {item.amount !== undefined && (
-                      <div className="text-right shrink-0">
-                        <div className="text-[10px] text-muted-foreground font-semibold uppercase">{lang === "NEP" ? "सम्बन्धित रकम" : "Amount"}</div>
-                        <div className="text-xs sm:text-sm font-bold font-mono text-foreground">{fmt(item.amount)}</div>
+
+                    {item.mathFormulaNp && (
+                      <div className="p-2.5 rounded-lg bg-muted/60 border border-border/70 text-[11.5px] font-mono text-foreground flex items-center gap-2">
+                        <FileSpreadsheet className="h-4 w-4 text-primary shrink-0" />
+                        <span>{lang === "NEP" ? item.mathFormulaNp : item.mathFormulaEn}</span>
                       </div>
                     )}
-                  </div>
 
-                  {item.mathFormulaNp && (
-                    <div className="p-2.5 rounded-lg bg-muted/60 border border-border/70 text-[11.5px] font-mono text-foreground flex items-center gap-2">
-                      <FileSpreadsheet className="h-4 w-4 text-primary shrink-0" />
-                      <span>{lang === "NEP" ? item.mathFormulaNp : item.mathFormulaEn}</span>
-                    </div>
-                  )}
-
-                  {activeMode === "auto" && item.fixAction && (
-                    <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2">
-                      <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                        <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                        <span>{lang === "NEP" ? "पारदर्शी लेखा समायोजन" : "Safe Transparent Adjustment"}</span>
+                    {activeMode === "auto" && item.fixAction && (
+                      <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2">
+                        <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                          <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span>{lang === "NEP" ? "पारदर्शी लेखा समायोजन" : "Safe Transparent Adjustment"}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleApplyFix(item)}
+                          disabled={!!applyingFixId}
+                          className="h-8 px-4 text-xs font-bold gap-1.5 text-white bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-700 rounded-lg shadow-sm cursor-pointer"
+                        >
+                          {applyingFixId === item.id ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <span>{lang === "NEP" ? "मिलाउँदैछ..." : "Applying..."}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-3.5 w-3.5" />
+                              <span>{lang === "NEP" ? item.fixActionLabelNp : item.fixActionLabelEn}</span>
+                            </>
+                          )}
+                        </Button>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => handleApplyFix(item)}
-                        disabled={!!applyingFixId}
-                        className="h-8 px-4 text-xs font-bold gap-1.5 text-white bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-700 rounded-lg shadow-sm cursor-pointer"
-                      >
-                        {applyingFixId === item.id ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            <span>{lang === "NEP" ? "मिलाउँदैछ..." : "Applying..."}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-3.5 w-3.5" />
-                            <span>{lang === "NEP" ? item.fixActionLabelNp : item.fixActionLabelEn}</span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
+                    )}
 
-                  {activeMode === "manual" && (
-                    <div className="pt-3 border-t border-border/60 space-y-3">
-                      <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                        <BookOpen className="h-4 w-4 text-primary shrink-0" />
-                        <span>
-                          {lang === "NEP"
-                            ? "विद्यार्थी तथा प्रयोगकर्ताका लागि चरणबद्ध इन्ट्री गाइड (Step-by-Step Guide):"
-                            : "Step-by-Step Manual Process Guide for Students:"}
-                        </span>
-                      </div>
+                    {activeMode === "manual" && (
+                      <div className="pt-3 border-t border-border/60 space-y-3">
+                        <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                          <span>
+                            {lang === "NEP"
+                              ? "विद्यार्थी तथा प्रयोगकर्ताका लागि चरणबद्ध इन्ट्री गाइड (Step-by-Step Guide):"
+                              : "Step-by-Step Manual Process Guide for Students:"}
+                          </span>
+                        </div>
 
-                      <div className="space-y-1.5 text-xs">
-                        {(lang === "NEP" ? item.solutionStepsNp : item.solutionStepsEn).map((step, sIdx) => {
-                          const isHeader = step.startsWith("📌");
-                          const isBullet = step.startsWith("•");
-                          const isDr = step.includes("डेबिट (Dr):") || step.includes("Debit (Dr):");
-                          const isCr = step.includes("क्रेडिट (Cr):") || step.includes("Credit (Cr):");
+                        <div className="space-y-1.5 text-xs">
+                          {(lang === "NEP" ? item.solutionStepsNp : item.solutionStepsEn).map((step, sIdx) => {
+                            const isHeader = step.startsWith("📌");
+                            const isBullet = step.startsWith("•");
+                            const isDr = step.includes("डेबिट (Dr):") || step.includes("Debit (Dr):");
+                            const isCr = step.includes("क्रेडिट (Cr):") || step.includes("Credit (Cr):");
 
-                          if (isHeader) {
+                            if (isHeader) {
+                              return (
+                                <div
+                                  key={sIdx}
+                                  className="font-bold text-[12px] text-primary pt-3 pb-1 flex items-center gap-1.5 border-b border-border/40"
+                                >
+                                  <span>{step}</span>
+                                </div>
+                              );
+                            }
+
                             return (
                               <div
                                 key={sIdx}
-                                className="font-bold text-[12px] text-primary pt-3 pb-1 flex items-center gap-1.5 border-b border-border/40"
+                                className={`flex items-start gap-2.5 px-3 py-1.5 leading-relaxed rounded-lg transition-colors ${
+                                  isDr
+                                    ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-semibold my-1 border border-emerald-500/25"
+                                    : isCr
+                                    ? "bg-blue-500/10 text-blue-800 dark:text-blue-300 font-semibold my-1 border border-blue-500/25"
+                                    : "text-muted-foreground bg-muted/30"
+                                }`}
                               >
-                                <span>{step}</span>
+                                <span className="shrink-0 text-primary font-bold">
+                                  {isBullet ? "•" : `${sIdx + 1}.`}
+                                </span>
+                                <span className={isDr || isCr ? "font-semibold text-foreground" : "text-foreground/90 font-medium"}>
+                                  {step.replace(/^[•📌]\s*/, "")}
+                                </span>
                               </div>
                             );
-                          }
-
-                          return (
-                            <div
-                              key={sIdx}
-                              className={`flex items-start gap-2.5 px-3 py-1.5 leading-relaxed rounded-lg transition-colors ${
-                                isDr
-                                  ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-semibold my-1 border border-emerald-500/25"
-                                  : isCr
-                                  ? "bg-blue-500/10 text-blue-800 dark:text-blue-300 font-semibold my-1 border border-blue-500/25"
-                                  : "text-muted-foreground bg-muted/30"
-                              }`}
-                            >
-                              <span className="shrink-0 text-primary font-bold">
-                                {isBullet ? "•" : `${sIdx + 1}.`}
-                              </span>
-                              <span className={isDr || isCr ? "font-semibold text-foreground" : "text-foreground/90 font-medium"}>
-                                {step.replace(/^[•📌]\s*/, "")}
-                              </span>
-                            </div>
-                          );
-                        })}
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </Card>
-              ))}
+                    )}
+                  </Card>
+                ))
+              )}
             </div>
           </div>
         )}
