@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +62,8 @@ import {
   Boxes,
   Sparkles,
   RotateCcw,
-  Check
+  Check,
+  ChevronDown
 } from "lucide-react";
 import { StockSummaryView } from "@/components/StockSummaryView";
 import { TrialBalanceDifferenceHelperModal } from "@/components/TrialBalanceDifferenceHelperModal";
@@ -2430,7 +2433,255 @@ export default function Accounting() {
       );
     }
 
-    return [...partyNodes, ...accountNodes];
+    return [...accountNodes, ...partyNodes];
+  };
+
+  const SearchableAccountSelect = ({
+    value,
+    onValueChange,
+    accounts: accountList,
+    includeParties,
+    placeholder,
+    showTypeBadge = false,
+    className
+  }: {
+    value?: string;
+    onValueChange: (val: string) => void;
+    accounts: Account[];
+    includeParties?: "customer" | "supplier" | "both";
+    placeholder?: string;
+    showTypeBadge?: boolean;
+    className?: string;
+  }) => {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
+
+    const q = query.trim().toLowerCase();
+
+    const selectedLabel = useMemo(() => {
+      if (!value) return "";
+      if (value.startsWith("party_customer_")) {
+        const cId = value.replace("party_customer_", "");
+        const c = customersDocs.find(x => x.id === cId);
+        return c ? `👥 ` + c.name : value;
+      }
+      if (value.startsWith("party_supplier_")) {
+        const sId = value.replace("party_supplier_", "");
+        const s = suppliersDocs.find(x => x.id === sId);
+        return s ? `🏢 ` + s.name : value;
+      }
+      const acc = accounts.find(a => a.id === value);
+      return acc ? acc.name : value;
+    }, [value, accounts, customersDocs, suppliersDocs]);
+
+    const filteredAccounts = useMemo(() => {
+      return accountList.filter(a => {
+        if (!q) return true;
+        return a.name.toLowerCase().includes(q) || (a.group && a.group.toLowerCase().includes(q)) || a.type.toLowerCase().includes(q);
+      });
+    }, [accountList, q]);
+
+    const grouped: Record<string, Account[]> = useMemo(() => {
+      const grps: Record<string, Account[]> = {};
+      for (const acc of filteredAccounts) {
+        const grp = acc.group || "cash";
+        if (!grps[grp]) grps[grp] = [];
+        grps[grp].push(acc);
+      }
+      return grps;
+    }, [filteredAccounts]);
+
+    const sortedGroups = useMemo(() => {
+      return Object.keys(grouped).sort((a, b) => {
+        const orderA = GROUP_SORT_ORDER[a as AccountGroup] ?? 99;
+        const orderB = GROUP_SORT_ORDER[b as AccountGroup] ?? 99;
+        return orderA - orderB;
+      });
+    }, [grouped]);
+
+    const filteredCustomers = useMemo(() => {
+      if (includeParties !== "customer" && includeParties !== "both") return [];
+      if (!q) return customersDocs;
+      return customersDocs.filter(c => c.name?.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)));
+    }, [includeParties, customersDocs, q]);
+
+    const filteredSuppliers = useMemo(() => {
+      if (includeParties !== "supplier" && includeParties !== "both") return [];
+      if (!q) return suppliersDocs;
+      return suppliersDocs.filter(s => s.name?.toLowerCase().includes(q) || (s.phone && s.phone.includes(q)));
+    }, [includeParties, suppliersDocs, q]);
+
+    const totalResultsCount = filteredAccounts.length + filteredCustomers.length + filteredSuppliers.length;
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn(
+              "w-full justify-between h-9 text-xs rounded-lg font-normal bg-background px-3 truncate text-left border-input shadow-xs hover:bg-muted/30 focus:ring-1 focus:ring-primary",
+              !value && "text-muted-foreground",
+              className
+            )}
+          >
+            <span className="truncate font-medium text-foreground">
+              {selectedLabel || placeholder || (lang === "NEP" ? "खाता छान्नुहोस्..." : "Select Account...")}
+            </span>
+            <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[320px] sm:w-[380px] p-0 z-[100] shadow-2xl rounded-xl overflow-hidden border border-border/70" align="start">
+          <div className="p-2 border-b border-border/50 bg-muted/20">
+            <div className="relative flex items-center">
+              <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={lang === "NEP" ? "खाता वा पार्टी खोज्नुहोस् (उदा: rent, raj)..." : "Search account or party (e.g. rent, raj)..."}
+                className="h-8 pl-8 pr-7 text-xs rounded-lg bg-background border-input"
+                autoFocus
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="absolute right-2 text-muted-foreground hover:text-foreground text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="max-h-64 overflow-y-auto p-1 text-xs space-y-1 divide-y divide-border/20">
+            {totalResultsCount === 0 && (
+              <div className="py-6 text-center text-xs text-muted-foreground">
+                {lang === "NEP" ? "कुनै खाता वा पार्टी फेला परेन" : "No matching account or party found"}
+              </div>
+            )}
+
+            {sortedGroups.map(grpKey => {
+              const label = groupLabel(grpKey as AccountGroup);
+              const items = grouped[grpKey];
+              return (
+                <div key={grpKey} className="pt-1 first:pt-0">
+                  <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 rounded flex items-center justify-between my-0.5">
+                    <span>{label}</span>
+                    <span className="font-mono text-[9px] opacity-75">{items.length}</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    {items.map(a => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => {
+                          onValueChange(a.id);
+                          setOpen(false);
+                          setQuery("");
+                        }}
+                        className={cn(
+                          "w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between hover:bg-primary/10 transition-colors cursor-pointer",
+                          value === a.id && "bg-primary/15 font-semibold text-primary"
+                        )}
+                      >
+                        <span className="truncate">{a.name}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {showTypeBadge && (
+                            <span className="text-[9px] text-muted-foreground font-mono uppercase bg-muted/60 px-1 py-0.5 rounded">
+                              {a.type}
+                            </span>
+                          )}
+                          {value === a.id && <Check className="h-3.5 w-3.5 text-primary ml-1" />}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {filteredCustomers.length > 0 && (
+              <div className="pt-1">
+                <div className="px-2 py-1 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-500/10 rounded flex items-center justify-between my-0.5">
+                  <span>👥 {lang === "NEP" ? "आसामी / ग्राहकहरू (SUNDRY DEBTORS)" : "SUNDRY DEBTORS (CUSTOMERS)"}</span>
+                  <span className="font-mono text-[9px]">{filteredCustomers.length} Parties</span>
+                </div>
+                <div className="space-y-0.5">
+                  {filteredCustomers.map(c => {
+                    const bal = partyBalancesMap[`customer_` + c.id] || 0;
+                    const itemVal = `party_customer_` + c.id;
+                    return (
+                      <button
+                        key={itemVal}
+                        type="button"
+                        onClick={() => {
+                          onValueChange(itemVal);
+                          setOpen(false);
+                          setQuery("");
+                        }}
+                        className={cn(
+                          "w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between hover:bg-emerald-500/10 transition-colors cursor-pointer",
+                          value === itemVal && "bg-emerald-500/15 font-semibold text-emerald-600 dark:text-emerald-400"
+                        )}
+                      >
+                        <span className="truncate">{c.name}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className={	ext-[10px] font-mono px-1.5 py-0.5 rounded ` + (bal > 0 ? "bg-amber-500/10 text-amber-600 font-bold" : "text-muted-foreground")}>
+                            {bal > 0 ? (lang === "NEP" ? `बाँकी: ` + fmt(bal) : `Due: ` + fmt(bal)) : fmt(bal)}
+                          </span>
+                          {value === itemVal && <Check className="h-3.5 w-3.5 text-emerald-600 ml-1" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {filteredSuppliers.length > 0 && (
+              <div className="pt-1">
+                <div className="px-2 py-1 text-[10px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider bg-amber-500/10 rounded flex items-center justify-between my-0.5">
+                  <span>🏢 {lang === "NEP" ? "साहु / सप्लायरहरू (SUNDRY CREDITORS)" : "SUNDRY CREDITORS (SUPPLIERS)"}</span>
+                  <span className="font-mono text-[9px]">{filteredSuppliers.length} Parties</span>
+                </div>
+                <div className="space-y-0.5">
+                  {filteredSuppliers.map(s => {
+                    const bal = partyBalancesMap[`supplier_` + s.id] || 0;
+                    const itemVal = `party_supplier_` + s.id;
+                    return (
+                      <button
+                        key={itemVal}
+                        type="button"
+                        onClick={() => {
+                          onValueChange(itemVal);
+                          setOpen(false);
+                          setQuery("");
+                        }}
+                        className={cn(
+                          "w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between hover:bg-amber-500/10 transition-colors cursor-pointer",
+                          value === itemVal && "bg-amber-500/15 font-semibold text-amber-600 dark:text-amber-400"
+                        )}
+                      >
+                        <span className="truncate">{s.name}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className={	ext-[10px] font-mono px-1.5 py-0.5 rounded ` + (bal > 0 ? "bg-destructive/10 text-destructive font-bold" : "text-muted-foreground")}>
+                            {bal > 0 ? (lang === "NEP" ? `तिर्न बाँकी: ` + fmt(bal) : `Payable: ` + fmt(bal)) : fmt(bal)}
+                          </span>
+                          {value === itemVal && <Check className="h-3.5 w-3.5 text-amber-600 ml-1" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
   };
 
   // Trial Balance Data Calculation
@@ -4207,31 +4458,14 @@ export default function Accounting() {
                           {/* Account Selector + Inline Add Button */}
                           <div className="flex-1 sm:w-full flex items-center gap-1 min-w-0">
                             <div className="flex-1 min-w-0">
-                              <Select
+                              <SearchableAccountSelect
                                 value={row.account_id}
                                 onValueChange={(val) => handleUpdateJournalRow(row.id, "account_id", val)}
-                              >
-                                <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left font-medium">
-                                  <SelectValue placeholder={lang === "NEP" ? `खाता वा पार्टी छान्नुहोस् #${idx + 1}...` : `Select Account / Party #${idx + 1}...`}>
-                                    {row.account_id && (() => {
-                                      if (row.account_id.startsWith("party_customer_")) {
-                                        const cId = row.account_id.replace("party_customer_", "");
-                                        const c = customersDocs.find(x => x.id === cId);
-                                        return c ? `👥 ${c.name}` : row.account_id;
-                                      }
-                                      if (row.account_id.startsWith("party_supplier_")) {
-                                        const sId = row.account_id.replace("party_supplier_", "");
-                                        const s = suppliersDocs.find(x => x.id === sId);
-                                        return s ? `🏢 ${s.name}` : row.account_id;
-                                      }
-                                      return accounts.find(a => a.id === row.account_id)?.name;
-                                    })()}
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {renderGroupedAccountOptions(accounts, true, "both")}
-                                </SelectContent>
-                              </Select>
+                                accounts={accounts}
+                                includeParties="both"
+                                showTypeBadge={true}
+                                placeholder={lang === "NEP" ? `खाता वा पार्टी छान्नुहोस् #${idx + 1}...` : `Select Account / Party #${idx + 1}...`}
+                              />
                             </div>
                             <Button
                               type="button"
@@ -4413,16 +4647,13 @@ export default function Accounting() {
                           </button>
                         </div>
                       </Label>
-                      <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-                        <SelectTrigger className="h-9 sm:h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
-                          <SelectValue placeholder={lang === "NEP" ? "नगद वा बैंक छान्नुहोस्..." : "Select Cash/Bank..."} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {renderGroupedAccountOptions(
-                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <SearchableAccountSelect
+                        value={creditAccountId}
+                        onValueChange={setCreditAccountId}
+                        accounts={accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")}
+                        placeholder={lang === "NEP" ? "नगद वा बैंक छान्नुहोस्..." : "Select Cash/Bank..."}
+                        className="h-9 sm:h-10 rounded-xl font-semibold"
+                      />
                     </div>
 
                     {/* Col 3: Ref / Cheque No */}
@@ -4489,21 +4720,14 @@ export default function Accounting() {
                             {/* Account / Supplier Selector + Inline Add Button */}
                             <div className="flex-1 sm:col-span-7 flex items-center gap-1 min-w-0">
                               <div className="flex-1 min-w-0">
-                                <Select
-                                  value={row.account_id}
+                                <SearchableAccountSelect
+                                  value={row.party_id ? `party_supplier_${row.party_id}` : row.account_id}
                                   onValueChange={(val) => handleSelectPaymentAccount(row.id, val)}
-                                >
-                                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left font-medium">
-                                    <SelectValue placeholder={lang === "NEP" ? `खर्च वा साहु खाता #${idx + 1}...` : `Select Account / Supplier #${idx + 1}...`}>
-                                      {row.party_name
-                                        ? `🏢 ${row.party_name}`
-                                        : (row.account_id && accounts.find(a => a.id === row.account_id)?.name)}
-                                    </SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {renderGroupedAccountOptions(accounts.filter(a => a.id !== creditAccountId), true, "supplier")}
-                                  </SelectContent>
-                                </Select>
+                                  accounts={accounts.filter(a => a.id !== creditAccountId)}
+                                  includeParties="supplier"
+                                  showTypeBadge={true}
+                                  placeholder={lang === "NEP" ? `खर्च वा साहु खाता #${idx + 1}...` : `Select Account / Supplier #${idx + 1}...`}
+                                />
                               </div>
                               <Button
                                 type="button"
@@ -4775,16 +4999,13 @@ export default function Accounting() {
                           </button>
                         </div>
                       </Label>
-                      <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-                        <SelectTrigger className="h-9 sm:h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
-                          <SelectValue placeholder={lang === "NEP" ? "नगद वा बैंक छान्नुहोस्..." : "Select Cash/Bank..."} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {renderGroupedAccountOptions(
-                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <SearchableAccountSelect
+                        value={debitAccountId}
+                        onValueChange={setDebitAccountId}
+                        accounts={accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")}
+                        placeholder={lang === "NEP" ? "नगद वा बैंक छान्नुहोस्..." : "Select Cash/Bank..."}
+                        className="h-9 sm:h-10 rounded-xl font-semibold"
+                      />
                     </div>
 
                     {/* Col 3: Ref / Cheque No */}
@@ -4851,21 +5072,14 @@ export default function Accounting() {
                             {/* Account / Customer Selector + Inline Add Button */}
                             <div className="flex-1 sm:col-span-7 flex items-center gap-1 min-w-0">
                               <div className="flex-1 min-w-0">
-                                <Select
-                                  value={row.account_id}
+                                <SearchableAccountSelect
+                                  value={row.party_id ? `party_customer_${row.party_id}` : row.account_id}
                                   onValueChange={(val) => handleSelectReceiptAccount(row.id, val)}
-                                >
-                                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background [&>span]:truncate text-left font-medium">
-                                    <SelectValue placeholder={lang === "NEP" ? `आम्दानी वा ग्राहक खाता #${idx + 1}...` : `Select Account / Customer #${idx + 1}...`}>
-                                      {row.party_name
-                                        ? `👥 ${row.party_name}`
-                                        : (row.account_id && accounts.find(a => a.id === row.account_id)?.name)}
-                                    </SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {renderGroupedAccountOptions(accounts.filter(a => a.id !== debitAccountId), true, "customer")}
-                                  </SelectContent>
-                                </Select>
+                                  accounts={accounts.filter(a => a.id !== debitAccountId)}
+                                  includeParties="customer"
+                                  showTypeBadge={true}
+                                  placeholder={lang === "NEP" ? `आम्दानी वा ग्राहक खाता #${idx + 1}...` : `Select Account / Customer #${idx + 1}...`}
+                                />
                               </div>
                               <Button
                                 type="button"
@@ -5153,18 +5367,13 @@ export default function Accounting() {
                           </button>
                         </div>
                       </Label>
-                      <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-                        <SelectTrigger className="h-9 sm:h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
-                          <SelectValue placeholder="कहाँबाट...">
-                            {creditAccountId && accounts.find(a => a.id === creditAccountId)?.name}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {renderGroupedAccountOptions(
-                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <SearchableAccountSelect
+                        value={creditAccountId}
+                        onValueChange={setCreditAccountId}
+                        accounts={accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")}
+                        placeholder={lang === "NEP" ? "कहाँबाट (स्रोत खाता)..." : "From Account..."}
+                        className="h-9 sm:h-10 rounded-xl font-semibold"
+                      />
                     </div>
 
                     <div className="space-y-1 sm:space-y-1.5">
@@ -5189,18 +5398,13 @@ export default function Accounting() {
                           </button>
                         </div>
                       </Label>
-                      <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-                        <SelectTrigger className="h-9 sm:h-10 text-xs rounded-xl bg-background font-semibold shadow-xs">
-                          <SelectValue placeholder="कहाँ पुग्यो...">
-                            {debitAccountId && accounts.find(a => a.id === debitAccountId)?.name}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {renderGroupedAccountOptions(
-                            accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <SearchableAccountSelect
+                        value={debitAccountId}
+                        onValueChange={setDebitAccountId}
+                        accounts={accounts.filter(a => (a.group === "cash" || a.group === "bank_accounts") && a.id !== creditAccountId)}
+                        placeholder={lang === "NEP" ? "कहाँ पुग्यो (गन्तव्य खाता)..." : "To Account..."}
+                        className="h-9 sm:h-10 rounded-xl font-semibold"
+                      />
                     </div>
                   </div>
                 </div>
