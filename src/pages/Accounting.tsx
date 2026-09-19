@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSearchParams } from "react-router-dom";
@@ -5317,6 +5317,7 @@ export default function Accounting() {
                 </SelectTrigger>
                 <SelectContent className="max-h-56 z-[90]">
                   <SelectItem value="bank_accounts">Bank Account (बैंक खाता)</SelectItem>
+                  <SelectItem value="current_assets">Current Asset (TDS Receivable, Advance Paid, Prepaid Expenses)</SelectItem>
                   <SelectItem value="indirect_expenses">Expense (व्यापारिक/कार्यालय खर्च)</SelectItem>
                   <SelectItem value="direct_expenses">Direct Expense (प्रत्यक्ष खर्च)</SelectItem>
                   <SelectItem value="indirect_incomes">Income (अप्रत्यक्ष आम्दानी)</SelectItem>
