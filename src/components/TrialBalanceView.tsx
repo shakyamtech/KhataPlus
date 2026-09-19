@@ -241,8 +241,8 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       });
     }
 
-    // 8. Outstanding Liabilities / Current Liabilities
-    const currLiabAccounts = accounts.filter(a => a.group === "current_liabilities");
+    // 8. Outstanding Liabilities / Current Liabilities & Duties and Taxes
+    const currLiabAccounts = accounts.filter(a => a.group === "current_liabilities" || a.group === "duties_taxes");
     const currLiabRows = currLiabAccounts.map(c => {
       let bal = Number(c.opening_balance || 0);
       vouchers.forEach(v => {
@@ -251,10 +251,13 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
           if (imp.account_id === c.id) bal += (imp.credit - imp.debit);
         });
       });
+      const grpLabel = c.group === "duties_taxes"
+        ? (lang === "NEP" ? "भ्याट तथा कर" : "VAT & Taxes")
+        : (lang === "NEP" ? "चालू दायित्व" : "Current Liabilities");
       return {
         id: c.id,
         name: c.name,
-        group: lang === "NEP" ? "चालू दायित्व" : "Current Liabilities",
+        group: grpLabel,
         debit: bal < 0 ? Math.abs(bal) : 0,
         credit: bal >= 0 ? bal : 0
       };

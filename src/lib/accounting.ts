@@ -181,7 +181,16 @@ export async function ensureDefaultAccounts(userId: string): Promise<Account[]> 
   const snap = await getDocs(q);
 
   if (!snap.empty) {
-    const rawAccounts = snap.docs.map(d => ({ id: d.id, ...d.data() } as Account));
+    const rawAccounts = snap.docs.map(d => {
+      const data = d.data() as Account;
+      const acc: Account = { id: d.id, ...data };
+      // Auto-correct any duties_taxes accounts that may have been saved with incorrect 'asset' type
+      if (acc.group === "duties_taxes" && acc.type !== "liability") {
+        acc.type = "liability";
+        updateDoc(doc(db, "accounts", d.id), { type: "liability" }).catch(() => {});
+      }
+      return acc;
+    });
 
     const duplicateIdsToDelete: string[] = [];
     const uniqueAccounts: Account[] = [];

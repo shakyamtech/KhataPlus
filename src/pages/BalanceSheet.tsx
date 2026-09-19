@@ -223,8 +223,8 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
         loansTotal = Math.max(0, loansTotal + cashLoansTaken - cashLoansRepaid);
 
-        // 4. Calculate Current Liabilities / Outstanding Expenses
-        const currLiabAccounts = accounts.filter((a: any) => a.group === "current_liabilities");
+        // 4. Calculate Current Liabilities / Outstanding Expenses & Duties and Taxes
+        const currLiabAccounts = accounts.filter((a: any) => a.group === "current_liabilities" || a.group === "duties_taxes");
         let outstandingTotal = currLiabAccounts.reduce((s: number, a: any) => s + Number(a.opening_balance || 0), 0);
         vouchers.forEach((v: any) => {
           const impacts = getVoucherAccountImpacts(v);

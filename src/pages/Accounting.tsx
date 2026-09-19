@@ -1594,7 +1594,7 @@ export default function Accounting() {
     try {
       let type: AccountType = "asset";
       if (["capital", "drawings"].includes(newAccGroup)) type = "equity";
-      else if (["loans_liabilities", "current_liabilities"].includes(newAccGroup)) type = "liability";
+      else if (["loans_liabilities", "current_liabilities", "duties_taxes"].includes(newAccGroup)) type = "liability";
       else if (["direct_incomes", "indirect_incomes"].includes(newAccGroup)) type = "income";
       else if (["direct_expenses", "indirect_expenses"].includes(newAccGroup)) type = "expense";
 
@@ -2576,8 +2576,8 @@ export default function Accounting() {
       });
     }
 
-    // 8. Current Liabilities / Outstanding
-    const currLiabAccounts = accounts.filter(a => a.group === "current_liabilities");
+    // 8. Current Liabilities / Outstanding & Duties & Taxes
+    const currLiabAccounts = accounts.filter(a => a.group === "current_liabilities" || a.group === "duties_taxes");
     const currLiabRows = currLiabAccounts.map(l => {
       let bal = Number(l.opening_balance || 0);
       vouchers.forEach(v => {
@@ -2589,7 +2589,7 @@ export default function Accounting() {
       return {
         id: l.id,
         name: l.name,
-        group: "Current Liabilities",
+        group: l.group === "duties_taxes" ? (lang === "NEP" ? "भ्याट तथा कर" : "VAT & Taxes") : (lang === "NEP" ? "चालू दायित्व" : "Current Liabilities"),
         debit: bal < 0 ? Math.abs(bal) : 0,
         credit: bal >= 0 ? bal : 0
       };
