@@ -372,74 +372,107 @@ export async function createVoucher(
   const batch = writeBatch(db);
   batch.set(voucherRef, voucher);
 
-  // Mirror cash changes to cash_transactions for Cashbook sync
+  // Helper to detect liquid account payment mode
+  const getLiquidPaymentMode = (accName: string): "cash" | "bank" | "esewa" | "khalti" | null => {
+    const lower = (accName || "").toLowerCase();
+    if (lower.includes("esewa") || lower.includes("ईसेवा")) return "esewa";
+    if (lower.includes("khalti") || lower.includes("खल्ती")) return "khalti";
+    if (lower.includes("bank") || lower.includes("बैंक")) return "bank";
+    if (lower.includes("cash") || lower.includes("नगद")) return "cash";
+    return null;
+  };
+
+  // Mirror liquid account changes to cash_transactions for Cashbook sync
   const txTime = new Date();
   const txCreatedAt = finalDate ? `${finalDate}T${txTime.toTimeString().slice(0, 8)}` : txTime.toISOString();
 
   if (data.entries && data.entries.length > 0) {
-    const drCash = data.entries.filter(e => e.type === "debit" && e.account_name.toLowerCase().includes("cash"));
-    const crCash = data.entries.filter(e => e.type === "credit" && e.account_name.toLowerCase().includes("cash"));
+    for (const e of data.entries) {
+      const mode = getLiquidPaymentMode(e.account_name);
+      if (!mode || !Number(e.amount)) continue;
 
-    const totalDrCash = drCash.reduce((s, e) => s + Number(e.amount || 0), 0);
-    const totalCrCash = crCash.reduce((s, e) => s + Number(e.amount || 0), 0);
+      if (e.type === "debit") {
+        const cashRef = doc(collection(db, "cash_transactions"));
+        const cat = data.voucher_type === "contra"
+          ? (mode === "bank" ? "contra_bank_deposit" : "contra_bank_withdrawal")
+          : "voucher_receipt";
 
-    if (totalDrCash > 0) {
-      const cashRef = doc(collection(db, "cash_transactions"));
-      batch.set(cashRef, {
-        id: cashRef.id,
-        user_id: userId,
-        direction: "in",
-        amount: totalDrCash,
-        category: data.voucher_type === "contra" ? "contra_bank_withdrawal" : "voucher_receipt",
-        payment_mode: "cash",
-        note: `${voucherNo}: ${data.narration}`,
-        reference_id: voucherRef.id,
-        created_at: txCreatedAt
-      });
-    }
+        batch.set(cashRef, {
+          id: cashRef.id,
+          user_id: userId,
+          direction: "in",
+          amount: Number(e.amount),
+          category: cat,
+          payment_mode: mode,
+          note: `${voucherNo}: ${data.narration}`,
+          reference_id: voucherRef.id,
+          bank_account_id: mode === "bank" ? (e.account_id || null) : null,
+          bank_account_name: mode === "bank" ? (e.account_name || null) : null,
+          created_at: txCreatedAt
+        });
+      } else if (e.type === "credit") {
+        const cashRef = doc(collection(db, "cash_transactions"));
+        const cat = data.voucher_type === "contra"
+          ? (mode === "cash" ? "contra_bank_deposit" : "contra_bank_withdrawal")
+          : "voucher_payment";
 
-    if (totalCrCash > 0) {
-      const cashRef = doc(collection(db, "cash_transactions"));
-      batch.set(cashRef, {
-        id: cashRef.id,
-        user_id: userId,
-        direction: "out",
-        amount: totalCrCash,
-        category: data.voucher_type === "contra" ? "contra_bank_deposit" : "voucher_payment",
-        payment_mode: "cash",
-        note: `${voucherNo}: ${data.narration}`,
-        reference_id: voucherRef.id,
-        created_at: txCreatedAt
-      });
+        batch.set(cashRef, {
+          id: cashRef.id,
+          user_id: userId,
+          direction: "out",
+          amount: Number(e.amount),
+          category: cat,
+          payment_mode: mode,
+          note: `${voucherNo}: ${data.narration}`,
+          reference_id: voucherRef.id,
+          bank_account_id: mode === "bank" ? (e.account_id || null) : null,
+          bank_account_name: mode === "bank" ? (e.account_name || null) : null,
+          created_at: txCreatedAt
+        });
+      }
     }
   } else {
-    const isDebitCash = debAccName.toLowerCase().includes("cash");
-    const isCreditCash = credAccName.toLowerCase().includes("cash");
+    const debMode = getLiquidPaymentMode(debAccName);
+    const credMode = getLiquidPaymentMode(credAccName);
 
-    if (isDebitCash && !isCreditCash) {
+    if (debMode && (!credMode || debMode !== credMode || data.voucher_type === "contra")) {
       const cashRef = doc(collection(db, "cash_transactions"));
+      const cat = data.voucher_type === "contra"
+        ? (debMode === "bank" ? "contra_bank_deposit" : "contra_bank_withdrawal")
+        : "voucher_receipt";
+
       batch.set(cashRef, {
         id: cashRef.id,
         user_id: userId,
         direction: "in",
         amount: totalAmount,
-        category: data.voucher_type === "contra" ? "contra_bank_withdrawal" : "voucher_receipt",
-        payment_mode: "cash",
+        category: cat,
+        payment_mode: debMode,
         note: `${voucherNo}: ${data.narration}`,
         reference_id: voucherRef.id,
+        bank_account_id: debMode === "bank" ? (debAccId || null) : null,
+        bank_account_name: debMode === "bank" ? (debAccName || null) : null,
         created_at: txCreatedAt
       });
-    } else if (isCreditCash && !isDebitCash) {
+    }
+
+    if (credMode && (!debMode || debMode !== credMode || data.voucher_type === "contra")) {
       const cashRef = doc(collection(db, "cash_transactions"));
+      const cat = data.voucher_type === "contra"
+        ? (credMode === "cash" ? "contra_bank_deposit" : "contra_bank_withdrawal")
+        : "voucher_payment";
+
       batch.set(cashRef, {
         id: cashRef.id,
         user_id: userId,
         direction: "out",
         amount: totalAmount,
-        category: data.voucher_type === "contra" ? "contra_bank_deposit" : "voucher_payment",
-        payment_mode: "cash",
+        category: cat,
+        payment_mode: credMode,
         note: `${voucherNo}: ${data.narration}`,
         reference_id: voucherRef.id,
+        bank_account_id: credMode === "bank" ? (credAccId || null) : null,
+        bank_account_name: credMode === "bank" ? (credAccName || null) : null,
         created_at: txCreatedAt
       });
     }

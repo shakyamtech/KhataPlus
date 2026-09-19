@@ -107,9 +107,10 @@ const Cashbook = () => {
       const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(200));
       const ledgerQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
       const catQ = query(collection(db, "cash_categories"), where("user_id", "==", user.uid));
+      const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
       
-      const [txSnap, cSnap, sSnap, salesSnap, purSnap, lSnap, catSnap] = await Promise.all([
-        getDocs(txQ), getDocs(custQ), getDocs(suppQ), getDocs(salesQ), getDocs(purQ), getDocs(ledgerQ), getDocs(catQ)
+      const [txSnap, cSnap, sSnap, salesSnap, purSnap, lSnap, catSnap, vSnap] = await Promise.all([
+        getDocs(txQ), getDocs(custQ), getDocs(suppQ), getDocs(salesQ), getDocs(purQ), getDocs(ledgerQ), getDocs(catQ), getDocs(vQ)
       ]);
 
       const tx = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -119,6 +120,110 @@ const Cashbook = () => {
       const purchasesData = purSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const ledger = lSnap.docs.map(d => d.data());
       const loadedCats = catSnap.docs.map(d => ({ id: d.id, ...d.data() } as CustomCategory));
+      const vouchersData = vSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+
+      const getLiquidMode = (accName: string): "cash" | "bank" | "esewa" | "khalti" | null => {
+        const lower = (accName || "").toLowerCase();
+        if (lower.includes("esewa") || lower.includes("ईसेवा")) return "esewa";
+        if (lower.includes("khalti") || lower.includes("खल्ती")) return "khalti";
+        if (lower.includes("bank") || lower.includes("बैंक")) return "bank";
+        if (lower.includes("cash") || lower.includes("नगद")) return "cash";
+        return null;
+      };
+
+      const missingTxBatch = writeBatch(db);
+      let missingCount = 0;
+
+      vouchersData.forEach((v: any) => {
+        if (v.entries && Array.isArray(v.entries) && v.entries.length > 0) {
+          v.entries.forEach((e: any) => {
+            const mode = getLiquidMode(e.account_name);
+            if (!mode || !Number(e.amount)) return;
+            const dir = e.type === "debit" ? "in" : "out";
+            const exists = tx.some(t => t.reference_id === v.id && (t.payment_mode === mode || (mode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === dir);
+            if (!exists) {
+              const cat = v.voucher_type === "contra"
+                ? (mode === "bank" ? "contra_bank_deposit" : "contra_bank_withdrawal")
+                : (dir === "in" ? "voucher_receipt" : "voucher_payment");
+              const newRef = doc(collection(db, "cash_transactions"));
+              const item = {
+                id: newRef.id,
+                user_id: user.uid,
+                direction: dir,
+                amount: Number(e.amount),
+                category: cat,
+                payment_mode: mode,
+                note: `${v.voucher_no || ""}: ${v.narration || "Voucher Entry"}`.trim(),
+                reference_id: v.id,
+                bank_account_id: mode === "bank" ? (e.account_id || null) : null,
+                bank_account_name: mode === "bank" ? (e.account_name || null) : null,
+                created_at: v.created_at || v.date || new Date().toISOString()
+              };
+              missingTxBatch.set(newRef, item);
+              tx.push(item);
+              missingCount++;
+            }
+          });
+        } else {
+          const debMode = getLiquidMode(v.debit_account_name);
+          const credMode = getLiquidMode(v.credit_account_name);
+          const amt = Number(v.amount || 0);
+          if (debMode && amt > 0) {
+            const exists = tx.some(t => t.reference_id === v.id && (t.payment_mode === debMode || (debMode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === "in");
+            if (!exists) {
+              const cat = v.voucher_type === "contra"
+                ? (debMode === "bank" ? "contra_bank_deposit" : "contra_bank_withdrawal")
+                : "voucher_receipt";
+              const newRef = doc(collection(db, "cash_transactions"));
+              const item = {
+                id: newRef.id,
+                user_id: user.uid,
+                direction: "in",
+                amount: amt,
+                category: cat,
+                payment_mode: debMode,
+                note: `${v.voucher_no || ""}: ${v.narration || "Voucher Entry"}`.trim(),
+                reference_id: v.id,
+                bank_account_id: debMode === "bank" ? (v.debit_account_id || null) : null,
+                bank_account_name: debMode === "bank" ? (v.debit_account_name || null) : null,
+                created_at: v.created_at || v.date || new Date().toISOString()
+              };
+              missingTxBatch.set(newRef, item);
+              tx.push(item);
+              missingCount++;
+            }
+          }
+          if (credMode && amt > 0) {
+            const exists = tx.some(t => t.reference_id === v.id && (t.payment_mode === credMode || (credMode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === "out");
+            if (!exists) {
+              const cat = v.voucher_type === "contra"
+                ? (credMode === "cash" ? "contra_bank_deposit" : "contra_bank_withdrawal")
+                : "voucher_payment";
+              const newRef = doc(collection(db, "cash_transactions"));
+              const item = {
+                id: newRef.id,
+                user_id: user.uid,
+                direction: "out",
+                amount: amt,
+                category: cat,
+                payment_mode: credMode,
+                note: `${v.voucher_no || ""}: ${v.narration || "Voucher Entry"}`.trim(),
+                reference_id: v.id,
+                bank_account_id: credMode === "bank" ? (v.credit_account_id || null) : null,
+                bank_account_name: credMode === "bank" ? (v.credit_account_name || null) : null,
+                created_at: v.created_at || v.date || new Date().toISOString()
+              };
+              missingTxBatch.set(newRef, item);
+              tx.push(item);
+              missingCount++;
+            }
+          }
+        }
+      });
+
+      if (missingCount > 0) {
+        missingTxBatch.commit().catch(e => console.error("Error auto-syncing missing voucher cash transactions:", e));
+      }
 
       setRows(tx);
       setCustomCategories(loadedCats);
