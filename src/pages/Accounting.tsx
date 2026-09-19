@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useSearchParams } from "react-router-dom";
@@ -2629,7 +2629,7 @@ export default function Accounting() {
                       >
                         <span className="truncate">{c.name}</span>
                         <div className="flex items-center gap-1 shrink-0">
-                          <span className={	ext-[10px] font-mono px-1.5 py-0.5 rounded ` + (bal > 0 ? "bg-amber-500/10 text-amber-600 font-bold" : "text-muted-foreground")}>
+                          <span className={cn("text-[10px] font-mono px-1.5 py-0.5 rounded", bal > 0 ? "bg-amber-500/10 text-amber-600 font-bold" : "text-muted-foreground")}>
                             {bal > 0 ? (lang === "NEP" ? `बाँकी: ` + fmt(bal) : `Due: ` + fmt(bal)) : fmt(bal)}
                           </span>
                           {value === itemVal && <Check className="h-3.5 w-3.5 text-emerald-600 ml-1" />}
@@ -2667,7 +2667,7 @@ export default function Accounting() {
                       >
                         <span className="truncate">{s.name}</span>
                         <div className="flex items-center gap-1 shrink-0">
-                          <span className={	ext-[10px] font-mono px-1.5 py-0.5 rounded ` + (bal > 0 ? "bg-destructive/10 text-destructive font-bold" : "text-muted-foreground")}>
+                          <span className={cn("text-[10px] font-mono px-1.5 py-0.5 rounded", bal > 0 ? "bg-destructive/10 text-destructive font-bold" : "text-muted-foreground")}>
                             {bal > 0 ? (lang === "NEP" ? `तिर्न बाँकी: ` + fmt(bal) : `Payable: ` + fmt(bal)) : fmt(bal)}
                           </span>
                           {value === itemVal && <Check className="h-3.5 w-3.5 text-amber-600 ml-1" />}
