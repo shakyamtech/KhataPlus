@@ -3300,26 +3300,6 @@ const Reports = () => {
               </div>
             </div>
 
-            {/* Opening Carry-Forward Credit Banner */}
-            {vatMonthlyTotals.openingCredit > 0 && (
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-900 dark:text-amber-200">
-                <div className="flex items-center gap-2.5">
-                  <Scale className="h-5 w-5 text-amber-600 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold uppercase tracking-wider">
-                      अघिल्लो महिनाबाट सरेको भ्याट क्रेडिट (Opening VAT Credit Carried Forward)
-                    </div>
-                    <div className="text-[11px] opacity-80 mt-0.5">
-                      यो रकम अघिल्ला महिनाहरूको बढी खरिद भ्याट कट्टी हो र यस महिनाको बिक्री भ्याटबाट स्वतः समायोजन हुन्छ।
-                    </div>
-                  </div>
-                </div>
-                <div className="text-lg font-bold font-display text-amber-700 dark:text-amber-300 shrink-0 pl-7 sm:pl-0">
-                  {fmt(vatMonthlyTotals.openingCredit)}
-                </div>
-              </div>
-            )}
-
             {/* Section 1: VAT Summary (अनुसूची १०) */}
             <div>
               <div className="text-xs font-bold text-primary uppercase tracking-wider mb-2.5 flex items-center justify-between">
