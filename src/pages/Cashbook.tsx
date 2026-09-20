@@ -109,8 +109,10 @@ const Cashbook = () => {
       const catQ = query(collection(db, "cash_categories"), where("user_id", "==", user.uid));
       const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
 
-      const [txSnap, cSnap, sSnap, salesSnap, purSnap, lSnap, catSnap, vSnap] = await Promise.all([
-        getDocs(txQ), getDocs(custQ), getDocs(suppQ), getDocs(salesQ), getDocs(purQ), getDocs(ledgerQ), getDocs(catQ), getDocs(vQ)
+      const accQ = query(collection(db, "accounts"), where("user_id", "==", user.uid));
+      
+      const [txSnap, cSnap, sSnap, salesSnap, purSnap, lSnap, catSnap, vSnap, accSnap] = await Promise.all([
+        getDocs(txQ), getDocs(custQ), getDocs(suppQ), getDocs(salesQ), getDocs(purQ), getDocs(ledgerQ), getDocs(catQ), getDocs(vQ), getDocs(accQ)
       ]);
 
       const tx = txSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -121,14 +123,21 @@ const Cashbook = () => {
       const ledger = lSnap.docs.map(d => d.data());
       const loadedCats = catSnap.docs.map(d => ({ id: d.id, ...d.data() } as CustomCategory));
       const vouchersData = vSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      const accountsData = accSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      const accMap = new Map<string, any>(accountsData.map(a => [a.id, a]));
 
-      const getLiquidMode = (accName: string): "cash" | "bank" | "esewa" | "khalti" | null => {
-        const lower = (accName || "").toLowerCase();
-        if (lower.includes("esewa") || lower.includes("ईसेवा")) return "esewa";
-        if (lower.includes("khalti") || lower.includes("खल्ती")) return "khalti";
-        if (lower.includes("bank") || lower.includes("बैंक")) return "bank";
-        if (lower.includes("cash") || lower.includes("नगद")) return "cash";
-        return null;
+      const getLiquidMode = (accId?: string, accName?: string, fallbackContra?: "bank" | "cash"): "cash" | "bank" | "esewa" | "khalti" | null => {
+        if (accId && accMap.has(accId)) {
+          const a = accMap.get(accId);
+          if (a?.group === "bank_accounts") return "bank";
+          if (a?.group === "cash") return "cash";
+        }
+        const str = `${accName || ""} ${accId || ""}`.toLowerCase();
+        if (str.includes("esewa") || str.includes("ईसेवा")) return "esewa";
+        if (str.includes("khalti") || str.includes("खल्ती")) return "khalti";
+        if (str.includes("bank") || str.includes("बैंक") || str.includes("nabil") || str.includes("nic") || str.includes("prabhu") || str.includes("nmb") || str.includes("sanima") || str.includes("siddhartha") || str.includes("global") || str.includes("kumari") || str.includes("everest") || str.includes("prime") || str.includes("machhapuchchhre") || str.includes("himalayan") || str.includes("sbi") || str.includes("citizens") || str.includes("rbb") || str.includes("rastriya") || str.includes("agriculture") || str.includes("laxmi") || str.includes("standard")) return "bank";
+        if (str.includes("cash") || str.includes("नगद") || str.includes("गल्ला")) return "cash";
+        return fallbackContra || null;
       };
 
       const missingTxBatch = writeBatch(db);
@@ -137,7 +146,7 @@ const Cashbook = () => {
       vouchersData.forEach((v: any) => {
         if (v.entries && Array.isArray(v.entries) && v.entries.length > 0) {
           v.entries.forEach((e: any) => {
-            const mode = getLiquidMode(e.account_name);
+            const mode = getLiquidMode(e.account_id, e.account_name);
             if (!mode || !Number(e.amount)) return;
             const dir = e.type === "debit" ? "in" : "out";
             const exists = tx.some(t => t.reference_id === v.id && (t.payment_mode === mode || (mode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === dir);
@@ -165,8 +174,8 @@ const Cashbook = () => {
             }
           });
         } else {
-          const debMode = getLiquidMode(v.debit_account_name);
-          const credMode = getLiquidMode(v.credit_account_name);
+          const debMode = getLiquidMode(v.debit_account_id, v.debit_account_name, v.voucher_type === "contra" ? "bank" : undefined);
+          const credMode = getLiquidMode(v.credit_account_id, v.credit_account_name, v.voucher_type === "contra" ? "cash" : undefined);
           const amt = Number(v.amount || 0);
           if (debMode && amt > 0) {
             const exists = tx.some(t => t.reference_id === v.id && (t.payment_mode === debMode || (debMode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === "in");

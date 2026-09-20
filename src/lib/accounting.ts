@@ -373,13 +373,13 @@ export async function createVoucher(
   batch.set(voucherRef, voucher);
 
   // Helper to detect liquid account payment mode
-  const getLiquidPaymentMode = (accName: string): "cash" | "bank" | "esewa" | "khalti" | null => {
-    const lower = (accName || "").toLowerCase();
-    if (lower.includes("esewa") || lower.includes("ईसेवा")) return "esewa";
-    if (lower.includes("khalti") || lower.includes("खल्ती")) return "khalti";
-    if (lower.includes("bank") || lower.includes("बैंक")) return "bank";
-    if (lower.includes("cash") || lower.includes("नगद")) return "cash";
-    return null;
+  const getLiquidPaymentMode = (accName: string, fallbackContra?: "bank" | "cash"): "cash" | "bank" | "esewa" | "khalti" | null => {
+    const str = (accName || "").toLowerCase();
+    if (str.includes("esewa") || str.includes("ईसेवा")) return "esewa";
+    if (str.includes("khalti") || str.includes("खल्ती")) return "khalti";
+    if (str.includes("bank") || str.includes("बैंक") || str.includes("nabil") || str.includes("nic") || str.includes("prabhu") || str.includes("nmb") || str.includes("sanima") || str.includes("siddhartha") || str.includes("global") || str.includes("kumari") || str.includes("everest") || str.includes("prime") || str.includes("machhapuchchhre") || str.includes("himalayan") || str.includes("sbi") || str.includes("citizens") || str.includes("rbb") || str.includes("rastriya") || str.includes("agriculture") || str.includes("laxmi") || str.includes("standard")) return "bank";
+    if (str.includes("cash") || str.includes("नगद") || str.includes("गल्ला")) return "cash";
+    return fallbackContra || null;
   };
 
   // Mirror liquid account changes to cash_transactions for Cashbook sync
@@ -432,8 +432,8 @@ export async function createVoucher(
       }
     }
   } else {
-    const debMode = getLiquidPaymentMode(debAccName);
-    const credMode = getLiquidPaymentMode(credAccName);
+    const debMode = getLiquidPaymentMode(debAccName, data.voucher_type === "contra" ? "bank" : undefined);
+    const credMode = getLiquidPaymentMode(credAccName, data.voucher_type === "contra" ? "cash" : undefined);
 
     if (debMode && (!credMode || debMode !== credMode || data.voucher_type === "contra")) {
       const cashRef = doc(collection(db, "cash_transactions"));
