@@ -5554,7 +5554,7 @@ export default function Accounting() {
                       <SearchableAccountSelect
                         value={creditAccountId}
                         onValueChange={setCreditAccountId}
-                        accounts={accounts.filter(a => a.group === "cash" || a.group === "bank_accounts")}
+                        accounts={accounts.filter(a => a.group === "cash" || a.group === "bank_accounts" || a.name.toLowerCase().includes("esewa") || a.name.toLowerCase().includes("khalti") || a.name.toLowerCase().includes("wallet") || a.name.toLowerCase().includes("ईसेवा") || a.name.toLowerCase().includes("खल्ती"))}
                         placeholder={lang === "NEP" ? "कहाँबाट (स्रोत खाता)..." : "From Account..."}
                         className="h-9 sm:h-10 rounded-xl font-semibold"
                       />
@@ -5585,7 +5585,7 @@ export default function Accounting() {
                       <SearchableAccountSelect
                         value={debitAccountId}
                         onValueChange={setDebitAccountId}
-                        accounts={accounts.filter(a => (a.group === "cash" || a.group === "bank_accounts") && a.id !== creditAccountId)}
+                        accounts={accounts.filter(a => (a.group === "cash" || a.group === "bank_accounts" || a.name.toLowerCase().includes("esewa") || a.name.toLowerCase().includes("khalti") || a.name.toLowerCase().includes("wallet") || a.name.toLowerCase().includes("ईसेवा") || a.name.toLowerCase().includes("खल्ती")) && a.id !== creditAccountId)}
                         placeholder={lang === "NEP" ? "कहाँ पुग्यो (गन्तव्य खाता)..." : "To Account..."}
                         className="h-9 sm:h-10 rounded-xl font-semibold"
                       />
