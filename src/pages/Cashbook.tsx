@@ -23,26 +23,26 @@ import { formatNepaliDate } from "@/lib/fiscalYear";
 import { cn } from "@/lib/utils";
 
 const inCategories = [
-  "sale", 
-  "customer_payment", 
-  "opening", 
+  "sale",
+  "customer_payment",
+  "opening",
   "capital",
   "loan",
   "other"
 ];
 
 const outCategories = [
-  "purchase", 
-  "expense", 
-  "salary", 
-  "rent", 
-  "electricity", 
-  "maintenance", 
+  "purchase",
+  "expense",
+  "salary",
+  "rent",
+  "electricity",
+  "maintenance",
   "fixed_asset",
   "loan_repayment",
-  "supplier_payment", 
-  "payment", 
-  "personal", 
+  "supplier_payment",
+  "payment",
+  "personal",
   "other"
 ];
 
@@ -108,7 +108,7 @@ const Cashbook = () => {
       const ledgerQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
       const catQ = query(collection(db, "cash_categories"), where("user_id", "==", user.uid));
       const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
-      
+
       const [txSnap, cSnap, sSnap, salesSnap, purSnap, lSnap, catSnap, vSnap] = await Promise.all([
         getDocs(txQ), getDocs(custQ), getDocs(suppQ), getDocs(salesQ), getDocs(purQ), getDocs(ledgerQ), getDocs(catQ), getDocs(vQ)
       ]);
@@ -251,7 +251,7 @@ const Cashbook = () => {
         const custName = s.customer_id ? custMap.get(s.customer_id) : "Walk-in";
         salesMap[s.id] = { customer: custName || "Unknown", products: "", mode: s.payment_mode || "cash" };
       });
-      
+
       const txSaleIds = tx.filter((t: any) => (t.category === "sale" || t.category === "sales") && t.reference_id).map((t: any) => t.reference_id);
       const chunks = [];
       for (let i = 0; i < txSaleIds.length; i += 10) chunks.push(txSaleIds.slice(i, i + 10));
@@ -460,7 +460,7 @@ const Cashbook = () => {
       if (!q) return true;
       const sDetail = (r.category === "sale" || r.category === "sales") && r.reference_id ? salesDetails[r.reference_id] : null;
       const pDetail = (r.category === "purchase" || r.category === "purchases") && r.reference_id ? purchaseDetails[r.reference_id] : null;
-      
+
       const party = (sDetail ? sDetail.customer : pDetail ? pDetail.supplier : r.party_name || "").toLowerCase();
       const category = (r.category || "").toLowerCase();
       const note = (r.note || "").toLowerCase();
@@ -471,7 +471,7 @@ const Cashbook = () => {
       return party.includes(q) || category.includes(q) || note.includes(q) || products.includes(q) || mode.includes(q) || amountStr.includes(q);
     });
 
-  const resetForm = () => { 
+  const resetForm = () => {
     setEditId(null); setAmount(""); setNote(""); setCategory(""); setDirection("in"); setPartyId(null); setPaymentMode("cash");
     setCategoryDialogOpen(false); setNewCatName(""); setNewCatGroup(direction === "in" ? "income" : "expense");
     setEntryDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
@@ -543,12 +543,12 @@ const Cashbook = () => {
   const save = async () => {
     if (!amount) return toast.error("Amount required");
     if (!category) return toast.error("Please select a category");
-    
+
     const needsParty = ["customer_payment", "supplier_payment", "payment"];
     if (needsParty.includes(category) && !partyId) {
       return toast.error("Please select a Customer or Supplier");
     }
-    
+
     let pName = null;
     if (partyId) {
       const p = [...customers, ...suppliers].find(x => x.id === partyId);
@@ -595,12 +595,12 @@ const Cashbook = () => {
         if (category === "customer_payment" || category === "supplier_payment") {
           const pType = category === "customer_payment" ? "customer" : "supplier";
           const batch = writeBatch(db);
-          
+
           const txRef = doc(collection(db, "cash_transactions"));
           batch.set(txRef, {
             ...payload, id: txRef.id, user_id: user!.uid,
           });
-          
+
           const lRef = doc(collection(db, "ledger_entries"));
           batch.set(lRef, {
             id: lRef.id,
@@ -641,7 +641,7 @@ const Cashbook = () => {
       if (row.reference_id) {
         if (row.category === "sale" || row.category === "sales") {
           const batch = writeBatch(db);
-          
+
           const siQ = query(collection(db, "sale_items"), where("sale_id", "==", row.reference_id));
           const siSnap = await getDocs(siQ);
           for (const d of siSnap.docs) {
@@ -651,7 +651,7 @@ const Cashbook = () => {
             if (pSnap.exists()) {
               batch.update(pRef, { stock_qty: increment(item.qty) });
             }
-            
+
             if (item.batch_id && item.batch_id !== "no-batch") {
               const bRef = doc(db, "product_batches", item.batch_id);
               const bSnap = await getDoc(bRef);
@@ -659,7 +659,7 @@ const Cashbook = () => {
                 batch.update(bRef, { remaining_qty: increment(item.qty) });
               }
             }
-            
+
             batch.delete(d.ref);
           }
 
@@ -676,7 +676,7 @@ const Cashbook = () => {
           await batch.commit();
         } else if (row.category === "purchase" || row.category === "purchases") {
           const batch = writeBatch(db);
-          
+
           const piQ = query(collection(db, "purchase_items"), where("purchase_id", "==", row.reference_id));
           const piSnap = await getDocs(piQ);
           for (const d of piSnap.docs) {
@@ -735,7 +735,7 @@ const Cashbook = () => {
     const printIn = Math.round(filtered.filter((r) => r.direction === "in").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
     const printOut = Math.round(filtered.filter((r) => r.direction === "out").reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
     const printBalance = Math.round(filtered.reduce((s, r) => s + (r.direction === "in" ? Number(r.amount) : -Number(r.amount)), 0) * 100) / 100;
-    
+
     const rowsHtml = sortedPrintRows.map((r, idx) => {
       const mode = getRowPaymentMode(r);
       const sDetail = (r.category === "sale" || r.category === "sales") && r.reference_id ? salesDetails[r.reference_id] : null;
@@ -839,152 +839,152 @@ const Cashbook = () => {
 
   return (
     <div className="p-3 sm:p-4 md:p-8 max-w-5xl mx-auto space-y-4 pb-24">
-      <PageHeader 
-        title={lang === "NEP" ? "रोकड तथा बैंक (Cash & Bank)" : "Cash & Bank"} 
-        subtitle={lang === "NEP" ? "नगद, डिजिटल वालेट तथा बैंक कारोबार" : "All cash, wallets & bank in/out"} 
+      <PageHeader
+        title={lang === "NEP" ? "रोकड तथा बैंक (Cash & Bank)" : "Cash & Bank"}
+        subtitle={lang === "NEP" ? "नगद, डिजिटल वालेट तथा बैंक कारोबार" : "All cash, wallets & bank in/out"}
         actions={
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <Button variant="outline" size="sm" onClick={printBook} className="h-9 px-2.5 sm:px-3 text-xs"><Printer className="h-4 w-4 mr-1" />Print</Button>
-        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
-          <DialogTrigger asChild><Button onClick={resetForm} size="sm" className="h-9 px-2.5 sm:px-3 text-xs bg-gradient-primary text-primary-foreground"><Plus className="h-4 w-4 mr-1" />New Entry</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>{editId ? (lang === "NEP" ? "कारोबार सम्पादन" : "Edit Entry") : (lang === "NEP" ? "नयाँ कारोबार (Cash & Bank Entry)" : "New Cash & Bank Entry")}</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              {/* Row 1: Type + Amount */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Type</Label>
-                  <Select value={direction} onValueChange={(v: any) => { setDirection(v); setCategory(""); setPartyId(null); }}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="in">Cash In</SelectItem><SelectItem value="out">Cash Out</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Amount</Label>
-                  <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-                </div>
-              </div>
-
-              {/* Row 2: Category + Payment Mode */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>{lang === "NEP" ? "वर्ग / शीर्षक (Category)" : "Category"}</Label>
-                  <div className="flex gap-2">
-                    <Select value={category} onValueChange={(v) => { setCategory(v); setPartyId(null); }}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        <div className="text-[10px] uppercase font-bold text-muted-foreground px-2 py-1">
-                          {lang === "NEP" ? "साधारण क्याटेगोरी" : "Standard Categories"}
-                        </div>
-                        {(direction === "in" ? inCategories : outCategories).map((c) => (
-                          <SelectItem key={c} value={c}>{getCategoryLabel(c)}</SelectItem>
-                        ))}
-
-                        {customCategories.length > 0 && (
-                          <>
-                            <div className="text-[10px] uppercase font-bold text-primary px-2 py-1 mt-1 border-t border-border/50">
-                              {lang === "NEP" ? "कस्टम क्याटेगोरी" : "Custom Categories"}
-                            </div>
-                            {customCategories.map((c) => {
-                              let groupTag = "";
-                              if (c.group === "fixed_asset") groupTag = " (सम्पत्ति/Asset)";
-                              else if (c.group === "loan") groupTag = " (ऋण/Loan)";
-                              else if (c.group === "capital") groupTag = " (पुँजी/Capital)";
-                              else if (c.group === "drawings") groupTag = " (व्यक्तिगत/Drawings)";
-                              return (
-                                <SelectItem key={c.id} value={c.name}>
-                                  {c.name}{groupTag}
-                                </SelectItem>
-                              );
-                            })}
-                          </>
-                        )}
-
-                        {category &&
-                          !(direction === "in" ? inCategories : outCategories).includes(category) &&
-                          !customCategories.some(c => c.name === category) && (
-                            <SelectItem value={category}>{category}</SelectItem>
-                          )}
-                      </SelectContent>
-                    </Select>
-                    <Button 
-                      type="button" 
-                      size="icon" 
-                      variant="outline" 
-                      onClick={() => {
-                        setNewCatGroup(direction === "in" ? "income" : "expense");
-                        setCategoryDialogOpen(true);
-                      }} 
-                      title={lang === "NEP" ? "नयाँ क्याटेगोरी थप्नुहोस्" : "Add New Category"} 
-                      className="shrink-0"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={printBook} className="h-9 px-2.5 sm:px-3 text-xs"><Printer className="h-4 w-4 mr-1" />Print</Button>
+            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
+              <DialogTrigger asChild><Button onClick={resetForm} size="sm" className="h-9 px-2.5 sm:px-3 text-xs bg-gradient-primary text-primary-foreground"><Plus className="h-4 w-4 mr-1" />New Entry</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>{editId ? (lang === "NEP" ? "कारोबार सम्पादन" : "Edit Entry") : (lang === "NEP" ? "नयाँ कारोबार (Cash & Bank Entry)" : "New Cash & Bank Entry")}</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  {/* Row 1: Type + Amount */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Type</Label>
+                      <Select value={direction} onValueChange={(v: any) => { setDirection(v); setCategory(""); setPartyId(null); }}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="in">Cash In</SelectItem><SelectItem value="out">Cash Out</SelectItem></SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Amount</Label>
+                      <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                    </div>
                   </div>
+
+                  {/* Row 2: Category + Payment Mode */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>{lang === "NEP" ? "वर्ग / शीर्षक (Category)" : "Category"}</Label>
+                      <div className="flex gap-2">
+                        <Select value={category} onValueChange={(v) => { setCategory(v); setPartyId(null); }}>
+                          <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            <div className="text-[10px] uppercase font-bold text-muted-foreground px-2 py-1">
+                              {lang === "NEP" ? "साधारण क्याटेगोरी" : "Standard Categories"}
+                            </div>
+                            {(direction === "in" ? inCategories : outCategories).map((c) => (
+                              <SelectItem key={c} value={c}>{getCategoryLabel(c)}</SelectItem>
+                            ))}
+
+                            {customCategories.length > 0 && (
+                              <>
+                                <div className="text-[10px] uppercase font-bold text-primary px-2 py-1 mt-1 border-t border-border/50">
+                                  {lang === "NEP" ? "कस्टम क्याटेगोरी" : "Custom Categories"}
+                                </div>
+                                {customCategories.map((c) => {
+                                  let groupTag = "";
+                                  if (c.group === "fixed_asset") groupTag = " (सम्पत्ति/Asset)";
+                                  else if (c.group === "loan") groupTag = " (ऋण/Loan)";
+                                  else if (c.group === "capital") groupTag = " (पुँजी/Capital)";
+                                  else if (c.group === "drawings") groupTag = " (व्यक्तिगत/Drawings)";
+                                  return (
+                                    <SelectItem key={c.id} value={c.name}>
+                                      {c.name}{groupTag}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </>
+                            )}
+
+                            {category &&
+                              !(direction === "in" ? inCategories : outCategories).includes(category) &&
+                              !customCategories.some(c => c.name === category) && (
+                                <SelectItem value={category}>{category}</SelectItem>
+                              )}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          onClick={() => {
+                            setNewCatGroup(direction === "in" ? "income" : "expense");
+                            setCategoryDialogOpen(true);
+                          }}
+                          title={lang === "NEP" ? "नयाँ क्याटेगोरी थप्नुहोस्" : "Add New Category"}
+                          className="shrink-0"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>{lang === "NEP" ? "भुक्तानी माध्यम" : "Payment Mode"}</Label>
+                      <Select value={paymentMode} onValueChange={setPaymentMode}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="esewa">eSewa</SelectItem>
+                          <SelectItem value="khalti">Khalti</SelectItem>
+                          <SelectItem value="bank">Bank</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Customer / Supplier (conditional) */}
+                  {(category === "customer_payment" || category === "supplier_payment" || category === "payment" || category === "salary") && (
+                    <div>
+                      <Label>{direction === "in" ? "Customer" : "Payee / Supplier"}</Label>
+                      <Select value={partyId || ""} onValueChange={setPartyId}>
+                        <SelectTrigger><SelectValue placeholder={`Select ${direction === "in" ? "Customer" : "Supplier"}...`} /></SelectTrigger>
+                        <SelectContent>
+                          {direction === "in"
+                            ? customers.map((c) => <SelectItem key={c.id} value={c.id}>
+                              {c.name} {Number(c.balance) !== 0 ? `(Due: ${Number(c.balance) < 0 ? "-" : ""}${fmt(Math.abs(Number(c.balance)))})` : ""}
+                            </SelectItem>)
+                            : suppliers.map((s) => <SelectItem key={s.id} value={s.id}>
+                              {s.name} {Number(s.balance) !== 0 ? `(Due: ${Number(s.balance) < 0 ? "-" : ""}${fmt(Math.abs(Number(s.balance)))})` : ""}
+                            </SelectItem>)
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Date & Time */}
+                  <div>
+                    <Label>{lang === "NEP" ? "मिति र समय" : "Date & Time"}</Label>
+                    <Input
+                      type="datetime-local"
+                      value={entryDate}
+                      onChange={(e) => setEntryDate(e.target.value)}
+                      className="bg-card"
+                    />
+                  </div>
+
+                  {/* Note */}
+                  <div><Label>Note</Label><Input value={note} placeholder="Add a note (optional)" onChange={(e) => setNote(e.target.value)} /></div>
+
+                  <Button onClick={save} disabled={busy} className="w-full bg-gradient-primary text-primary-foreground">
+                    {busy ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save"
+                    )}
+                  </Button>
                 </div>
-                <div>
-                  <Label>{lang === "NEP" ? "भुक्तानी माध्यम" : "Payment Mode"}</Label>
-                  <Select value={paymentMode} onValueChange={setPaymentMode}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="esewa">eSewa</SelectItem>
-                      <SelectItem value="khalti">Khalti</SelectItem>
-                      <SelectItem value="bank">Bank</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Customer / Supplier (conditional) */}
-              {(category === "customer_payment" || category === "supplier_payment" || category === "payment" || category === "salary") && (
-                <div>
-                  <Label>{direction === "in" ? "Customer" : "Payee / Supplier"}</Label>
-                  <Select value={partyId || ""} onValueChange={setPartyId}>
-                    <SelectTrigger><SelectValue placeholder={`Select ${direction === "in" ? "Customer" : "Supplier"}...`} /></SelectTrigger>
-                    <SelectContent>
-                      {direction === "in" 
-                        ? customers.map((c) => <SelectItem key={c.id} value={c.id}>
-                            {c.name} {Number(c.balance) !== 0 ? `(Due: ${Number(c.balance) < 0 ? "-" : ""}${fmt(Math.abs(Number(c.balance)))})` : ""}
-                          </SelectItem>)
-                        : suppliers.map((s) => <SelectItem key={s.id} value={s.id}>
-                            {s.name} {Number(s.balance) !== 0 ? `(Due: ${Number(s.balance) < 0 ? "-" : ""}${fmt(Math.abs(Number(s.balance)))})` : ""}
-                          </SelectItem>)
-                      }
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Date & Time */}
-              <div>
-                <Label>{lang === "NEP" ? "मिति र समय" : "Date & Time"}</Label>
-                <Input 
-                  type="datetime-local" 
-                  value={entryDate} 
-                  onChange={(e) => setEntryDate(e.target.value)} 
-                  className="bg-card"
-                />
-              </div>
-
-              {/* Note */}
-              <div><Label>Note</Label><Input value={note} placeholder="Add a note (optional)" onChange={(e) => setNote(e.target.value)} /></div>
-
-              <Button onClick={save} disabled={busy} className="w-full bg-gradient-primary text-primary-foreground">
-                {busy ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save"
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-        </div>
-      } />
+              </DialogContent>
+            </Dialog>
+          </div>
+        } />
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
         <Card className="p-2.5 sm:p-4 shadow-card border-0">
@@ -1190,30 +1190,30 @@ const Cashbook = () => {
           )}
         </button>
       </div>
-      
+
       {/* Date Range Filter Panel */}
       <Card className="p-3 mb-4 shadow-card border-0 bg-card space-y-2.5">
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1 flex-1 min-w-[140px]">
             <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{lang === "NEP" ? "मिति देखि (From)" : "From Date"}</Label>
-            <CustomDatePicker 
-              value={startDate} 
-              onChange={setStartDate} 
+            <CustomDatePicker
+              value={startDate}
+              onChange={setStartDate}
               placeholder="DD/MM/YYYY"
             />
           </div>
           <div className="space-y-1 flex-1 min-w-[140px]">
             <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{lang === "NEP" ? "मिति सम्म (To)" : "To Date"}</Label>
-            <CustomDatePicker 
-              value={endDate} 
-              onChange={setEndDate} 
+            <CustomDatePicker
+              value={endDate}
+              onChange={setEndDate}
               placeholder="DD/MM/YYYY"
             />
           </div>
           {(startDate || endDate) && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => { setStartDate(""); setEndDate(""); }}
               className="h-9 px-3 text-xs font-bold text-destructive hover:bg-destructive/10 shrink-0"
             >
@@ -1278,11 +1278,11 @@ const Cashbook = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            className="pl-9 h-9 bg-card border-border text-sm" 
-            placeholder={lang === "NEP" ? "खर्च, पार्टी, सामान वा नोट खोज्नुहोस्..." : "Search by note, party, item, category..."} 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
+          <Input
+            className="pl-9 h-9 bg-card border-border text-sm"
+            placeholder={lang === "NEP" ? "खर्च, पार्टी, सामान वा नोट खोज्नुहोस्..." : "Search by note, party, item, category..."}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
@@ -1294,7 +1294,7 @@ const Cashbook = () => {
               <TabsTrigger value="out" className="text-xs">{lang === "NEP" ? "बाहिर" : "Out"}</TabsTrigger>
             </TabsList>
           </Tabs>
-          
+
           <div className="flex items-center gap-1.5">
             <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
               <SelectTrigger className="w-[140px] h-9 bg-card text-xs">
@@ -1321,72 +1321,72 @@ const Cashbook = () => {
             const pDetail = (r.category === "purchase" || r.category === "purchases") && r.reference_id ? purchaseDetails[r.reference_id] : null;
             const isDeletingThis = deletingRowId === r.id;
             return (
-            <div 
-              key={r.id} 
-              className={cn(
-                "p-3 flex items-center gap-3 hover:bg-secondary/35 transition-all cursor-pointer",
-                isDeletingThis && "opacity-40 pointer-events-none bg-muted/40"
-              )} 
-              onClick={() => openEdit(r)}
-            >
-            {r.direction === "in" ? <ArrowDownCircle className="h-5 w-5 text-success shrink-0" /> : <ArrowUpCircle className="h-5 w-5 text-destructive shrink-0" />}
-            <div className="flex-1 min-w-0">
-              <div className="font-medium flex items-center gap-2">
-                <span className="capitalize truncate">
-                  {sDetail ? `${sDetail.customer} (Sale)` : pDetail ? `${pDetail.supplier} (Purchase)` : r.party_name ? r.party_name : (r.category || "other").replace("_", " ")}
-                </span>
-                {r.party_name && !sDetail && <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground font-normal uppercase tracking-wider shrink-0">{(r.category || "other").replace("_", " ")}</span>}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {r.created_at ? format(new Date(r.created_at), "dd MMM yyyy, hh:mm a") : "-"}
-                {sDetail?.products ? <span className="font-medium text-foreground/80 block mt-0.5 truncate">📦 {sDetail.products}</span> : null}
-                {pDetail?.products ? <span className="font-medium text-foreground/80 block mt-0.5 truncate">📦 {pDetail.products}</span> : null}
-                {sDetail ? (
-                  <span className="italic block text-[11px] mt-0.5 truncate capitalize">
-                    💬 Payment through {getRowPaymentMode(r)}
-                  </span>
-                ) : pDetail ? (
-                  <span className="italic block text-[11px] mt-0.5 truncate capitalize">
-                    💬 Payment through {getRowPaymentMode(r)}
-                  </span>
-                ) : r.note ? (
-                  <span className="italic block text-[11px] mt-0.5 truncate">💬 {r.note}</span>
-                ) : null}
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              <div className="text-right">
-                <div className={`font-semibold text-xs sm:text-sm ${r.direction === "in" ? "text-success" : "text-destructive"}`}>
-                  {r.direction === "in" ? "+" : "−"}{fmt(r.amount)}
-                </div>
-                {runningBalances.has(r.id) && (
-                  <div className="text-[10px] sm:text-[11px] text-muted-foreground font-normal mt-0.5 font-mono">
-                    Bal: {fmt(runningBalances.get(r.id) || 0)}
+              <div
+                key={r.id}
+                className={cn(
+                  "p-3 flex items-center gap-3 hover:bg-secondary/35 transition-all cursor-pointer",
+                  isDeletingThis && "opacity-40 pointer-events-none bg-muted/40"
+                )}
+                onClick={() => openEdit(r)}
+              >
+                {r.direction === "in" ? <ArrowDownCircle className="h-5 w-5 text-success shrink-0" /> : <ArrowUpCircle className="h-5 w-5 text-destructive shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium flex items-center gap-2">
+                    <span className="capitalize truncate">
+                      {sDetail ? `${sDetail.customer} (Sale)` : pDetail ? `${pDetail.supplier} (Purchase)` : r.party_name ? r.party_name : (r.category || "other").replace("_", " ")}
+                    </span>
+                    {r.party_name && !sDetail && <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground font-normal uppercase tracking-wider shrink-0">{(r.category || "other").replace("_", " ")}</span>}
                   </div>
-                )}
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {r.created_at ? format(new Date(r.created_at), "dd MMM yyyy, hh:mm a") : "-"}
+                    {sDetail?.products ? <span className="font-medium text-foreground/80 block mt-0.5 truncate">📦 {sDetail.products}</span> : null}
+                    {pDetail?.products ? <span className="font-medium text-foreground/80 block mt-0.5 truncate">📦 {pDetail.products}</span> : null}
+                    {sDetail ? (
+                      <span className="italic block text-[11px] mt-0.5 truncate capitalize">
+                        💬 Payment through {getRowPaymentMode(r)}
+                      </span>
+                    ) : pDetail ? (
+                      <span className="italic block text-[11px] mt-0.5 truncate capitalize">
+                        💬 Payment through {getRowPaymentMode(r)}
+                      </span>
+                    ) : r.note ? (
+                      <span className="italic block text-[11px] mt-0.5 truncate">💬 {r.note}</span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <div className="text-right">
+                    <div className={`font-semibold text-xs sm:text-sm ${r.direction === "in" ? "text-success" : "text-destructive"}`}>
+                      {r.direction === "in" ? "+" : "−"}{fmt(r.amount)}
+                    </div>
+                    {runningBalances.has(r.id) && (
+                      <div className="text-[10px] sm:text-[11px] text-muted-foreground font-normal mt-0.5 font-mono">
+                        Bal: {fmt(runningBalances.get(r.id) || 0)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {r.reference_id && (
+                      <span className="text-[10px] text-muted-foreground italic px-1 select-none">auto</span>
+                    )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={deletingRowId === r.id}
+                      onClick={() => setConfirmDeleteRow(r)}
+                      className="h-7 w-7 text-destructive hover:bg-destructive/10 active:scale-95"
+                      title="डिलिट गर्नुहोस्"
+                    >
+                      {deletingRowId === r.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-destructive" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                {r.reference_id && (
-                  <span className="text-[10px] text-muted-foreground italic px-1 select-none">auto</span>
-                )}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  disabled={deletingRowId === r.id}
-                  onClick={() => setConfirmDeleteRow(r)}
-                  className="h-7 w-7 text-destructive hover:bg-destructive/10 active:scale-95"
-                  title="डिलिट गर्नुहोस्"
-                >
-                  {deletingRowId === r.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-destructive" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5" />
-                  )}
-                </Button>
-              </div>
-            </div>
-            </div>
-          );
+            );
           });
         })()}
         {rows.length === 0 ? (
@@ -1411,16 +1411,16 @@ const Cashbook = () => {
             <AlertDialogDescription>
               {confirmDeleteRow && (
                 confirmDeleteRow.category === "sale" || confirmDeleteRow.category === "sales"
-                  ? (lang === "NEP" 
-                      ? "के तपाईं पक्का हुनुहुन्छ? यसले बिक्री बिल मेटाउनेछ, बिक्री भएको सामान स्टकमा फिर्ता गर्नेछ, ग्राहकको खाताबाट हिसाब हटाउनेछ र क्यास ब्यालेन्स घटाउनेछ।" 
-                      : "Are you sure? This will delete the Sale, return the sold items to Stock, remove the customer's ledger entry, and deduct the cash balance.")
+                  ? (lang === "NEP"
+                    ? "के तपाईं पक्का हुनुहुन्छ? यसले बिक्री बिल मेटाउनेछ, बिक्री भएको सामान स्टकमा फिर्ता गर्नेछ, ग्राहकको खाताबाट हिसाब हटाउनेछ र क्यास ब्यालेन्स घटाउनेछ।"
+                    : "Are you sure? This will delete the Sale, return the sold items to Stock, remove the customer's ledger entry, and deduct the cash balance.")
                   : (confirmDeleteRow.category === "purchase" || confirmDeleteRow.category === "purchases")
-                    ? (lang === "NEP" 
-                        ? "के तपाईं पक्का हुनुहुन्छ? यसले खरिद बिल मेटाउनेछ, खरिद गरिएको सामान स्टकबाट घटाउनेछ, सप्लायरको खाताबाट हिसाब हटाउनेछ र तिरेको क्यास फिर्ता जोड्नेछ।" 
-                        : "Are you sure? This will delete the Purchase, remove the purchased items from Stock, remove the supplier's ledger entry, and restore the cash balance.")
-                    : (lang === "NEP" 
-                        ? "यो क्यास रेकर्ड मेटिनेछ र क्यास ब्यालेन्स स्वतः मिलान हुनेछ।" 
-                        : "This cash entry will be permanently removed. The cash balance will be updated accordingly.")
+                    ? (lang === "NEP"
+                      ? "के तपाईं पक्का हुनुहुन्छ? यसले खरिद बिल मेटाउनेछ, खरिद गरिएको सामान स्टकबाट घटाउनेछ, सप्लायरको खाताबाट हिसाब हटाउनेछ र तिरेको क्यास फिर्ता जोड्नेछ।"
+                      : "Are you sure? This will delete the Purchase, remove the purchased items from Stock, remove the supplier's ledger entry, and restore the cash balance.")
+                    : (lang === "NEP"
+                      ? "यो क्यास रेकर्ड मेटिनेछ र क्यास ब्यालेन्स स्वतः मिलान हुनेछ।"
+                      : "This cash entry will be permanently removed. The cash balance will be updated accordingly.")
               )}
               <div className="mt-2 font-semibold text-destructive">
                 {lang === "NEP" ? "चेतावनी: यो काम फेरि उल्टाउन सकिँदैन!" : "Warning: This action cannot be undone!"}
@@ -1500,8 +1500,8 @@ const Cashbook = () => {
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground mt-1">
-                {lang === "NEP" 
-                  ? "💡 यसले गर्दा गाडी वा फर्निचर किन्दा ब्यालेन्स सिटमा घाटा नदेखिई सिधै सम्पत्ति (Fixed Asset) मा जोडिन्छ।" 
+                {lang === "NEP"
+                  ? "💡 यसले गर्दा गाडी वा फर्निचर किन्दा ब्यालेन्स सिटमा घाटा नदेखिई सिधै सम्पत्ति (Fixed Asset) मा जोडिन्छ।"
                   : "💡 Ensures Balance Sheet correctly classifies this as Asset, Liability, or Expense."}
               </p>
             </div>

@@ -1595,116 +1595,302 @@ export default function Accounting() {
 
     setSavingAccount(true);
     try {
-      let type: AccountType = "asset";
-      if (["capital", "drawings"].includes(newAccGroup)) type = "equity";
-      else if (["loans_liabilities", "current_liabilities", "duties_taxes"].includes(newAccGroup)) type = "liability";
-      else if (["direct_incomes", "indirect_incomes"].includes(newAccGroup)) type = "income";
-      else if (["direct_expenses", "indirect_expenses"].includes(newAccGroup)) type = "expense";
+      const trimmedName = newAccName.trim();
+      const openingAmt = Number(newAccOpening) || 0;
+      const now = new Date().toISOString();
 
-      const docRef = doc(collection(db, "accounts"));
-      const newAcc: Account = {
-        id: docRef.id,
-        user_id: user.uid,
-        name: newAccName.trim(),
-        group: newAccGroup,
-        type,
-        opening_balance: Number(newAccOpening) || 0,
-        is_system: false,
-        created_at: new Date().toISOString()
-      };
+      if (newAccGroup === "sundry_debtors") {
+        const custRef = doc(collection(db, "customers"));
+        const newCust = {
+          id: custRef.id,
+          user_id: user.uid,
+          name: trimmedName,
+          phone: "",
+          address: "",
+          pan: "",
+          opening_balance: openingAmt,
+          created_at: now
+        };
+        await setDoc(custRef, newCust);
 
-      await setDoc(docRef, newAcc);
-      toast.success(lang === "NEP" ? `नयाँ खाता "${newAcc.name}" थपियो!` : `Account "${newAcc.name}" created!`);
-
-      // Update accounts list immediately in local state
-      setAccounts(prev => {
-        const exists = prev.some(a => a.id === newAcc.id);
-        return exists ? prev : [...prev, newAcc];
-      });
-
-      // Auto-assign to the targeted voucher field
-      if (quickTarget) {
-        if (quickTarget.type === "paymentRow") {
-          setPaymentRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined } : r));
-        } else if (quickTarget.type === "receiptRow") {
-          setReceiptRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined } : r));
-        } else if (quickTarget.type === "journalRow") {
-          setJournalRows(prev => prev.map(r => {
-            if (r.id !== quickTarget.id) return r;
-            let autoAmt = r.amount;
-            if (!r.amount || Number(r.amount) === 0) {
-              let otherDr = 0;
-              let otherCr = 0;
-              prev.forEach(x => {
-                if (x.id === r.id) return;
-                const amt = Number(x.amount || 0);
-                if (x.type === "debit") otherDr += amt;
-                else otherCr += amt;
-              });
-              if (r.type === "credit" && otherDr > otherCr) {
-                const diff = Math.round((otherDr - otherCr) * 100) / 100;
-                if (diff > 0) autoAmt = String(diff);
-              } else if (r.type === "debit" && otherCr > otherDr) {
-                const diff = Math.round((otherCr - otherDr) * 100) / 100;
-                if (diff > 0) autoAmt = String(diff);
-              }
-            }
-            return { ...r, account_id: newAcc.id, amount: autoAmt };
-          }));
-        } else if (quickTarget.type === "debitAccountId") {
-          setDebitAccountId(newAcc.id);
-        } else if (quickTarget.type === "creditAccountId") {
-          setCreditAccountId(newAcc.id);
+        if (openingAmt > 0) {
+          const lRef = doc(collection(db, "ledger_entries"));
+          await setDoc(lRef, {
+            id: lRef.id,
+            user_id: user.uid,
+            party_type: "customer",
+            party_id: custRef.id,
+            entry_type: "debit",
+            party_name: trimmedName,
+            amount: openingAmt,
+            payment_mode: "opening",
+            note: "सुरुवाती लिन बाँकी (Opening Balance)",
+            created_at: now
+          });
         }
-      } else if (voucherModalOpen) {
-        // If no explicit row target was given, assign to the first empty row or row 0
-        if (voucherType === "payment") {
-          setPaymentRows(prev => {
-            const emptyIdx = prev.findIndex(r => !r.account_id);
-            const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
-            const updated = [...prev];
-            updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined };
-            return updated;
-          });
-        } else if (voucherType === "receipt") {
-          setReceiptRows(prev => {
-            const emptyIdx = prev.findIndex(r => !r.account_id);
-            const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
-            const updated = [...prev];
-            updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined };
-            return updated;
-          });
-        } else if (voucherType === "journal") {
-          setJournalRows(prev => {
-            const emptyIdx = prev.findIndex(r => !r.account_id);
-            const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
-            const updated = [...prev];
-            const targetRow = updated[targetIdx];
-            let autoAmt = targetRow?.amount || "";
-            if (!autoAmt || Number(autoAmt) === 0) {
-              let otherDr = 0;
-              let otherCr = 0;
-              prev.forEach((x, idx) => {
-                if (idx === targetIdx) return;
-                const amt = Number(x.amount || 0);
-                if (x.type === "debit") otherDr += amt;
-                else otherCr += amt;
-              });
-              if (targetRow?.type === "credit" && otherDr > otherCr) {
-                const diff = Math.round((otherDr - otherCr) * 100) / 100;
-                if (diff > 0) autoAmt = String(diff);
-              } else if (targetRow?.type === "debit" && otherCr > otherDr) {
-                const diff = Math.round((otherCr - otherDr) * 100) / 100;
-                if (diff > 0) autoAmt = String(diff);
+
+        setCustomersDocs(prev => [...prev, newCust]);
+        const partyKey = `party_customer_${custRef.id}`;
+        toast.success(lang === "NEP" ? `नयाँ ग्राहक/असामी "${trimmedName}" थपियो!` : `Customer "${trimmedName}" created!`);
+
+        // Auto-assign to targeted voucher field
+        if (quickTarget) {
+          if (quickTarget.type === "paymentRow") {
+            setPaymentRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: partyKey, party_id: newCust.id, party_type: "customer", party_name: trimmedName } : r));
+          } else if (quickTarget.type === "receiptRow") {
+            setReceiptRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: partyKey, party_id: newCust.id, party_type: "customer", party_name: trimmedName } : r));
+          } else if (quickTarget.type === "journalRow") {
+            setJournalRows(prev => prev.map(r => {
+              if (r.id !== quickTarget.id) return r;
+              let autoAmt = r.amount;
+              if (!r.amount || Number(r.amount) === 0) {
+                let otherDr = 0, otherCr = 0;
+                prev.forEach(x => {
+                  if (x.id === r.id) return;
+                  const amt = Number(x.amount || 0);
+                  if (x.type === "debit") otherDr += amt;
+                  else otherCr += amt;
+                });
+                if (r.type === "credit" && otherDr > otherCr) autoAmt = String(Math.round((otherDr - otherCr) * 100) / 100);
+                else if (r.type === "debit" && otherCr > otherDr) autoAmt = String(Math.round((otherCr - otherDr) * 100) / 100);
               }
-            }
-            updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id, amount: autoAmt };
-            return updated;
+              return { ...r, account_id: partyKey, amount: autoAmt };
+            }));
+          }
+        } else if (voucherModalOpen) {
+          if (voucherType === "journal") {
+            setJournalRows(prev => {
+              const emptyIdx = prev.findIndex(r => !r.account_id);
+              const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+              const updated = [...prev];
+              const targetRow = updated[targetIdx];
+              let autoAmt = targetRow?.amount || "";
+              if (!autoAmt || Number(autoAmt) === 0) {
+                let otherDr = 0, otherCr = 0;
+                prev.forEach((x, idx) => {
+                  if (idx === targetIdx) return;
+                  const amt = Number(x.amount || 0);
+                  if (x.type === "debit") otherDr += amt;
+                  else otherCr += amt;
+                });
+                if (targetRow?.type === "credit" && otherDr > otherCr) autoAmt = String(Math.round((otherDr - otherCr) * 100) / 100);
+                else if (targetRow?.type === "debit" && otherCr > otherDr) autoAmt = String(Math.round((otherCr - otherDr) * 100) / 100);
+              }
+              updated[targetIdx] = { ...updated[targetIdx], account_id: partyKey, amount: autoAmt };
+              return updated;
+            });
+          } else if (voucherType === "receipt") {
+            setReceiptRows(prev => {
+              const emptyIdx = prev.findIndex(r => !r.account_id);
+              const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+              const updated = [...prev];
+              updated[targetIdx] = { ...updated[targetIdx], account_id: partyKey, party_id: newCust.id, party_type: "customer", party_name: trimmedName };
+              return updated;
+            });
+          }
+        }
+      } else if (newAccGroup === "sundry_creditors") {
+        const suppRef = doc(collection(db, "suppliers"));
+        const newSupp = {
+          id: suppRef.id,
+          user_id: user.uid,
+          name: trimmedName,
+          phone: "",
+          address: "",
+          pan: "",
+          opening_balance: openingAmt,
+          created_at: now
+        };
+        await setDoc(suppRef, newSupp);
+
+        if (openingAmt > 0) {
+          const lRef = doc(collection(db, "ledger_entries"));
+          await setDoc(lRef, {
+            id: lRef.id,
+            user_id: user.uid,
+            party_type: "supplier",
+            party_id: suppRef.id,
+            entry_type: "credit",
+            party_name: trimmedName,
+            amount: openingAmt,
+            payment_mode: "opening",
+            note: "सुरुवाती तिर्न बाँकी (Opening Balance)",
+            created_at: now
           });
-        } else if (voucherType === "contra") {
-          if (!debitAccountId) setDebitAccountId(newAcc.id);
-          else if (!creditAccountId) setCreditAccountId(newAcc.id);
-          else setDebitAccountId(newAcc.id);
+        }
+
+        setSuppliersDocs(prev => [...prev, newSupp]);
+        const partyKey = `party_supplier_${suppRef.id}`;
+        toast.success(lang === "NEP" ? `नयाँ साहु/सप्लायर "${trimmedName}" थपियो!` : `Supplier "${trimmedName}" created!`);
+
+        // Auto-assign to targeted voucher field
+        if (quickTarget) {
+          if (quickTarget.type === "paymentRow") {
+            setPaymentRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: partyKey, party_id: newSupp.id, party_type: "supplier", party_name: trimmedName } : r));
+          } else if (quickTarget.type === "receiptRow") {
+            setReceiptRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: partyKey, party_id: newSupp.id, party_type: "supplier", party_name: trimmedName } : r));
+          } else if (quickTarget.type === "journalRow") {
+            setJournalRows(prev => prev.map(r => {
+              if (r.id !== quickTarget.id) return r;
+              let autoAmt = r.amount;
+              if (!r.amount || Number(r.amount) === 0) {
+                let otherDr = 0, otherCr = 0;
+                prev.forEach(x => {
+                  if (x.id === r.id) return;
+                  const amt = Number(x.amount || 0);
+                  if (x.type === "debit") otherDr += amt;
+                  else otherCr += amt;
+                });
+                if (r.type === "credit" && otherDr > otherCr) autoAmt = String(Math.round((otherDr - otherCr) * 100) / 100);
+                else if (r.type === "debit" && otherCr > otherDr) autoAmt = String(Math.round((otherCr - otherDr) * 100) / 100);
+              }
+              return { ...r, account_id: partyKey, amount: autoAmt };
+            }));
+          }
+        } else if (voucherModalOpen) {
+          if (voucherType === "journal") {
+            setJournalRows(prev => {
+              const emptyIdx = prev.findIndex(r => !r.account_id);
+              const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+              const updated = [...prev];
+              const targetRow = updated[targetIdx];
+              let autoAmt = targetRow?.amount || "";
+              if (!autoAmt || Number(autoAmt) === 0) {
+                let otherDr = 0, otherCr = 0;
+                prev.forEach((x, idx) => {
+                  if (idx === targetIdx) return;
+                  const amt = Number(x.amount || 0);
+                  if (x.type === "debit") otherDr += amt;
+                  else otherCr += amt;
+                });
+                if (targetRow?.type === "credit" && otherDr > otherCr) autoAmt = String(Math.round((otherDr - otherCr) * 100) / 100);
+                else if (targetRow?.type === "debit" && otherCr > otherDr) autoAmt = String(Math.round((otherCr - otherDr) * 100) / 100);
+              }
+              updated[targetIdx] = { ...updated[targetIdx], account_id: partyKey, amount: autoAmt };
+              return updated;
+            });
+          } else if (voucherType === "payment") {
+            setPaymentRows(prev => {
+              const emptyIdx = prev.findIndex(r => !r.account_id);
+              const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+              const updated = [...prev];
+              updated[targetIdx] = { ...updated[targetIdx], account_id: partyKey, party_id: newSupp.id, party_type: "supplier", party_name: trimmedName };
+              return updated;
+            });
+          }
+        }
+      } else {
+        let type: AccountType = "asset";
+        if (["capital", "drawings"].includes(newAccGroup)) type = "equity";
+        else if (["loans_liabilities", "current_liabilities", "duties_taxes"].includes(newAccGroup)) type = "liability";
+        else if (["direct_incomes", "indirect_incomes"].includes(newAccGroup)) type = "income";
+        else if (["direct_expenses", "indirect_expenses"].includes(newAccGroup)) type = "expense";
+
+        const docRef = doc(collection(db, "accounts"));
+        const newAcc: Account = {
+          id: docRef.id,
+          user_id: user.uid,
+          name: trimmedName,
+          group: newAccGroup,
+          type,
+          opening_balance: openingAmt,
+          is_system: false,
+          created_at: now
+        };
+
+        await setDoc(docRef, newAcc);
+        toast.success(lang === "NEP" ? `नयाँ खाता "${newAcc.name}" थपियो!` : `Account "${newAcc.name}" created!`);
+
+        // Update accounts list immediately in local state
+        setAccounts(prev => {
+          const exists = prev.some(a => a.id === newAcc.id);
+          return exists ? prev : [...prev, newAcc];
+        });
+
+        // Auto-assign to the targeted voucher field
+        if (quickTarget) {
+          if (quickTarget.type === "paymentRow") {
+            setPaymentRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined } : r));
+          } else if (quickTarget.type === "receiptRow") {
+            setReceiptRows(prev => prev.map(r => r.id === quickTarget.id ? { ...r, account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined } : r));
+          } else if (quickTarget.type === "journalRow") {
+            setJournalRows(prev => prev.map(r => {
+              if (r.id !== quickTarget.id) return r;
+              let autoAmt = r.amount;
+              if (!r.amount || Number(r.amount) === 0) {
+                let otherDr = 0;
+                let otherCr = 0;
+                prev.forEach(x => {
+                  if (x.id === r.id) return;
+                  const amt = Number(x.amount || 0);
+                  if (x.type === "debit") otherDr += amt;
+                  else otherCr += amt;
+                });
+                if (r.type === "credit" && otherDr > otherCr) {
+                  const diff = Math.round((otherDr - otherCr) * 100) / 100;
+                  if (diff > 0) autoAmt = String(diff);
+                } else if (r.type === "debit" && otherCr > otherDr) {
+                  const diff = Math.round((otherCr - otherDr) * 100) / 100;
+                  if (diff > 0) autoAmt = String(diff);
+                }
+              }
+              return { ...r, account_id: newAcc.id, amount: autoAmt };
+            }));
+          } else if (quickTarget.type === "debitAccountId") {
+            setDebitAccountId(newAcc.id);
+          } else if (quickTarget.type === "creditAccountId") {
+            setCreditAccountId(newAcc.id);
+          }
+        } else if (voucherModalOpen) {
+          // If no explicit row target was given, assign to the first empty row or row 0
+          if (voucherType === "payment") {
+            setPaymentRows(prev => {
+              const emptyIdx = prev.findIndex(r => !r.account_id);
+              const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+              const updated = [...prev];
+              updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined };
+              return updated;
+            });
+          } else if (voucherType === "receipt") {
+            setReceiptRows(prev => {
+              const emptyIdx = prev.findIndex(r => !r.account_id);
+              const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+              const updated = [...prev];
+              updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id, party_id: undefined, party_type: undefined, party_name: undefined };
+              return updated;
+            });
+          } else if (voucherType === "journal") {
+            setJournalRows(prev => {
+              const emptyIdx = prev.findIndex(r => !r.account_id);
+              const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+              const updated = [...prev];
+              const targetRow = updated[targetIdx];
+              let autoAmt = targetRow?.amount || "";
+              if (!autoAmt || Number(autoAmt) === 0) {
+                let otherDr = 0;
+                let otherCr = 0;
+                prev.forEach((x, idx) => {
+                  if (idx === targetIdx) return;
+                  const amt = Number(x.amount || 0);
+                  if (x.type === "debit") otherDr += amt;
+                  else otherCr += amt;
+                });
+                if (targetRow?.type === "credit" && otherDr > otherCr) {
+                  const diff = Math.round((otherDr - otherCr) * 100) / 100;
+                  if (diff > 0) autoAmt = String(diff);
+                } else if (targetRow?.type === "debit" && otherCr > otherDr) {
+                  const diff = Math.round((otherCr - otherDr) * 100) / 100;
+                  if (diff > 0) autoAmt = String(diff);
+                }
+              }
+              updated[targetIdx] = { ...updated[targetIdx], account_id: newAcc.id, amount: autoAmt };
+              return updated;
+            });
+          } else if (voucherType === "contra") {
+            if (!debitAccountId) setDebitAccountId(newAcc.id);
+            else if (!creditAccountId) setCreditAccountId(newAcc.id);
+            else setDebitAccountId(newAcc.id);
+          }
         }
       }
 
@@ -1713,8 +1899,6 @@ export default function Accounting() {
       setNewAccOpening("0");
       setQuickTarget(null);
       loadData().catch(() => { });
-      setNewAccOpening("0");
-      setQuickTarget(null);
     } catch (err: any) {
       toast.error(err.message || "Failed to create account");
     } finally {
@@ -5520,6 +5704,8 @@ export default function Accounting() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-56 z-[90]">
+                  <SelectItem value="sundry_debtors">👥 Sundry Debtors (ग्राहक / विद्यार्थी / असामी)</SelectItem>
+                  <SelectItem value="sundry_creditors">🏢 Sundry Creditors (साहु / आपूर्तिकर्ता / महाजन)</SelectItem>
                   <SelectItem value="bank_accounts">Bank Account (बैंक खाता)</SelectItem>
                   <SelectItem value="current_assets">Current Asset (चालू सम्पत्ति / पेश्की, धरौटी, TDS)</SelectItem>
                   <SelectItem value="indirect_expenses">Expense (व्यापारिक/कार्यालय खर्च)</SelectItem>
