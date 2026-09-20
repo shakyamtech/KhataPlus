@@ -380,16 +380,17 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
 
   // Load user-specific custom units from local cache and sync with Firestore profile
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setCustomUnits([]);
+      return;
+    }
     const storageKey = `khataplus_custom_units_${user.uid}`;
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         setCustomUnits(JSON.parse(saved));
       } else {
-        // Fallback to old key if migrating on same device
-        const oldSaved = localStorage.getItem("khataplus_custom_units");
-        if (oldSaved) setCustomUnits(JSON.parse(oldSaved));
+        setCustomUnits([]);
       }
     } catch {}
 
@@ -401,7 +402,11 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
           try {
             localStorage.setItem(storageKey, JSON.stringify(data.custom_units));
           } catch {}
+        } else {
+          setCustomUnits([]);
         }
+      } else {
+        setCustomUnits([]);
       }
     }).catch(console.error);
   }, [user]);
