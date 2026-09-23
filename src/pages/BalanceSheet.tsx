@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { Printer, Landmark, Sparkles, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react";
-import { getFiscalYearInfo, getRecentFiscalYears, formatNepaliDate, FiscalYearInfo } from "@/lib/fiscalYear";
+import { getFiscalYearInfo, getRecentFiscalYears, formatNepaliDate, resolveDualDates, FiscalYearInfo } from "@/lib/fiscalYear";
 import { getAccounts, Account, Voucher, getVoucherAccountImpacts } from "@/lib/accounting";
 import { BalanceSheetAssistantModal } from "@/components/BalanceSheetAssistantModal";
 import {
@@ -119,27 +119,58 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
       setShopInfo(sInfo);
 
       const isCurrentFY = selectedFY.bsStartYear === currentFY.bsStartYear;
-      const cutoffIso = isCurrentFY ? new Date().toISOString() : selectedFY.endDate.toISOString();
+      const fyEndMs = isCurrentFY ? Date.now() : selectedFY.endDate.getTime();
+
+      const getDocTimestamp = (doc: any): number | null => {
+        if (!doc) return null;
+        const raw = doc.created_at || doc.date || doc.date_ad || doc.date_bs;
+        if (!raw) return null;
+        if (typeof raw.toDate === "function") return raw.toDate().getTime();
+        if (typeof raw.seconds === "number") return raw.seconds * 1000;
+        if (raw instanceof Date) return raw.getTime();
+        if (typeof raw === "string") {
+          const dual = resolveDualDates(raw, doc.date_bs);
+          const parsed = new Date(dual.dateAd || raw).getTime();
+          if (!isNaN(parsed)) return parsed;
+        }
+        return null;
+      };
+
+      const isBeforeOrAtCutoff = (doc: any) => {
+        const t = getDocTimestamp(doc);
+        if (t === null) return isCurrentFY;
+        return t <= fyEndMs;
+      };
 
       const allCash = cSnap.docs.map(d => d.data());
       const allProducts = pSnap.docs.map(d => d.data());
       const allLedger = lSnap.docs.map(d => d.data());
       const allSales = sSnap.docs.map(d => d.data());
       const allWastage = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
-      const accounts = accList;
+      const accounts = (accList as any[]).filter(a => {
+        const t = getDocTimestamp(a);
+        if (t !== null && t > fyEndMs) return false;
+        return true;
+      });
       const allVouchers = vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher));
       const suppliers = suppSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const customers = custSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const allPurchases = purSnap.docs.map(d => d.data());
 
-      // Filter all transactions up to cutoffIso
-      const cash = allCash.filter((c: any) => !c.created_at || c.created_at <= cutoffIso);
-      const sales = allSales.filter((s: any) => !s.created_at || s.created_at <= cutoffIso);
-      const purchases = allPurchases.filter((p: any) => !p.created_at || p.created_at <= cutoffIso);
-      const vouchers = allVouchers.filter((v: any) => !(v.date || v.created_at) || (v.date || v.created_at) <= cutoffIso);
-      const ledger = allLedger.filter((e: any) => !(e.date || e.created_at) || (e.date || e.created_at) <= cutoffIso);
-      const wastageAdjustments = allWastage.filter((w: any) => !w.created_at || w.created_at <= cutoffIso);
-      const products = allProducts;
+      // Filter all transactions up to cutoff
+      const cash = allCash.filter(isBeforeOrAtCutoff);
+      const sales = allSales.filter(isBeforeOrAtCutoff);
+      const purchases = allPurchases.filter(isBeforeOrAtCutoff);
+      const vouchers = allVouchers.filter(isBeforeOrAtCutoff);
+      const ledger = allLedger.filter(isBeforeOrAtCutoff);
+      const wastageAdjustments = allWastage.filter(isBeforeOrAtCutoff);
+
+      const hadPastActivity = cash.length > 0 || vouchers.length > 0 || ledger.length > 0 || sales.length > 0 || purchases.length > 0;
+      const products = hadPastActivity ? allProducts.filter(p => {
+        const t = getDocTimestamp(p);
+        if (t !== null && t > fyEndMs) return false;
+        return true;
+      }) : [];
 
       setRawAccounts(accounts);
       setRawVouchers(vouchers);
@@ -163,7 +194,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
 
         const totalCash = pureCashBal + otherCashBal;
-        const stock = products.reduce((s, r: any) => s + +r.stock_qty * +r.cost_price, 0);
+        const stock = products.reduce((s, r: any) => s + (+r.stock_qty || 0) * (+r.cost_price || 0), 0);
 
         // 1. Calculate Bank Balances
         const bankAccounts = accounts.filter((a: any) => a.group === "bank_accounts");

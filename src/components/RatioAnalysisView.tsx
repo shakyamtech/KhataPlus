@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { fmt } from "@/lib/format";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { getFiscalYearInfo, getRecentFiscalYears, formatNepaliDate, FiscalYearInfo } from "@/lib/fiscalYear";
+import { getFiscalYearInfo, getRecentFiscalYears, formatNepaliDate, resolveDualDates, FiscalYearInfo } from "@/lib/fiscalYear";
 import { format } from "date-fns";
 import { getAccounts, getVoucherAccountImpacts } from "@/lib/accounting";
 import {
@@ -94,38 +94,82 @@ export default function RatioAnalysisView() {
         setShopInfo(sInfo);
 
         const isCurrentFY = selectedFY.bsStartYear === currentFY.bsStartYear;
-        const cutoffIso = isCurrentFY ? new Date().toISOString() : selectedFY.endDate.toISOString();
+        const fyStartMs = selectedFY.startDate.getTime();
+        const fyEndMs = isCurrentFY ? Date.now() : selectedFY.endDate.getTime();
+
+        const getDocTimestamp = (doc: any): number | null => {
+          if (!doc) return null;
+          const raw = doc.created_at || doc.date || doc.date_ad || doc.date_bs;
+          if (!raw) return null;
+          if (typeof raw.toDate === "function") return raw.toDate().getTime();
+          if (typeof raw.seconds === "number") return raw.seconds * 1000;
+          if (raw instanceof Date) return raw.getTime();
+          if (typeof raw === "string") {
+            const dual = resolveDualDates(raw, doc.date_bs);
+            const parsed = new Date(dual.dateAd || raw).getTime();
+            if (!isNaN(parsed)) return parsed;
+          }
+          return null;
+        };
+
+        const isBeforeOrAtCutoff = (doc: any) => {
+          const t = getDocTimestamp(doc);
+          if (t === null) return isCurrentFY;
+          return t <= fyEndMs;
+        };
+
+        const isInSelectedFY = (doc: any) => {
+          const t = getDocTimestamp(doc);
+          if (t === null) return isCurrentFY;
+          return t >= fyStartMs && t <= fyEndMs;
+        };
 
         const allCash = cSnap.docs.map(d => d.data());
         const allSales = sSnap.docs.map(d => d.data());
         const allPurchases = purSnap.docs.map(d => d.data());
         const allStockAdj = saSnap.docs.map(d => d.data());
         const allVouchers = vSnap.docs.map(d => d.data());
-        const accountsList = accList as any[];
+        const allProducts = pSnap.docs.map(d => d.data());
+        const allLedger = lSnap.docs.map(d => d.data());
 
-        const cashDocs = allCash.filter((c: any) => !c.created_at || c.created_at <= cutoffIso);
-        const salesDocs = allSales.filter((s: any) => !s.created_at || s.created_at <= cutoffIso);
-        const purchasesDocs = allPurchases.filter((p: any) => !p.created_at || p.created_at <= cutoffIso);
-        const stockAdjDocs = allStockAdj.filter((w: any) => !w.created_at || w.created_at <= cutoffIso);
-        const vouchersList = allVouchers.filter((v: any) => !(v.date || v.created_at) || (v.date || v.created_at) <= cutoffIso);
-        const ledgerDocs = lSnap.docs.map(d => d.data()).filter((e: any) => !(e.date || e.created_at) || (e.date || e.created_at) <= cutoffIso);
+        const fCashDocs = allCash.filter(isBeforeOrAtCutoff);
+        const fSalesDocsCumulative = allSales.filter(isBeforeOrAtCutoff);
+        const fPurchasesDocsCumulative = allPurchases.filter(isBeforeOrAtCutoff);
+        const fVouchersList = allVouchers.filter(isBeforeOrAtCutoff);
+        const fLedgerDocs = allLedger.filter(isBeforeOrAtCutoff);
+
+        const pSalesDocs = allSales.filter(isInSelectedFY);
+        const pPurchasesDocs = allPurchases.filter(isInSelectedFY);
+        const pStockAdjDocs = allStockAdj.filter(isInSelectedFY);
+        const pCashDocs = allCash.filter(isInSelectedFY);
+        const pVouchersList = allVouchers.filter(isInSelectedFY);
+
+        const fAccountsList = (accList as any[]).filter(a => {
+          const t = getDocTimestamp(a);
+          if (t !== null && t > fyEndMs) return false;
+          return true;
+        });
 
         // 1. Cash Balance (excluding transactions settled directly via bank account vouchers)
-        const cashBal = cashDocs
+        const cashBal = fCashDocs
           .filter((t: any) => !(t.bank_account_id || (t.payment_mode === "bank" && t.voucher_id)))
           .reduce((sum, t: any) => sum + (t.direction === "in" ? Number(t.amount || 0) : -Number(t.amount || 0)), 0);
 
         // 2. Stock Value at Cost
-        const stockVal = pSnap.docs
-          .map(d => d.data())
-          .reduce((sum, p: any) => {
-            const q = Number(p.stock_qty || 0);
-            return sum + (q > 0 ? q * Number(p.cost_price || 0) : 0);
-          }, 0);
+        const hadPastActivity = fCashDocs.length > 0 || fVouchersList.length > 0 || fLedgerDocs.length > 0 || fSalesDocsCumulative.length > 0 || fPurchasesDocsCumulative.length > 0;
+        const fProductDocs = allProducts.filter(p => {
+          const t = getDocTimestamp(p);
+          if (t !== null && t > fyEndMs) return false;
+          return true;
+        });
+        const stockVal = hadPastActivity ? fProductDocs.reduce((sum, p: any) => {
+          const q = Number(p.stock_qty || 0);
+          return sum + (q > 0 ? q * Number(p.cost_price || 0) : 0);
+        }, 0) : 0;
 
         // 3. Customer Debtors & Supplier Creditors
         const partyBalances: Record<string, number> = {};
-        lSnap.docs.map(d => d.data()).forEach((e: any) => {
+        fLedgerDocs.forEach((e: any) => {
           const key = `${e.party_type}_${e.party_id}`;
           let val = 0;
           const isDebt = ["sale", "purchase", "debit", "credit"].includes(e.entry_type);
@@ -143,20 +187,21 @@ export default function RatioAnalysisView() {
           .filter(([k]) => k.startsWith("supplier_"))
           .reduce((sum, [_, b]) => sum + Math.max(0, b), 0);
 
-        // 4. Sales Revenue, COGS, VAT
+        // 4. Sales Revenue, COGS, VAT (Period movements)
         let totalSalesGross = 0;
         let outputVat = 0;
         let totalCost = 0;
-        salesDocs.forEach((s: any) => {
+        pSalesDocs.forEach((s: any) => {
           totalSalesGross += Number(s.total || 0);
           outputVat += Number(s.vat_amount || 0);
           totalCost += Number(s.cost_total || 0);
         });
         const netRevenue = totalSalesGross - outputVat;
 
-        const inputVat = purchasesDocs.reduce((s, p: any) => s + Number(p.vat_amount || (p.is_vat_bill ? (Number(p.total) - Number(p.total) / 1.13) : 0)), 0);
+        const inputVat = fPurchasesDocsCumulative.reduce((s, p: any) => s + Number(p.vat_amount || (p.is_vat_bill ? (Number(p.total) - Number(p.total) / 1.13) : 0)), 0);
+        const cumOutputVat = fSalesDocsCumulative.reduce((s, r: any) => s + Number(r.vat_amount || 0), 0);
         let vatPaid = 0;
-        vouchersList.forEach(v => {
+        fVouchersList.forEach(v => {
           const impacts = getVoucherAccountImpacts(v);
           impacts.forEach(imp => {
             if ((imp.account_name || "").toLowerCase().includes("vat")) {
@@ -164,16 +209,16 @@ export default function RatioAnalysisView() {
             }
           });
         });
-        const netVat = outputVat - inputVat - vatPaid;
+        const netVat = cumOutputVat - inputVat - vatPaid;
         const vatPayable = netVat > 0 ? netVat : 0;
-        const discountReceived = purchasesDocs.reduce((s, p: any) => s + Number(p.discount || 0), 0);
+        const discountReceived = pPurchasesDocs.reduce((s, p: any) => s + Number(p.discount || 0), 0);
 
-        // 5. Operating Expenses (Vouchers + Misc Cash + Wastage)
-        const expAccounts = accountsList.filter(a => a.type === "expense");
+        // 5. Operating Expenses (Vouchers + Misc Cash + Wastage) for period
+        const expAccounts = fAccountsList.filter(a => a.type === "expense");
         let voucherExpenses = 0;
         expAccounts.forEach(e => {
           let bal = 0;
-          vouchersList.forEach(v => {
+          pVouchersList.forEach(v => {
             const impacts = getVoucherAccountImpacts(v);
             impacts.forEach(imp => {
               if (imp.account_id === e.id || (e.name && imp.account_name && e.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
@@ -183,22 +228,22 @@ export default function RatioAnalysisView() {
         });
 
         const nonExpenseCategories = ["purchase", "purchases", "supplier_payment", "payment", "personal", "contra_bank_deposit", "contra_bank_withdrawal", "voucher_payment", "voucher_receipt", "fixed_asset", "loan_repayment"];
-        const miscCashExp = cashDocs
+        const miscCashExp = pCashDocs
           .filter((tx: any) => tx.direction === "out" && !nonExpenseCategories.includes(tx.category) && !tx.voucher_id && !(tx.account_group && ["fixed_asset", "loan", "loan_repayment", "drawings", "capital"].includes(tx.account_group)))
           .reduce((sum, tx: any) => sum + Number(tx.amount || 0), 0);
 
-        const wastageLoss = stockAdjDocs
+        const wastageLoss = pStockAdjDocs
           .filter(d => d.responsibility === "loss")
           .reduce((sum, d: any) => sum + Number(d.total_value || 0), 0);
 
         const operatingExpenses = voucherExpenses + miscCashExp + wastageLoss;
 
-        // 6. Bank, Fixed Assets, Loans, Capital from Accounts & Vouchers
-        const bankBal = accountsList
+        // 6. Bank, Fixed Assets, Loans, Capital from Accounts & Vouchers (Cumulative)
+        const bankBal = fAccountsList
           .filter((a: any) => a.group === "bank_accounts")
           .reduce((sum: number, b: any) => {
             let bal = Number(b.opening_balance || 0);
-            vouchersList.forEach((v: any) => {
+            fVouchersList.forEach((v: any) => {
               const impacts = getVoucherAccountImpacts(v);
               impacts.forEach(imp => {
                 if (imp.account_id === b.id || (b.name && imp.account_name && b.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
@@ -207,15 +252,15 @@ export default function RatioAnalysisView() {
             return sum + Math.max(0, bal);
           }, 0);
 
-        const cashFixedAssets = cashDocs
+        const cashFixedAssets = fCashDocs
           .filter((c: any) => c.direction === "out" && (c.category === "fixed_asset" || c.account_group === "fixed_asset"))
           .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
 
-        const fixedAssetsBal = accountsList
+        const fixedAssetsBal = fAccountsList
           .filter((a: any) => a.group === "fixed_assets")
           .reduce((sum: number, a: any) => {
             let bal = Number(a.opening_balance || 0);
-            vouchersList.forEach((v: any) => {
+            fVouchersList.forEach((v: any) => {
               const impacts = getVoucherAccountImpacts(v);
               impacts.forEach(imp => {
                 if (imp.account_id === a.id || (a.name && imp.account_name && a.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
@@ -224,18 +269,18 @@ export default function RatioAnalysisView() {
             return sum + Math.max(0, bal);
           }, 0) + cashFixedAssets;
 
-        const cashLoansTaken = cashDocs
+        const cashLoansTaken = fCashDocs
           .filter((c: any) => c.direction === "in" && (c.category === "loan" || c.account_group === "loan"))
           .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
-        const cashLoansRepaid = cashDocs
+        const cashLoansRepaid = fCashDocs
           .filter((c: any) => c.direction === "out" && (c.category === "loan_repayment" || c.account_group === "loan" || c.account_group === "loan_repayment"))
           .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
 
-        const loansBal = accountsList
+        const loansBal = fAccountsList
           .filter((a: any) => a.group === "loans_liabilities" || a.group === "bank_od")
           .reduce((sum: number, a: any) => {
             let b = Number(a.opening_balance || 0);
-            vouchersList.forEach((v: any) => {
+            fVouchersList.forEach((v: any) => {
               const impacts = getVoucherAccountImpacts(v);
               impacts.forEach(imp => {
                 if (imp.account_id === a.id || (a.name && imp.account_name && a.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) b += (imp.credit - imp.debit);
@@ -245,14 +290,14 @@ export default function RatioAnalysisView() {
           }, 0) + Math.max(0, cashLoansTaken - cashLoansRepaid);
 
         const capitalCats = ["opening", "capital", "investment", "owner_investment"];
-        const cashCapital = cashDocs
+        const cashCapital = fCashDocs
           .filter((c: any) => c.direction === "in" && (capitalCats.includes((c.category || "").toLowerCase()) || c.account_group === "capital"))
           .reduce((s, r: any) => s + Number(r.amount || 0), 0);
 
-        const capitalAccs = accountsList.filter((a: any) => a.group === "capital");
+        const capitalAccs = fAccountsList.filter((a: any) => a.group === "capital");
         const capitalBal = capitalAccs.reduce((sum: number, a: any) => {
           let b = Number(a.opening_balance || 0);
-          vouchersList.forEach((v: any) => {
+          fVouchersList.forEach((v: any) => {
             const impacts = getVoucherAccountImpacts(v);
             impacts.forEach(imp => {
               const isCap = imp.account_id === a.id

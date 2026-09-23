@@ -90,14 +90,56 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
 
   const trialBalanceData = useMemo(() => {
     const isCurrentFY = selectedFY.bsStartYear === currentFY.bsStartYear;
-    const cutoffIso = isCurrentFY ? new Date().toISOString() : selectedFY.endDate.toISOString();
+    const fyStartMs = selectedFY.startDate.getTime();
+    const fyEndMs = isCurrentFY ? Date.now() : selectedFY.endDate.getTime();
 
-    const fCashDocs = cashDocs.filter((c: any) => !c.created_at || c.created_at <= cutoffIso);
-    const fSalesDocs = salesDocs.filter((s: any) => !s.created_at || s.created_at <= cutoffIso);
-    const fPurchasesDocs = purchasesDocs.filter((p: any) => !p.created_at || p.created_at <= cutoffIso);
-    const fVouchers = vouchers.filter((v: any) => !(v.date || v.created_at) || (v.date || v.created_at) <= cutoffIso);
-    const fLedgerDocs = ledgerDocs.filter((e: any) => !(e.date || e.created_at) || (e.date || e.created_at) <= cutoffIso);
-    const fStockAdjDocs = stockAdjDocs.filter((w: any) => !w.created_at || w.created_at <= cutoffIso);
+    const getDocTimestamp = (doc: any): number | null => {
+      if (!doc) return null;
+      const raw = doc.created_at || doc.date || doc.date_ad || doc.date_bs;
+      if (!raw) return null;
+      if (typeof raw.toDate === "function") return raw.toDate().getTime();
+      if (typeof raw.seconds === "number") return raw.seconds * 1000;
+      if (raw instanceof Date) return raw.getTime();
+      if (typeof raw === "string") {
+        const dual = resolveDualDates(raw, doc.date_bs);
+        const parsed = new Date(dual.dateAd || raw).getTime();
+        if (!isNaN(parsed)) return parsed;
+      }
+      return null;
+    };
+
+    const isBeforeOrAtCutoff = (doc: any) => {
+      const t = getDocTimestamp(doc);
+      if (t === null) return isCurrentFY;
+      return t <= fyEndMs;
+    };
+
+    const isInSelectedFY = (doc: any) => {
+      const t = getDocTimestamp(doc);
+      if (t === null) return isCurrentFY;
+      return t >= fyStartMs && t <= fyEndMs;
+    };
+
+    // Cumulative balance-sheet filters (up to fiscal year cutoff)
+    const fCashDocs = cashDocs.filter(isBeforeOrAtCutoff);
+    const fVouchers = vouchers.filter(isBeforeOrAtCutoff);
+    const fLedgerDocs = ledgerDocs.filter(isBeforeOrAtCutoff);
+    const fSalesDocsCumulative = salesDocs.filter(isBeforeOrAtCutoff);
+    const fPurchasesDocsCumulative = purchasesDocs.filter(isBeforeOrAtCutoff);
+
+    // Period-based nominal filters (movements within the selected fiscal year)
+    const pSalesDocs = salesDocs.filter(isInSelectedFY);
+    const pPurchasesDocs = purchasesDocs.filter(isInSelectedFY);
+    const pCashDocs = cashDocs.filter(isInSelectedFY);
+    const pVouchers = vouchers.filter(isInSelectedFY);
+    const pStockAdjDocs = stockAdjDocs.filter(isInSelectedFY);
+
+    // Filter accounts by creation date
+    const fAccounts = accounts.filter(a => {
+      const t = getDocTimestamp(a);
+      if (t !== null && t > fyEndMs) return false;
+      return true;
+    });
 
     // 1. Cash in Hand & Digital Wallets (excluding transactions settled directly via bank account vouchers)
     const pureCashBal = fCashDocs
@@ -119,7 +161,13 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const totalCashInHand = pureCashBal + otherCashBal;
 
     // 2. Stock / Inventory
-    const stockVal = productDocs.reduce((s, r: any) => s + (+r.stock_qty || 0) * (+r.cost_price || 0), 0);
+    const hadPastActivity = fCashDocs.length > 0 || fVouchers.length > 0 || fLedgerDocs.length > 0 || fSalesDocsCumulative.length > 0 || fPurchasesDocsCumulative.length > 0;
+    const fProductDocs = productDocs.filter(p => {
+      const t = getDocTimestamp(p);
+      if (t !== null && t > fyEndMs) return false;
+      return true;
+    });
+    const stockVal = hadPastActivity ? fProductDocs.reduce((s, r: any) => s + (+r.stock_qty || 0) * (+r.cost_price || 0), 0) : 0;
 
     // 3. Debtors and Creditors from ledger
     const partyBalances: Record<string, number> = {};
@@ -133,9 +181,6 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       }
       partyBalances[key] = (partyBalances[key] || 0) + val;
     });
-    const receivable = Object.entries(partyBalances).filter(([k]) => k.startsWith("customer_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
-    const payable = Object.entries(partyBalances).filter(([k]) => k.startsWith("supplier_")).reduce((s, [_, b]) => s + Math.max(0, b), 0);
-
     const customerMap = new Map<string, string>();
     customerDocs.forEach(c => {
       customerMap.set(c.id, c.name || c.party_name || `Customer #${c.id.slice(0, 6)}`);
@@ -157,8 +202,8 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     });
 
     // 4. Sales Revenue & Cost of Goods Sold & VAT Balance
-    const outputVat = fSalesDocs.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
-    const inputVat = fPurchasesDocs.reduce((s, p: any) => s + +(p.vat_amount || (p.is_vat_bill ? (+p.total - +p.total / 1.13) : 0)), 0);
+    const outputVat = fSalesDocsCumulative.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
+    const inputVat = fPurchasesDocsCumulative.reduce((s, p: any) => s + +(p.vat_amount || (p.is_vat_bill ? (+p.total - +p.total / 1.13) : 0)), 0);
     let vatPaid = 0;
     fVouchers.forEach(v => {
       const impacts = getVoucherAccountImpacts(v);
@@ -171,11 +216,13 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const netVat = outputVat - inputVat - vatPaid;
     const vatPayable = netVat > 0 ? netVat : 0;
     const vatReceivable = netVat < 0 ? Math.abs(netVat) : 0;
-    const revenue = fSalesDocs.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
-    const cogs = fSalesDocs.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
+    
+    // Revenue and COGS are for the selected Fiscal Year period
+    const revenue = pSalesDocs.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
+    const cogs = pSalesDocs.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
     // 5. Bank Accounts
-    const bankAccounts = accounts.filter(a => a.group === "bank_accounts");
+    const bankAccounts = fAccounts.filter(a => a.group === "bank_accounts");
     const bankRows = bankAccounts.map(b => {
       let bal = Number(b.opening_balance || 0);
       fVouchers.forEach(v => {
@@ -194,14 +241,14 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     }).filter(r => r.debit > 0 || r.credit > 0);
 
     // 6. Fixed Assets & Accumulated Depreciation
-    const assetAccounts = accounts.filter(a => a.group === "fixed_assets");
-    const cashFixedAssets = cashDocs
+    const assetAccounts = fAccounts.filter(a => a.group === "fixed_assets");
+    const cashFixedAssets = fCashDocs
       .filter((c: any) => c.direction === "out" && (c.category === "fixed_asset" || c.account_group === "fixed_asset"))
       .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
 
     const fixedAssetRows = assetAccounts.map((a, idx) => {
       let bal = Number(a.opening_balance || 0);
-      vouchers.forEach(v => {
+      fVouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
           if (imp.account_id === a.id || (a.name && imp.account_name && a.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
@@ -228,17 +275,17 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     }
 
     // 7. Loans & Borrowings
-    const loanAccounts = accounts.filter(a => a.group === "loans_liabilities");
-    const cashLoansTaken = cashDocs
+    const loanAccounts = fAccounts.filter(a => a.group === "loans_liabilities");
+    const cashLoansTaken = fCashDocs
       .filter((c: any) => c.direction === "in" && (c.category === "loan" || c.account_group === "loan"))
       .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
-    const cashLoansRepaid = cashDocs
+    const cashLoansRepaid = fCashDocs
       .filter((c: any) => c.direction === "out" && (c.category === "loan_repayment" || c.account_group === "loan" || c.account_group === "loan_repayment"))
       .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
 
     const loanRows = loanAccounts.map((l, idx) => {
       let bal = Number(l.opening_balance || 0);
-      vouchers.forEach(v => {
+      fVouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
           if (imp.account_id === l.id || (l.name && imp.account_name && l.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.credit - imp.debit);
@@ -265,10 +312,10 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     }
 
     // 8. Outstanding Liabilities / Current Liabilities (Excluding VAT which is computed separately)
-    const currLiabAccounts = accounts.filter(a => a.group === "current_liabilities");
+    const currLiabAccounts = fAccounts.filter(a => a.group === "current_liabilities");
     const currLiabRows = currLiabAccounts.map(c => {
       let bal = Number(c.opening_balance || 0);
-      vouchers.forEach(v => {
+      fVouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
           if (imp.account_id === c.id || (c.name && imp.account_name && c.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.credit - imp.debit);
@@ -285,15 +332,15 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     }).filter(r => r.debit > 0 || r.credit > 0);
 
     // 9. Capital (Equity)
-    const capitalAccounts = accounts.filter(a => a.group === "capital");
+    const capitalAccounts = fAccounts.filter(a => a.group === "capital");
     const capitalCats = ["opening", "capital", "investment", "owner_investment"];
-    const cashCapital = cashDocs
+    const cashCapital = fCashDocs
       .filter((c: any) => c.direction === "in" && (capitalCats.includes((c.category || "").toLowerCase()) || c.account_group === "capital"))
       .reduce((s, r: any) => s + +r.amount, 0);
 
     const capitalRows = capitalAccounts.map((c, idx) => {
       let bal = Number(c.opening_balance || 0);
-      vouchers.forEach(v => {
+      fVouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
           const isCap = imp.account_id === c.id
@@ -324,14 +371,14 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     }
 
     // 10. Drawings
-    const drawingsAccounts = accounts.filter(a => a.group === "drawings");
-    const cashDrawings = cashDocs
+    const drawingsAccounts = fAccounts.filter(a => a.group === "drawings");
+    const cashDrawings = fCashDocs
       .filter((c: any) => c.direction === "out" && ((c.category || "").toLowerCase() === "personal" || c.account_group === "drawings"))
       .reduce((s, r: any) => s + +r.amount, 0);
 
     const drawingsRows = drawingsAccounts.map((d, idx) => {
       let bal = Number(d.opening_balance || 0);
-      vouchers.forEach(v => {
+      fVouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
           const isDraw = imp.account_id === d.id
@@ -361,11 +408,11 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       });
     }
 
-    // 11. Individual Expense Ledgers (Direct & Indirect)
-    const expAccounts = accounts.filter(a => a.type === "expense");
+    // 11. Individual Expense Ledgers (Direct & Indirect) for selected period
+    const expAccounts = fAccounts.filter(a => a.type === "expense");
     const expenseRows = expAccounts.map(e => {
-      let bal = Number(e.opening_balance || 0);
-      vouchers.forEach(v => {
+      let bal = isCurrentFY ? Number(e.opening_balance || 0) : 0;
+      pVouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
           if (imp.account_id === e.id || (e.name && imp.account_name && e.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
@@ -383,13 +430,13 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       };
     }).filter(r => r.debit > 0 || r.credit > 0);
 
-    // Other cash expenses not tagged in custom vouchers
+    // Other cash expenses for selected period
     const nonExpenseCats = [
       "purchase", "purchases", "supplier_payment", "payment", "personal",
       "contra_bank_deposit", "contra_bank_withdrawal", "voucher_payment", "voucher_receipt",
       "fixed_asset", "loan_repayment"
     ];
-    const cashExpenses = cashDocs.filter((c: any) => {
+    const cashExpenses = pCashDocs.filter((c: any) => {
       if (c.direction !== "out") return false;
       const cat = (c.category || "").toLowerCase();
       if (nonExpenseCats.includes(cat)) return false;
@@ -397,15 +444,15 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       return true;
     }).reduce((s, r: any) => s + +r.amount, 0);
 
-    const wastageAdjustments = stockAdjDocs.filter(d => d.responsibility === "loss");
+    const wastageAdjustments = pStockAdjDocs.filter(d => d.responsibility === "loss");
     const wastageExpenses = wastageAdjustments.reduce((s, r: any) => s + Number(r.total_value || 0), 0);
 
-    // Other Income Accounts & Purchase Discounts
-    const totalPurchaseDiscount = purchasesDocs.reduce((s, p: any) => s + Number(p.discount || 0), 0);
-    const incomeAccounts = accounts.filter(a => a.type === "income" && a.id !== `${user?.uid}_sales`);
+    // Other Income Accounts & Purchase Discounts for selected period
+    const totalPurchaseDiscount = pPurchasesDocs.reduce((s, p: any) => s + Number(p.discount || 0), 0);
+    const incomeAccounts = fAccounts.filter(a => a.type === "income" && a.id !== `${user?.uid}_sales`);
     const otherIncomeRows = incomeAccounts.map(inc => {
-      let bal = Number(inc.opening_balance || 0);
-      vouchers.forEach(v => {
+      let bal = isCurrentFY ? Number(inc.opening_balance || 0) : 0;
+      pVouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
           if (imp.account_id === inc.id || (inc.name && imp.account_name && inc.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.credit - imp.debit);
