@@ -1962,29 +1962,64 @@ const Reports = () => {
           </div>
 
           <div key={weekOffset} className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 animate-in fade-in duration-250">
-            <Card className="p-3 sm:p-4 shadow-card border-0">
-              <div className="text-[11px] sm:text-xs uppercase text-muted-foreground font-semibold tracking-wider">Revenue</div>
-              <div className="font-display text-lg sm:text-xl md:text-2xl mt-1 font-bold text-foreground truncate" title={fmt(totals.revenue)}>
-                {fmt(totals.revenue)}
+            <Card className="p-3 sm:p-4 shadow-card border-0 flex flex-col justify-between">
+              <div>
+                <div className="text-[11px] sm:text-xs uppercase text-muted-foreground font-semibold tracking-wider flex items-center justify-between">
+                  <span>बिक्री आम्दानी</span>
+                  <span className="text-[10px] opacity-70 font-normal">Revenue</span>
+                </div>
+                <div className="font-display text-lg sm:text-xl md:text-2xl mt-1.5 font-bold text-foreground truncate" title={fmt(totals.revenue)}>
+                  {fmt(totals.revenue)}
+                </div>
               </div>
+              <p className="text-[10px] text-muted-foreground/80 mt-1">कर बाहेकको कुल बिक्री</p>
             </Card>
-            <Card className="p-3 sm:p-4 shadow-card border-0">
-              <div className="text-[11px] sm:text-xs uppercase text-muted-foreground font-semibold tracking-wider">Cost of Goods</div>
-              <div className="font-display text-lg sm:text-xl md:text-2xl mt-1 font-bold text-foreground truncate" title={fmt(totals.cogs)}>
-                {fmt(totals.cogs)}
+
+            <Card className="p-3 sm:p-4 shadow-card border-0 flex flex-col justify-between">
+              <div>
+                <div className="text-[11px] sm:text-xs uppercase text-muted-foreground font-semibold tracking-wider flex items-center justify-between">
+                  <span>सामानको लागत</span>
+                  <span className="text-[10px] opacity-70 font-normal">COGS</span>
+                </div>
+                <div className="font-display text-lg sm:text-xl md:text-2xl mt-1.5 font-bold text-foreground truncate" title={fmt(totals.cogs)}>
+                  {fmt(totals.cogs)}
+                </div>
               </div>
+              <p className="text-[10px] text-muted-foreground/80 mt-1">बिकेको सामानको खरिद मूल्य</p>
             </Card>
-            <Card className="p-3 sm:p-4 shadow-card border-0">
-              <div className="text-[11px] sm:text-xs uppercase text-muted-foreground font-semibold tracking-wider">Gross Profit</div>
-              <div className="font-display text-lg sm:text-xl md:text-2xl mt-1 font-bold text-primary truncate" title={fmt(totals.gross)}>
-                {fmt(totals.gross)}
+
+            <Card className="p-3 sm:p-4 shadow-card border-0 flex flex-col justify-between bg-emerald-500/5 border-emerald-500/20">
+              <div>
+                <div className="text-[11px] sm:text-xs uppercase text-emerald-700 dark:text-emerald-400 font-semibold tracking-wider flex items-center justify-between">
+                  <span>सकल नाफा</span>
+                  <span className="text-[10px] opacity-80 font-normal">Gross Profit</span>
+                </div>
+                <div className="font-display text-lg sm:text-xl md:text-2xl mt-1.5 font-bold text-emerald-600 dark:text-emerald-400 truncate" title={fmt(totals.gross)}>
+                  {fmt(totals.gross)}
+                </div>
               </div>
+              <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 mt-1">बिक्री - खरिद लागत</p>
             </Card>
-            <Card className="p-3 sm:p-4 shadow-elegant border-0 bg-gradient-primary text-primary-foreground">
-              <div className="text-[11px] sm:text-xs uppercase opacity-85 font-semibold tracking-wider">Net Profit</div>
-              <div className="font-display text-lg sm:text-xl md:text-2xl mt-1 font-bold truncate" title={fmt(totals.net)}>
-                {fmt(totals.net)}
+
+            <Card className={`p-3 sm:p-4 shadow-elegant border-0 flex flex-col justify-between ${
+              totals.net >= 0 
+                ? "bg-gradient-primary text-primary-foreground" 
+                : "bg-gradient-to-br from-rose-600 to-rose-700 text-white"
+            }`}>
+              <div>
+                <div className="text-[11px] sm:text-xs uppercase opacity-90 font-bold tracking-wider flex items-center justify-between">
+                  <span>{totals.net >= 0 ? "खुद नाफा" : "खुद नोक्सान (घाटा)"}</span>
+                  <span className="text-[10px] opacity-75 font-normal">{totals.net >= 0 ? "Net Profit" : "Net Loss"}</span>
+                </div>
+                <div className="font-display text-lg sm:text-xl md:text-2xl mt-1.5 font-extrabold truncate" title={fmt(Math.abs(totals.net))}>
+                  {totals.net < 0 ? `Rs. -${fmt(Math.abs(totals.net)).replace("Rs.", "").trim()}` : fmt(totals.net)}
+                </div>
               </div>
+              <p className="text-[10px] opacity-85 mt-1">
+                {totals.net >= 0 
+                  ? "सबै खर्च कटाई बाँकी खुद नाफा" 
+                  : `खर्च बढी भएकोले (खर्च: ${fmt(totals.exp)})`}
+              </p>
             </Card>
           </div>
 
