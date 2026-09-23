@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { formatNepaliDate, getFiscalYearInfo, getRecentFiscalYears, FiscalYearInfo } from "@/lib/fiscalYear";
+import { formatNepaliDate, getFiscalYearInfo, getRecentFiscalYears, resolveDualDates, FiscalYearInfo } from "@/lib/fiscalYear";
 import { format } from "date-fns";
 import { fmt } from "@/lib/format";
 import { Account, Voucher, getAccounts, getVoucherAccountImpacts } from "@/lib/accounting";
