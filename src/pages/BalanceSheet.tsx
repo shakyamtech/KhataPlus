@@ -608,6 +608,10 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
                   <tr>
                     <td style="padding:6px 8px; border:1px solid #111;">सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)</td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111; color:#c00;">Rs. ${d.vatPayable.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>` : (shopInfo?.is_vat_registered === true || shopInfo?.tax_type === "vat" || rawSales.some(s => Number(s.vat_amount || 0) > 0) || rawPurchases.some(p => Number(p.vat_amount || 0) > 0)) ? `
+                  <tr>
+                    <td style="padding:6px 8px; border:1px solid #111;">सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)</td>
+                    <td style="padding:6px 8px; text-align:right; font-weight:600; border:1px solid #111; color:#007a3d;">Rs. 0.00 <span style="font-size:10px;">(कर चुक्ता)</span></td>
                   </tr>` : ''}
                   <tr>
                     <td style="padding:6px 8px; border:1px solid #111;">साहुको पुँजी (Owner's Capital)</td>
@@ -866,9 +870,19 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
               {d.outstanding > 0 && (
                 <Row label={lang === "NEP" ? "तिर्न बाँकी खर्च (Outstanding Liabilities)" : "Outstanding Liabilities"} value={d.outstanding} />
               )}
-              {d.vatPayable > 0 && (
+              {d.vatPayable > 0 ? (
                 <Row label={lang === "NEP" ? "सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)" : "VAT Payable (Tax Due)"} value={d.vatPayable} />
-              )}
+              ) : (shopInfo?.is_vat_registered === true || shopInfo?.tax_type === "vat" || rawSales.some(s => Number(s.vat_amount || 0) > 0) || rawPurchases.some(p => Number(p.vat_amount || 0) > 0)) ? (
+                <div className="flex justify-between items-center py-2 text-sm">
+                  <span className="text-muted-foreground font-medium">
+                    {lang === "NEP" ? "सरकारलाई तिर्न बाँकी भ्याट (VAT Payable)" : "VAT Payable (Tax Due)"}
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-mono font-semibold text-xs px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span>Rs. 0.00</span>
+                    <span className="text-[10px] font-bold">({lang === "NEP" ? "कर चुक्ता" : "Settled"})</span>
+                  </span>
+                </div>
+              ) : null}
               <Row label={lang === "NEP" ? "साहुको पुँजी (Owner's Capital)" : "Owner's Capital (Equity)"} value={d.capital} />
               <div className="flex justify-between items-center py-2 text-sm">
                 <div className="flex items-center gap-1.5">
