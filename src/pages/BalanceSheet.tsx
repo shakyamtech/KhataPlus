@@ -173,7 +173,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
           vouchers.forEach((v: any) => {
             const impacts = getVoucherAccountImpacts(v);
             impacts.forEach(imp => {
-              if (imp.account_id === a.id) bal += (imp.debit - imp.credit);
+              if (imp.account_id === a.id || (a.name && imp.account_name && a.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
             });
           });
           if (idx === 0) bal += cashFixedAssets;
@@ -197,7 +197,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         vouchers.forEach((v: any) => {
           const impacts = getVoucherAccountImpacts(v);
           impacts.forEach(imp => {
-            if (loansGivenAccounts.some((a: any) => a.id === imp.account_id)) {
+            if (loansGivenAccounts.some((a: any) => a.id === imp.account_id || (a.name && imp.account_name && a.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase()))) {
               loansGivenTotal += (imp.debit - imp.credit);
             }
           });
@@ -209,7 +209,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         vouchers.forEach((v: any) => {
           const impacts = getVoucherAccountImpacts(v);
           impacts.forEach(imp => {
-            if (loanAccounts.some((l: any) => l.id === imp.account_id)) {
+            if (loanAccounts.some((l: any) => l.id === imp.account_id || (l.name && imp.account_name && l.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase()))) {
               loansTotal += (imp.credit - imp.debit);
             }
           });
@@ -229,7 +229,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         vouchers.forEach((v: any) => {
           const impacts = getVoucherAccountImpacts(v);
           impacts.forEach(imp => {
-            if (currLiabAccounts.some((l: any) => l.id === imp.account_id)) {
+            if (currLiabAccounts.some((l: any) => l.id === imp.account_id || (l.name && imp.account_name && l.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase()))) {
               outstandingTotal += (imp.credit - imp.debit);
             }
           });
@@ -241,7 +241,11 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         vouchers.forEach((v: any) => {
           const impacts = getVoucherAccountImpacts(v);
           impacts.forEach(imp => {
-            if (capitalAccounts.some((c: any) => c.id === imp.account_id)) {
+            const isCap = capitalAccounts.some((c: any) => c.id === imp.account_id || (c.name && imp.account_name && c.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase()))
+              || (imp.account_name || "").toLowerCase().includes("capital")
+              || (imp.account_name || "").includes("पुँजी")
+              || (imp.account_id || "").toLowerCase().includes("capital");
+            if (isCap) {
               capitalExtra += (imp.credit - imp.debit);
             }
           });
@@ -253,7 +257,10 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         vouchers.forEach((v: any) => {
           const impacts = getVoucherAccountImpacts(v);
           impacts.forEach(imp => {
-            if (drawingsAccounts.some((d: any) => d.id === imp.account_id)) {
+            const isDraw = drawingsAccounts.some((d: any) => d.id === imp.account_id || (d.name && imp.account_name && d.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase()))
+              || (imp.account_name || "").toLowerCase().includes("drawing")
+              || (imp.account_name || "").includes("घरखर्च");
+            if (isDraw) {
               drawingsExtra += (imp.debit - imp.credit);
             }
           });
@@ -265,7 +272,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
         vouchers.forEach((v: any) => {
           const impacts = getVoucherAccountImpacts(v);
           impacts.forEach(imp => {
-            if (expAccounts.some((e: any) => e.id === imp.account_id)) {
+            if (expAccounts.some((e: any) => e.id === imp.account_id || (e.name && imp.account_name && e.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase()))) {
               voucherExpenses += (imp.debit - imp.credit);
             }
           });
