@@ -699,9 +699,11 @@ export default function Accounting() {
     }
   }, [searchParams]);
 
-  // Edit Account Opening Balance Modal
+  // Edit Account Modal (Name, Group, Opening Balance)
   const [editAccModalOpen, setEditAccModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [editAccName, setEditAccName] = useState("");
+  const [editAccGroup, setEditAccGroup] = useState<AccountGroup>("indirect_expenses");
   const [editOpeningBal, setEditOpeningBal] = useState("0");
   const [savingEditAccount, setSavingEditAccount] = useState(false);
 
@@ -1908,6 +1910,8 @@ export default function Accounting() {
 
   const handleOpenEditAccount = (acc: Account) => {
     setEditingAccount(acc);
+    setEditAccName(acc.name);
+    setEditAccGroup(acc.group || "indirect_expenses");
     setEditOpeningBal(String(acc.opening_balance || 0));
     setEditAccModalOpen(true);
   };
@@ -1917,16 +1921,25 @@ export default function Accounting() {
     if (!editingAccount) return;
     setSavingEditAccount(true);
     try {
+      let type: AccountType = "asset";
+      if (["capital", "drawings"].includes(editAccGroup)) type = "equity";
+      else if (["loans_liabilities", "current_liabilities", "duties_taxes"].includes(editAccGroup)) type = "liability";
+      else if (["direct_incomes", "indirect_incomes"].includes(editAccGroup)) type = "income";
+      else if (["direct_expenses", "indirect_expenses"].includes(editAccGroup)) type = "expense";
+
       await updateDoc(doc(db, "accounts", editingAccount.id), {
+        name: editAccName.trim() || editingAccount.name,
+        group: editAccGroup,
+        type,
         opening_balance: Number(editOpeningBal) || 0,
         updated_at: new Date().toISOString()
       });
-      toast.success(lang === "NEP" ? "सुरुवाती ब्यालेन्स सुरक्षित भयो!" : "Opening balance updated!");
+      toast.success(lang === "NEP" ? "खाता सफलतापूर्वक अद्यावधिक भयो!" : "Account updated successfully!");
       setEditAccModalOpen(false);
       setEditingAccount(null);
       loadData();
     } catch (err: any) {
-      toast.error(err.message || "Failed to update opening balance");
+      toast.error(err.message || "Failed to update account");
     } finally {
       setSavingEditAccount(false);
     }
@@ -5708,10 +5721,10 @@ export default function Accounting() {
                   <SelectItem value="sundry_creditors">🏢 Sundry Creditors (साहु / आपूर्तिकर्ता / महाजन)</SelectItem>
                   <SelectItem value="bank_accounts">Bank Account (बैंक खाता)</SelectItem>
                   <SelectItem value="current_assets">Current Asset (चालू सम्पत्ति / पेश्की, धरौटी, TDS)</SelectItem>
-                  <SelectItem value="indirect_expenses">Expense (व्यापारिक/कार्यालय खर्च)</SelectItem>
-                  <SelectItem value="direct_expenses">Direct Expense (प्रत्यक्ष खर्च)</SelectItem>
-                  <SelectItem value="indirect_incomes">Income (अप्रत्यक्ष आम्दानी)</SelectItem>
-                  <SelectItem value="direct_incomes">Direct Income (प्रत्यक्ष आम्दानी)</SelectItem>
+                  <SelectItem value="indirect_expenses">Indirect Expense / अप्रत्यक्ष खर्च (कार्यालय भाडा, खाजा, बिजुली, तलब)</SelectItem>
+                  <SelectItem value="direct_expenses">Direct Expense / प्रत्यक्ष खर्च (सामान ढुवानी, ज्यालादारी)</SelectItem>
+                  <SelectItem value="indirect_incomes">Indirect Income / अप्रत्यक्ष आम्दानी (ब्याज, कमिसन)</SelectItem>
+                  <SelectItem value="direct_incomes">Direct Income / प्रत्यक्ष आम्दानी</SelectItem>
                   <SelectItem value="fixed_assets">Fixed Asset (सम्पत्ति - गाडी, कम्प्युटर, फर्निचर)</SelectItem>
                   <SelectItem value="loans_advances_asset">Loans Given & Advances (दिएको ऋण तथा पेश्की)</SelectItem>
                   <SelectItem value="loans_liabilities">Loan & Borrowing (बैंक ऋण / साहु ऋण)</SelectItem>
@@ -5766,12 +5779,12 @@ export default function Accounting() {
         </DialogContent>
       </Dialog>
 
-      {/* EDIT ACCOUNT OPENING BALANCE MODAL */}
+      {/* EDIT ACCOUNT MODAL (NAME, GROUP, OPENING BALANCE) */}
       <Dialog open={editAccModalOpen} onOpenChange={setEditAccModalOpen}>
         <DialogContent className="max-w-md w-[95vw] sm:w-full p-6 rounded-2xl shadow-2xl border bg-card">
           <DialogHeader className="pb-3 border-b">
             <DialogTitle className="text-base font-bold text-foreground">
-              {lang === "NEP" ? "सुरुवाती मौज्दात सम्पादन" : "Edit Opening Balance"}
+              {lang === "NEP" ? "खाता सम्पादन गर्नुहोस् (Edit Account)" : "Edit Account Details"}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-0.5">
               {editingAccount?.name} ({editingAccount && groupLabel(editingAccount.group)})
@@ -5780,7 +5793,49 @@ export default function Accounting() {
 
           <form onSubmit={handleSaveEditAccount} className="space-y-4 pt-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "सुरुवाती मौज्दात (Opening Balance Rs.)" : "Opening Balance (Rs.)"}</Label>
+              <Label className="text-xs font-semibold text-foreground">
+                {lang === "NEP" ? "खाताको नाम (Account Name) *" : "Account Name *"}
+              </Label>
+              <Input
+                value={editAccName}
+                onChange={e => setEditAccName(e.target.value)}
+                className="h-10 text-xs rounded-xl"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">
+                {lang === "NEP" ? "लेखा समूह (Account Group) *" : "Account Group *"}
+              </Label>
+              <Select value={editAccGroup} onValueChange={(v: any) => setEditAccGroup(v)}>
+                <SelectTrigger className="h-10 text-xs rounded-xl mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-56 z-[90]">
+                  <SelectItem value="sundry_debtors">👥 Sundry Debtors (ग्राहक / विद्यार्थी / असामी)</SelectItem>
+                  <SelectItem value="sundry_creditors">🏢 Sundry Creditors (साहु / आपूर्तिकर्ता / महाजन)</SelectItem>
+                  <SelectItem value="bank_accounts">Bank Account (बैंक खाता)</SelectItem>
+                  <SelectItem value="current_assets">Current Asset (चालू सम्पत्ति / पेश्की, धरौटी, TDS)</SelectItem>
+                  <SelectItem value="indirect_expenses">Indirect Expense / अप्रत्यक्ष खर्च (कार्यालय भाडा, खाजा, बिजुली, तलब)</SelectItem>
+                  <SelectItem value="direct_expenses">Direct Expense / प्रत्यक्ष खर्च (सामान ढुवानी, ज्यालादारी)</SelectItem>
+                  <SelectItem value="indirect_incomes">Indirect Income / अप्रत्यक्ष आम्दानी (ब्याज, कमिसन)</SelectItem>
+                  <SelectItem value="direct_incomes">Direct Income / प्रत्यक्ष आम्दानी</SelectItem>
+                  <SelectItem value="fixed_assets">Fixed Asset (सम्पत्ति - गाडी, कम्प्युटर, फर्निचर)</SelectItem>
+                  <SelectItem value="loans_advances_asset">Loans Given & Advances (दिएको ऋण तथा पेश्की)</SelectItem>
+                  <SelectItem value="loans_liabilities">Loan & Borrowing (बैंक ऋण / साहु ऋण)</SelectItem>
+                  <SelectItem value="current_liabilities">Current Liability (दिन बाँकी दायित्व)</SelectItem>
+                  <SelectItem value="duties_taxes">VAT & Taxes (भ्याट तथा कर)</SelectItem>
+                  <SelectItem value="capital">Capital (मालिकको पुँजी)</SelectItem>
+                  <SelectItem value="drawings">Drawings (घरखर्च/व्यक्तिगत झिक्)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">
+                {lang === "NEP" ? "सुरुवाती मौज्दात (Opening Balance Rs.)" : "Opening Balance (Rs.)"}
+              </Label>
               <Input
                 type="number"
                 step="0.01"
@@ -5788,7 +5843,6 @@ export default function Accounting() {
                 onChange={e => setEditOpeningBal(e.target.value)}
                 className="h-10 text-sm font-mono font-bold rounded-xl"
                 required
-                autoFocus
               />
             </div>
 
