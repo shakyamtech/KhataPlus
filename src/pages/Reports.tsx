@@ -1311,7 +1311,7 @@ const Reports = () => {
       targetVouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
-          if (imp.account_id === e.id) bal += (imp.debit - imp.credit);
+          if (imp.account_id === e.id || (e.name && imp.account_name && e.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
         });
       });
       if (bal > 0) {

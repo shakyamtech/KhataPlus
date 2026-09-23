@@ -158,7 +158,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       vouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
-          if (imp.account_id === b.id) bal += (imp.debit - imp.credit);
+          if (imp.account_id === b.id || (b.name && imp.account_name && b.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
         });
       });
       return {
@@ -181,7 +181,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       vouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
-          if (imp.account_id === a.id) bal += (imp.debit - imp.credit);
+          if (imp.account_id === a.id || (a.name && imp.account_name && a.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
         });
       });
       if (idx === 0) bal += cashFixedAssets;
@@ -218,7 +218,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       vouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
-          if (imp.account_id === l.id) bal += (imp.credit - imp.debit);
+          if (imp.account_id === l.id || (l.name && imp.account_name && l.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.credit - imp.debit);
         });
       });
       if (idx === 0) bal += (cashLoansTaken - cashLoansRepaid);
@@ -241,19 +241,17 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       });
     }
 
-    // 8. Outstanding Liabilities / Current Liabilities & Duties and Taxes
-    const currLiabAccounts = accounts.filter(a => a.group === "current_liabilities" || a.group === "duties_taxes");
+    // 8. Outstanding Liabilities / Current Liabilities (Excluding VAT which is computed separately)
+    const currLiabAccounts = accounts.filter(a => a.group === "current_liabilities");
     const currLiabRows = currLiabAccounts.map(c => {
       let bal = Number(c.opening_balance || 0);
       vouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
-          if (imp.account_id === c.id) bal += (imp.credit - imp.debit);
+          if (imp.account_id === c.id || (c.name && imp.account_name && c.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.credit - imp.debit);
         });
       });
-      const grpLabel = c.group === "duties_taxes"
-        ? (lang === "NEP" ? "भ्याट तथा कर" : "VAT & Taxes")
-        : (lang === "NEP" ? "चालू दायित्व" : "Current Liabilities");
+      const grpLabel = lang === "NEP" ? "चालू दायित्व" : "Current Liabilities";
       return {
         id: c.id,
         name: c.name,
@@ -275,7 +273,11 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       vouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
-          if (imp.account_id === c.id) bal += (imp.credit - imp.debit);
+          const isCap = imp.account_id === c.id
+            || (c.name && imp.account_name && c.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())
+            || (imp.account_name || "").toLowerCase().includes("capital")
+            || (imp.account_name || "").includes("पुँजी");
+          if (isCap) bal += (imp.credit - imp.debit);
         });
       });
       if (idx === 0) bal += cashCapital;
@@ -309,7 +311,11 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       vouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
-          if (imp.account_id === d.id) bal += (imp.debit - imp.credit);
+          const isDraw = imp.account_id === d.id
+            || (d.name && imp.account_name && d.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())
+            || (imp.account_name || "").toLowerCase().includes("drawing")
+            || (imp.account_name || "").includes("घरखर्च");
+          if (isDraw) bal += (imp.debit - imp.credit);
         });
       });
       if (idx === 0) bal += cashDrawings;
@@ -339,7 +345,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       vouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
-          if (imp.account_id === e.id) bal += (imp.debit - imp.credit);
+          if (imp.account_id === e.id || (e.name && imp.account_name && e.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
         });
       });
       const grp = e.group === "direct_expenses"
@@ -379,7 +385,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       vouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
-          if (imp.account_id === inc.id) bal += (imp.credit - imp.debit);
+          if (imp.account_id === inc.id || (inc.name && imp.account_name && inc.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.credit - imp.debit);
         });
       });
       const isDisc = (inc.name || "").toLowerCase().includes("discount") || (inc.name || "").includes("छुट");
