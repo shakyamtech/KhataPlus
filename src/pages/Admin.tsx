@@ -664,7 +664,7 @@ const Admin = () => {
                   size="sm" 
                   variant="outline" 
                   onClick={() => handleRestoreUserBackup(u)} 
-                  disabled={restoringBackupId === u.id || downloadingBackupId === u.id}
+                  disabled={restoringBackupId === u.id || downloadingBackupId === u.id || resettingId === u.id}
                   className="flex-1 md:flex-none h-9 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-500/30 dark:text-blue-400 dark:hover:bg-blue-500/20 font-medium text-xs gap-1.5"
                   title="Upload JSON backup file directly into this user's account"
                 >
@@ -675,9 +675,43 @@ const Admin = () => {
                   )}
                 </Button>
 
+                {/* Reset Data (Clear transactions, preserve products/parties) */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="ghost" className="flex-1 md:flex-none h-9 text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      disabled={resettingId === u.id || restoringBackupId === u.id || downloadingBackupId === u.id}
+                      className="flex-1 md:flex-none h-9 border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-500/30 dark:text-amber-400 dark:hover:bg-amber-500/20 font-medium text-xs gap-1.5"
+                      title="Reset all sales, purchases, ledger entries and zero out stock/balances"
+                    >
+                      {resettingId === u.id ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Resetting...</>
+                      ) : (
+                        <><RotateCcw className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> Reset Data</>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reset data for {u.email}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete all sales, purchases, cash transactions, expenses, stock adjustments and ledger entries for this shop. Products, categories, and customer/supplier lists will be preserved, but stock quantities and balances will be reset to 0.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => resetData(u)} className="bg-amber-600 hover:bg-amber-700 text-white">
+                        Reset Transactions
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Delete Entire User Account */}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="ghost" className="flex-1 md:flex-none h-9 text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20" title="Permanently delete user account and all data">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </AlertDialogTrigger>
