@@ -149,7 +149,11 @@ const Cashbook = () => {
             const mode = getLiquidMode(e.account_id, e.account_name);
             if (!mode || !Number(e.amount)) return;
             const dir = e.type === "debit" ? "in" : "out";
-            const exists = tx.some(t => t.reference_id === v.id && (t.payment_mode === mode || (mode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === dir);
+            const exists = tx.some(t => {
+              if (t.reference_id === v.id && (t.payment_mode === mode || (mode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === dir) return true;
+              if (v.voucher_no && t.note && t.note.includes(v.voucher_no) && Number(t.amount) === Number(e.amount) && t.direction === dir) return true;
+              return false;
+            });
             if (!exists) {
               const cat = v.voucher_type === "contra"
                 ? (mode === "bank" ? "contra_bank_deposit" : "contra_bank_withdrawal")
@@ -178,7 +182,11 @@ const Cashbook = () => {
           const credMode = getLiquidMode(v.credit_account_id, v.credit_account_name, v.voucher_type === "contra" ? "cash" : undefined);
           const amt = Number(v.amount || 0);
           if (debMode && amt > 0) {
-            const exists = tx.some(t => t.reference_id === v.id && (t.payment_mode === debMode || (debMode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === "in");
+            const exists = tx.some(t => {
+              if (t.reference_id === v.id && (t.payment_mode === debMode || (debMode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === "in") return true;
+              if (v.voucher_no && t.note && t.note.includes(v.voucher_no) && Number(t.amount) === amt && t.direction === "in") return true;
+              return false;
+            });
             if (!exists) {
               const cat = v.voucher_type === "contra"
                 ? (debMode === "bank" ? "contra_bank_deposit" : "contra_bank_withdrawal")
@@ -203,7 +211,11 @@ const Cashbook = () => {
             }
           }
           if (credMode && amt > 0) {
-            const exists = tx.some(t => t.reference_id === v.id && (t.payment_mode === credMode || (credMode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === "out");
+            const exists = tx.some(t => {
+              if (t.reference_id === v.id && (t.payment_mode === credMode || (credMode === "cash" && (!t.payment_mode || t.payment_mode === "cash"))) && t.direction === "out") return true;
+              if (v.voucher_no && t.note && t.note.includes(v.voucher_no) && Number(t.amount) === amt && t.direction === "out") return true;
+              return false;
+            });
             if (!exists) {
               const cat = v.voucher_type === "contra"
                 ? (credMode === "cash" ? "contra_bank_deposit" : "contra_bank_withdrawal")

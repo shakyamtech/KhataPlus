@@ -744,6 +744,7 @@ export async function restoreUserDataFromJson(
     (data.sales || []).forEach(s => s.id && getMappedDocId(s.id, "sales"));
     (data.purchases || []).forEach(p => p.id && getMappedDocId(p.id, "purchases"));
     (data.accounts || []).forEach(a => a.id && getMappedDocId(a.id, "accounts"));
+    (data.vouchers || []).forEach(v => v.id && getMappedDocId(v.id, "vouchers"));
   }
 
   // 2. Prepare import operations mapping user_id to current user
@@ -837,7 +838,16 @@ export async function restoreUserDataFromJson(
   });
 
   // Cash Transactions
-  importCollection("cash_transactions", data.cash_transactions);
+  importCollection("cash_transactions", data.cash_transactions, (rec) => {
+    if (isCrossUserCloning) {
+      if (rec.reference_id && idMap.has(rec.reference_id)) rec.reference_id = idMap.get(rec.reference_id);
+      if (rec.bank_account_id && idMap.has(rec.bank_account_id)) rec.bank_account_id = idMap.get(rec.bank_account_id);
+      if (rec.sale_id && idMap.has(rec.sale_id)) rec.sale_id = idMap.get(rec.sale_id);
+      if (rec.purchase_id && idMap.has(rec.purchase_id)) rec.purchase_id = idMap.get(rec.purchase_id);
+      if (rec.party_id && idMap.has(rec.party_id)) rec.party_id = idMap.get(rec.party_id);
+    }
+    return rec;
+  });
 
   // Ledger Entries
   importCollection("ledger_entries", data.ledger_entries, (rec) => {
@@ -845,6 +855,9 @@ export async function restoreUserDataFromJson(
       if (rec.party_id && idMap.has(rec.party_id)) rec.party_id = idMap.get(rec.party_id);
       if (rec.sale_id && idMap.has(rec.sale_id)) rec.sale_id = idMap.get(rec.sale_id);
       if (rec.purchase_id && idMap.has(rec.purchase_id)) rec.purchase_id = idMap.get(rec.purchase_id);
+      if (rec.reference_id && idMap.has(rec.reference_id)) rec.reference_id = idMap.get(rec.reference_id);
+      if (rec.voucher_id && idMap.has(rec.voucher_id)) rec.voucher_id = idMap.get(rec.voucher_id);
+      if (rec.bank_account_id && idMap.has(rec.bank_account_id)) rec.bank_account_id = idMap.get(rec.bank_account_id);
     }
     return rec;
   });
@@ -870,10 +883,28 @@ export async function restoreUserDataFromJson(
       if (updated.credit_account_id && idMap.has(updated.credit_account_id)) {
         updated.credit_account_id = idMap.get(updated.credit_account_id);
       }
+      if (updated.party_id && idMap.has(updated.party_id)) {
+        updated.party_id = idMap.get(updated.party_id);
+      }
+      if (updated.bill_id && idMap.has(updated.bill_id)) {
+        updated.bill_id = idMap.get(updated.bill_id);
+      }
+      if (updated.refund_account_id && idMap.has(updated.refund_account_id)) {
+        updated.refund_account_id = idMap.get(updated.refund_account_id);
+      }
       if (Array.isArray(updated.entries)) {
         updated.entries = updated.entries.map((e: any) => ({
           ...e,
-          account_id: (e.account_id && idMap.get(e.account_id)) || e.account_id
+          account_id: (e.account_id && idMap.get(e.account_id)) || e.account_id,
+          party_id: (e.party_id && idMap.get(e.party_id)) || e.party_id,
+          bill_id: (e.bill_id && idMap.get(e.bill_id)) || e.bill_id
+        }));
+      }
+      if (Array.isArray(updated.return_items)) {
+        updated.return_items = updated.return_items.map((it: any) => ({
+          ...it,
+          product_id: (it.product_id && idMap.get(it.product_id)) || it.product_id,
+          batch_id: (it.batch_id && idMap.get(it.batch_id)) || it.batch_id
         }));
       }
     }
