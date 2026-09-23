@@ -120,33 +120,9 @@ export function BalanceSheetAssistantModal({
     if (!isOpen) return [];
     const list: DiagnosisItem[] = [];
 
-    // ----------------------------------------------------
-    // CHECK 1: Retained Earnings / Net Loss Clarification
-    // ----------------------------------------------------
-    if (netProfit < 0) {
-      list.push({
-        id: "net_loss_info",
-        categoryNp: "नाफा-नोक्सान विश्लेषण",
-        categoryEn: "P&L Analysis",
-        titleNp: `खुद व्यापारिक नोक्सान (Retained Loss: ${fmt(Math.abs(netProfit))})`,
-        titleEn: `Retained Net Loss (${fmt(Math.abs(netProfit))})`,
-        severity: "info",
-        amount: Math.abs(netProfit),
-        explanationNp: `पसलको बिक्री नाफा (Gross Profit) ${fmt(grossProfit)} भन्दा पसलका कुल सञ्चालन खर्चहरू ${fmt(d.expenses)} बढी भएकाले खुद नाफा -${fmt(Math.abs(netProfit))} हुन गएको हो। यसले साहुको पुँजीलाई ${fmt(Math.abs(netProfit))} ले घटाएको छ।`,
-        explanationEn: `Operating expenses (${fmt(d.expenses)}) exceeded Gross Profit (${fmt(grossProfit)}), resulting in a Retained Loss of ${fmt(Math.abs(netProfit))}.`,
-        mathFormulaNp: `Gross Profit (${fmt(grossProfit)}) − Expenses (${fmt(d.expenses)}) = Retained Earnings (-${fmt(Math.abs(netProfit))})`,
-        mathFormulaEn: `Gross Profit (${fmt(grossProfit)}) − Expenses (${fmt(d.expenses)}) = Retained Loss (${fmt(Math.abs(netProfit))})`,
-        solutionStepsNp: [
-          "यो सामान्य व्यापारिक नोक्सानको स्वाभाविक नतिजा हो (कुनै गल्ती होइन)।",
-          "Reports ➔ Profit & Loss ट्याबमा गएर भाडा, बिजुली वा तलब खर्चको विस्तृत विवरण हेर्न सक्नुहुन्छ।",
-          "भविष्यमा थप बिक्री बढेपछि यो रकम स्वतः नाफा (Positive) मा परिणत हुन्छ।"
-        ],
-        solutionStepsEn: [
-          "This is a standard business operating result.",
-          "Check Reports ➔ Profit & Loss for full expense breakdown.",
-          "As sales increase, this figure will transition to positive net profit."
-        ]
-      });
+    // If already 100% balanced, no fixes or discrepancy items needed
+    if (isBalanced) {
+      return [];
     }
 
     // ----------------------------------------------------
