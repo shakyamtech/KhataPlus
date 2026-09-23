@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download, Upload, Crown, Sparkles, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, writeBatch, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, writeBatch, doc, updateDoc, setDoc } from "firebase/firestore";
 import { exportUserDataAsJson, downloadJsonFile, parseAndValidateBackupFile, restoreUserDataFromJson } from "@/lib/backup";
 import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
 
@@ -179,24 +179,63 @@ const Admin = () => {
     }
   };
 
-  const resetData = async (u: AdminUser) => {
+  const handleMasterWipe = async (u: AdminUser) => {
     setResettingId(u.id);
+    const toastId = toast.loading(`Performing Master Factory Wipe for ${u.email}...`);
     try {
-      // 1. Get all products for this user
-      const prodQ = query(collection(db, "products"), where("user_id", "==", u.id));
-      const prodSnap = await getDocs(prodQ);
-      const prodIds = prodSnap.docs.map(d => d.id);
+      const collectionsToWipe = [
+        "products",
+        "product_batches",
+        "product_ingredients",
+        "customers",
+        "suppliers",
+        "sales",
+        "purchases",
+        "cash_transactions",
+        "ledger_entries",
+        "stock_adjustments",
+        "accounts",
+        "vouchers",
+        "expenses"
+      ];
 
-      // 2. Delete all product batches
-      const batchQ = query(collection(db, "product_batches"), where("user_id", "==", u.id));
-      const batchSnap = await getDocs(batchQ);
-      if (!batchSnap.empty) {
-        const bBatch = writeBatch(db);
-        batchSnap.docs.forEach(d => bBatch.delete(d.ref));
-        await bBatch.commit();
+      const snapshots = await Promise.all(
+        collectionsToWipe.map(col => getDocs(query(collection(db, col), where("user_id", "==", u.id))))
+      );
+
+      // 1. Delete all sale_items and purchase_items linked to sales and purchases
+      const salesDocs = snapshots[collectionsToWipe.indexOf("sales")].docs;
+      const purDocs = snapshots[collectionsToWipe.indexOf("purchases")].docs;
+      const saleIds = salesDocs.map(d => d.id);
+      const purIds = purDocs.map(d => d.id);
+
+      for (let i = 0; i < saleIds.length; i += 30) {
+        const chunk = saleIds.slice(i, i + 30);
+        if (chunk.length > 0) {
+          const siSnap = await getDocs(query(collection(db, "sale_items"), where("sale_id", "in", chunk)));
+          if (!siSnap.empty) {
+            const itemBatch = writeBatch(db);
+            siSnap.docs.forEach(d => itemBatch.delete(d.ref));
+            await itemBatch.commit();
+          }
+        }
       }
 
-      // 3. Delete all sale_items and purchase_items linked to user's products
+      for (let i = 0; i < purIds.length; i += 30) {
+        const chunk = purIds.slice(i, i + 30);
+        if (chunk.length > 0) {
+          const piSnap = await getDocs(query(collection(db, "purchase_items"), where("purchase_id", "in", chunk)));
+          if (!piSnap.empty) {
+            const itemBatch = writeBatch(db);
+            piSnap.docs.forEach(d => itemBatch.delete(d.ref));
+            await itemBatch.commit();
+          }
+        }
+      }
+
+      // 2. Also delete any orphaned sale_items / purchase_items by product_id
+      const prodDocs = snapshots[collectionsToWipe.indexOf("products")].docs;
+      const prodIds = prodDocs.map(d => d.id);
       for (let i = 0; i < prodIds.length; i += 30) {
         const chunk = prodIds.slice(i, i + 30);
         if (chunk.length > 0) {
@@ -213,14 +252,8 @@ const Admin = () => {
         }
       }
 
-      // 4. Delete user-level transaction collections
-      const collections = [
-        "sales", "purchases", "cash_transactions", 
-        "ledger_entries", "expenses", "stock_adjustments"
-      ];
-      for (const col of collections) {
-        const q = query(collection(db, col), where("user_id", "==", u.id));
-        const snap = await getDocs(q);
+      // 3. Delete all docs in user-level collections in batches of 450
+      for (const snap of snapshots) {
         for (let i = 0; i < snap.docs.length; i += 450) {
           const chunk = snap.docs.slice(i, i + 450);
           const batch = writeBatch(db);
@@ -229,33 +262,19 @@ const Admin = () => {
         }
       }
 
-      // 5. Reset product stock quantities to 0
-      if (!prodSnap.empty) {
-        for (let i = 0; i < prodSnap.docs.length; i += 450) {
-          const chunk = prodSnap.docs.slice(i, i + 450);
-          const stockBatch = writeBatch(db);
-          chunk.forEach(d => stockBatch.update(d.ref, { stock_qty: 0 }));
-          await stockBatch.commit();
-        }
-      }
+      // 4. Reset bill numbering counters in profile to 1
+      await setDoc(doc(db, "profiles", u.id), {
+        tax_invoice_next_no: 1,
+        abbreviated_next_no: 1,
+        bill_next_no: 1,
+        purchase_next_no: 1,
+        barcode_starting_no: 1001
+      }, { merge: true });
 
-      // 6. Reset customer and supplier balances to 0
-      const [custSnap, suppSnap] = await Promise.all([
-        getDocs(query(collection(db, "customers"), where("user_id", "==", u.id))),
-        getDocs(query(collection(db, "suppliers"), where("user_id", "==", u.id)))
-      ]);
-      const partyDocs = [...custSnap.docs, ...suppSnap.docs];
-      for (let i = 0; i < partyDocs.length; i += 450) {
-        const chunk = partyDocs.slice(i, i + 450);
-        const pBatch = writeBatch(db);
-        chunk.forEach(d => pBatch.update(d.ref, { balance: 0 }));
-        await pBatch.commit();
-      }
-
-      toast.success(`Data reset for ${u.email}. Products & contacts preserved.`);
+      toast.success(`Master Factory Wipe complete for ${u.email}! All products, parties & bills cleared.`, { id: toastId });
       load();
     } catch (e: any) {
-      toast.error("Reset failed: " + e.message);
+      toast.error("Master wipe failed: " + e.message, { id: toastId });
     } finally {
       setResettingId(null);
     }
@@ -675,34 +694,41 @@ const Admin = () => {
                   )}
                 </Button>
 
-                {/* Reset Data (Clear transactions, preserve products/parties) */}
+                {/* Master Factory Wipe (Clear all products, contacts, transactions back to zero) */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
                       size="sm" 
                       variant="outline" 
                       disabled={resettingId === u.id || restoringBackupId === u.id || downloadingBackupId === u.id}
-                      className="flex-1 md:flex-none h-9 border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-500/30 dark:text-amber-400 dark:hover:bg-amber-500/20 font-medium text-xs gap-1.5"
-                      title="Reset all sales, purchases, ledger entries and zero out stock/balances"
+                      className="flex-1 md:flex-none h-9 border-amber-400/60 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-500/40 dark:text-amber-400 dark:hover:bg-amber-500/20 font-medium text-xs gap-1.5"
+                      title="Master Factory Wipe: Delete all products, customers, suppliers, sales, purchases, and ledger entries for this shop"
                     >
                       {resettingId === u.id ? (
-                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Resetting...</>
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Wiping...</>
                       ) : (
-                        <><RotateCcw className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> Reset Data</>
+                        <><RotateCcw className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> Master Wipe</>
                       )}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Reset data for {u.email}?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete all sales, purchases, cash transactions, expenses, stock adjustments and ledger entries for this shop. Products, categories, and customer/supplier lists will be preserved, but stock quantities and balances will be reset to 0.
+                      <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5" /> Master Factory Wipe for {u.email}?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-2 text-sm">
+                        <p>
+                          <strong>चेतावनी / Warning:</strong> This will completely wipe <strong>ALL shop data</strong> (Products, Batches, Customers, Suppliers, Sales, Purchases, Expenses, and Ledger entries) back to zero.
+                        </p>
+                        <p>
+                          The user's <strong>login account and subscription</strong> will remain intact, but their shop will become completely fresh (Factory Reset).
+                        </p>
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => resetData(u)} className="bg-amber-600 hover:bg-amber-700 text-white">
-                        Reset Transactions
+                      <AlertDialogAction onClick={() => handleMasterWipe(u)} className="bg-destructive hover:bg-destructive/90 text-white">
+                        Confirm Master Wipe
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
