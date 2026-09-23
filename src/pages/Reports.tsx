@@ -2023,6 +2023,36 @@ const Reports = () => {
             </Card>
           </div>
 
+          {/* Educational Note on Profit Calculation (Bilingual Helper) */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3 sm:p-3.5 text-xs text-foreground/90 space-y-2 shadow-xs">
+            <div className="flex items-center gap-1.5 font-bold text-primary text-[12px] sm:text-xs">
+              <Info className="h-4 w-4 shrink-0 text-primary" />
+              <span>नाफा तथा खर्च गणनाको नियम (Note on Profit & Loss Calculation)</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 text-[11px] sm:text-[11.5px] leading-relaxed text-muted-foreground border-t border-primary/15 pt-2">
+              <div className="space-y-1">
+                <div className="font-semibold text-foreground flex items-center gap-1">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">१. नाफा कसरी हिसाब हुन्छ?</span>
+                  <span className="text-[10px] opacity-75">(How Profit is Computed)</span>
+                </div>
+                <ul className="list-disc list-inside space-y-0.5 text-muted-foreground/95">
+                  <li><strong>सकल नाफा (Gross Profit)</strong> = बिक्री आम्दानी − बिकेको सामानको खरिद लागत (COGS)</li>
+                  <li><strong>खुद नाफा (Net Profit)</strong> = सकल नाफा + खरिद छुट − पसलका सञ्चालन खर्चहरू (भाडा, बिजुली, तलब, नोक्सानी आदि)</li>
+                </ul>
+              </div>
+              <div className="space-y-1">
+                <div className="font-semibold text-foreground flex items-center gap-1">
+                  <span className="text-amber-600 dark:text-amber-400 font-bold">२. नाफामा के समावेश हुँदैन?</span>
+                  <span className="text-[10px] opacity-75">(Not Operational Expenses)</span>
+                </div>
+                <ul className="list-disc list-inside space-y-0.5 text-muted-foreground/95">
+                  <li><strong>बैंक जम्मा (Bank Deposit):</strong> गल्लाबाट बैंकमा पैसा सार्दा नाफा घट्दैन (सम्पत्ति मात्र सरेको हो)।</li>
+                  <li><strong>साहुको घरखर्च (Drawings) र स्थिर सम्पत्ति खरिद:</strong> यी पुँजी तथा सम्पत्ति हुन्, नाफा-नोक्सानमा गणना हुँदैन।</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <Card className="p-3.5 sm:p-4 shadow-card border-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2 flex-wrap">
