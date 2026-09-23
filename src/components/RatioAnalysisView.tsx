@@ -62,13 +62,17 @@ export default function RatioAnalysisView() {
         const pQ = query(collection(db, "products"), where("user_id", "==", user.uid));
         const lQ = query(collection(db, "ledger_entries"), where("user_id", "==", user.uid));
         const sQ = query(collection(db, "sales"), where("user_id", "==", user.uid));
+        const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid));
+        const saQ = query(collection(db, "stock_adjustments"), where("user_id", "==", user.uid));
         const vQ = query(collection(db, "vouchers"), where("user_id", "==", user.uid));
 
-        const [cSnap, pSnap, lSnap, sSnap, accList, vSnap, sInfo] = await Promise.all([
+        const [cSnap, pSnap, lSnap, sSnap, purSnap, saSnap, accList, vSnap, sInfo] = await Promise.all([
           getDocs(cQ),
           getDocs(pQ),
           getDocs(lQ),
           getDocs(sQ),
+          getDocs(purQ),
+          getDocs(saQ),
           getAccounts(user.uid),
           getDocs(vQ),
           getShopInfo()
@@ -76,9 +80,15 @@ export default function RatioAnalysisView() {
 
         setShopInfo(sInfo);
 
+        const cashDocs = cSnap.docs.map(d => d.data());
+        const salesDocs = sSnap.docs.map(d => d.data());
+        const purchasesDocs = purSnap.docs.map(d => d.data());
+        const stockAdjDocs = saSnap.docs.map(d => d.data());
+        const vouchersList = vSnap.docs.map(d => d.data());
+        const accountsList = accList as any[];
+
         // 1. Cash Balance (excluding transactions settled directly via bank account vouchers)
-        const cashBal = cSnap.docs
-          .map(d => d.data())
+        const cashBal = cashDocs
           .filter((t: any) => !(t.bank_account_id || (t.payment_mode === "bank" && t.voucher_id)))
           .reduce((sum, t: any) => sum + (t.direction === "in" ? Number(t.amount || 0) : -Number(t.amount || 0)), 0);
 
@@ -112,44 +122,91 @@ export default function RatioAnalysisView() {
 
         // 4. Sales Revenue, COGS, VAT
         let totalSalesGross = 0;
-        let totalVat = 0;
+        let outputVat = 0;
         let totalCost = 0;
-        sSnap.docs.map(d => d.data()).forEach((s: any) => {
+        salesDocs.forEach((s: any) => {
           totalSalesGross += Number(s.total || 0);
-          totalVat += Number(s.vat_amount || 0);
+          outputVat += Number(s.vat_amount || 0);
           totalCost += Number(s.cost_total || 0);
         });
-        const netRevenue = totalSalesGross - totalVat;
+        const netRevenue = totalSalesGross - outputVat;
 
-        // 5. Operating Expenses
-        const nonExpenseCategories = ["purchase", "purchases", "supplier_payment", "payment", "personal"];
-        const operatingExpenses = cSnap.docs
-          .map(d => d.data())
-          .filter((tx: any) => tx.direction === "out" && !nonExpenseCategories.includes(tx.category))
-          .reduce((sum, tx: any) => sum + Number(tx.amount || 0), 0);
+        const inputVat = purchasesDocs.reduce((s, p: any) => s + Number(p.vat_amount || (p.is_vat_bill ? (Number(p.total) - Number(p.total) / 1.13) : 0)), 0);
+        let vatPaid = 0;
+        vouchersList.forEach(v => {
+          const impacts = getVoucherAccountImpacts(v);
+          impacts.forEach(imp => {
+            if ((imp.account_name || "").toLowerCase().includes("vat")) {
+              vatPaid += imp.debit;
+            }
+          });
+        });
+        const netVat = outputVat - inputVat - vatPaid;
+        const vatPayable = netVat > 0 ? netVat : 0;
+        const discountReceived = purchasesDocs.reduce((s, p: any) => s + Number(p.discount || 0), 0);
 
-        // 6. Bank, Fixed Assets, Loans, Capital from Accounts & Vouchers
-        const accountsList = accList as any[];
-        const vouchersList = vSnap.docs.map(d => d.data());
-
-        const getAccountBalance = (accId: string, opening: number = 0) => {
-          let bal = opening;
-          vouchersList.forEach((v: any) => {
+        // 5. Operating Expenses (Vouchers + Misc Cash + Wastage)
+        const expAccounts = accountsList.filter(a => a.type === "expense");
+        let voucherExpenses = 0;
+        expAccounts.forEach(e => {
+          let bal = 0;
+          vouchersList.forEach(v => {
             const impacts = getVoucherAccountImpacts(v);
             impacts.forEach(imp => {
-              if (imp.account_id === accId) bal += (imp.debit - imp.credit);
+              if (imp.account_id === e.id || (e.name && imp.account_name && e.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
             });
           });
-          return bal;
-        };
+          if (bal > 0) voucherExpenses += bal;
+        });
 
+        const nonExpenseCategories = ["purchase", "purchases", "supplier_payment", "payment", "personal", "contra_bank_deposit", "contra_bank_withdrawal", "voucher_payment", "voucher_receipt", "fixed_asset", "loan_repayment"];
+        const miscCashExp = cashDocs
+          .filter((tx: any) => tx.direction === "out" && !nonExpenseCategories.includes(tx.category) && !tx.voucher_id && !(tx.account_group && ["fixed_asset", "loan", "loan_repayment", "drawings", "capital"].includes(tx.account_group)))
+          .reduce((sum, tx: any) => sum + Number(tx.amount || 0), 0);
+
+        const wastageLoss = stockAdjDocs
+          .filter(d => d.responsibility === "loss")
+          .reduce((sum, d: any) => sum + Number(d.total_value || 0), 0);
+
+        const operatingExpenses = voucherExpenses + miscCashExp + wastageLoss;
+
+        // 6. Bank, Fixed Assets, Loans, Capital from Accounts & Vouchers
         const bankBal = accountsList
           .filter((a: any) => a.group === "bank_accounts")
-          .reduce((sum: number, a: any) => sum + getAccountBalance(a.id, Number(a.opening_balance || 0)), 0);
+          .reduce((sum: number, b: any) => {
+            let bal = Number(b.opening_balance || 0);
+            vouchersList.forEach((v: any) => {
+              const impacts = getVoucherAccountImpacts(v);
+              impacts.forEach(imp => {
+                if (imp.account_id === b.id || (b.name && imp.account_name && b.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
+              });
+            });
+            return sum + Math.max(0, bal);
+          }, 0);
+
+        const cashFixedAssets = cashDocs
+          .filter((c: any) => c.direction === "out" && (c.category === "fixed_asset" || c.account_group === "fixed_asset"))
+          .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
 
         const fixedAssetsBal = accountsList
           .filter((a: any) => a.group === "fixed_assets")
-          .reduce((sum: number, a: any) => sum + Math.max(0, getAccountBalance(a.id, Number(a.opening_balance || 0))), 0);
+          .reduce((sum: number, a: any) => {
+            let bal = Number(a.opening_balance || 0);
+            vouchersList.forEach((v: any) => {
+              const impacts = getVoucherAccountImpacts(v);
+              impacts.forEach(imp => {
+                if (imp.account_id === a.id || (a.name && imp.account_name && a.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
+              });
+            });
+            return sum + Math.max(0, bal);
+          }, 0) + cashFixedAssets;
+
+        const cashLoansTaken = cashDocs
+          .filter((c: any) => c.direction === "in" && (c.category === "loan" || c.account_group === "loan"))
+          .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+        const cashLoansRepaid = cashDocs
+          .filter((c: any) => c.direction === "out" && (c.category === "loan_repayment" || c.account_group === "loan" || c.account_group === "loan_repayment"))
+          .reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
 
         const loansBal = accountsList
           .filter((a: any) => a.group === "loans_liabilities" || a.group === "bank_od")
@@ -158,11 +215,16 @@ export default function RatioAnalysisView() {
             vouchersList.forEach((v: any) => {
               const impacts = getVoucherAccountImpacts(v);
               impacts.forEach(imp => {
-                if (imp.account_id === a.id) b += (imp.credit - imp.debit);
+                if (imp.account_id === a.id || (a.name && imp.account_name && a.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) b += (imp.credit - imp.debit);
               });
             });
             return sum + Math.max(0, b);
-          }, 0);
+          }, 0) + Math.max(0, cashLoansTaken - cashLoansRepaid);
+
+        const capitalCats = ["opening", "capital", "investment", "owner_investment"];
+        const cashCapital = cashDocs
+          .filter((c: any) => c.direction === "in" && (capitalCats.includes((c.category || "").toLowerCase()) || c.account_group === "capital"))
+          .reduce((s, r: any) => s + Number(r.amount || 0), 0);
 
         const capitalAccs = accountsList.filter((a: any) => a.group === "capital");
         const capitalBal = capitalAccs.reduce((sum: number, a: any) => {
@@ -170,11 +232,19 @@ export default function RatioAnalysisView() {
           vouchersList.forEach((v: any) => {
             const impacts = getVoucherAccountImpacts(v);
             impacts.forEach(imp => {
-              if (imp.account_id === a.id) b += (imp.credit - imp.debit);
+              const isCap = imp.account_id === a.id
+                || (a.name && imp.account_name && a.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())
+                || (imp.account_name || "").toLowerCase().includes("capital")
+                || (imp.account_name || "").includes("पुँजी");
+              if (isCap) b += (imp.credit - imp.debit);
             });
           });
           return sum + Math.max(0, b);
-        }, 0);
+        }, 0) + (capitalAccs.length === 0 ? cashCapital : 0);
+
+        const cashDrawings = cashDocs
+          .filter((c: any) => c.direction === "out" && ((c.category || "").toLowerCase() === "personal" || c.account_group === "drawings"))
+          .reduce((s, r: any) => s + Number(r.amount || 0), 0);
 
         const drawingsAccs = accountsList.filter((a: any) => a.group === "drawings");
         const drawingsBal = drawingsAccs.reduce((sum: number, a: any) => {
@@ -182,11 +252,15 @@ export default function RatioAnalysisView() {
           vouchersList.forEach((v: any) => {
             const impacts = getVoucherAccountImpacts(v);
             impacts.forEach(imp => {
-              if (imp.account_id === a.id) b += (imp.debit - imp.credit);
+              const isDraw = imp.account_id === a.id
+                || (a.name && imp.account_name && a.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())
+                || (imp.account_name || "").toLowerCase().includes("drawing")
+                || (imp.account_name || "").includes("घरखर्च");
+              if (isDraw) b += (imp.debit - imp.credit);
             });
           });
           return sum + Math.max(0, b);
-        }, 0);
+        }, 0) + (drawingsAccs.length === 0 ? cashDrawings : 0);
 
         setData({
           cash: cashBal,
@@ -196,10 +270,10 @@ export default function RatioAnalysisView() {
           fixedAssets: fixedAssetsBal,
           creditors: totalCreditors,
           loans: loansBal,
-          vatPayable: totalVat,
+          vatPayable: vatPayable,
           capital: capitalBal,
           drawings: drawingsBal,
-          revenue: netRevenue,
+          revenue: netRevenue + discountReceived,
           cogs: totalCost,
           expenses: operatingExpenses
         });
