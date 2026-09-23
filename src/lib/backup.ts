@@ -929,6 +929,11 @@ export async function restoreUserDataFromJson(
         batch_prefix_style: shopMeta.batch_prefix_style || "product_3",
         batch_suffix_style: shopMeta.batch_suffix_style || "m_d_yy",
         custom_units: data.custom_units || shopMeta.custom_units || ["pcs", "set", "doz"],
+        tax_invoice_next_no: shopMeta.tax_invoice_next_no !== undefined ? Number(shopMeta.tax_invoice_next_no) : undefined,
+        abbreviated_next_no: shopMeta.abbreviated_next_no !== undefined ? Number(shopMeta.abbreviated_next_no) : undefined,
+        bill_next_no: shopMeta.bill_next_no !== undefined ? Number(shopMeta.bill_next_no) : undefined,
+        purchase_next_no: shopMeta.purchase_next_no !== undefined ? Number(shopMeta.purchase_next_no) : undefined,
+        barcode_starting_no: shopMeta.barcode_starting_no !== undefined ? Number(shopMeta.barcode_starting_no) : undefined,
         updated_at: new Date().toISOString()
       },
       action: "set"
