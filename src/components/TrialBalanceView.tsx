@@ -660,7 +660,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
       difference,
       isBalanced: difference < 0.05
     };
-  }, [accounts, vouchers, cashDocs, salesDocs, purchasesDocs, ledgerDocs, productDocs, stockAdjDocs, lang]);
+  }, [accounts, vouchers, cashDocs, salesDocs, purchasesDocs, ledgerDocs, productDocs, stockAdjDocs, selectedFY, currentFY, lang]);
 
   const handlePrintTrialBalance = () => {
     if (!shopInfo) return;
