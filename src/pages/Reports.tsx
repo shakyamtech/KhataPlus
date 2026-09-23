@@ -164,8 +164,19 @@ const Reports = () => {
       setAllSales(sSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setAllPurchases(purSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      const nonExpenseCategories = ["purchase", "purchases", "supplier_payment", "payment", "personal"];
-      const allExp = eSnap.docs.map(d => d.data()).filter(tx => tx.direction === "out" && !nonExpenseCategories.includes(tx.category));
+      const nonExpenseCategories = [
+        "purchase", "purchases", "supplier_payment", "payment", "personal",
+        "contra_bank_deposit", "contra_bank_withdrawal", "voucher_payment", "voucher_receipt",
+        "fixed_asset", "loan_repayment"
+      ];
+      const allExp = eSnap.docs.map(d => d.data()).filter(tx => {
+        if (tx.direction !== "out") return false;
+        const cat = (tx.category || "").toLowerCase();
+        if (nonExpenseCategories.includes(cat)) return false;
+        if (tx.voucher_id) return false;
+        if (tx.account_group && ["fixed_asset", "loan", "loan_repayment", "drawings", "capital"].includes(tx.account_group)) return false;
+        return true;
+      });
       const allLoss = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
 
       setAllExpenses(allExp);
@@ -234,6 +245,12 @@ const Reports = () => {
     return wList.reduce((sum, r) => sum + Number(r.total_value || 0), 0);
   }, [allWastage, periodStart, periodEnd]);
 
+  const overviewVouchers = useMemo(() => {
+    const startIso = periodStart.toISOString();
+    const endIso = periodEnd.toISOString();
+    return allVouchers.filter(v => (v.date || v.created_at) >= startIso && (v.date || v.created_at) <= endIso);
+  }, [allVouchers, periodStart, periodEnd]);
+
   const totals = useMemo(() => {
     const grossRevenue = overviewSales.reduce((s, r) => s + Number(r.total) + Number(r.discount || 0), 0);
     const discountAllowed = overviewSales.reduce((s, r) => s + Number(r.discount || 0), 0);
@@ -242,11 +259,26 @@ const Reports = () => {
     const revenue = overviewSales.reduce((s, r) => s + (Number(r.total || 0) - Number(r.vat_amount || 0)), 0);
     const cogs = overviewSales.reduce((s, r) => s + Number(r.cost_total || 0), 0);
     const exp = overviewExpenses.reduce((s, r) => s + Number(r.amount || 0), 0);
-    const totalExp = exp + overviewWastage;
+    
+    // Add voucher expenses for the period
+    const expAccounts = accounts.filter(a => a.type === "expense");
+    let voucherExp = 0;
+    expAccounts.forEach(e => {
+      let bal = 0;
+      overviewVouchers.forEach(v => {
+        const impacts = getVoucherAccountImpacts(v);
+        impacts.forEach(imp => {
+          if (imp.account_id === e.id || (e.name && imp.account_name && e.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
+        });
+      });
+      if (bal > 0) voucherExp += bal;
+    });
+
+    const totalExp = voucherExp + exp + overviewWastage;
     const gross = revenue - cogs;
     const net = gross + discountReceived - totalExp;
-    return { grossRevenue, discountAllowed, vatCollected, discountReceived, revenue, cogs, gross, exp: totalExp, storeExp: exp, wastage: overviewWastage, net };
-  }, [overviewSales, overviewPurchases, overviewExpenses, overviewWastage]);
+    return { grossRevenue, discountAllowed, vatCollected, discountReceived, revenue, cogs, gross, exp: totalExp, storeExp: exp + voucherExp, wastage: overviewWastage, net };
+  }, [overviewSales, overviewPurchases, overviewExpenses, overviewVouchers, overviewWastage, accounts]);
 
   const vatTotals = useMemo(() => {
     const sMap = new Map(suppliers.map(s => [s.id, s]));
