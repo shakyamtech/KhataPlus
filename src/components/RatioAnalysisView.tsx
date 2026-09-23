@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { fmt } from "@/lib/format";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
+import { getFiscalYearInfo, getRecentFiscalYears, formatNepaliDate, FiscalYearInfo } from "@/lib/fiscalYear";
 import { format } from "date-fns";
 import { getAccounts, getVoucherAccountImpacts } from "@/lib/accounting";
 import {
@@ -27,12 +27,25 @@ import {
   Clock,
   CircleDollarSign,
   Boxes,
-  ArrowRight
+  ArrowRight,
+  ChevronDown
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 export default function RatioAnalysisView() {
   const { user } = useAuth();
   const { lang } = useLanguage();
+  const currentFY = useMemo(() => getFiscalYearInfo(new Date()), []);
+  const fyOptions = useMemo(() => getRecentFiscalYears(5), []);
+  const [selectedFY, setSelectedFY] = useState<FiscalYearInfo>(() => currentFY);
+
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -80,12 +93,22 @@ export default function RatioAnalysisView() {
 
         setShopInfo(sInfo);
 
-        const cashDocs = cSnap.docs.map(d => d.data());
-        const salesDocs = sSnap.docs.map(d => d.data());
-        const purchasesDocs = purSnap.docs.map(d => d.data());
-        const stockAdjDocs = saSnap.docs.map(d => d.data());
-        const vouchersList = vSnap.docs.map(d => d.data());
+        const isCurrentFY = selectedFY.bsStartYear === currentFY.bsStartYear;
+        const cutoffIso = isCurrentFY ? new Date().toISOString() : selectedFY.endDate.toISOString();
+
+        const allCash = cSnap.docs.map(d => d.data());
+        const allSales = sSnap.docs.map(d => d.data());
+        const allPurchases = purSnap.docs.map(d => d.data());
+        const allStockAdj = saSnap.docs.map(d => d.data());
+        const allVouchers = vSnap.docs.map(d => d.data());
         const accountsList = accList as any[];
+
+        const cashDocs = allCash.filter((c: any) => !c.created_at || c.created_at <= cutoffIso);
+        const salesDocs = allSales.filter((s: any) => !s.created_at || s.created_at <= cutoffIso);
+        const purchasesDocs = allPurchases.filter((p: any) => !p.created_at || p.created_at <= cutoffIso);
+        const stockAdjDocs = allStockAdj.filter((w: any) => !w.created_at || w.created_at <= cutoffIso);
+        const vouchersList = allVouchers.filter((v: any) => !(v.date || v.created_at) || (v.date || v.created_at) <= cutoffIso);
+        const ledgerDocs = lSnap.docs.map(d => d.data()).filter((e: any) => !(e.date || e.created_at) || (e.date || e.created_at) <= cutoffIso);
 
         // 1. Cash Balance (excluding transactions settled directly via bank account vouchers)
         const cashBal = cashDocs
@@ -283,7 +306,7 @@ export default function RatioAnalysisView() {
         setLoading(false);
       }
     })();
-  }, [user]);
+  }, [user, selectedFY, currentFY]);
 
   // Derived Accounting Calculations
   const currentAssets = data.cash + data.bank + data.stock + data.debtors;
@@ -323,10 +346,13 @@ export default function RatioAnalysisView() {
   // A4 Print Generation
   const handlePrintRatios = () => {
     if (!shopInfo) return;
-    const reportDateBS = formatNepaliDate(new Date());
-    const reportDateAD = format(new Date(), "dd/MM/yyyy, hh:mm a");
-    const currentFY = getFiscalYearInfo(new Date());
+    const isCurrentFY = selectedFY.bsStartYear === currentFY.bsStartYear;
+    const reportDateBS = isCurrentFY ? formatNepaliDate(new Date()) : formatNepaliDate(selectedFY.endDate);
+    const reportDateAD = isCurrentFY ? format(new Date(), "dd/MM/yyyy, hh:mm a") : format(selectedFY.endDate, "dd/MM/yyyy");
     const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
+    const asOfDateLabel = isCurrentFY
+      ? `${reportDateBS} (${reportDateAD})`
+      : `${selectedFY.labelNp} (असार मसान्त) / As on ${format(selectedFY.endDate, "dd/MM/yyyy")}`;
 
     const body = `
       <div class="a4-container" style="background:#ffffff; color:#000000; padding:24px 28px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
@@ -342,7 +368,7 @@ export default function RatioAnalysisView() {
             वित्तीय अनुपात तथा व्यवसायिक स्वास्थ्य विश्लेषण (Ratio Analysis Report)
           </div>
           <div style="font-size:11.5px; color:#111; margin-top:5px; font-weight:600;">
-            आर्थिक वर्ष: <strong>${currentFY.labelNp} (${currentFY.labelEn})</strong> · विवरण मिति: <strong>${reportDateBS} (${reportDateAD})</strong>
+            आर्थिक वर्ष: <strong>${selectedFY.fullLabel}</strong> · विवरण मिति: <strong>${asOfDateLabel}</strong>
           </div>
         </div>
 
@@ -527,14 +553,51 @@ export default function RatioAnalysisView() {
             <h2 className="text-base sm:text-lg font-bold text-foreground">
               {lang === "NEP" ? "वित्तीय अनुपात तथा व्यवसायिक स्वास्थ्य (Ratio Analysis)" : "Financial Ratio Analysis & Business Health"}
             </h2>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="आर्थिक वर्ष परिवर्तन गर्नुहोस्"
+                >
+                  <Landmark className="h-3 w-3" />
+                  <span>{selectedFY.labelNp} ({selectedFY.labelEn})</span>
+                  <ChevronDown className="h-3 w-3 opacity-70" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                  आर्थिक वर्ष छान्नुहोस् (Select Fiscal Year)
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {fyOptions.map((fy) => {
+                  const isSelected = fy.bsStartYear === selectedFY.bsStartYear;
+                  return (
+                    <DropdownMenuItem
+                      key={fy.bsStartYear}
+                      onClick={() => setSelectedFY(fy)}
+                      className={`cursor-pointer text-xs font-medium flex items-center justify-between ${
+                        isSelected ? "bg-primary/10 text-primary font-bold" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Landmark className="h-3.5 w-3.5 text-primary" />
+                        <span>{fy.labelNp} ({fy.labelEn})</span>
+                      </div>
+                      {isSelected && <span className="text-[10px] font-bold text-primary">✓</span>}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Badge variant="outline" className="text-[11px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 flex items-center gap-1">
               <BarChart3 className="h-3 w-3" /> Tally 9 Style
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {lang === "NEP"
-              ? "पसलको तरलता (Liquidity), नाफा दर (Margin), चालु पुँजी र बैंक कर्जा क्षमताको विस्तृत विश्लेषण"
-              : "Comprehensive analysis of business liquidity, profitability margins, working capital and bank loan capacity"}
+              ? `पसलको तरलता, नाफा दर, चालु पुँजी र बैंक कर्जा क्षमताको विश्लेषण · विवरण मिति: ${selectedFY.bsStartYear === currentFY.bsStartYear ? formatNepaliDate(new Date()) : `${selectedFY.labelNp} (असार मसान्त)`}`
+              : `Comprehensive analysis of business liquidity, profitability margins, working capital and bank loan capacity · As on: ${selectedFY.bsStartYear === currentFY.bsStartYear ? formatNepaliDate(new Date()) : `${selectedFY.labelEn} (Ashadh End)`}`}
           </p>
         </div>
 

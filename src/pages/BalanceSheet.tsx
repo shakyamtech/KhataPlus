@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,10 +10,18 @@ import { fmt } from "@/lib/format";
 import { format } from "date-fns";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { Printer, Landmark, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
-import { getFiscalYearInfo, formatNepaliDate } from "@/lib/fiscalYear";
+import { Printer, Landmark, Sparkles, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react";
+import { getFiscalYearInfo, getRecentFiscalYears, formatNepaliDate, FiscalYearInfo } from "@/lib/fiscalYear";
 import { getAccounts, Account, Voucher, getVoucherAccountImpacts } from "@/lib/accounting";
 import { BalanceSheetAssistantModal } from "@/components/BalanceSheetAssistantModal";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 const Row = ({ label, value, bold }: { label: string; value: number; bold?: boolean }) => (
   <div className={`flex justify-between py-2 ${bold ? "font-display text-base border-t pt-3 mt-2" : "text-sm"}`}>
@@ -53,6 +61,10 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
   // Assistant modal state
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantTab, setAssistantTab] = useState<"diagnostics" | "retained" | "health">("diagnostics");
+
+  const currentFY = useMemo(() => getFiscalYearInfo(new Date()), []);
+  const fyOptions = useMemo(() => getRecentFiscalYears(5), []);
+  const [selectedFY, setSelectedFY] = useState<FiscalYearInfo>(() => currentFY);
 
   const [d, setD] = useState({
     cash: 0,
@@ -106,16 +118,28 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
 
       setShopInfo(sInfo);
 
-      const cash = cSnap.docs.map(d => d.data());
-      const products = pSnap.docs.map(d => d.data());
-      const ledger = lSnap.docs.map(d => d.data());
-      const sales = sSnap.docs.map(d => d.data());
-      const wastageAdjustments = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
+      const isCurrentFY = selectedFY.bsStartYear === currentFY.bsStartYear;
+      const cutoffIso = isCurrentFY ? new Date().toISOString() : selectedFY.endDate.toISOString();
+
+      const allCash = cSnap.docs.map(d => d.data());
+      const allProducts = pSnap.docs.map(d => d.data());
+      const allLedger = lSnap.docs.map(d => d.data());
+      const allSales = sSnap.docs.map(d => d.data());
+      const allWastage = wSnap.docs.map(d => d.data()).filter(d => d.responsibility === "loss");
       const accounts = accList;
-      const vouchers = vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher));
+      const allVouchers = vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Voucher));
       const suppliers = suppSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const customers = custSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const purchases = purSnap.docs.map(d => d.data());
+      const allPurchases = purSnap.docs.map(d => d.data());
+
+      // Filter all transactions up to cutoffIso
+      const cash = allCash.filter((c: any) => !c.created_at || c.created_at <= cutoffIso);
+      const sales = allSales.filter((s: any) => !s.created_at || s.created_at <= cutoffIso);
+      const purchases = allPurchases.filter((p: any) => !p.created_at || p.created_at <= cutoffIso);
+      const vouchers = allVouchers.filter((v: any) => !(v.date || v.created_at) || (v.date || v.created_at) <= cutoffIso);
+      const ledger = allLedger.filter((e: any) => !(e.date || e.created_at) || (e.date || e.created_at) <= cutoffIso);
+      const wastageAdjustments = allWastage.filter((w: any) => !w.created_at || w.created_at <= cutoffIso);
+      const products = allProducts;
 
       setRawAccounts(accounts);
       setRawVouchers(vouchers);
@@ -422,7 +446,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
       } catch (err: any) {
         console.error("BalanceSheet error:", err);
       }
-  }, [user]);
+  }, [user, selectedFY, currentFY]);
 
   useEffect(() => {
     loadData();
@@ -439,11 +463,13 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
   const handlePrintBalanceSheet = () => {
     if (!shopInfo) return;
     const preparedByName = (shopInfo.owner_name || user?.displayName || "").trim();
-    const reportDateBS = formatNepaliDate(new Date());
-    const reportDateAD = format(new Date(), "dd/MM/yyyy, hh:mm a");
+    const isCurrentFY = selectedFY.bsStartYear === currentFY.bsStartYear;
+    const reportDateBS = isCurrentFY ? formatNepaliDate(new Date()) : formatNepaliDate(selectedFY.endDate);
+    const reportDateAD = isCurrentFY ? format(new Date(), "dd/MM/yyyy, hh:mm a") : format(selectedFY.endDate, "dd/MM/yyyy");
     const currentDate = `${reportDateBS} (${reportDateAD})`;
-    const asOfDateLabel = `${reportDateBS} (${format(new Date(), "dd MMMM yyyy")})`;
-    const currentFY = getFiscalYearInfo(new Date());
+    const asOfDateLabel = isCurrentFY
+      ? `${reportDateBS} (${format(new Date(), "dd MMMM yyyy")})`
+      : `${selectedFY.labelNp} (असार मसान्त) / As on ${format(selectedFY.endDate, "dd MMMM yyyy")}`;
 
     const body = `
       <div class="a4-container" style="background:#ffffff; color:#000000; padding:24px 28px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.4;">
@@ -459,7 +485,7 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
             अन्तिम हिसाब तथा वासलात (Final Account & Balance Sheet)
           </div>
           <div style="font-size:11.5px; color:#111; margin-top:5px; font-weight:600;">
-            आर्थिक वर्ष (Fiscal Year): <strong>${currentFY.fullLabel}</strong>
+            आर्थिक वर्ष (Fiscal Year): <strong>${selectedFY.fullLabel}</strong>
           </div>
           <div style="font-size:11px; color:#4b5563; margin-top:2px;">
             स्थिति (As on Date): <strong>${asOfDateLabel}</strong> · तयार मिति (Report Date): <strong>${currentDate}</strong>
@@ -685,18 +711,52 @@ const BalanceSheet = ({ hideHeader, onNavigateToTrial }: BalanceSheetProps = {})
             <h2 className="text-lg font-bold text-foreground">
               {lang === "NEP" ? "अन्तिम हिसाब तथा वासलात (Financial Position)" : "Financial Position (Balance Sheet)"}
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-              <Landmark className="h-3 w-3" /> {lang === "NEP" ? getFiscalYearInfo(new Date()).labelNp : getFiscalYearInfo(new Date()).labelEn}
-            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="आर्थिक वर्ष परिवर्तन गर्नुहोस्"
+                >
+                  <Landmark className="h-3 w-3" />
+                  <span>{selectedFY.labelNp} ({selectedFY.labelEn})</span>
+                  <ChevronDown className="h-3 w-3 opacity-70" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                  आर्थिक वर्ष छान्नुहोस् (Select Fiscal Year)
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {fyOptions.map((fy) => {
+                  const isSelected = fy.bsStartYear === selectedFY.bsStartYear;
+                  return (
+                    <DropdownMenuItem
+                      key={fy.bsStartYear}
+                      onClick={() => setSelectedFY(fy)}
+                      className={`cursor-pointer text-xs font-medium flex items-center justify-between ${
+                        isSelected ? "bg-primary/10 text-primary font-bold" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Landmark className="h-3.5 w-3.5 text-primary" />
+                        <span>{fy.labelNp} ({fy.labelEn})</span>
+                      </div>
+                      {isSelected && <span className="text-[10px] font-bold text-primary">✓</span>}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {lang === "NEP" ? (
               <>
-                पसल: <strong className="text-foreground">{shopInfo?.name || "Shop"}</strong> {shopInfo?.pan ? <>· PAN: <strong className="text-foreground">{shopInfo.pan}</strong></> : null} · आर्थिक वर्ष: <strong className="text-foreground">{getFiscalYearInfo(new Date()).labelNp}</strong> · विवरण मिति: <strong className="text-foreground">{format(new Date(), "dd MMMM yyyy")}</strong>
+                पसल: <strong className="text-foreground">{shopInfo?.name || "Shop"}</strong> {shopInfo?.pan ? <>· PAN: <strong className="text-foreground">{shopInfo.pan}</strong></> : null} · आर्थिक वर्ष: <strong className="text-foreground">{selectedFY.labelNp}</strong> · विवरण मिति: <strong className="text-foreground">{selectedFY.bsStartYear === currentFY.bsStartYear ? format(new Date(), "dd MMMM yyyy") : `असार मसान्त (${format(selectedFY.endDate, "dd MMMM yyyy")})`}</strong>
               </>
             ) : (
               <>
-                Shop: <strong className="text-foreground">{shopInfo?.name || "Shop"}</strong> {shopInfo?.pan ? <>· PAN: <strong className="text-foreground">{shopInfo.pan}</strong></> : null} · FY: <strong className="text-foreground">{getFiscalYearInfo(new Date()).labelEn}</strong> · Date: <strong className="text-foreground">{format(new Date(), "dd MMMM yyyy")}</strong>
+                Shop: <strong className="text-foreground">{shopInfo?.name || "Shop"}</strong> {shopInfo?.pan ? <>· PAN: <strong className="text-foreground">{shopInfo.pan}</strong></> : null} · FY: <strong className="text-foreground">{selectedFY.labelEn}</strong> · Date: <strong className="text-foreground">{selectedFY.bsStartYear === currentFY.bsStartYear ? format(new Date(), "dd MMMM yyyy") : `As on Ashadh End (${format(selectedFY.endDate, "dd MMMM yyyy")})`}</strong>
               </>
             )}
           </p>

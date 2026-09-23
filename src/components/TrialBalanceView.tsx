@@ -5,14 +5,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printHTML, escapeHtml } from "@/lib/print";
-import { formatNepaliDate, getFiscalYearInfo } from "@/lib/fiscalYear";
+import { formatNepaliDate, getFiscalYearInfo, getRecentFiscalYears, FiscalYearInfo } from "@/lib/fiscalYear";
+import { format } from "date-fns";
 import { fmt } from "@/lib/format";
 import { Account, Voucher, getAccounts, getVoucherAccountImpacts } from "@/lib/accounting";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Printer, Scale, CheckCircle2, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { Printer, Scale, CheckCircle2, AlertCircle, Loader2, Sparkles, Landmark, ChevronDown } from "lucide-react";
 import { TrialBalanceDifferenceHelperModal } from "@/components/TrialBalanceDifferenceHelperModal";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface TrialBalanceViewProps {
   hideHeaderCard?: boolean;
@@ -21,6 +30,10 @@ interface TrialBalanceViewProps {
 export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewProps) {
   const { user } = useAuth();
   const { lang } = useLanguage();
+  const currentFY = useMemo(() => getFiscalYearInfo(new Date()), []);
+  const fyOptions = useMemo(() => getRecentFiscalYears(5), []);
+  const [selectedFY, setSelectedFY] = useState<FiscalYearInfo>(() => currentFY);
+
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -76,20 +89,30 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
   }, [user]);
 
   const trialBalanceData = useMemo(() => {
+    const isCurrentFY = selectedFY.bsStartYear === currentFY.bsStartYear;
+    const cutoffIso = isCurrentFY ? new Date().toISOString() : selectedFY.endDate.toISOString();
+
+    const fCashDocs = cashDocs.filter((c: any) => !c.created_at || c.created_at <= cutoffIso);
+    const fSalesDocs = salesDocs.filter((s: any) => !s.created_at || s.created_at <= cutoffIso);
+    const fPurchasesDocs = purchasesDocs.filter((p: any) => !p.created_at || p.created_at <= cutoffIso);
+    const fVouchers = vouchers.filter((v: any) => !(v.date || v.created_at) || (v.date || v.created_at) <= cutoffIso);
+    const fLedgerDocs = ledgerDocs.filter((e: any) => !(e.date || e.created_at) || (e.date || e.created_at) <= cutoffIso);
+    const fStockAdjDocs = stockAdjDocs.filter((w: any) => !w.created_at || w.created_at <= cutoffIso);
+
     // 1. Cash in Hand & Digital Wallets (excluding transactions settled directly via bank account vouchers)
-    const pureCashBal = cashDocs
+    const pureCashBal = fCashDocs
       .filter((r: any) => (!r.payment_mode || r.payment_mode === "cash") && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
       .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
 
-    const esewaBal = cashDocs
+    const esewaBal = fCashDocs
       .filter((r: any) => r.payment_mode === "esewa" && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
       .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
 
-    const khaltiBal = cashDocs
+    const khaltiBal = fCashDocs
       .filter((r: any) => r.payment_mode === "khalti" && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
       .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
 
-    const otherCashBal = cashDocs
+    const otherCashBal = fCashDocs
       .filter((r: any) => !["cash", "esewa", "khalti"].includes(r.payment_mode) && !(r.bank_account_id || (r.payment_mode === "bank" && r.voucher_id)))
       .reduce((s, r: any) => s + (r.direction === "in" ? +r.amount : -r.amount), 0);
 
@@ -100,7 +123,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
 
     // 3. Debtors and Creditors from ledger
     const partyBalances: Record<string, number> = {};
-    ledgerDocs.forEach((e: any) => {
+    fLedgerDocs.forEach((e: any) => {
       const key = `${e.party_type}_${e.party_id}`;
       let val = Number(e.amount);
       if (e.party_type === "customer") {
@@ -117,7 +140,7 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     customerDocs.forEach(c => {
       customerMap.set(c.id, c.name || c.party_name || `Customer #${c.id.slice(0, 6)}`);
     });
-    ledgerDocs.forEach((e: any) => {
+    fLedgerDocs.forEach((e: any) => {
       if (e.party_type === "customer" && e.party_name && !customerMap.has(e.party_id)) {
         customerMap.set(e.party_id, e.party_name);
       }
@@ -127,17 +150,17 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     supplierDocs.forEach(s => {
       supplierMap.set(s.id, s.name || s.party_name || `Supplier #${s.id.slice(0, 6)}`);
     });
-    ledgerDocs.forEach((e: any) => {
+    fLedgerDocs.forEach((e: any) => {
       if (e.party_type === "supplier" && e.party_name && !supplierMap.has(e.party_id)) {
         supplierMap.set(e.party_id, e.party_name);
       }
     });
 
     // 4. Sales Revenue & Cost of Goods Sold & VAT Balance
-    const outputVat = salesDocs.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
-    const inputVat = purchasesDocs.reduce((s, p: any) => s + +(p.vat_amount || (p.is_vat_bill ? (+p.total - +p.total / 1.13) : 0)), 0);
+    const outputVat = fSalesDocs.reduce((s, r: any) => s + +(r.vat_amount || 0), 0);
+    const inputVat = fPurchasesDocs.reduce((s, p: any) => s + +(p.vat_amount || (p.is_vat_bill ? (+p.total - +p.total / 1.13) : 0)), 0);
     let vatPaid = 0;
-    vouchers.forEach(v => {
+    fVouchers.forEach(v => {
       const impacts = getVoucherAccountImpacts(v);
       impacts.forEach(imp => {
         if ((imp.account_name || "").toLowerCase().includes("vat")) {
@@ -148,14 +171,14 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
     const netVat = outputVat - inputVat - vatPaid;
     const vatPayable = netVat > 0 ? netVat : 0;
     const vatReceivable = netVat < 0 ? Math.abs(netVat) : 0;
-    const revenue = salesDocs.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
-    const cogs = salesDocs.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
+    const revenue = fSalesDocs.reduce((s, r: any) => s + (+r.total - +(r.vat_amount || 0)), 0);
+    const cogs = fSalesDocs.reduce((s, r: any) => s + +(r.cost_total || 0), 0);
 
     // 5. Bank Accounts
     const bankAccounts = accounts.filter(a => a.group === "bank_accounts");
     const bankRows = bankAccounts.map(b => {
       let bal = Number(b.opening_balance || 0);
-      vouchers.forEach(v => {
+      fVouchers.forEach(v => {
         const impacts = getVoucherAccountImpacts(v);
         impacts.forEach(imp => {
           if (imp.account_id === b.id || (b.name && imp.account_name && b.name.trim().toLowerCase() === imp.account_name.trim().toLowerCase())) bal += (imp.debit - imp.credit);
@@ -621,10 +644,10 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
             सन्तुलन परीक्षण विवरण (Trial Balance Sheet)
           </div>
           <div style="font-size:11.5px; color:#111; margin-top:5px; font-weight:600;">
-            आर्थिक वर्ष (Fiscal Year): <strong>${currentFY.fullLabel}</strong>
+            आर्थिक वर्ष (Fiscal Year): <strong>${selectedFY.fullLabel}</strong>
           </div>
           <div style="font-size:11px; color:#4b5563; margin-top:2px;">
-            स्थिति मिति (As of Date): <strong>${dateFormatted}</strong>
+            स्थिति मिति (As of Date): <strong>${selectedFY.bsStartYear === currentFY.bsStartYear ? dateFormatted : `${selectedFY.labelNp} (असार मसान्त) / As on ${format(selectedFY.endDate, "dd/MM/yyyy")}`}</strong>
           </div>
         </div>
 
@@ -694,6 +717,43 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
               <h3 className="text-base font-bold text-foreground">
                 {lang === "NEP" ? "सन्तुलन परीक्षण (Trial Balance)" : "Trial Balance"}
               </h3>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                    title="आर्थिक वर्ष परिवर्तन गर्नुहोस्"
+                  >
+                    <Landmark className="h-3 w-3" />
+                    <span>{selectedFY.labelNp} ({selectedFY.labelEn})</span>
+                    <ChevronDown className="h-3 w-3 opacity-70" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                    आर्थिक वर्ष छान्नुहोस् (Select Fiscal Year)
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {fyOptions.map((fy) => {
+                    const isSelected = fy.bsStartYear === selectedFY.bsStartYear;
+                    return (
+                      <DropdownMenuItem
+                        key={fy.bsStartYear}
+                        onClick={() => setSelectedFY(fy)}
+                        className={`cursor-pointer text-xs font-medium flex items-center justify-between ${
+                          isSelected ? "bg-primary/10 text-primary font-bold" : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Landmark className="h-3.5 w-3.5 text-primary" />
+                          <span>{fy.labelNp} ({fy.labelEn})</span>
+                        </div>
+                        {isSelected && <span className="text-[10px] font-bold text-primary">✓</span>}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
               {trialBalanceData.isBalanced ? (
                 <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3" />
@@ -715,8 +775,8 @@ export default function TrialBalanceView({ hideHeaderCard }: TrialBalanceViewPro
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {lang === "NEP"
-                ? `विवरण मिति: ${formatNepaliDate(new Date())} BS (${new Date().toLocaleDateString("en-GB")}) · कुल खाताहरू: ${trialBalanceData.rows.length}`
-                : `As of: ${formatNepaliDate(new Date())} BS (${new Date().toLocaleDateString("en-GB")}) · Total Accounts: ${trialBalanceData.rows.length}`}
+                ? `विवरण मिति: ${selectedFY.bsStartYear === currentFY.bsStartYear ? formatNepaliDate(new Date()) : `${selectedFY.labelNp} (असार मसान्त)`} BS (${selectedFY.bsStartYear === currentFY.bsStartYear ? new Date().toLocaleDateString("en-GB") : format(selectedFY.endDate, "dd/MM/yyyy")}) · कुल खाताहरू: ${trialBalanceData.rows.length}`
+                : `As of: ${selectedFY.bsStartYear === currentFY.bsStartYear ? formatNepaliDate(new Date()) : `${selectedFY.labelEn} (Ashadh End)`} BS (${selectedFY.bsStartYear === currentFY.bsStartYear ? new Date().toLocaleDateString("en-GB") : format(selectedFY.endDate, "dd/MM/yyyy")}) · Total Accounts: ${trialBalanceData.rows.length}`}
             </p>
           </div>
 
