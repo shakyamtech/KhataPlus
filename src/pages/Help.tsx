@@ -73,14 +73,14 @@ const GUIDE_MODULES: GuideModule[] = [
         actionLabelNep: "सामान थप्न जानुहोस्",
         actionLabelEng: "Go to Products",
         stepsNep: [
-          "१. Opening Stock (सुरुको सामानको मौज्दात): Products पेजमा गएर पसलमा भएका सबै सामानको हालको मौज्दात (Stock Qty) र खरिद मूल्य (Cost Price) इन्ट्री गर्नुहोस् वा Excel बाट Bulk Import गर्नुहोस्।",
+          "१. Opening Stock (सुरुको सामानको मौज्दात): Products पेजमा गएर '+ Add Product' मार्फत सामानको हालको मौज्दात (Stock Qty) र खरिद मूल्य (Cost Price) इन्ट्री गर्नुहोस् ('Save & Add Another' ले एकपछि अर्को छिटो थप्न सकिन्छ)।",
           "२. Counter Cash (गल्लाको नगद): सफ्टवेयर सुरु गर्ने दिन पसलको काउन्टर/गल्लामा भएको खुद्रा रकम Cashbook मा सुरुको मितिमा दर्ता गर्नुहोस्।",
           "३. Bank Balance (बैंक/QR को मौज्दात): पसलको बैंक खाता वा Fonepay/eSewa मा रहेको रकम क्यासबुकमा दर्ता गर्नुहोस्।",
           "४. Customer Receivables (ग्राहकबाट लिन बाँकी उधारी): Customers पेजमा गएर उधारो बाँकी भएका ग्राहकको नाम र लिन बाँकी रकम (Dr Opening Balance) हाल्नुहोस्।",
           "५. Supplier Payables (साहुलाई तिर्न बाँकी उधारी): Suppliers पेजमा गएर पैसा तिर्न बाँकी भएका साहुहरूको नाम र रकम (Cr Opening Balance) हाल्नुहोस्।"
         ],
         stepsEng: [
-          "1. Opening Stock: Go to Products page and input current inventory stock and cost prices, or use Excel Bulk Import.",
+          "1. Opening Stock: Go to Products page and input current inventory stock and cost prices using '+ Add Product' (use 'Save & Add Another' for rapid entry).",
           "2. Counter Cash: Record the opening cash present in the drawer/register on Day 1 in the Cashbook.",
           "3. Bank Balance: Record current bank account or QR/eSewa balance in Cashbook.",
           "4. Customer Receivables: Add customers with outstanding credit balances (Dr Opening Balance).",
