@@ -5,7 +5,7 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, AlertTriangle, Check, Loader2, Scale, Languages, Landmark, Volume2, TrendingUp, Percent
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, AlertTriangle, Check, Loader2, Scale, Languages, Landmark, Volume2, TrendingUp, Percent, HelpCircle
 } from "lucide-react";
 import { BARCODE_SOUND_OPTIONS, BarcodeSoundType, playScanBeep } from "@/lib/sound";
 import { generateBatchSamplePreview, getNepaliFiscalYear } from "@/lib/batch";
@@ -62,6 +62,7 @@ const nav = [
     { to: "/cashbook", label: "Cash & Bank", icon: Wallet },
     { to: "/accounting", label: "Accounting", icon: Landmark },
     { to: "/reports", label: "Reports", icon: BarChart3 },
+    { to: "/help", label: "Help Guide", icon: HelpCircle },
 ];
 
 function getUserInitials(name?: string, email?: string): string {
@@ -272,6 +273,7 @@ export const AppShell = () => {
         "Accounting": lang === "NEP" ? "लेखा (Accounting)" : "Accounting",
         "Reports": t.reports,
         "Balance Sheet": t.balanceSheet,
+        "Help Guide": lang === "NEP" ? "प्रयोग निर्देशिका" : "Help Guide",
         "Admin": t.admin,
     };
 
@@ -905,6 +907,9 @@ export const AppShell = () => {
                 <DropdownMenuItem onClick={() => setAboutOpen(true)} className="cursor-pointer font-medium gap-2">
                     <Info className="h-4 w-4 text-primary" /> {lang === "NEP" ? "हाम्रो बारेमा" : "About App"}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/help")} className="cursor-pointer font-medium gap-2 text-emerald-600 dark:text-emerald-400">
+                    <HelpCircle className="h-4 w-4 text-emerald-500" /> {lang === "NEP" ? "मद्दत तथा प्रयोग निर्देशिका" : "Help & User Guide"}
+                </DropdownMenuItem>
 
                 {!hasMigrated && (
                     <DropdownMenuItem onClick={migrateToBatches} className="cursor-pointer font-medium gap-2 text-amber-600">
@@ -945,7 +950,7 @@ export const AppShell = () => {
                                 end={n.end}
                                 className={({ isActive }) =>
                                     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth ${isActive
-                                        ? "bg-sidebar-accent text-sidebar-primary"
+                                        ? "bg-sidebar-accent text-sidebar-primary font-bold shadow-xs"
                                         : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                                     }`
                                 }
@@ -995,7 +1000,17 @@ export const AppShell = () => {
             </aside>
 
             {/* Desktop top-right profile corner */}
-            <div className="hidden md:flex fixed top-4 right-6 z-50 items-center gap-2">
+            <div className="hidden md:flex fixed top-4 right-6 z-50 items-center gap-2.5">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/help")}
+                    className="h-10 px-3.5 rounded-full bg-card/90 backdrop-blur-md border-border text-xs font-bold gap-1.5 shadow-sm hover:border-primary/50 text-foreground hover:text-primary transition-all cursor-pointer"
+                    title={lang === "NEP" ? "मद्दत तथा प्रयोग निर्देशिका" : "Help & Knowledge Base"}
+                >
+                    <HelpCircle className="h-4 w-4 text-emerald-500" />
+                    <span>{lang === "NEP" ? "मद्दत गाइड" : "Help Guide"}</span>
+                </Button>
                 {renderUserProfileDropdown("h-10 w-10", false)}
             </div>
 
@@ -1050,6 +1065,15 @@ export const AppShell = () => {
                     <div className="text-sm font-bold bg-sidebar-accent px-3 py-1.5 rounded-lg text-sidebar-foreground truncate max-w-[220px] uppercase tracking-tight">{shopName}</div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigate("/help")}
+                        className="h-9 w-9 rounded-full bg-sidebar-accent/80 text-sidebar-foreground hover:text-emerald-500 transition-colors"
+                        title={lang === "NEP" ? "मद्दत तथा प्रयोग निर्देशिका" : "Help Guide"}
+                    >
+                        <HelpCircle className="h-4 w-4 text-emerald-500" />
+                    </Button>
                     <Button
                         variant="ghost"
                         size="icon"

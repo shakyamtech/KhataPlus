@@ -20,6 +20,7 @@ import Reports from "./pages/Reports";
 import Accounting from "./pages/Accounting";
 import BalanceSheet from "./pages/BalanceSheet";
 import Admin from "./pages/Admin";
+import Help from "./pages/Help";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "next-themes";
@@ -66,6 +67,7 @@ const App = () => {
                       <Route path="/accounting" element={<Accounting />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/balance-sheet" element={<Navigate to="/reports?tab=balancesheet" replace />} />
+                      <Route path="/help" element={<Help />} />
                       <Route path="/admin" element={<Admin />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
