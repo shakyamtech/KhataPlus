@@ -23,6 +23,7 @@ import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { formatNepaliDate, NEPALI_MONTHS, getDaysInBSMonth, bsToAdDateString, adToBsDateParts } from "@/lib/fiscalYear";
 import { CameraBarcodeScannerModal } from "@/components/CameraBarcodeScannerModal";
 import { AnimatedCartIcon } from "@/components/AnimatedCartIcon";
+import { PaymentMethodIcon } from "@/components/PaymentMethodIcon";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type ActiveBatch = {
@@ -1611,11 +1612,36 @@ const POS = () => {
                 <Select value={paymentMode} onValueChange={(v: any) => setPaymentMode(v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="credit">Credit (Udhaar)</SelectItem>
-                    <SelectItem value="esewa">eSewa</SelectItem>
-                    <SelectItem value="khalti">Khalti</SelectItem>
-                    <SelectItem value="bank">Bank</SelectItem>
+                    <SelectItem value="cash">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="cash" size={16} />
+                        <span>Cash</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="credit">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">📝</span>
+                        <span>Credit (Udhaar)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="esewa">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="esewa" size={16} />
+                        <span>eSewa</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="khalti">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="khalti" size={16} />
+                        <span>Khalti</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="bank">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="bank" size={16} />
+                        <span>Bank / QR</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1635,10 +1661,30 @@ const POS = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">Cash (नगद)</SelectItem>
-                    <SelectItem value="esewa">eSewa</SelectItem>
-                    <SelectItem value="khalti">Khalti</SelectItem>
-                    <SelectItem value="bank">Bank / QR</SelectItem>
+                    <SelectItem value="cash">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="cash" size={16} />
+                        <span>Cash (नगद)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="esewa">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="esewa" size={16} />
+                        <span>eSewa</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="khalti">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="khalti" size={16} />
+                        <span>Khalti</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="bank">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="bank" size={16} />
+                        <span>Bank / QR</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-[10.5px] text-emerald-700/90 dark:text-emerald-400/90 font-medium">

@@ -20,6 +20,7 @@ import { format, subDays } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { formatNepaliDate } from "@/lib/fiscalYear";
+import { PaymentMethodIcon } from "@/components/PaymentMethodIcon";
 import { cn } from "@/lib/utils";
 
 const inCategories = [
@@ -948,10 +949,30 @@ const Cashbook = () => {
                       <Select value={paymentMode} onValueChange={setPaymentMode}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="cash">Cash</SelectItem>
-                          <SelectItem value="esewa">eSewa</SelectItem>
-                          <SelectItem value="khalti">Khalti</SelectItem>
-                          <SelectItem value="bank">Bank</SelectItem>
+                          <SelectItem value="cash">
+                            <div className="flex items-center gap-2">
+                              <PaymentMethodIcon mode="cash" size={18} />
+                              <span>Cash (नगद)</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="esewa">
+                            <div className="flex items-center gap-2">
+                              <PaymentMethodIcon mode="esewa" size={18} />
+                              <span>eSewa वालेट</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="khalti">
+                            <div className="flex items-center gap-2">
+                              <PaymentMethodIcon mode="khalti" size={18} />
+                              <span>Khalti वालेट</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="bank">
+                            <div className="flex items-center gap-2">
+                              <PaymentMethodIcon mode="bank" size={18} />
+                              <span>Bank Account</span>
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1067,9 +1088,7 @@ const Cashbook = () => {
           )}
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-9 w-9 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <Banknote className="h-4 w-4" />
-            </div>
+            <PaymentMethodIcon mode="cash" size={36} className="shrink-0" />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-semibold text-muted-foreground truncate">
@@ -1106,9 +1125,7 @@ const Cashbook = () => {
           )}
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-9 w-9 rounded-lg bg-green-500/15 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
-              <Smartphone className="h-4 w-4" />
-            </div>
+            <PaymentMethodIcon mode="esewa" size={36} className="shrink-0" />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-semibold text-muted-foreground truncate">
@@ -1145,9 +1162,7 @@ const Cashbook = () => {
           )}
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-9 w-9 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-              <Smartphone className="h-4 w-4" />
-            </div>
+            <PaymentMethodIcon mode="khalti" size={36} className="shrink-0" />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-semibold text-muted-foreground truncate">
@@ -1184,9 +1199,7 @@ const Cashbook = () => {
           )}
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-9 w-9 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-              <Building2 className="h-4 w-4" />
-            </div>
+            <PaymentMethodIcon mode="bank" size={36} className="shrink-0" />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-semibold text-muted-foreground truncate">
