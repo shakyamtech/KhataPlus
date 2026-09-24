@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { formatNepaliDate, NEPALI_MONTHS, getDaysInBSMonth, bsToAdDateString, adToBsDateParts } from "@/lib/fiscalYear";
 import { CameraBarcodeScannerModal } from "@/components/CameraBarcodeScannerModal";
+import { AnimatedCartIcon } from "@/components/AnimatedCartIcon";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type ActiveBatch = {
@@ -1152,14 +1153,7 @@ const POS = () => {
         <Card ref={cartSectionRef} className="p-3.5 sm:p-4 shadow-elegant border-0 lg:sticky lg:top-4 h-fit scroll-mt-20">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-border/40">
             <div className="flex items-center gap-2">
-              <ShoppingCart 
-                className={cn(
-                  "h-5 w-5 shrink-0 transition-all duration-300 ease-out transform",
-                  cart.length > 0 
-                    ? "text-primary fill-primary scale-110 drop-shadow-sm" 
-                    : "text-primary fill-transparent scale-100 opacity-80"
-                )} 
-              />
+              <AnimatedCartIcon itemCount={cart.length} size={22} className="shrink-0" />
               <div className="font-display text-lg sm:text-xl leading-none">Cart</div>
               <span className={cn(
                 "text-[11px] font-medium px-2 py-0.5 rounded-full transition-all duration-300",
