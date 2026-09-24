@@ -526,6 +526,62 @@ const GUIDE_MODULES: GuideModule[] = [
           "2. For returned goods, issue a 'Sales Return / Credit Note' to automatically restore stock and adjust ledger.",
           "3. Incorrect invoices can be cancelled or voided with audit notes."
         ]
+      },
+      {
+        id: "faq-opening-stock-add",
+        titleNep: "पसलमा बाँकी रहेको पुरानो स्टक (Opening Stock) साहुको बिलबिना कसरी थप्ने?",
+        titleEng: "How to Add Existing Shop Opening Stock Without a Supplier Bill?",
+        summaryNep: "सामान पहिले नै बनिसकेको वा खरिद बिल हालिसकेपछि पनि पसलको पुरानो स्टक थप्ने तरिका र ब्यालेन्स शीट हिसाब।",
+        summaryEng: "Guide to adding opening inventory or direct batches for existing products and its accounting impact.",
+        actionLink: "/products",
+        actionLabelNep: "Products खोल्नुहोस्",
+        actionLabelEng: "Open Products",
+        stepsNep: [
+          "१. Products पृष्ठमा जानुहोस् र सम्बन्धित सामानको कार्डमा रहेको 'Adjust / Add Stock' (📦+) बटनमा क्लिक गर्नुहोस्।",
+          "२. मोडलको माथिल्लो भागमा रहेको '[ ➕ स्टक थप्ने (Add Stock) ]' ट्याब छान्नुहोस्।",
+          "३. थप्ने संख्या (Quantity), खरीद मूल्य (Cost Price), र ऐच्छिक ब्याच नम्बर (वा Auto बटन) तथा Expiry Date भर्नुहोस्।",
+          "४. 'स्टक थप्नुको कारण' मा 'पसलको मौज्दात (Opening Stock)' छान्नुहोस् र 'स्टक थप्नुहोस् र ब्याच बनाउनुहोस्' बटन थिच्नुहोस्।"
+        ],
+        stepsEng: [
+          "1. Go to Products page and click the 'Adjust / Add Stock' (📦+) button on the product card.",
+          "2. Select the top tab '[ ➕ Add Stock / Batch ]'.",
+          "3. Enter Quantity, Cost Price, optional Batch Number (or click Auto), and Expiry Date.",
+          "4. Select 'Shop Opening Stock' under Reason / Source and click 'Add Stock & Create Batch'."
+        ],
+        tipsNep: "💡 डबल एन्ट्री नियम अनुसार यो थपिएको स्टकको रकम ब्यालेन्स शीट बराबर बनाउन स्वतः साहुको पुँजी (Owner's Capital) मा क्रेडिट भएर जम्मा हुन्छ।",
+        tipsEng: "💡 Under double-entry rules, the added stock value is automatically credited to Owner's Capital, keeping your Balance Sheet 100% balanced."
+      },
+      {
+        id: "faq-opening-vs-direct",
+        titleNep: "Opening Stock (पसलको मौज्दात) र Direct Adjustment (सिधै थप/सच्याइ) मा के फरक छ?",
+        titleEng: "Difference Between Opening Stock and Direct Adjustment?",
+        summaryNep: "स्टक थप्दा कुन अवस्थामा कुन विकल्प छान्ने भन्ने बारे बुझ्नुहोस्।",
+        summaryEng: "When to choose Opening Stock vs Direct Count Adjustment when adding inventory.",
+        stepsNep: [
+          "१. पसलको मौज्दात (Opening Stock): सफ्टवेयर सुरु गर्नुअघि वा आर्थिक वर्ष सुरु हुँदा पहिले नै पसल/गोदाममा बाँकी रहेको पुरानो स्टक दर्ता गर्न यो विकल्प प्रयोग गर्नुहोस्। यो मालिकको सुरुवाती लगानी/पुँजी (Capital) मानिन्छ।",
+          "२. अन्य सिधै थप (Direct Adjustment / Count Correction): चलिरहेको पसलमा भौतिक रूपमा स्टक गन्ती गर्दा (Physical Stock Count) सिस्टममा भन्दा बढी सामान भेटिएमा, वा बिना बिलको स्याम्पल/बोनस सामान प्राप्त हुँदा स्टक सच्याउन यो विकल्प प्रयोग गर्नुहोस्।"
+        ],
+        stepsEng: [
+          "1. Shop Opening Stock: Use this when entering leftover inventory from before software onboarding or previous periods (treated as Owner's Capital/Equity).",
+          "2. Direct Count Adjustment: Use this when physical stock audits reveal extra quantities or when unbilled sample/bonus items are received."
+        ]
+      },
+      {
+        id: "faq-batch-tracking-flow",
+        titleNep: "Purchase बिल र Opening Stock दुवै हुँदा ब्याच (Batch Number) ले कसरी काम गर्छ?",
+        titleEng: "How Does Batch Tracking (FIFO/FEFO) Work with Mixed Purchases and Opening Stock?",
+        summaryNep: "एउटै सामानको फरक-फरक ब्याच, खरिद मूल्य र एक्सपायरी हुँदा बिक्री र नाफा कसरी हिसाब हुन्छ?",
+        summaryEng: "How FIFO/FEFO automatically deducts from oldest batches and calculates accurate profit.",
+        stepsNep: [
+          "१. एउटै सामानको Purchase बिल र Opening Stock दुवैबाट आएको स्टकको छुट्टाछुट्टै Batch Number, Cost Price, र Expiry Date बन्दछ।",
+          "२. पसलमा सामान बिक्री (POS Sale) हुँदा सिस्टमले FIFO (First In First Out) वा FEFO (First Expired First Out) अनुसार सबैभन्दा पुरानो वा पहिले एक्सपायर हुने ब्याचबाट सामान कटाउँछ।",
+          "३. यसले गर्दा पुरानो सामान पहिला बिक्री भएर सहि खरिद मूल्य (Cost of Goods Sold) अनुसार १ रुपैयाँ पनि नबिग्रिएर १००% सहि नाफा (Profit & Loss) निस्कन्छ।"
+        ],
+        stepsEng: [
+          "1. Each entry (Purchase vs Opening Stock) maintains its own Batch Number, Cost Price, and Expiry Date under the same product.",
+          "2. During POS sales, the system automatically depletes the oldest or earliest-expiring batch first (FIFO/FEFO).",
+          "3. This ensures that profit calculations (COGS) are 100% accurate down to the rupee."
+        ]
       }
     ]
   }
