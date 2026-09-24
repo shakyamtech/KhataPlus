@@ -1837,27 +1837,6 @@ export const AppShell = () => {
                             </div>
                         </div>
 
-                        <div className="pt-2 border-t space-y-2">
-                            <Label>{t.currentPassword} <span className="text-muted-foreground/60 font-normal">{lang === "NEP" ? "(डाटा रिसेट गर्न मात्र आवश्यक)" : "(Only required to reset data)"}</span></Label>
-                            <div className="relative">
-                                <Input
-                                    type={showPassword ? "text" : "password"}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Required to save changes"
-                                    autoComplete="off"
-                                    autoFocus={false}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                >
-                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </button>
-                            </div>
-                        </div>
-
                         {/* Data Backup & Restore Shortcut */}
                         <div className="pt-4 border-t border-emerald-500/20 mt-6 space-y-2.5 bg-emerald-500/5 rounded-xl p-4 border">
                             <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
