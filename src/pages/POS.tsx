@@ -1152,9 +1152,21 @@ const POS = () => {
         <Card ref={cartSectionRef} className="p-3.5 sm:p-4 shadow-elegant border-0 lg:sticky lg:top-4 h-fit scroll-mt-20">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-border/40">
             <div className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5 text-primary shrink-0" />
+              <ShoppingCart 
+                className={cn(
+                  "h-5 w-5 shrink-0 transition-all duration-300 ease-out transform",
+                  cart.length > 0 
+                    ? "text-primary fill-primary scale-110 drop-shadow-sm" 
+                    : "text-primary fill-transparent scale-100 opacity-80"
+                )} 
+              />
               <div className="font-display text-lg sm:text-xl leading-none">Cart</div>
-              <span className="text-[11px] text-muted-foreground font-medium bg-secondary/80 px-2 py-0.5 rounded-full">
+              <span className={cn(
+                "text-[11px] font-medium px-2 py-0.5 rounded-full transition-all duration-300",
+                cart.length > 0 
+                  ? "bg-primary/15 text-primary font-semibold" 
+                  : "bg-secondary/80 text-muted-foreground"
+              )}>
                 {cart.length} {cart.length === 1 ? "item" : "items"}
               </span>
             </div>
