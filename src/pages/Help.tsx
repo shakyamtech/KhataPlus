@@ -97,10 +97,10 @@ const GUIDE_MODULES: GuideModule[] = [
       },
       {
         id: "onboarding-shop-profile",
-        titleNep: "पसलको प्रोफाइल, भ्याट/प्यान र लोगो सेटिङ",
-        titleEng: "Shop Profile, VAT/PAN & Logo Configuration",
-        summaryNep: "बिलमा छापिइने पसलको नाम, ठेगाना, सम्पर्क नम्बर, प्यान र लोगो मिलाउने तरिका।",
-        summaryEng: "Configure business name, address, PAN/VAT registration, contact details, and invoice logo.",
+        titleNep: "पसलको प्रोफाइल, भ्याट/प्यान र बिल नम्बर सेटिङ",
+        titleEng: "Shop Profile, VAT/PAN & Invoice Settings",
+        summaryNep: "बिलमा छापिइने पसलको नाम, ठेगाना, सम्पर्क नम्बर, प्यान र बिल Prefix मिलाउने तरिका।",
+        summaryEng: "Configure business name, address, PAN/VAT registration, contact details, and invoice prefixes.",
         actionLink: "/",
         actionLabelNep: "पसल सेटिङ खोल्नुहोस्",
         actionLabelEng: "Open Shop Settings",
@@ -108,14 +108,14 @@ const GUIDE_MODULES: GuideModule[] = [
           "१. माथि दायाँ कुनामा रहेको आफ्नो प्रोफाइल फोटो/आइकनमा क्लिक गर्नुहोस् र 'पसल सेटिङ (Shop Settings)' छान्नुहोस्।",
           "२. पसलको नाम (Shop Name), ठेगाना (Address), र फोन नम्बर भर्नुहोस्।",
           "३. ९-अङ्कको स्थायी लेखा नम्बर (PAN / VAT No) हाल्नुहोस् र करको प्रकार (PAN वा VAT १३%) छान्नुहोस्।",
-          "४. पसलको लोगो (Logo) अपलोड गर्नुहोस्, जुन ग्राहकको बिल र भौचरमा आकर्षक रूपमा छापिन्छ।",
+          "४. बिल तथा खरिद नम्बरको ढाँचा (Prefix/Suffix) र व्यवसायको प्रकृति (Business Nature) मिलाउनुहोस्।",
           "५. 'Save Settings' मा क्लिक गर्नुहोस्।"
         ],
         stepsEng: [
           "1. Click your Profile Avatar on the top right and select 'Shop Settings'.",
           "2. Enter your business Name, Address, and Phone number.",
           "3. Input 9-digit PAN/VAT number and select Tax registration type (PAN or VAT 13%).",
-          "4. Upload your Business Logo to appear on customer print receipts.",
+          "4. Customize Invoice/Purchase number prefixes and select your Business Nature.",
           "5. Click 'Save Settings'."
         ]
       }
