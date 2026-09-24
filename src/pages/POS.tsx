@@ -1087,7 +1087,7 @@ const POS = () => {
                     key={p.id}
                     onClick={() => addToCart(p)}
                     disabled={isOut}
-                    className={`text-left p-3 rounded-xl shadow-card hover:shadow-elegant hover:-translate-y-1 transition-all duration-300 border outline-none flex flex-col justify-between relative overflow-hidden ${isOut
+                    className={`text-left p-3 rounded-xl shadow-card transition-all duration-200 border outline-none flex flex-col justify-between relative overflow-hidden ${isOut
                         ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/30 opacity-80 cursor-not-allowed"
                         : inCartQty > 0
                           ? "bg-primary/5 border-primary/50 dark:border-primary/60 active:scale-95 shadow-sm ring-1 ring-primary/30"
