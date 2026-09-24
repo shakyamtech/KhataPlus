@@ -374,6 +374,8 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [edit, setEdit] = useState<any>(blankProduct);
   const [busy, setBusy] = useState(false);
+  const [selectedMarginPct, setSelectedMarginPct] = useState<number | null>(null);
+  const [isSellPriceManual, setIsSellPriceManual] = useState(false);
   const [customUnits, setCustomUnits] = useState<string[]>([]);
   const [unitDialogOpen, setUnitDialogOpen] = useState(false);
   const [newUnitName, setNewUnitName] = useState("");
@@ -475,8 +477,21 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
 
   useEffect(() => {
     if (open) {
-      getShopInfo().then(info => setShopInfo(info));
+      getShopInfo().then(info => {
+        setShopInfo(info);
+        if (!product?.id) {
+          const defMargin = info?.default_profit_margin ? Number(info.default_profit_margin) : 0;
+          if (defMargin > 0) {
+            setSelectedMarginPct(defMargin);
+          } else {
+            setSelectedMarginPct(null);
+          }
+        }
+      });
+
       if (product && product.id) {
+        setIsSellPriceManual(true);
+        setSelectedMarginPct(null);
         setEdit({ ...blankProduct, ...product });
         const fetchBatchInfo = async () => {
           try {
@@ -496,6 +511,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
         };
         fetchBatchInfo();
       } else {
+        setIsSellPriceManual(false);
         setEdit(product ? { ...blankProduct, ...product } : blankProduct);
       }
     }
@@ -641,6 +657,9 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
 
       if (keepOpen) {
         // Reset form for next product while keeping useful context (unit preference, expiry mode)
+        const defMargin = shopInfo?.default_profit_margin ? Number(shopInfo.default_profit_margin) : 0;
+        setIsSellPriceManual(false);
+        setSelectedMarginPct(defMargin > 0 ? defMargin : null);
         setEdit({
           ...blankProduct,
           unit: edit.unit || "pcs",
@@ -854,6 +873,10 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
               const sellNum = parseFloat(edit.sell_price) || 0;
               const profitRs = sellNum - costNum;
               const marginPct = costNum > 0 ? ((profitRs / costNum) * 100) : 0;
+              const shopDefMargin = shopInfo?.default_profit_margin ? Number(shopInfo.default_profit_margin) : 0;
+              const effectiveMargin = selectedMarginPct !== null 
+                ? selectedMarginPct 
+                : (!isSellPriceManual && shopDefMargin > 0 ? shopDefMargin : null);
 
               return (
                 <div className="space-y-2">
@@ -870,12 +893,14 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                         onChange={(e) => {
                           const val = e.target.value;
                           const costVal = parseFloat(val) || 0;
-                          const currentSell = parseFloat(edit.sell_price) || 0;
-                          const defMargin = shopInfo?.default_profit_margin ? Number(shopInfo.default_profit_margin) : 0;
                           
-                          if (!edit.id && defMargin > 0 && costVal > 0 && (currentSell === 0 || edit.sell_price === "" || edit.sell_price === 0)) {
-                            const autoSell = Math.round(costVal * (1 + defMargin / 100) * 100) / 100;
-                            setEdit({ ...edit, cost_price: val, sell_price: autoSell });
+                          if (!edit.id && !isSellPriceManual && effectiveMargin !== null && effectiveMargin > 0) {
+                            if (costVal > 0) {
+                              const autoSell = Math.round(costVal * (1 + effectiveMargin / 100) * 100) / 100;
+                              setEdit({ ...edit, cost_price: val, sell_price: autoSell });
+                            } else {
+                              setEdit({ ...edit, cost_price: val, sell_price: "" });
+                            }
                           } else {
                             setEdit({ ...edit, cost_price: val });
                           }
@@ -907,7 +932,11 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                         type="number" 
                         step="0.01" 
                         value={edit.sell_price} 
-                        onChange={(e) => setEdit({ ...edit, sell_price: e.target.value })} 
+                        onChange={(e) => {
+                          setIsSellPriceManual(true);
+                          setSelectedMarginPct(null);
+                          setEdit({ ...edit, sell_price: e.target.value });
+                        }} 
                         onWheel={(e) => e.currentTarget.blur()} 
                       />
                     </div>
@@ -919,36 +948,59 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                       <TrendingUp className="h-3 w-3 text-emerald-500" />
                       नाफा मार्जिन:
                     </span>
-                    {[10, 15, 20, 25, 30].map((pct) => (
-                      <button
-                        key={pct}
-                        type="button"
-                        onClick={() => {
-                          if (costNum > 0) {
-                            const calculated = Math.round(costNum * (1 + pct / 100) * 100) / 100;
-                            setEdit((prev: any) => ({ ...prev, sell_price: calculated }));
-                            toast.success(`बिक्री मूल्य: रु. ${calculated} (${pct}% मार्जिन)`);
-                          } else {
-                            toast.info("पहिले खरिद मूल्य (Cost Price) हाल्नुहोस्");
-                          }
-                        }}
-                        className={cn(
-                          "px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-all cursor-pointer",
-                          Math.abs(marginPct - pct) < 0.05 && sellNum > 0 && costNum > 0
-                            ? "bg-primary text-primary-foreground border-primary shadow-2xs"
-                            : "bg-secondary/60 hover:bg-secondary text-foreground border-border/70"
-                        )}
-                      >
-                        +{pct}%
-                      </button>
-                    ))}
+                    {[10, 15, 20, 25, 30].map((pct) => {
+                      const isChipActive = selectedMarginPct === pct || (
+                        selectedMarginPct === null && !isSellPriceManual && shopDefMargin === pct
+                      ) || (
+                        costNum > 0 && sellNum > 0 && Math.abs(marginPct - pct) < 0.05
+                      );
+
+                      return (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => {
+                            if (selectedMarginPct === pct) {
+                              setSelectedMarginPct(null);
+                              setIsSellPriceManual(true);
+                              toast.info("मार्जिन हटाइयो");
+                            } else {
+                              setSelectedMarginPct(pct);
+                              setIsSellPriceManual(false);
+                              if (costNum > 0) {
+                                const calculated = Math.round(costNum * (1 + pct / 100) * 100) / 100;
+                                setEdit((prev: any) => ({ ...prev, sell_price: calculated }));
+                                toast.success(`बिक्री मूल्य: रु. ${calculated} (${pct}% मार्जिन)`);
+                              } else {
+                                toast.info(`${pct}% मार्जिन छानियो। अब खरिद मूल्य हाल्नुहोस्`);
+                              }
+                            }
+                          }}
+                          className={cn(
+                            "px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-all cursor-pointer",
+                            isChipActive
+                              ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
+                              : "bg-secondary/60 hover:bg-secondary text-foreground border-border/70"
+                          )}
+                        >
+                          +{pct}%
+                        </button>
+                      );
+                    })}
                     <Popover>
                       <PopoverTrigger asChild>
                         <button
                           type="button"
-                          className="px-2 py-0.5 rounded-md text-[11px] font-semibold border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                          className={cn(
+                            "px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-all cursor-pointer",
+                            selectedMarginPct !== null && ![10, 15, 20, 25, 30].includes(selectedMarginPct)
+                              ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
+                              : "border-dashed border-primary/40 text-primary hover:bg-primary/10"
+                          )}
                         >
-                          Custom %
+                          {selectedMarginPct !== null && ![10, 15, 20, 25, 30].includes(selectedMarginPct)
+                            ? `+${selectedMarginPct}%`
+                            : "Custom %"}
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-48 p-2.5 space-y-2" align="start">
@@ -963,10 +1015,16 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 const val = parseFloat((e.target as HTMLInputElement).value);
-                                if (!isNaN(val) && costNum > 0) {
-                                  const calculated = Math.round(costNum * (1 + val / 100) * 100) / 100;
-                                  setEdit((prev: any) => ({ ...prev, sell_price: calculated }));
-                                  toast.success(`बिक्री मूल्य: रु. ${calculated} (${val}% मार्जिन)`);
+                                if (!isNaN(val) && val >= 0) {
+                                  setSelectedMarginPct(val);
+                                  setIsSellPriceManual(false);
+                                  if (costNum > 0) {
+                                    const calculated = Math.round(costNum * (1 + val / 100) * 100) / 100;
+                                    setEdit((prev: any) => ({ ...prev, sell_price: calculated }));
+                                    toast.success(`बिक्री मूल्य: रु. ${calculated} (${val}% मार्जिन)`);
+                                  } else {
+                                    toast.info(`${val}% मार्जिन छानियो। अब खरिद मूल्य हाल्नुहोस्`);
+                                  }
                                 }
                               }
                             }}
@@ -978,12 +1036,18 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                             onClick={() => {
                               const el = document.getElementById("custom-margin-input") as HTMLInputElement;
                               const val = parseFloat(el?.value || "");
-                              if (!isNaN(val) && costNum > 0) {
-                                const calculated = Math.round(costNum * (1 + val / 100) * 100) / 100;
-                                setEdit((prev: any) => ({ ...prev, sell_price: calculated }));
-                                toast.success(`बिक्री मूल्य: रु. ${calculated} (${val}% मार्जिन)`);
-                              } else if (costNum <= 0) {
-                                toast.info("पहिले खरिद मूल्य (Cost Price) हाल्नुहोस्");
+                              if (!isNaN(val) && val >= 0) {
+                                setSelectedMarginPct(val);
+                                setIsSellPriceManual(false);
+                                if (costNum > 0) {
+                                  const calculated = Math.round(costNum * (1 + val / 100) * 100) / 100;
+                                  setEdit((prev: any) => ({ ...prev, sell_price: calculated }));
+                                  toast.success(`बिक्री मूल्य: रु. ${calculated} (${val}% मार्जिन)`);
+                                } else {
+                                  toast.info(`${val}% मार्जिन छानियो। अब खरिद मूल्य हाल्नुहोस्`);
+                                }
+                              } else {
+                                toast.error("कृपया सही प्रतिशत हाल्नुहोस्");
                               }
                             }}
                           >
