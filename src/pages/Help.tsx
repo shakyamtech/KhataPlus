@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { HelpPrintModal } from "@/components/HelpPrintModal";
 
 interface GuideModule {
   id: string;
@@ -538,6 +539,7 @@ export default function Help() {
   const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>({
     "onboarding-running-shop": true
   });
+  const [printModalOpen, setPrintModalOpen] = useState(false);
 
   const toggleTopic = (topicId: string) => {
     setExpandedTopics(prev => ({ ...prev, [topicId]: !prev[topicId] }));
@@ -584,14 +586,24 @@ export default function Help() {
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-secondary/30 border border-primary/20 p-6 sm:p-8 shadow-sm">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 max-w-4xl space-y-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 px-3 py-1 text-xs font-bold gap-1.5 shadow-2xs">
-              <Sparkles className="h-3.5 w-3.5" />
-              {lang === "NEP" ? "KhataPlus ज्ञान केन्द्र र प्रयोग निर्देशिका" : "KhataPlus Knowledge Base & User Guide"}
-            </Badge>
-            <Badge variant="secondary" className="text-xs font-semibold">
-              v2.2.0 Complete Manual
-            </Badge>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 px-3 py-1 text-xs font-bold gap-1.5 shadow-2xs">
+                <Sparkles className="h-3.5 w-3.5" />
+                {lang === "NEP" ? "KhataPlus ज्ञान केन्द्र र प्रयोग निर्देशिका" : "KhataPlus Knowledge Base & User Guide"}
+              </Badge>
+              <Badge variant="secondary" className="text-xs font-semibold">
+                v2.2.0 Complete Manual
+              </Badge>
+            </div>
+
+            <Button
+              onClick={() => setPrintModalOpen(true)}
+              className="h-9 px-3.5 gap-2 text-xs sm:text-sm font-bold bg-gradient-to-r from-primary via-teal-600 to-emerald-600 hover:opacity-95 text-white shadow-md transition-all hover:scale-[1.02]"
+            >
+              <Printer className="h-4 w-4" />
+              {lang === "NEP" ? "प्रिन्ट / PDF डाउनलोड (Print & PDF)" : "Print & PDF Manual"}
+            </Button>
           </div>
 
           <div className="space-y-1.5">
@@ -890,6 +902,14 @@ export default function Help() {
           )}
         </div>
       </div>
+
+      {/* Interactive Print & PDF Preview Modal */}
+      <HelpPrintModal
+        open={printModalOpen}
+        onOpenChange={setPrintModalOpen}
+        modules={GUIDE_MODULES}
+        defaultLang={lang}
+      />
     </div>
   );
 }
