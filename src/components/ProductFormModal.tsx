@@ -859,7 +859,9 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label>Cost Price (Rs.)</Label>
+                      <div className="flex items-center h-5">
+                        <Label>Cost Price (Rs.)</Label>
+                      </div>
                       <Input 
                         type="number" 
                         step="0.01" 
@@ -882,11 +884,11 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <div className="flex items-center justify-between flex-wrap gap-1">
+                      <div className="flex items-center justify-between h-5 gap-1.5">
                         <Label>Sell Price (Rs.)</Label>
                         {costNum > 0 && sellNum > 0 && (
                           <span className={cn(
-                            "text-[10px] font-bold px-1.5 py-0.5 rounded border leading-none",
+                            "text-[10px] font-bold px-1.5 py-0.5 rounded border leading-none shrink-0",
                             sellNum > costNum 
                               ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20" 
                               : sellNum < costNum 
