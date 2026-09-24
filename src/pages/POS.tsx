@@ -1383,7 +1383,7 @@ const POS = () => {
                       className="h-7 text-xs font-bold border-primary/30 bg-primary/5 focus-visible:ring-primary" 
                       type="number" 
                       step="1" 
-                      value={tempAmount?.id === i.product_id ? tempAmount.val : ((Number(i.qty) || 0) * (Number(i.sell_price) || 0)).toFixed(2)} 
+                      value={tempAmount?.id === i.product_id ? tempAmount.val : String(Math.round(((Number(i.qty) || 0) * (Number(i.sell_price) || 0)) * 100) / 100)} 
                       onChange={(e) => {
                         setTempAmount({ id: i.product_id, val: e.target.value });
                         setItemAmount(i.product_id, e.target.value);
