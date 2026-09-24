@@ -1003,18 +1003,6 @@ export const AppShell = () => {
 
             {/* Desktop top-right profile corner */}
             <div className="hidden md:flex fixed top-4 right-6 z-50 items-center gap-2.5">
-                {!isHelpPage && (
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate("/help")}
-                        className="h-10 px-3.5 rounded-full bg-card/90 backdrop-blur-md border-border text-xs font-bold gap-1.5 shadow-sm hover:border-primary/50 text-foreground hover:text-primary transition-all cursor-pointer"
-                        title={lang === "NEP" ? "मद्दत तथा प्रयोग निर्देशिका" : "Help & Knowledge Base"}
-                    >
-                        <HelpCircle className="h-4 w-4 text-emerald-500" />
-                        <span>{lang === "NEP" ? "मद्दत गाइड" : "Help Guide"}</span>
-                    </Button>
-                )}
                 {renderUserProfileDropdown("h-10 w-10", false)}
             </div>
 
@@ -1069,17 +1057,6 @@ export const AppShell = () => {
                     <div className="text-sm font-bold bg-sidebar-accent px-3 py-1.5 rounded-lg text-sidebar-foreground truncate max-w-[220px] uppercase tracking-tight">{shopName}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                    {!isHelpPage && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => navigate("/help")}
-                            className="h-9 w-9 rounded-full bg-sidebar-accent/80 text-sidebar-foreground hover:text-emerald-500 transition-colors"
-                            title={lang === "NEP" ? "मद्दत तथा प्रयोग निर्देशिका" : "Help Guide"}
-                        >
-                            <HelpCircle className="h-4 w-4 text-emerald-500" />
-                        </Button>
-                    )}
                     <Button
                         variant="ghost"
                         size="icon"
