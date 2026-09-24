@@ -581,12 +581,15 @@ export default function Help() {
   }, [filteredModules, activeModuleId]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6 md:pt-3">
       {/* Top Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-secondary/30 border border-primary/20 p-6 sm:p-8 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-secondary/30 border border-primary/20 p-5 sm:p-7 md:p-8 shadow-sm">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 max-w-4xl space-y-4">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+        
+        {/* Top Header Row with Badges on Left and Print Button at Top-Right (with clearance for fixed profile avatar) */}
+        <div className="relative z-10 flex flex-col md:flex-row md:items-start justify-between gap-4">
+          {/* Left Content Column */}
+          <div className="max-w-3xl space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 px-3 py-1 text-xs font-bold gap-1.5 shadow-2xs">
                 <Sparkles className="h-3.5 w-3.5" />
@@ -597,65 +600,68 @@ export default function Help() {
               </Badge>
             </div>
 
+            <div className="space-y-1.5">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
+                {lang === "NEP" ? "KhataPlus चलाउन चाहिने सम्पूर्ण ज्ञान र समाधान" : "Master KhataPlus: Complete Operational & Accounting Guide"}
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                {lang === "NEP"
+                  ? "नयाँ पसलको ओपनिङ ब्यालेन्स सेट गर्नेदेखि बिलिङ, स्टक, खरिद, खाता र ब्यालेन्स सिटसम्मका सबै प्रक्रियाहरू सजिलोसँग सिक्नुहोस्।"
+                  : "Step-by-step tutorials from Day 1 opening balance setup to advanced billing, inventory, ledgers, and Balance Sheet."}
+              </p>
+            </div>
+
+            {/* Search Bar */}
+            <div className="pt-2">
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={lang === "NEP" ? "जस्तै: 'Opening Balance', 'Discount', 'VAT', 'Barcode', 'Return', 'Rollover'..." : "Search topics e.g. 'Opening Balance', 'Discount', 'VAT', 'Barcode', 'Return'..."}
+                  className="pl-11 pr-10 h-12 text-sm sm:text-base rounded-xl bg-background border-primary/30 focus-visible:ring-primary shadow-sm font-medium"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold px-2 py-1 rounded bg-muted hover:bg-muted/80 text-muted-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Keyword Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-2.5">
+                <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
+                  <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                  {lang === "NEP" ? "लोकप्रिय खोज:" : "Quick Search:"}
+                </span>
+                {["Opening Balance", "Discount (छुट)", "VAT Tax Invoice", "Barcode", "Profit Margin", "Fiscal Rollover"].map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setSearchQuery(tag.split(" ")[0])}
+                    className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-secondary/80 hover:bg-primary/20 hover:text-primary border border-border transition-all cursor-pointer"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Top Right Print & PDF Button (with safety clearance from profile avatar) */}
+          <div className="shrink-0 md:mr-14 pt-1">
             <Button
               onClick={() => setPrintModalOpen(true)}
-              className="h-9 px-3.5 gap-2 text-xs sm:text-sm font-bold bg-gradient-to-r from-primary via-teal-600 to-emerald-600 hover:opacity-95 text-white shadow-md transition-all hover:scale-[1.02]"
+              className="h-10 px-4 gap-2 text-xs sm:text-sm font-bold bg-gradient-to-r from-primary via-teal-600 to-emerald-600 hover:opacity-95 text-white shadow-md transition-all hover:scale-[1.02] cursor-pointer"
             >
               <Printer className="h-4 w-4" />
               {lang === "NEP" ? "प्रिन्ट / PDF डाउनलोड (Print & PDF)" : "Print & PDF Manual"}
             </Button>
-          </div>
-
-          <div className="space-y-1.5">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-              {lang === "NEP" ? "KhataPlus चलाउन चाहिने सम्पूर्ण ज्ञान र समाधान" : "Master KhataPlus: Complete Operational & Accounting Guide"}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl">
-              {lang === "NEP"
-                ? "नयाँ पसलको ओपनिङ ब्यालेन्स सेट गर्नेदेखि बिलिङ, स्टक, खरिद, खाता र ब्यालेन्स सिटसम्मका सबै प्रक्रियाहरू सजिलोसँग सिक्नुहोस्।"
-                : "Step-by-step tutorials from Day 1 opening balance setup to advanced billing, inventory, ledgers, and Balance Sheet."}
-            </p>
-          </div>
-
-          {/* Search Bar */}
-          <div className="pt-2 max-w-2xl">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={lang === "NEP" ? "जस्तै: 'Opening Balance', 'Discount', 'VAT', 'Barcode', 'Return', 'Rollover'..." : "Search topics e.g. 'Opening Balance', 'Discount', 'VAT', 'Barcode', 'Return'..."}
-                className="pl-11 pr-10 h-12 text-sm sm:text-base rounded-xl bg-background border-primary/30 focus-visible:ring-primary shadow-sm font-medium"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold px-2 py-1 rounded bg-muted hover:bg-muted/80 text-muted-foreground"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
-            {/* Quick Keyword Pills */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-2.5">
-              <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
-                <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-                {lang === "NEP" ? "लोकप्रिय खोज:" : "Quick Search:"}
-              </span>
-              {["Opening Balance", "Discount (छुट)", "VAT Tax Invoice", "Barcode", "Profit Margin", "Fiscal Rollover"].map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => setSearchQuery(tag.split(" ")[0])}
-                  className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-secondary/80 hover:bg-primary/20 hover:text-primary border border-border transition-all cursor-pointer"
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </div>
