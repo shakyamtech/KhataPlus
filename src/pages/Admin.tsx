@@ -490,9 +490,10 @@ const Admin = () => {
 
       <div className="grid gap-4">
         {filteredUsers.map((u) => (
-          <Card key={u.id} className="p-4 shadow-card border-0 overflow-hidden">
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-              <div className="min-w-0 flex-1 space-y-1.5">
+          <Card key={u.id} className="p-4 shadow-card border-0 overflow-hidden">            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+              {/* Left Column: User Identity & Details */}
+              <div className="min-w-0 flex-1 space-y-2">
+                {/* Header: Email + Badges */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     {(() => {
@@ -534,24 +535,25 @@ const Admin = () => {
                   )}
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-foreground/80">{u.full_name || "Anonymous User"}</span>
+                {/* User Full Name, Shop Name, Joined & Active */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground">{u.full_name || "Anonymous User"}</span>
                     <span className="text-muted-foreground/40">|</span>
-                    <span className="italic text-primary/70">{u.shop_name || "No Shop Name"}</span>
+                    <span className="italic text-primary font-medium">{u.shop_name || "No Shop Name"}</span>
                   </div>
                   
                   <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-2 gap-y-0.5 items-center">
                     <span className="flex items-center gap-1">
-                      <span className="opacity-50">Joined</span>
-                      {format(new Date(u.created_at), "dd MMM yyyy")}
+                      <span className="opacity-60">Joined:</span>
+                      <span className="font-medium text-foreground/80">{format(new Date(u.created_at), "dd MMM yyyy")}</span>
                     </span>
                     {u.last_sign_in_at && (
                       <>
-                        <span className="opacity-30 hidden sm:inline">•</span>
+                        <span className="opacity-30">•</span>
                         <span className="flex items-center gap-1">
-                          <span className="opacity-50">Active</span>
-                          {format(new Date(u.last_sign_in_at), "dd MMM yyyy")}
+                          <span className="opacity-60">Active:</span>
+                          <span className="font-medium text-foreground/80">{format(new Date(u.last_sign_in_at), "dd MMM yyyy")}</span>
                         </span>
                       </>
                     )}
@@ -559,186 +561,200 @@ const Admin = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-sidebar-border/50">
-                {/* Manage Subscription / Trial Plan */}
+              {/* Right Column: Plan & Action Grid */}
+              <div className="flex items-center gap-2 pt-3 xl:pt-0 border-t xl:border-t-0 border-sidebar-border/50 shrink-0">
+                {/* 👑 Manage Subscription Plan Button */}
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  className="flex-1 md:flex-none h-9 border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-500/30 dark:text-amber-400 dark:hover:bg-amber-500/20 font-medium text-xs gap-1.5"
+                  className="h-16 px-3 border-amber-300/80 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:text-amber-800 dark:border-amber-500/40 dark:text-amber-300 dark:hover:bg-amber-500/25 font-bold text-xs flex flex-col items-center justify-center gap-1 shrink-0 shadow-2xs"
                   onClick={() => setManagingSubUser(u)}
                   title="Manage subscription plan & trial"
                 >
-                  <Crown className="h-3.5 w-3.5 fill-amber-500 text-amber-500" /> Plan
+                  <Crown className="h-4 w-4 fill-amber-500 text-amber-500" />
+                  <span>Plan</span>
                 </Button>
 
-                <Dialog open={editing?.id === u.id} onOpenChange={(o) => { if (!o) { setEditing(null); setEditPassword(""); } }}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" className="flex-1 md:flex-none h-9" onClick={() => { setEditing(u); setEditName(u.full_name); setEditShop(u.shop_name); setEditPassword(""); }}>
-                      <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Edit User Profile</DialogTitle>
-                      <DialogDescription>Update profile details or assign a new password for {u.email}.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Full Name</Label>
-                        <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Enter full name..." />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Shop Name</Label>
-                        <Input value={editShop} onChange={(e) => setEditShop(e.target.value)} placeholder="Enter shop name..." />
-                      </div>
-                      <div className="space-y-2 border-t pt-4">
-                        <Label>Set New Password</Label>
-                        <Input 
-                          type="password" 
-                          value={editPassword} 
-                          onChange={(e) => setEditPassword(e.target.value)} 
-                          placeholder="Leave blank to keep unchanged..." 
-                        />
-                        <p className="text-[10px] text-muted-foreground">Min 6 characters. This will override their current password immediately.</p>
-                      </div>
-                      <Button onClick={saveProfile} disabled={savingId === editing?.id} className="w-full bg-primary text-primary-foreground h-11 font-semibold">
-                        {savingId === editing?.id ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : "Save Changes"}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                {/* 2 Rows x 3 Columns Action Grid */}
+                <div className="flex flex-col gap-1.5 flex-1 sm:flex-none">
+                  {/* Row 1: Account Management (Edit, Admin, Ban) */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {/* Edit */}
+                    <Dialog open={editing?.id === u.id} onOpenChange={(o) => { if (!o) { setEditing(null); setEditPassword(""); } }}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="outline" className="h-7 text-xs px-2.5 justify-center gap-1" onClick={() => { setEditing(u); setEditName(u.full_name); setEditShop(u.shop_name); setEditPassword(""); }}>
+                          <Pencil className="h-3 w-3" /> Edit
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Edit User Profile</DialogTitle>
+                          <DialogDescription>Update profile details or assign a new password for {u.email}.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label>Full Name</Label>
+                            <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Enter full name..." />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Shop Name</Label>
+                            <Input value={editShop} onChange={(e) => setEditShop(e.target.value)} placeholder="Enter shop name..." />
+                          </div>
+                          <div className="space-y-2 border-t pt-4">
+                            <Label>Set New Password</Label>
+                            <Input 
+                              type="password" 
+                              value={editPassword} 
+                              onChange={(e) => setEditPassword(e.target.value)} 
+                              placeholder="Leave blank to keep unchanged..." 
+                            />
+                            <p className="text-[10px] text-muted-foreground">Min 6 characters. This will override their current password immediately.</p>
+                          </div>
+                          <Button onClick={saveProfile} disabled={savingId === editing?.id} className="w-full bg-primary text-primary-foreground h-11 font-semibold">
+                            {savingId === editing?.id ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : "Save Changes"}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
 
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className={`flex-1 md:flex-none h-9 transition-all ${u.roles.includes("admin") ? "border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-500/30 dark:text-orange-400 dark:hover:bg-orange-500/20 dark:hover:text-orange-300" : "border-primary/20 text-primary hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20"}`}
-                  onClick={() => toggleAdmin(u)}
-                >
-                  {u.roles.includes("admin") ? <><ShieldOff className="h-3.5 w-3.5 mr-1.5" /> Revoke</> : <><Shield className="h-3.5 w-3.5 mr-1.5" /> Make Admin</>}
-                </Button>
-
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
+                    {/* Make Admin / Revoke */}
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      className={`flex-1 md:flex-none h-9 transition-all ${
-                        u.banned_until && new Date(u.banned_until) > new Date() 
-                          ? "border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:border-purple-500/30 dark:text-purple-400 dark:hover:bg-purple-500/20 dark:hover:text-purple-300" 
-                          : "border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20"
-                      }`}
+                      className={`h-7 text-xs px-2 justify-center gap-1 transition-all ${u.roles.includes("admin") ? "border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-500/30 dark:text-orange-400 dark:hover:bg-orange-500/20 dark:hover:text-orange-300" : "border-primary/20 text-primary hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20"}`}
+                      onClick={() => toggleAdmin(u)}
                     >
-                      {u.banned_until && new Date(u.banned_until) > new Date() ? (
-                        <><UserCheck className="h-3.5 w-3.5 mr-1.5" /> Unban</>
-                      ) : (
-                        <><Ban className="h-3.5 w-3.5 mr-1.5" /> Ban User</>
-                      )}
+                      {u.roles.includes("admin") ? <><ShieldOff className="h-3 w-3" /> Revoke</> : <><Shield className="h-3 w-3" /> Admin</>}
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        {u.banned_until && new Date(u.banned_until) > new Date() 
-                          ? `Unban user ${u.email}?` 
-                          : `Ban user ${u.email}?`
-                        }
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {u.banned_until && new Date(u.banned_until) > new Date() 
-                          ? "This will restore the user's access to the application immediately." 
-                          : "This will immediately terminate all active sessions on their devices and permanently block them from logging back in or signing up again. You can lift this suspension at any time."
-                        }
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={() => toggleBan(u)} 
-                        className={u.banned_until && new Date(u.banned_until) > new Date() ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-destructive text-destructive-foreground"}
-                      >
-                        {u.banned_until && new Date(u.banned_until) > new Date() ? "Restore Access" : "Suspend User"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
 
-                {/* Download Tenant Backup (.json) */}
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleDownloadUserBackup(u)} 
-                  disabled={downloadingBackupId === u.id || restoringBackupId === u.id}
-                  className="flex-1 md:flex-none h-9 border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-400 dark:hover:bg-emerald-500/20 font-medium text-xs gap-1.5"
-                  title="Download complete JSON backup for this user"
-                >
-                  {downloadingBackupId === u.id ? (
-                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Exporting...</>
-                  ) : (
-                    <><Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Backup (.json)</>
-                  )}
-                </Button>
+                    {/* Ban / Unban */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className={`h-7 text-xs px-2 justify-center gap-1 transition-all ${
+                            u.banned_until && new Date(u.banned_until) > new Date() 
+                              ? "border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:border-purple-500/30 dark:text-purple-400 dark:hover:bg-purple-500/20 dark:hover:text-purple-300" 
+                              : "border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20"
+                          }`}
+                        >
+                          {u.banned_until && new Date(u.banned_until) > new Date() ? (
+                            <><UserCheck className="h-3 w-3" /> Unban</>
+                          ) : (
+                            <><Ban className="h-3 w-3" /> Ban</>
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {u.banned_until && new Date(u.banned_until) > new Date() 
+                              ? `Unban user ${u.email}?` 
+                              : `Ban user ${u.email}?`
+                            }
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {u.banned_until && new Date(u.banned_until) > new Date() 
+                              ? "This will restore the user's access to the application immediately." 
+                              : "This will immediately terminate all active sessions on their devices and permanently block them from logging back in or signing up again. You can lift this suspension at any time."
+                            }
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => toggleBan(u)} 
+                            className={u.banned_until && new Date(u.banned_until) > new Date() ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-destructive text-destructive-foreground"}
+                          >
+                            {u.banned_until && new Date(u.banned_until) > new Date() ? "Restore Access" : "Suspend User"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
 
-                {/* Restore Tenant Backup (.json) */}
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleRestoreUserBackup(u)} 
-                  disabled={restoringBackupId === u.id || downloadingBackupId === u.id || resettingId === u.id}
-                  className="flex-1 md:flex-none h-9 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-500/30 dark:text-blue-400 dark:hover:bg-blue-500/20 font-medium text-xs gap-1.5"
-                  title="Upload JSON backup file directly into this user's account"
-                >
-                  {restoringBackupId === u.id ? (
-                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Restoring...</>
-                  ) : (
-                    <><Upload className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" /> Restore (.json)</>
-                  )}
-                </Button>
-
-                {/* Master Factory Wipe (Clear all products, contacts, transactions back to zero) */}
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
+                  {/* Row 2: Data Tools (Backup, Restore, Master Wipe) */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {/* Backup */}
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      disabled={resettingId === u.id || restoringBackupId === u.id || downloadingBackupId === u.id}
-                      className="flex-1 md:flex-none h-9 border-amber-400/60 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-500/40 dark:text-amber-400 dark:hover:bg-amber-500/20 font-medium text-xs gap-1.5"
-                      title="Master Factory Wipe: Delete all products, customers, suppliers, sales, purchases, and ledger entries for this shop"
+                      onClick={() => handleDownloadUserBackup(u)} 
+                      disabled={downloadingBackupId === u.id || restoringBackupId === u.id}
+                      className="h-7 text-xs px-2 justify-center gap-1 border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-400 dark:hover:bg-emerald-500/20 font-medium"
+                      title="Download complete JSON backup for this user"
                     >
-                      {resettingId === u.id ? (
-                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Wiping...</>
+                      {downloadingBackupId === u.id ? (
+                        <><Loader2 className="h-3 w-3 animate-spin" /> Exporting...</>
                       ) : (
-                        <><RotateCcw className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> Master Wipe</>
+                        <><Download className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> Backup</>
                       )}
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="text-destructive flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5" /> Master Factory Wipe for {u.email}?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription className="space-y-2 text-sm">
-                        <p>
-                          <strong>चेतावनी / Warning:</strong> This will completely wipe <strong>ALL shop data</strong> (Products, Batches, Customers, Suppliers, Sales, Purchases, Expenses, and Ledger entries) back to zero.
-                        </p>
-                        <p>
-                          The user's <strong>login account and subscription</strong> will remain intact, but their shop will become completely fresh (Factory Reset).
-                        </p>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleMasterWipe(u)} className="bg-destructive hover:bg-destructive/90 text-white">
-                        Confirm Master Wipe
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+
+                    {/* Restore */}
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleRestoreUserBackup(u)} 
+                      disabled={restoringBackupId === u.id || downloadingBackupId === u.id || resettingId === u.id}
+                      className="h-7 text-xs px-2 justify-center gap-1 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-500/30 dark:text-blue-400 dark:hover:bg-blue-500/20 font-medium"
+                      title="Upload JSON backup file directly into this user's account"
+                    >
+                      {restoringBackupId === u.id ? (
+                        <><Loader2 className="h-3 w-3 animate-spin" /> Restoring...</>
+                      ) : (
+                        <><Upload className="h-3 w-3 text-blue-600 dark:text-blue-400" /> Restore</>
+                      )}
+                    </Button>
+
+                    {/* Master Wipe */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          disabled={resettingId === u.id || restoringBackupId === u.id || downloadingBackupId === u.id}
+                          className="h-7 text-xs px-2 justify-center gap-1 border-amber-400/60 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-500/40 dark:text-amber-400 dark:hover:bg-amber-500/20 font-medium"
+                          title="Master Factory Wipe: Delete all products, customers, suppliers, sales, purchases, and ledger entries for this shop"
+                        >
+                          {resettingId === u.id ? (
+                            <><Loader2 className="h-3 w-3 animate-spin" /> Wiping...</>
+                          ) : (
+                            <><RotateCcw className="h-3 w-3 text-amber-600 dark:text-amber-400" /> Wipe</>
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5" /> Master Factory Wipe for {u.email}?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="space-y-2 text-sm">
+                            <p>
+                              <strong>चेतावनी / Warning:</strong> This will completely wipe <strong>ALL shop data</strong> (Products, Batches, Customers, Suppliers, Sales, Purchases, Expenses, and Ledger entries) back to zero.
+                            </p>
+                            <p>
+                              The user's <strong>login account and subscription</strong> will remain intact, but their shop will become completely fresh (Factory Reset).
+                            </p>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleMasterWipe(u)} className="bg-destructive hover:bg-destructive/90 text-white">
+                            Confirm Master Wipe
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
 
                 {/* Delete Entire User Account */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="ghost" className="flex-1 md:flex-none h-9 text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20" title="Permanently delete user account and all data">
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0" title="Permanently delete user account and all data">
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
