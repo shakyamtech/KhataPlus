@@ -518,24 +518,26 @@ export function HelpPrintModal({
         </DialogHeader>
 
         {/* Filter Bar (Scope Selection) */}
-        <div className="px-4 py-2.5 bg-background border-b border-border/60 flex items-center justify-between gap-3 overflow-x-auto text-xs">
-          <div className="flex items-center gap-1.5 text-muted-foreground shrink-0 font-medium">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
+        <div className="px-4 sm:px-5 py-3 bg-secondary/20 border-b border-border/60 flex items-center gap-3 shrink-0 text-xs">
+          <div className="flex items-center gap-1.5 text-foreground shrink-0 font-bold">
+            <SlidersHorizontal className="h-4 w-4 text-primary" />
             <span>{lang === "NEP" ? "छान्नुहोस् (Scope):" : "Print Scope:"}</span>
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto py-1">
+
+          <div className="flex-1 flex items-center gap-2 overflow-x-auto overflow-y-hidden py-1.5 scrollbar-thin scrollbar-thumb-border">
             <button
               type="button"
               onClick={() => setSelectedModuleId("all")}
               className={cn(
-                "cursor-pointer font-bold px-3 py-1 rounded-lg text-xs transition-all whitespace-nowrap shadow-2xs",
+                "h-8 px-3.5 rounded-lg text-xs font-bold shrink-0 inline-flex items-center justify-center transition-all cursor-pointer shadow-2xs",
                 selectedModuleId === "all"
-                  ? "bg-primary text-primary-foreground font-extrabold shadow-sm ring-2 ring-primary/20"
-                  : "bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/60"
+                  ? "bg-primary text-primary-foreground font-extrabold shadow-sm ring-2 ring-primary/30"
+                  : "bg-card hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/70"
               )}
             >
               {lang === "NEP" ? "सम्पूर्ण ९ खण्डहरू (Complete Manual)" : "All 9 Modules"}
             </button>
+
             {modules.map((m) => {
               const label = MODULE_SHORT_LABELS[m.id]
                 ? (lang === "NEP" ? MODULE_SHORT_LABELS[m.id].nep : MODULE_SHORT_LABELS[m.id].eng)
@@ -548,10 +550,10 @@ export function HelpPrintModal({
                   type="button"
                   onClick={() => setSelectedModuleId(m.id)}
                   className={cn(
-                    "cursor-pointer font-semibold px-2.5 py-1 rounded-lg text-xs transition-all whitespace-nowrap shadow-2xs",
+                    "h-8 px-3 rounded-lg text-xs font-semibold shrink-0 inline-flex items-center justify-center transition-all cursor-pointer shadow-2xs whitespace-nowrap",
                     isSelected
-                      ? "bg-primary text-primary-foreground font-bold shadow-sm ring-2 ring-primary/20"
-                      : "bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/60"
+                      ? "bg-primary text-primary-foreground font-bold shadow-sm ring-2 ring-primary/30"
+                      : "bg-card hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/70"
                   )}
                 >
                   {label}
