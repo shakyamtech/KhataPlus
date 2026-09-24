@@ -1030,8 +1030,8 @@ const POS = () => {
       <PageHeader title="Point of Sale (POS)" subtitle="Fast billing, instant credit ledger sync & stock management" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div ref={productsSectionRef} className="lg:col-span-2 space-y-4 scroll-mt-20">
-          <div className="flex gap-2 mb-3">
+        <div ref={productsSectionRef} className="lg:col-span-2 flex flex-col space-y-3 scroll-mt-20">
+          <div className="flex gap-2 mb-1 shrink-0">
             <Input 
               placeholder="Search item or barcode... (Press Enter to add)" 
               value={search} 
@@ -1071,77 +1071,81 @@ const POS = () => {
               <span className="hidden sm:inline">Camera Scan</span>
             </Button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {visibleProducts.map((p) => {
-              const totalAvailable = getTotalAvailable(p.id);
-              const isLow = totalAvailable > 0 && totalAvailable <= (p.low_stock_threshold || 5);
-              const isOut = totalAvailable <= 0;
-              const cartItem = cart.find((i) => i.product_id === p.id);
-              const inCartQty = cartItem ? Number(cartItem.qty) || 0 : 0;
 
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => addToCart(p)}
-                  disabled={isOut}
-                  className={`text-left p-3 rounded-xl shadow-card hover:shadow-elegant hover:-translate-y-1 transition-all duration-300 border outline-none flex flex-col justify-between relative overflow-hidden ${isOut
-                      ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/30 opacity-80 cursor-not-allowed"
-                      : inCartQty > 0
-                        ? "bg-primary/5 border-primary/50 dark:border-primary/60 active:scale-95 shadow-sm ring-1 ring-primary/30"
-                        : isLow
-                          ? "bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/30 active:scale-95 hover:border-orange-300 dark:hover:border-orange-500/50"
-                          : "bg-card border-transparent dark:border-white/5 active:scale-95 hover:border-primary/40 dark:hover:border-primary/40"
-                    }`}>
-                  {/* In Cart Indicator Badge */}
-                  {inCartQty > 0 && (
-                    <div className="absolute top-1.5 right-1.5 flex items-center gap-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-xs animate-in zoom-in-75 duration-200">
-                      <Check className="h-2.5 w-2.5 stroke-[3]" />
-                      <span>{inCartQty}</span>
-                    </div>
-                  )}
+          {/* Internal Scrollable Product Grid Container */}
+          <div className="lg:max-h-[calc(100vh-210px)] lg:overflow-y-auto lg:pr-1.5 scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-primary/30">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pb-4">
+              {visibleProducts.map((p) => {
+                const totalAvailable = getTotalAvailable(p.id);
+                const isLow = totalAvailable > 0 && totalAvailable <= (p.low_stock_threshold || 5);
+                const isOut = totalAvailable <= 0;
+                const cartItem = cart.find((i) => i.product_id === p.id);
+                const inCartQty = cartItem ? Number(cartItem.qty) || 0 : 0;
 
-                  <div>
-                    <div className={`font-display text-base truncate pr-6 ${isOut ? "text-red-900 dark:text-red-300" : inCartQty > 0 ? "text-primary font-bold" : isLow ? "text-orange-900 dark:text-orange-300" : ""
-                      }`}>{p.name}</div>
-                    <div className={`text-xs ${isOut ? "text-red-600 dark:text-red-400 font-bold" : isLow ? "text-orange-600 dark:text-orange-400 font-medium" : "text-muted-foreground"
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => addToCart(p)}
+                    disabled={isOut}
+                    className={`text-left p-3 rounded-xl shadow-card hover:shadow-elegant hover:-translate-y-1 transition-all duration-300 border outline-none flex flex-col justify-between relative overflow-hidden ${isOut
+                        ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/30 opacity-80 cursor-not-allowed"
+                        : inCartQty > 0
+                          ? "bg-primary/5 border-primary/50 dark:border-primary/60 active:scale-95 shadow-sm ring-1 ring-primary/30"
+                          : isLow
+                            ? "bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/30 active:scale-95 hover:border-orange-300 dark:hover:border-orange-500/50"
+                            : "bg-card border-transparent dark:border-white/5 active:scale-95 hover:border-primary/40 dark:hover:border-primary/40"
                       }`}>
-                      {isOut ? (p.has_expired_stock ? "ALL STOCK EXPIRED" : "OUT OF STOCK") : `${fmtQty(totalAvailable)} ${p.unit} in stock`}
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className={`font-semibold ${isOut ? "text-red-700 dark:text-red-400" : isLow ? "text-orange-700 dark:text-orange-400" : "text-primary dark:text-primary-glow"
-                      }`}>{fmt(p.sell_price)}</span>
+                    {/* In Cart Indicator Badge */}
                     {inCartQty > 0 && (
-                      <span className="text-[10.5px] font-semibold text-primary/90 bg-primary/10 px-1.5 py-0.5 rounded">
-                        In Cart
-                      </span>
+                      <div className="absolute top-1.5 right-1.5 flex items-center gap-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-xs animate-in zoom-in-75 duration-200">
+                        <Check className="h-2.5 w-2.5 stroke-[3]" />
+                        <span>{inCartQty}</span>
+                      </div>
                     )}
-                  </div>
-                </button>
-              );
-            })}
-            {filtered.length === 0 && (
-              <div className="col-span-full text-center text-muted-foreground py-8">
-                {search.trim() ? (lang === "NEP" ? "कुनै सामान फेला परेन (No product found)" : "No matching products found.") : (lang === "NEP" ? "कुनै सामान छैन। पहिले सामान थप्नुहोस्।" : "No products. Add some first.")}
-              </div>
-            )}
-            {filtered.length > displayLimit && (
-              <div className="col-span-full pt-3 pb-2 text-center">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDisplayLimit(prev => prev + 24)}
-                  className="w-full sm:w-auto px-6 py-2.5 border-primary/30 text-primary hover:bg-primary/10 font-semibold shadow-xs transition-all flex items-center justify-center gap-2 mx-auto"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                  <span>
-                    {lang === "NEP"
-                      ? `थप २४ वटा सामान देखाउनुहोस् (${visibleProducts.length} / ${filtered.length} वटा देखाइएको)`
-                      : `Show More Items (Showing ${visibleProducts.length} of ${filtered.length})`}
-                  </span>
-                </Button>
-              </div>
-            )}
+
+                    <div>
+                      <div className={`font-display text-base truncate pr-6 ${isOut ? "text-red-900 dark:text-red-300" : inCartQty > 0 ? "text-primary font-bold" : isLow ? "text-orange-900 dark:text-orange-300" : ""
+                        }`}>{p.name}</div>
+                      <div className={`text-xs ${isOut ? "text-red-600 dark:text-red-400 font-bold" : isLow ? "text-orange-600 dark:text-orange-400 font-medium" : "text-muted-foreground"
+                        }`}>
+                        {isOut ? (p.has_expired_stock ? "ALL STOCK EXPIRED" : "OUT OF STOCK") : `${fmtQty(totalAvailable)} ${p.unit} in stock`}
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className={`font-semibold ${isOut ? "text-red-700 dark:text-red-400" : isLow ? "text-orange-700 dark:text-orange-400" : "text-primary dark:text-primary-glow"
+                        }`}>{fmt(p.sell_price)}</span>
+                      {inCartQty > 0 && (
+                        <span className="text-[10.5px] font-semibold text-primary/90 bg-primary/10 px-1.5 py-0.5 rounded">
+                          In Cart
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+              {filtered.length === 0 && (
+                <div className="col-span-full text-center text-muted-foreground py-8">
+                  {search.trim() ? (lang === "NEP" ? "कुनै सामान फेला परेन (No product found)" : "No matching products found.") : (lang === "NEP" ? "कुनै सामान छैन। पहिले सामान थप्नुहोस्।" : "No products. Add some first.")}
+                </div>
+              )}
+              {filtered.length > displayLimit && (
+                <div className="col-span-full pt-3 pb-2 text-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDisplayLimit(prev => prev + 24)}
+                    className="w-full sm:w-auto px-6 py-2.5 border-primary/30 text-primary hover:bg-primary/10 font-semibold shadow-xs transition-all flex items-center justify-center gap-2 mx-auto"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                    <span>
+                      {lang === "NEP"
+                        ? `थप २४ वटा सामान देखाउनुहोस् (${visibleProducts.length} / ${filtered.length} वटा देखाइएको)`
+                        : `Show More Items (Showing ${visibleProducts.length} of ${filtered.length})`}
+                    </span>
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
