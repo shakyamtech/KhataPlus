@@ -1816,29 +1816,33 @@ export const AppShell = () => {
                                         {lang === "NEP" ? "सामान थप्दा खरिद मूल्यबाट स्वतः बिक्री मूल्य निकाल्न" : "Auto-calculates sell price from cost"}
                                     </span>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                                    <div className="relative">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="relative w-28 shrink-0">
                                         <Input
                                             type="number"
-                                            step="0.1"
+                                            step="0.5"
                                             min="0"
                                             max="1000"
                                             value={defaultProfitMargin}
                                             onChange={(e) => setDefaultProfitMargin(e.target.value)}
-                                            placeholder="e.g. 20"
-                                            className="pr-8 font-semibold h-9 bg-background"
+                                            placeholder="0"
+                                            className="pr-7 font-bold text-center h-9 text-xs bg-background"
+                                            onWheel={(e) => e.currentTarget.blur()}
                                         />
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">%</span>
+                                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">%</span>
                                     </div>
-                                    <div className="flex gap-1.5 flex-wrap">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
                                         {["10", "15", "20", "25", "30"].map((pct) => (
                                             <Button
                                                 key={pct}
                                                 type="button"
                                                 size="sm"
                                                 variant={defaultProfitMargin === pct ? "default" : "outline"}
-                                                className="h-8 px-2.5 text-xs font-semibold"
-                                                onClick={() => setDefaultProfitMargin(pct)}
+                                                className={cn(
+                                                    "h-9 px-3 text-xs font-semibold cursor-pointer transition-all",
+                                                    defaultProfitMargin === pct && "shadow-2xs font-bold"
+                                                )}
+                                                onClick={() => setDefaultProfitMargin(defaultProfitMargin === pct ? "" : pct)}
                                             >
                                                 {pct}%
                                             </Button>
@@ -1848,7 +1852,7 @@ export const AppShell = () => {
                                                 type="button"
                                                 size="sm"
                                                 variant="ghost"
-                                                className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+                                                className="h-9 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                 onClick={() => setDefaultProfitMargin("")}
                                                 title="Clear"
                                             >
