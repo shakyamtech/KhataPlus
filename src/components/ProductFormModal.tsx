@@ -858,6 +858,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                   step="0.001" 
                   disabled={!!edit.id} 
                   value={edit.stock_qty} 
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setEdit({ ...edit, stock_qty: e.target.value })} 
                   placeholder={edit.id ? "Current stock" : "0"}
                   onWheel={(e) => e.currentTarget.blur()} 
@@ -879,17 +880,18 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                 : (!isSellPriceManual && shopDefMargin > 0 ? shopDefMargin : null);
 
               return (
-                <div className="space-y-2">
+                <div className="bg-secondary/35 dark:bg-secondary/20 border border-border/80 rounded-xl p-3 space-y-2.5 shadow-2xs">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <div className="flex items-center h-5">
-                        <Label>Cost Price (Rs.)</Label>
+                        <Label className="text-xs font-semibold text-foreground">Cost Price (Rs.)</Label>
                       </div>
                       <Input 
                         type="number" 
                         step="0.01" 
                         disabled={!!edit.id} 
                         value={edit.cost_price} 
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => {
                           const val = e.target.value;
                           const costVal = parseFloat(val) || 0;
@@ -906,16 +908,17 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                           }
                         }} 
                         onWheel={(e) => e.currentTarget.blur()} 
+                        className="bg-background font-semibold"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between h-5 gap-1.5">
-                        <Label>Sell Price (Rs.)</Label>
+                        <Label className="text-xs font-semibold text-foreground">Sell Price (Rs.)</Label>
                         {costNum > 0 && sellNum > 0 && (
                           <span className={cn(
-                            "text-[10px] font-bold px-1.5 py-0.5 rounded border leading-none shrink-0",
+                            "text-[10px] font-bold px-1.5 py-0.5 rounded border leading-none shrink-0 transition-all",
                             sellNum > costNum 
-                              ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20" 
+                              ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20 shadow-2xs" 
                               : sellNum < costNum 
                                 ? "text-destructive bg-destructive/10 border-destructive/20" 
                                 : "text-muted-foreground bg-muted border-border"
@@ -932,18 +935,20 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                         type="number" 
                         step="0.01" 
                         value={edit.sell_price} 
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => {
                           setIsSellPriceManual(true);
                           setSelectedMarginPct(null);
                           setEdit({ ...edit, sell_price: e.target.value });
                         }} 
                         onWheel={(e) => e.currentTarget.blur()} 
+                        className="bg-background font-semibold"
                       />
                     </div>
                   </div>
 
                   {/* Quick Profit Margin Presets */}
-                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5 border-t border-border/50">
                     <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
                       <TrendingUp className="h-3 w-3 text-emerald-500" />
                       नाफा मार्जिन:
@@ -977,10 +982,10 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                             }
                           }}
                           className={cn(
-                            "px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-all cursor-pointer",
+                            "px-2.5 py-0.5 rounded-md text-[11px] font-semibold border transition-all cursor-pointer",
                             isChipActive
-                              ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
-                              : "bg-secondary/60 hover:bg-secondary text-foreground border-border/70"
+                              ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold scale-[1.02]"
+                              : "bg-background hover:bg-secondary text-foreground border-border/80"
                           )}
                         >
                           +{pct}%
@@ -992,10 +997,10 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                         <button
                           type="button"
                           className={cn(
-                            "px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-all cursor-pointer",
+                            "px-2.5 py-0.5 rounded-md text-[11px] font-semibold border transition-all cursor-pointer",
                             selectedMarginPct !== null && ![10, 15, 20, 25, 30].includes(selectedMarginPct)
-                              ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
-                              : "border-dashed border-primary/40 text-primary hover:bg-primary/10"
+                              ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold scale-[1.02]"
+                              : "bg-background border-dashed border-primary/50 text-primary hover:bg-primary/10"
                           )}
                         >
                           {selectedMarginPct !== null && ![10, 15, 20, 25, 30].includes(selectedMarginPct)
@@ -1012,6 +1017,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                             placeholder="e.g. 35"
                             className="h-8 text-xs font-semibold"
                             id="custom-margin-input"
+                            onFocus={(e) => e.target.select()}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 const val = parseFloat((e.target as HTMLInputElement).value);
@@ -1068,6 +1074,7 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                   type="number" 
                   step="0.001" 
                   value={edit.low_stock_threshold} 
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setEdit({ ...edit, low_stock_threshold: e.target.value })} 
                   onWheel={(e) => e.currentTarget.blur()} 
                   placeholder="e.g. 5"
