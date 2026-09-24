@@ -579,7 +579,7 @@ export default function Help() {
   }, [filteredModules, activeModuleId]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-16 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
       {/* Top Hero Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-secondary/30 border border-primary/20 p-6 sm:p-8 shadow-sm">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
@@ -651,7 +651,7 @@ export default function Help() {
       {/* Main Content Layout: Sidebar Modules + Main Topic Viewer */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Sidebar Navigation */}
-        <div className="lg:col-span-4 space-y-2">
+        <div className="lg:col-span-4 space-y-2 lg:sticky lg:top-4">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               {lang === "NEP" ? "विषय सूची (Modules)" : "Knowledge Modules"}
@@ -813,12 +813,17 @@ export default function Help() {
                               {lang === "NEP" ? "चरणबद्ध तरिका (Step-by-Step Instructions):" : "Step-by-Step Process:"}
                             </h4>
                             <div className="space-y-2 pl-1">
-                              {(lang === "NEP" ? topic.stepsNep : topic.stepsEng).map((step, sIdx) => (
-                                <div key={sIdx} className="flex items-start gap-2 text-xs sm:text-sm text-foreground/90 leading-relaxed bg-secondary/30 rounded-lg p-2.5 border border-border/50">
-                                  <span className="font-bold text-primary shrink-0">{sIdx + 1}.</span>
-                                  <span>{step.replace(/^\d+\.\s*/, '')}</span>
-                                </div>
-                              ))}
+                              {(lang === "NEP" ? topic.stepsNep : topic.stepsEng).map((step, sIdx) => {
+                                const cleanText = step.replace(/^[०-९\d]+[\.\)]\s*/, '');
+                                return (
+                                  <div key={sIdx} className="flex items-start gap-3 text-xs sm:text-sm text-foreground/90 leading-relaxed bg-secondary/30 rounded-xl p-3 border border-border/50">
+                                    <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/15 text-primary font-bold text-xs shrink-0 mt-0.5">
+                                      {sIdx + 1}
+                                    </span>
+                                    <span className="flex-1">{cleanText}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
 
