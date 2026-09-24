@@ -37,6 +37,8 @@ type Product = {
   id: string; name: string; unit: string;
   cost_price: number; sell_price: number; stock_qty: number; low_stock_threshold: number;
   barcode: string | null;
+  has_expiry?: boolean;
+  hs_code?: string | null;
 };
 
 const Products = () => {
@@ -351,7 +353,7 @@ const Products = () => {
           original_qty: qty,
           remaining_qty: qty,
           cost_price: cost,
-          expiry_date: addExpiryDate.trim() || null,
+          expiry_date: (activeProduct.has_expiry && addExpiryDate.trim()) ? addExpiryDate.trim() : null,
           created_at: new Date().toISOString()
         });
 
@@ -830,14 +832,16 @@ const Products = () => {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">{lang === "NEP" ? "म्याद सकिने मिति (Expiry Date - ऐच्छिक)" : "Expiry Date (Optional)"}</Label>
-                <CustomDatePicker
-                  value={addExpiryDate}
-                  onChange={setAddExpiryDate}
-                  placeholder="YYYY-MM-DD"
-                />
-              </div>
+              {activeProduct?.has_expiry && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">{lang === "NEP" ? "म्याद सकिने मिति (Expiry Date - ऐच्छिक)" : "Expiry Date (Optional)"}</Label>
+                  <CustomDatePicker
+                    value={addExpiryDate}
+                    onChange={setAddExpiryDate}
+                    placeholder="YYYY-MM-DD"
+                  />
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">{lang === "NEP" ? "स्टक थप्नुको कारण / स्रोत" : "Reason / Stock Source"}</Label>
