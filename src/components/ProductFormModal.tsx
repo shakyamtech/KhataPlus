@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Trash2, Sparkles } from "lucide-react";
+import { Loader2, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Trash2, Sparkles, TrendingUp, Percent } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -848,10 +848,152 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Cost Price (Rs.)</Label><Input type="number" step="0.01" disabled={!!edit.id} value={edit.cost_price} onChange={(e) => setEdit({ ...edit, cost_price: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
-              <div className="space-y-1.5"><Label>Sell Price (Rs.)</Label><Input type="number" step="0.01" value={edit.sell_price} onChange={(e) => setEdit({ ...edit, sell_price: e.target.value })} onWheel={(e) => e.currentTarget.blur()} /></div>
-            </div>
+            {/* Pricing and Profit Margin Section */}
+            {(() => {
+              const costNum = parseFloat(edit.cost_price) || 0;
+              const sellNum = parseFloat(edit.sell_price) || 0;
+              const profitRs = sellNum - costNum;
+              const marginPct = costNum > 0 ? ((profitRs / costNum) * 100) : 0;
+
+              return (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Cost Price (Rs.)</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        disabled={!!edit.id} 
+                        value={edit.cost_price} 
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const costVal = parseFloat(val) || 0;
+                          const currentSell = parseFloat(edit.sell_price) || 0;
+                          const defMargin = shopInfo?.default_profit_margin ? Number(shopInfo.default_profit_margin) : 0;
+                          
+                          if (!edit.id && defMargin > 0 && costVal > 0 && (currentSell === 0 || edit.sell_price === "" || edit.sell_price === 0)) {
+                            const autoSell = Math.round(costVal * (1 + defMargin / 100) * 100) / 100;
+                            setEdit({ ...edit, cost_price: val, sell_price: autoSell });
+                          } else {
+                            setEdit({ ...edit, cost_price: val });
+                          }
+                        }} 
+                        onWheel={(e) => e.currentTarget.blur()} 
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <Label>Sell Price (Rs.)</Label>
+                        {costNum > 0 && sellNum > 0 && (
+                          <span className={cn(
+                            "text-[10px] font-bold px-1.5 py-0.5 rounded border leading-none",
+                            sellNum > costNum 
+                              ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20" 
+                              : sellNum < costNum 
+                                ? "text-destructive bg-destructive/10 border-destructive/20" 
+                                : "text-muted-foreground bg-muted border-border"
+                          )}>
+                            {sellNum > costNum 
+                              ? `+${marginPct.toFixed(1)}% (+Rs. ${profitRs.toFixed(2)})` 
+                              : sellNum < costNum 
+                                ? `${marginPct.toFixed(1)}% (Rs. ${profitRs.toFixed(2)})` 
+                                : "0% Margin"}
+                          </span>
+                        )}
+                      </div>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        value={edit.sell_price} 
+                        onChange={(e) => setEdit({ ...edit, sell_price: e.target.value })} 
+                        onWheel={(e) => e.currentTarget.blur()} 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick Profit Margin Presets */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3 text-emerald-500" />
+                      नाफा मार्जिन:
+                    </span>
+                    {[10, 15, 20, 25, 30].map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => {
+                          if (costNum > 0) {
+                            const calculated = Math.round(costNum * (1 + pct / 100) * 100) / 100;
+                            setEdit((prev: any) => ({ ...prev, sell_price: calculated }));
+                            toast.success(`बिक्री मूल्य: रु. ${calculated} (${pct}% मार्जिन)`);
+                          } else {
+                            toast.info("पहिले खरिद मूल्य (Cost Price) हाल्नुहोस्");
+                          }
+                        }}
+                        className={cn(
+                          "px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-all cursor-pointer",
+                          Math.abs(marginPct - pct) < 0.05 && sellNum > 0 && costNum > 0
+                            ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                            : "bg-secondary/60 hover:bg-secondary text-foreground border-border/70"
+                        )}
+                      >
+                        +{pct}%
+                      </button>
+                    ))}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="px-2 py-0.5 rounded-md text-[11px] font-semibold border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                        >
+                          Custom %
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-2.5 space-y-2" align="start">
+                        <Label className="text-xs font-semibold">Custom Margin %</Label>
+                        <div className="flex gap-1.5">
+                          <Input
+                            type="number"
+                            step="0.5"
+                            placeholder="e.g. 35"
+                            className="h-8 text-xs font-semibold"
+                            id="custom-margin-input"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const val = parseFloat((e.target as HTMLInputElement).value);
+                                if (!isNaN(val) && costNum > 0) {
+                                  const calculated = Math.round(costNum * (1 + val / 100) * 100) / 100;
+                                  setEdit((prev: any) => ({ ...prev, sell_price: calculated }));
+                                  toast.success(`बिक्री मूल्य: रु. ${calculated} (${val}% मार्जिन)`);
+                                }
+                              }
+                            }}
+                          />
+                          <Button
+                            size="sm"
+                            type="button"
+                            className="h-8 px-2.5 text-xs bg-primary text-primary-foreground"
+                            onClick={() => {
+                              const el = document.getElementById("custom-margin-input") as HTMLInputElement;
+                              const val = parseFloat(el?.value || "");
+                              if (!isNaN(val) && costNum > 0) {
+                                const calculated = Math.round(costNum * (1 + val / 100) * 100) / 100;
+                                setEdit((prev: any) => ({ ...prev, sell_price: calculated }));
+                                toast.success(`बिक्री मूल्य: रु. ${calculated} (${val}% मार्जिन)`);
+                              } else if (costNum <= 0) {
+                                toast.info("पहिले खरिद मूल्य (Cost Price) हाल्नुहोस्");
+                              }
+                            }}
+                          >
+                            Apply
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              );
+            })()}
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end pt-1">
               <div className="space-y-1.5">

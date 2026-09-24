@@ -39,8 +39,8 @@ export interface ShopInfo {
     | "transport_logistics" // ९. ढुवानी, यातायात तथा कुरियर सेवा (२%)
     | "manufacturing";      // १०. उत्पादन, प्रशोधन तथा साना घरेलु उद्योग
   entity_type?: "proprietorship" | "pvt_ltd";
-  marital_status?: "single" | "married";
   barcode_scan_sound?: "sweet_ding" | "sweet_bell" | "classic_beep" | "supermarket_chime" | "mute";
+  default_profit_margin?: number;
 }
 
 export const getShopInfo = async (): Promise<ShopInfo> => {
@@ -110,7 +110,8 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
         business_nature: data.business_nature ?? "general_trading",
         entity_type: data.entity_type ?? "proprietorship",
         marital_status: data.marital_status ?? "single",
-        barcode_scan_sound: soundVal
+        barcode_scan_sound: soundVal,
+        default_profit_margin: data.default_profit_margin !== undefined ? Number(data.default_profit_margin) : undefined
       };
     }
   } catch (e) {
@@ -143,6 +144,8 @@ export const getShopInfo = async (): Promise<ShopInfo> => {
     local_level_type: "municipality",
     business_nature: "general_trading",
     entity_type: "proprietorship",
-    marital_status: "single"
+    marital_status: "single",
+    barcode_scan_sound: "sweet_ding",
+    default_profit_margin: 0
   };
 };

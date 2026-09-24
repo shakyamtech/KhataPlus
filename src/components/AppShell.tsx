@@ -5,7 +5,7 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, AlertTriangle, Check, Loader2, Scale, Languages, Landmark, Volume2
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, AlertTriangle, Check, Loader2, Scale, Languages, Landmark, Volume2, TrendingUp, Percent
 } from "lucide-react";
 import { BARCODE_SOUND_OPTIONS, BarcodeSoundType, playScanBeep } from "@/lib/sound";
 import { generateBatchSamplePreview, getNepaliFiscalYear } from "@/lib/batch";
@@ -140,6 +140,7 @@ export const AppShell = () => {
     const [entityType, setEntityType] = useState<"proprietorship" | "pvt_ltd">("proprietorship");
     const [maritalStatus, setMaritalStatus] = useState<"single" | "married">("single");
     const [barcodeScanSound, setBarcodeScanSound] = useState<BarcodeSoundType>("sweet_ding");
+    const [defaultProfitMargin, setDefaultProfitMargin] = useState<string>("");
 
     const [fiscalYearDialogOpen, setFiscalYearDialogOpen] = useState(false);
     const [targetFiscalSuffix, setTargetFiscalSuffix] = useState("");
@@ -325,6 +326,7 @@ export const AppShell = () => {
                     const soundVal = (data.barcode_scan_sound as BarcodeSoundType) ?? "sweet_ding";
                     setBarcodeScanSound(soundVal);
                     localStorage.setItem("khataplus_barcode_scan_sound", soundVal);
+                    setDefaultProfitMargin(data.default_profit_margin !== undefined && data.default_profit_margin !== null ? String(data.default_profit_margin) : "");
 
                     // Calculate tenant subscription
                     const subInfo = calculateSubscription(data, isAdmin);
@@ -508,7 +510,8 @@ export const AppShell = () => {
                 business_nature: businessNature,
                 entity_type: entityType,
                 marital_status: maritalStatus,
-                barcode_scan_sound: barcodeScanSound
+                barcode_scan_sound: barcodeScanSound,
+                default_profit_margin: defaultProfitMargin.trim() ? Math.max(0, parseFloat(defaultProfitMargin) || 0) : null
             }, { merge: true });
 
             setShopName(newName);
@@ -1801,6 +1804,65 @@ export const AppShell = () => {
                                      </>
                                 );
                             })()}
+
+                            {/* 7. Default Profit Margin / Markup Setting */}
+                            <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
+                                <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                    <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                                        {lang === "NEP" ? "७. सामान्य नाफा मार्जिन (Default Profit Margin %)" : "Default Profit Margin (%)"}
+                                    </Label>
+                                    <span className="text-[10px] text-muted-foreground">
+                                        {lang === "NEP" ? "सामान थप्दा खरिद मूल्यबाट स्वतः बिक्री मूल्य निकाल्न" : "Auto-calculates sell price from cost"}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                                    <div className="relative">
+                                        <Input
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            max="1000"
+                                            value={defaultProfitMargin}
+                                            onChange={(e) => setDefaultProfitMargin(e.target.value)}
+                                            placeholder="e.g. 20"
+                                            className="pr-8 font-semibold h-9 bg-background"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">%</span>
+                                    </div>
+                                    <div className="flex gap-1.5 flex-wrap">
+                                        {["10", "15", "20", "25", "30"].map((pct) => (
+                                            <Button
+                                                key={pct}
+                                                type="button"
+                                                size="sm"
+                                                variant={defaultProfitMargin === pct ? "default" : "outline"}
+                                                className="h-8 px-2.5 text-xs font-semibold"
+                                                onClick={() => setDefaultProfitMargin(pct)}
+                                            >
+                                                {pct}%
+                                            </Button>
+                                        ))}
+                                        {defaultProfitMargin ? (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+                                                onClick={() => setDefaultProfitMargin("")}
+                                                title="Clear"
+                                            >
+                                                {lang === "NEP" ? "हटाउनुहोस्" : "Clear"}
+                                            </Button>
+                                        ) : null}
+                                    </div>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-tight">
+                                    💡 {lang === "NEP"
+                                        ? "उदाहरण: २०% राख्दा, खरिद मूल्य रु. १००० हाल्ने बित्तिकै बिक्री मूल्य रु. १२०० स्वतः भरिनेछ।"
+                                        : "Example: Setting 20% will auto-calculate Sell Price as Rs. 1,200 when Cost is Rs. 1,000."}
+                                </p>
+                            </div>
 
                             {/* Reset Numbering Counters Container */}
                             <div className="bg-secondary/30 border border-border/60 rounded-xl p-3.5 space-y-2.5">
