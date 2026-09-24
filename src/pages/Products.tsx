@@ -11,13 +11,18 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History, PackageMinus, Barcode, Layers } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History, PackageMinus, Barcode, Layers, PackagePlus, Sparkles, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { ProductFormModal } from "@/components/ProductFormModal";
 import { BarcodePrintModal } from "@/components/BarcodePrintModal";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getAccounts } from "@/lib/accounting";
+import { getShopInfo, ShopInfo } from "@/lib/shop";
+import { generateNextBatchNumber } from "@/lib/batch";
+import { CustomDatePicker } from "@/components/CustomDatePicker";
+import { formatNepaliDate } from "@/lib/fiscalYear";
 
 type Ingredient = {
   id: string;
@@ -48,10 +53,18 @@ const Products = () => {
   const [sourcingHistory, setSourcingHistory] = useState<any[]>([]);
   const [busySourcing, setBusySourcing] = useState(false);
   const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
+  const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
+
+  // Stock Adjustment Dialog States
   const [adjustOpen, setAdjustOpen] = useState(false);
-  const [batchesOpen, setBatchesOpen] = useState(false);
-  const [batchesList, setBatchesList] = useState<any[]>([]);
-  const [busyBatches, setBusyBatches] = useState(false);
+  const [adjustMode, setAdjustMode] = useState<"add" | "deduct">("add");
+  const [addQty, setAddQty] = useState("");
+  const [addCostPrice, setAddCostPrice] = useState("");
+  const [addBatchName, setAddBatchName] = useState("");
+  const [addExpiryDate, setAddExpiryDate] = useState("");
+  const [addSource, setAddSource] = useState<"opening" | "direct">("opening");
+
+  // Deduct/Damage States
   const [adjustQty, setAdjustQty] = useState("");
   const [adjustReason, setAdjustReason] = useState("damage");
   const [adjustResp, setAdjustResp] = useState<"loss" | "supplier">("loss");
@@ -59,19 +72,27 @@ const Products = () => {
   const [adjustNote, setAdjustNote] = useState("");
   const [busyAdjust, setBusyAdjust] = useState(false);
 
+  // Batches View
+  const [batchesOpen, setBatchesOpen] = useState(false);
+  const [batchesList, setBatchesList] = useState<any[]>([]);
+  const [busyBatches, setBusyBatches] = useState(false);
+
   const load = async () => {
     if (!user) return;
     try {
       const q = query(collection(db, "products"), where("user_id", "==", user.uid));
-      const pSnap = await getDocs(q);
-      const productsData = pSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
-      
-      const pMap = new Map(productsData.map(p => [p.id, p]));
-      setItems(productsData.sort((a, b) => a.name.localeCompare(b.name)));
-
       const supQ = query(collection(db, "suppliers"), where("user_id", "==", user.uid));
-      const supSnap = await getDocs(supQ);
+      
+      const [pSnap, supSnap, sInfo] = await Promise.all([
+        getDocs(q),
+        getDocs(supQ),
+        getShopInfo()
+      ]);
+
+      const productsData = pSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+      setItems(productsData.sort((a, b) => a.name.localeCompare(b.name)));
       setSuppliers(supSnap.docs.map(d => ({ id: d.id, name: d.data().name })));
+      setShopInfo(sInfo);
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -245,8 +266,14 @@ const Products = () => {
     }
   };
 
-  const openAdjust = (p: Product) => {
+  const openAdjust = (p: Product, mode: "add" | "deduct" = "add") => {
     setActiveProduct(p);
+    setAdjustMode(mode);
+    setAddQty("");
+    setAddCostPrice(p.cost_price ? String(p.cost_price) : "");
+    setAddBatchName("");
+    setAddExpiryDate("");
+    setAddSource("opening");
     setAdjustQty("");
     setAdjustReason("damage");
     setAdjustResp("loss");
@@ -255,75 +282,207 @@ const Products = () => {
     setAdjustOpen(true);
   };
 
-  const saveAdjust = async () => {
-    if (!activeProduct || !adjustQty || Number(adjustQty) <= 0) return toast.error("Valid quantity required");
-    if (adjustResp === "supplier" && !adjustSupplier) return toast.error("Supplier required");
-    
-    setBusyAdjust(true);
+  const handleAutoBatchAdjust = async () => {
+    if (!activeProduct) return;
     try {
-      const qty = Number(adjustQty);
-      if (qty > activeProduct.stock_qty) return toast.error("Cannot deduct more than current stock");
-      
-      const totalLoss = qty * activeProduct.cost_price;
-      const batch = writeBatch(db);
-      
-      const pRef = doc(db, "products", activeProduct.id);
-      batch.update(pRef, { stock_qty: increment(-qty) });
-
       const bQ = query(collection(db, "product_batches"), where("product_id", "==", activeProduct.id));
       const bSnap = await getDocs(bQ);
-      const allBatches = bSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).filter(b => b.remaining_qty > 0);
-      allBatches.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const existingBatchNames = bSnap.docs.map(d => d.data().batch_name).filter(Boolean);
+      const generated = generateNextBatchNumber({
+        productName: activeProduct.name,
+        existingBatches: existingBatchNames,
+        shopInfo: shopInfo || undefined,
+        date: new Date()
+      });
+      setAddBatchName(generated);
+      toast.success(`Batch generated: ${generated}`);
+    } catch {
+      toast.error("Failed to generate batch number");
+    }
+  };
 
-      let qtyToDeduct = qty;
-      for (const batchDoc of allBatches) {
-        if (qtyToDeduct <= 0) break;
-        const deducted = Math.min(qtyToDeduct, batchDoc.remaining_qty);
-        qtyToDeduct -= deducted;
-        
-        const bRef = doc(db, "product_batches", batchDoc.id);
-        batch.update(bRef, { remaining_qty: increment(-deducted) });
+  const saveAdjust = async () => {
+    if (!activeProduct || !user) return;
+
+    if (adjustMode === "add") {
+      const qty = Number(addQty);
+      if (isNaN(qty) || qty <= 0) {
+        return toast.error(lang === "NEP" ? "कृपया थप्ने संख्या हाल्नुहोस्" : "Please enter a valid quantity to add");
       }
 
-      const adjRef = doc(collection(db, "stock_adjustments"));
-      batch.set(adjRef, {
-        id: adjRef.id,
-        user_id: user!.uid,
-        product_id: activeProduct.id,
-        product_name: activeProduct.name,
-        qty: qty,
-        cost_price: activeProduct.cost_price,
-        total_value: totalLoss,
-        reason: adjustReason,
-        responsibility: adjustResp,
-        supplier_id: adjustResp === "supplier" ? adjustSupplier : null,
-        note: adjustNote || null,
-        created_at: new Date().toISOString()
-      });
+      const cost = Number(addCostPrice === "" ? (activeProduct.cost_price || 0) : addCostPrice);
+      if (isNaN(cost) || cost < 0) {
+        return toast.error(lang === "NEP" ? "खरीद मूल्य सही हुनुपर्छ" : "Please enter a valid cost price");
+      }
 
-      if (adjustResp === "supplier") {
-        const lRef = doc(collection(db, "ledger_entries"));
-        batch.set(lRef, {
-          id: lRef.id,
-          user_id: user!.uid,
-          party_type: "supplier",
-          party_id: adjustSupplier,
-          entry_type: "debit",
-          amount: totalLoss,
-          note: `Purchase Return / Damaged Goods (${qty}x ${activeProduct.name})`,
-          reference_id: adjRef.id,
+      setBusyAdjust(true);
+      try {
+        const totalAdditionValue = qty * cost;
+        const batch = writeBatch(db);
+
+        // 1. Update product live stock
+        const pRef = doc(db, "products", activeProduct.id);
+        const pUpdate: any = { stock_qty: increment(qty) };
+        if ((!activeProduct.cost_price || activeProduct.cost_price === 0) && cost > 0) {
+          pUpdate.cost_price = cost;
+        }
+        batch.update(pRef, pUpdate);
+
+        // 2. Generate or assign batch name
+        let bName = addBatchName.trim();
+        if (!bName) {
+          const bQ = query(collection(db, "product_batches"), where("product_id", "==", activeProduct.id));
+          const bSnap = await getDocs(bQ);
+          const existingBatchNames = bSnap.docs.map(d => d.data().batch_name).filter(Boolean);
+          bName = generateNextBatchNumber({
+            productName: activeProduct.name,
+            existingBatches: existingBatchNames,
+            shopInfo: shopInfo || undefined,
+            date: new Date()
+          });
+        }
+
+        const batchRef = doc(collection(db, "product_batches"));
+        batch.set(batchRef, {
+          id: batchRef.id,
+          user_id: user.uid,
+          product_id: activeProduct.id,
+          batch_name: bName,
+          original_qty: qty,
+          remaining_qty: qty,
+          cost_price: cost,
+          expiry_date: addExpiryDate.trim() || null,
           created_at: new Date().toISOString()
         });
-      }
 
-      await batch.commit();
-      toast.success("Stock adjusted successfully");
-      setAdjustOpen(false);
-      load();
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setBusyAdjust(false);
+        // 3. Record stock adjustment audit
+        const adjRef = doc(collection(db, "stock_adjustments"));
+        batch.set(adjRef, {
+          id: adjRef.id,
+          user_id: user.uid,
+          product_id: activeProduct.id,
+          product_name: activeProduct.name,
+          qty: qty,
+          cost_price: cost,
+          total_value: totalAdditionValue,
+          reason: addSource === "opening" ? "opening_stock" : "direct_addition",
+          type: "addition",
+          responsibility: "opening_equity",
+          batch_name: bName,
+          expiry_date: addExpiryDate.trim() || null,
+          note: adjustNote?.trim() || null,
+          created_at: new Date().toISOString()
+        });
+
+        // 4. Create accounting Voucher for Capital (Owner's Equity)
+        if (totalAdditionValue > 0) {
+          const accounts = await getAccounts(user.uid);
+          const capitalAcc = accounts.find(a => a.group === "capital" || (a.name || "").toLowerCase().includes("capital") || (a.name || "").includes("पुँजी"));
+          const capitalAccId = capitalAcc ? capitalAcc.id : `${user.uid}_capital`;
+          const capitalAccName = capitalAcc ? capitalAcc.name : "Capital Account (साहुको पुँजी)";
+
+          const voucherRef = doc(collection(db, "vouchers"));
+          const now = new Date();
+          const dateIso = now.toISOString();
+          const dateBs = formatNepaliDate(now);
+
+          batch.set(voucherRef, {
+            id: voucherRef.id,
+            user_id: user.uid,
+            voucher_no: `OPN-${Math.floor(100000 + Math.random() * 900000)}`,
+            voucher_type: "journal",
+            date: dateIso,
+            date_bs: dateBs,
+            amount: totalAdditionValue,
+            credit_account_id: capitalAccId,
+            credit_account_name: capitalAccName,
+            narration: `Opening/Direct Stock added for ${activeProduct.name} (${fmtQty(qty)} ${activeProduct.unit || "pcs"} @ ${fmt(cost)})`,
+            reference_no: adjRef.id,
+            created_at: dateIso
+          });
+        }
+
+        await batch.commit();
+        toast.success(lang === "NEP" ? "नयाँ स्टक र ब्याच सफलतापूर्वक थपियो!" : "Stock added and batch created successfully!");
+        setAdjustOpen(false);
+        load();
+      } catch (e: any) {
+        toast.error(e.message);
+      } finally {
+        setBusyAdjust(false);
+      }
+    } else {
+      // Deduct / Damage flow
+      if (!adjustQty || Number(adjustQty) <= 0) return toast.error("Valid quantity required");
+      if (adjustResp === "supplier" && !adjustSupplier) return toast.error("Supplier required");
+      
+      setBusyAdjust(true);
+      try {
+        const qty = Number(adjustQty);
+        if (qty > activeProduct.stock_qty) return toast.error("Cannot deduct more than current stock");
+        
+        const totalLoss = qty * activeProduct.cost_price;
+        const batch = writeBatch(db);
+        
+        const pRef = doc(db, "products", activeProduct.id);
+        batch.update(pRef, { stock_qty: increment(-qty) });
+
+        const bQ = query(collection(db, "product_batches"), where("product_id", "==", activeProduct.id));
+        const bSnap = await getDocs(bQ);
+        const allBatches = bSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).filter(b => b.remaining_qty > 0);
+        allBatches.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        let qtyToDeduct = qty;
+        for (const batchDoc of allBatches) {
+          if (qtyToDeduct <= 0) break;
+          const deducted = Math.min(qtyToDeduct, batchDoc.remaining_qty);
+          qtyToDeduct -= deducted;
+          
+          const bRef = doc(db, "product_batches", batchDoc.id);
+          batch.update(bRef, { remaining_qty: increment(-deducted) });
+        }
+
+        const adjRef = doc(collection(db, "stock_adjustments"));
+        batch.set(adjRef, {
+          id: adjRef.id,
+          user_id: user.uid,
+          product_id: activeProduct.id,
+          product_name: activeProduct.name,
+          qty: qty,
+          cost_price: activeProduct.cost_price,
+          total_value: totalLoss,
+          reason: adjustReason,
+          responsibility: adjustResp,
+          type: "deduction",
+          supplier_id: adjustResp === "supplier" ? adjustSupplier : null,
+          note: adjustNote || null,
+          created_at: new Date().toISOString()
+        });
+
+        if (adjustResp === "supplier") {
+          const lRef = doc(collection(db, "ledger_entries"));
+          batch.set(lRef, {
+            id: lRef.id,
+            user_id: user.uid,
+            party_type: "supplier",
+            party_id: adjustSupplier,
+            entry_type: "debit",
+            amount: totalLoss,
+            note: `Purchase Return / Damaged Goods (${qty}x ${activeProduct.name})`,
+            reference_id: adjRef.id,
+            created_at: new Date().toISOString()
+          });
+        }
+
+        await batch.commit();
+        toast.success("Stock deducted successfully");
+        setAdjustOpen(false);
+        load();
+      } catch (e: any) {
+        toast.error(e.message);
+      } finally {
+        setBusyAdjust(false);
+      }
     }
   };
 
@@ -414,7 +573,7 @@ const Products = () => {
                       <Barcode className="h-4 w-4" />
                     </Button>
                     <Button size="icon" variant="ghost" onClick={() => loadBatches(p)} title="Active Batches" className="h-8 w-8 hover:bg-orange-500 hover:text-white text-muted-foreground rounded-md"><Layers className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => openAdjust(p)} title="Adjust Stock" className="h-8 w-8 hover:bg-red-500 hover:text-white text-muted-foreground rounded-md"><PackageMinus className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => openAdjust(p, "add")} title="Adjust / Add Stock" className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><PackagePlus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => loadSourcingHistory(p)} title="Sourcing History" className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><History className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => { setSelectedProduct(p); setOpen(true); }} className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><Pencil className="h-3.5 w-3.5" /></Button>
                     <AlertDialog>
@@ -570,87 +729,228 @@ const Products = () => {
       <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Stock Adjustment / Damage Report</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <PackagePlus className="h-5 w-5 text-primary" />
+              Stock Adjustment — {activeProduct?.name}
+            </DialogTitle>
             <DialogDescription>
-              Record broken, expired, or lost stock for {activeProduct?.name}.
+              {adjustMode === "add" 
+                ? (lang === "NEP" ? "पसलको पुरानो स्टक (Opening Stock) वा सिधै नयाँ ब्याच थप्नुहोस्।" : "Add opening shop stock or register a direct product batch.")
+                : (lang === "NEP" ? "ड्यामेज, म्याद नाघेको वा हराएको सामान स्टकबाट घटाउनुहोस्।" : "Record broken, expired, or lost stock.")
+              }
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Quantity Lost</Label>
-                <div className="relative">
-                  <Input type="number" step="0.001" value={adjustQty} onChange={e => setAdjustQty(e.target.value)} placeholder="0.00" />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{activeProduct?.unit}</div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Reason</Label>
-                <Select value={adjustReason} onValueChange={setAdjustReason}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="damage">Damaged / Broken</SelectItem>
-                    <SelectItem value="fire">Lost by Fire</SelectItem>
-                    <SelectItem value="expiry">Expired</SelectItem>
-                    <SelectItem value="theft">Lost / Theft</SelectItem>
-                    <SelectItem value="personal">Personal Use</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-2 border-t">
-              <Label>Who bears the loss?</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setAdjustResp("loss")}
-                  className={`p-3 rounded-lg border text-left flex flex-col gap-1 transition-all ${adjustResp === "loss" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
-                >
-                  <span className="text-sm font-bold text-foreground">My Shop</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight">Recorded as a business expense/loss.</span>
-                </button>
-                <button
-                  onClick={() => setAdjustResp("supplier")}
-                  className={`p-3 rounded-lg border text-left flex flex-col gap-1 transition-all ${adjustResp === "supplier" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
-                >
-                  <span className="text-sm font-bold text-foreground">Supplier Fault</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight">Refunded. Deducts from payable balance.</span>
-                </button>
-              </div>
-            </div>
-
-            {adjustResp === "supplier" && (
-              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                <Label>Select Supplier</Label>
-                <Select value={adjustSupplier} onValueChange={setAdjustSupplier}>
-                  <SelectTrigger><SelectValue placeholder="Which supplier provided this?" /></SelectTrigger>
-                  <SelectContent>
-                    {suppliers.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Note (Optional)</Label>
-              <Input value={adjustNote} onChange={e => setAdjustNote(e.target.value)} placeholder="Additional details..." />
-            </div>
-
-            {activeProduct && Number(adjustQty) > 0 && (
-              <div className={`p-3 rounded-lg border text-sm flex items-center justify-between font-medium ${adjustResp === "loss" ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/30 dark:text-red-400" : "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:border-green-900/30 dark:text-green-400"}`}>
-                <span>Total Value:</span>
-                <span>{fmt(Number(adjustQty) * activeProduct.cost_price)}</span>
-              </div>
-            )}
+          {/* Mode Switcher Tabs */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-secondary rounded-xl border border-border/60">
+            <button
+              type="button"
+              onClick={() => setAdjustMode("add")}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                adjustMode === "add"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+              }`}
+            >
+              <PackagePlus className="h-4 w-4" />
+              {lang === "NEP" ? "स्टक थप्ने (Add Stock)" : "Add Stock / Batch"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdjustMode("deduct")}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                adjustMode === "deduct"
+                  ? "bg-destructive text-destructive-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+              }`}
+            >
+              <PackageMinus className="h-4 w-4" />
+              {lang === "NEP" ? "स्टक घटाउने (Deduct/Loss)" : "Deduct / Damage"}
+            </button>
           </div>
 
-          <Button onClick={saveAdjust} disabled={busyAdjust} className="w-full bg-gradient-primary text-primary-foreground">
-            {busyAdjust ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <AlertTriangle className="h-4 w-4 mr-2" />}
-            Confirm Adjustment
-          </Button>
+          {adjustMode === "add" ? (
+            <div className="space-y-3.5 py-1">
+              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-secondary/50 border border-border/50 text-xs">
+                <span className="text-muted-foreground">{lang === "NEP" ? "हालको लाइभ स्टक:" : "Current Live Stock:"}</span>
+                <span className="font-bold text-foreground">
+                  {fmtQty(activeProduct?.stock_qty || 0)} {activeProduct?.unit}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">{lang === "NEP" ? "थप्ने संख्या (Qty) *" : "Quantity to Add *"}</Label>
+                  <div className="relative">
+                    <Input 
+                      type="number" 
+                      step="0.001" 
+                      value={addQty} 
+                      onChange={e => setAddQty(e.target.value)} 
+                      placeholder="0.00" 
+                      autoFocus
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                      {activeProduct?.unit}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">{lang === "NEP" ? "खरीद मूल्य (Cost Price) *" : "Cost Price (रु.) *"}</Label>
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    value={addCostPrice} 
+                    onChange={e => setAddCostPrice(e.target.value)} 
+                    placeholder="0.00" 
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">{lang === "NEP" ? "ब्याच नम्बर (Batch No. - ऐच्छिक)" : "Batch Number (Optional)"}</Label>
+                <div className="flex gap-1.5">
+                  <Input 
+                    value={addBatchName} 
+                    onChange={e => setAddBatchName(e.target.value)} 
+                    placeholder="e.g. OPN-001 / BATCH-01" 
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 px-3 text-xs font-semibold text-primary hover:bg-primary/10 border-primary/30"
+                    onClick={handleAutoBatchAdjust}
+                    title="Auto-generate batch number"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 mr-1" />
+                    Auto
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">{lang === "NEP" ? "म्याद सकिने मिति (Expiry Date - ऐच्छिक)" : "Expiry Date (Optional)"}</Label>
+                <CustomDatePicker
+                  value={addExpiryDate}
+                  onChange={setAddExpiryDate}
+                  placeholder="YYYY-MM-DD"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">{lang === "NEP" ? "स्टक थप्नुको कारण / स्रोत" : "Reason / Stock Source"}</Label>
+                <Select value={addSource} onValueChange={(v: any) => setAddSource(v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="opening">{lang === "NEP" ? "पसलको मौज्दात (Opening Stock)" : "Shop Opening Stock"}</SelectItem>
+                    <SelectItem value="direct">{lang === "NEP" ? "अन्य सिधै थप (Direct Adjustment / Count Correction)" : "Direct Count Adjustment"}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">{lang === "NEP" ? "कैफियत (Note - ऐच्छिक)" : "Note (Optional)"}</Label>
+                <Input value={adjustNote} onChange={e => setAdjustNote(e.target.value)} placeholder="e.g. Existing unsold inventory" />
+              </div>
+
+              {Number(addQty) > 0 && (
+                <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs space-y-1">
+                  <div className="flex items-center justify-between font-semibold text-primary">
+                    <span>{lang === "NEP" ? "थपिने कुल स्टक भ्यालु:" : "Total Added Stock Value:"}</span>
+                    <span className="text-sm font-bold">{fmt(Number(addQty) * Number(addCostPrice || activeProduct?.cost_price || 0))}</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {lang === "NEP" 
+                      ? "💡 यो रकम ब्यालेन्स शीट मिलाउन साहुको पुँजी (Owner's Capital) मा स्वतः जम्मा हुनेछ।" 
+                      : "💡 This amount will be credited to Owner's Capital to balance the Balance Sheet."}
+                  </div>
+                </div>
+              )}
+
+              <Button onClick={saveAdjust} disabled={busyAdjust} className="w-full bg-gradient-primary text-primary-foreground font-semibold mt-2 shadow-sm">
+                {busyAdjust ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PackagePlus className="h-4 w-4 mr-2" />}
+                {lang === "NEP" ? "स्टक थप्नुहोस् र ब्याच बनाउनुहोस्" : "Add Stock & Create Batch"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Quantity Lost</Label>
+                  <div className="relative">
+                    <Input type="number" step="0.001" value={adjustQty} onChange={e => setAdjustQty(e.target.value)} placeholder="0.00" autoFocus />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{activeProduct?.unit}</div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Reason</Label>
+                  <Select value={adjustReason} onValueChange={setAdjustReason}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="damage">Damaged / Broken</SelectItem>
+                      <SelectItem value="fire">Lost by Fire</SelectItem>
+                      <SelectItem value="expiry">Expired</SelectItem>
+                      <SelectItem value="theft">Lost / Theft</SelectItem>
+                      <SelectItem value="personal">Personal Use</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t">
+                <Label>Who bears the loss?</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setAdjustResp("loss")}
+                    className={`p-3 rounded-lg border text-left flex flex-col gap-1 transition-all ${adjustResp === "loss" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+                  >
+                    <span className="text-sm font-bold text-foreground">My Shop</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">Recorded as a business expense/loss.</span>
+                  </button>
+                  <button
+                    onClick={() => setAdjustResp("supplier")}
+                    className={`p-3 rounded-lg border text-left flex flex-col gap-1 transition-all ${adjustResp === "supplier" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+                  >
+                    <span className="text-sm font-bold text-foreground">Supplier Fault</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">Refunded. Deducts from payable balance.</span>
+                  </button>
+                </div>
+              </div>
+
+              {adjustResp === "supplier" && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <Label>Select Supplier</Label>
+                  <Select value={adjustSupplier} onValueChange={setAdjustSupplier}>
+                    <SelectTrigger><SelectValue placeholder="Which supplier provided this?" /></SelectTrigger>
+                    <SelectContent>
+                      {suppliers.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Note (Optional)</Label>
+                <Input value={adjustNote} onChange={e => setAdjustNote(e.target.value)} placeholder="Additional details..." />
+              </div>
+
+              {activeProduct && Number(adjustQty) > 0 && (
+                <div className={`p-3 rounded-lg border text-sm flex items-center justify-between font-medium ${adjustResp === "loss" ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/30 dark:text-red-400" : "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:border-green-900/30 dark:text-green-400"}`}>
+                  <span>Total Loss Value:</span>
+                  <span>{fmt(Number(adjustQty) * activeProduct.cost_price)}</span>
+                </div>
+              )}
+
+              <Button onClick={saveAdjust} disabled={busyAdjust} variant="destructive" className="w-full font-semibold shadow-sm">
+                {busyAdjust ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <AlertTriangle className="h-4 w-4 mr-2" />}
+                Confirm Deduction
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

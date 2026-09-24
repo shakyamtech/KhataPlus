@@ -863,8 +863,12 @@ export function ProductFormModal({ open, onOpenChange, product, onSuccess }: Pro
                   placeholder={edit.id ? "Current stock" : "0"}
                   onWheel={(e) => e.currentTarget.blur()} 
                 />
-                {!edit.id && (
+                {!edit.id ? (
                   <div className="text-[10px] text-muted-foreground leading-tight">पहिले नै पसलमा भएको मौज्दात (नयाँ खरिद हो भने 0 राख्नुहोस्)</div>
+                ) : (
+                  <div className="text-[10px] text-primary/80 font-medium leading-tight">
+                    💡 पसलको स्टक थप्न वा घटाउन Products पेजको <strong>Adjust / Add Stock</strong> बटन प्रयोग गर्नुहोस्।
+                  </div>
                 )}
               </div>
             </div>
