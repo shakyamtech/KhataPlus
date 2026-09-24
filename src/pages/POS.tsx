@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown, Calendar as CalendarIcon, ArrowDown, ArrowUp, Camera } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown, Calendar as CalendarIcon, ArrowDown, ArrowUp, Camera, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
@@ -23,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { formatNepaliDate, NEPALI_MONTHS, getDaysInBSMonth, bsToAdDateString, adToBsDateParts } from "@/lib/fiscalYear";
 import { CameraBarcodeScannerModal } from "@/components/CameraBarcodeScannerModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type ActiveBatch = {
   id: string;
@@ -68,11 +68,13 @@ type CartItem = {
 
 const POS = () => {
   const { user } = useAuth();
+  const { lang } = useLanguage();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [invoiceType, setInvoiceType] = useState<"abbreviated" | "tax_invoice">("abbreviated");
   const [buyerPan, setBuyerPan] = useState("");
   const [buyerAddress, setBuyerAddress] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
+  const [displayLimit, setDisplayLimit] = useState(24);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const cartRef = useRef<CartItem[]>(cart);
@@ -380,10 +382,18 @@ const POS = () => {
   };
   useEffect(() => { if (user) load(); }, [user]);
 
+  useEffect(() => {
+    setDisplayLimit(24);
+  }, [search]);
+
   const filtered = useMemo(() => products.filter((p) => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 
     (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()))
   ), [products, search]);
+
+  const visibleProducts = useMemo(() => {
+    return filtered.slice(0, displayLimit);
+  }, [filtered, displayLimit]);
 
   const matchingCustomers = useMemo(() => {
     const q = customerQuery.trim().toLowerCase();
@@ -1062,7 +1072,7 @@ const POS = () => {
             </Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {filtered.map((p) => {
+            {visibleProducts.map((p) => {
               const totalAvailable = getTotalAvailable(p.id);
               const isLow = totalAvailable > 0 && totalAvailable <= (p.low_stock_threshold || 5);
               const isOut = totalAvailable <= 0;
@@ -1110,7 +1120,28 @@ const POS = () => {
                 </button>
               );
             })}
-            {filtered.length === 0 && <div className="col-span-full text-center text-muted-foreground py-8">No products. Add some first.</div>}
+            {filtered.length === 0 && (
+              <div className="col-span-full text-center text-muted-foreground py-8">
+                {search.trim() ? (lang === "NEP" ? "कुनै सामान फेला परेन (No product found)" : "No matching products found.") : (lang === "NEP" ? "कुनै सामान छैन। पहिले सामान थप्नुहोस्।" : "No products. Add some first.")}
+              </div>
+            )}
+            {filtered.length > displayLimit && (
+              <div className="col-span-full pt-3 pb-2 text-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDisplayLimit(prev => prev + 24)}
+                  className="w-full sm:w-auto px-6 py-2.5 border-primary/30 text-primary hover:bg-primary/10 font-semibold shadow-xs transition-all flex items-center justify-center gap-2 mx-auto"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  <span>
+                    {lang === "NEP"
+                      ? `थप २४ वटा सामान देखाउनुहोस् (${visibleProducts.length} / ${filtered.length} वटा देखाइएको)`
+                      : `Show More Items (Showing ${visibleProducts.length} of ${filtered.length})`}
+                  </span>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
