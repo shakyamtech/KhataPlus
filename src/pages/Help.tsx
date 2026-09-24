@@ -592,9 +592,7 @@ export default function Help() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeModuleId, setActiveModuleId] = useState<string>("onboarding");
-  const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>({
-    "onboarding-running-shop": true
-  });
+  const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>({});
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
   const toggleTopic = (topicId: string) => {
@@ -744,13 +742,7 @@ export default function Help() {
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => {
-                    setActiveModuleId(m.id);
-                    // auto open first topic if closed
-                    if (m.topics[0] && !expandedTopics[m.topics[0].id]) {
-                      setExpandedTopics(prev => ({ ...prev, [m.topics[0].id]: true }));
-                    }
-                  }}
+                  onClick={() => setActiveModuleId(m.id)}
                   className={cn(
                     "w-full text-left p-3 rounded-xl border transition-all flex items-start gap-3 cursor-pointer group",
                     isActive
@@ -834,16 +826,22 @@ export default function Help() {
               {/* Topics Accordion List */}
               <div className="space-y-3">
                 {activeModule.topics.map((topic, idx) => {
-                  const isExpanded = expandedTopics[topic.id] !== false; // default true
+                  const isExpanded = !!expandedTopics[topic.id];
 
                   return (
                     <Card key={topic.id} className="border-border/80 shadow-xs overflow-hidden transition-all">
                       <div
                         onClick={() => toggleTopic(topic.id)}
-                        className="p-4 sm:p-4.5 bg-card hover:bg-secondary/30 cursor-pointer flex items-center justify-between gap-3 select-none transition-colors border-b border-border/40"
+                        className={cn(
+                          "p-4 sm:p-4.5 bg-card hover:bg-secondary/30 cursor-pointer flex items-center justify-between gap-3 select-none transition-colors",
+                          isExpanded && "border-b border-border/40 bg-secondary/20"
+                        )}
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary font-black text-xs shrink-0">
+                          <span className={cn(
+                            "flex items-center justify-center h-6 w-6 rounded-full font-black text-xs shrink-0 transition-colors",
+                            isExpanded ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
+                          )}>
                             {idx + 1}
                           </span>
                           <div className="min-w-0">
@@ -873,13 +871,13 @@ export default function Help() {
                             </Button>
                           )}
                           <div className="h-7 w-7 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground">
-                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            <ChevronRight className={cn("h-4 w-4 transition-transform duration-300 ease-out", isExpanded && "rotate-90 text-primary")} />
                           </div>
                         </div>
                       </div>
 
                       {isExpanded && (
-                        <CardContent className="p-4 sm:p-5 space-y-4 bg-background/50">
+                        <CardContent className="p-4 sm:p-5 space-y-4 bg-background/50 animate-in fade-in slide-in-from-top-2 duration-300 ease-out">
                           {/* Step-by-Step Instructions */}
                           <div className="space-y-2">
                             <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
