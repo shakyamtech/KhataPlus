@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,15 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Printer,
-  FileDown,
-  X,
-  CheckCircle2,
   BookOpen,
   Lightbulb,
   BookMarked,
-  Sparkles,
-  Layers,
-  Globe,
   SlidersHorizontal,
   Info
 } from "lucide-react";
@@ -65,6 +59,18 @@ interface HelpPrintModalProps {
   defaultLang?: "NEP" | "ENG";
 }
 
+const MODULE_SHORT_LABELS: Record<string, { nep: string; eng: string }> = {
+  "onboarding": { nep: "१. सुरुआती ब्यालेन्स", eng: "1. Onboarding" },
+  "products": { nep: "२. सामान तथा स्टक", eng: "2. Products & Stock" },
+  "pos": { nep: "३. POS बिलिङ", eng: "3. POS Billing" },
+  "purchases": { nep: "४. खरिद तथा सप्लायर", eng: "4. Purchases" },
+  "parties": { nep: "५. ग्राहक र साहु खाता", eng: "5. Ledger Accounts" },
+  "cashbook": { nep: "६. क्यासबुक र खर्च", eng: "6. Cashbook" },
+  "accounting": { nep: "७. वित्तीय रिपोर्टहरू", eng: "7. Reports" },
+  "settings": { nep: "८. सेटिङ र ब्याकअप", eng: "8. Settings & Backup" },
+  "faq": { nep: "९. सोधिने प्रश्न (FAQ)", eng: "9. FAQs" },
+};
+
 export function HelpPrintModal({
   open,
   onOpenChange,
@@ -95,9 +101,6 @@ export function HelpPrintModal({
     @page {
       size: A4 portrait;
       margin: 12mm 14mm 12mm 14mm;
-      @bottom-right {
-        content: counter(page);
-      }
     }
 
     * {
@@ -222,7 +225,7 @@ export function HelpPrintModal({
       padding: 3px 8px;
       border-radius: 4px;
       background: ${isColor ? "#e0f2fe" : "#e2e8f0"};
-      color: ${isColor ? "#0369a1" : "#334155"};
+      color: ${isColor ? "#0369a1" : "#1e293b"};
       border: 1px solid ${isColor ? "#7dd3fc" : "#cbd5e1"};
     }
 
@@ -451,8 +454,8 @@ export function HelpPrintModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border-border/80 shadow-2xl">
-        {/* Top Controls Bar */}
-        <DialogHeader className="p-4 sm:p-5 border-b border-border/70 bg-secondary/30 flex-shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Top Controls Bar with Proper Clearance for Close Button */}
+        <DialogHeader className="p-4 sm:p-5 pr-14 sm:pr-16 border-b border-border/70 bg-secondary/30 flex-shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-0.5 text-left">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
@@ -469,9 +472,9 @@ export function HelpPrintModal({
             </DialogDescription>
           </div>
 
-          <div className="flex items-center flex-wrap gap-2">
+          <div className="flex items-center flex-wrap gap-2.5">
             {/* Language Selector */}
-            <div className="flex items-center bg-background border border-border rounded-lg p-0.5">
+            <div className="flex items-center bg-background border border-border rounded-lg p-0.5 shadow-2xs">
               <Button
                 size="sm"
                 variant={lang === "NEP" ? "default" : "ghost"}
@@ -491,7 +494,7 @@ export function HelpPrintModal({
             </div>
 
             {/* Color Mode Toggle */}
-            <div className="flex items-center bg-background border border-border rounded-lg p-0.5">
+            <div className="flex items-center bg-background border border-border rounded-lg p-0.5 shadow-2xs">
               <Button
                 size="sm"
                 variant={colorMode === "color" ? "default" : "ghost"}
@@ -511,47 +514,55 @@ export function HelpPrintModal({
                 इङ्क-सेभिङ (B&W)
               </Button>
             </div>
-
-            {/* Print / Save PDF Trigger */}
-            <Button
-              onClick={handlePrint}
-              className="h-8 gap-1.5 font-bold shadow-md bg-gradient-to-r from-primary to-teal-600 hover:from-primary/90 hover:to-teal-600/90 text-primary-foreground"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              {lang === "NEP" ? "प्रिन्ट / PDF Save" : "Print / Save PDF"}
-            </Button>
           </div>
         </DialogHeader>
 
         {/* Filter Bar (Scope Selection) */}
-        <div className="px-4 py-2.5 bg-background border-b border-border/60 flex items-center justify-between gap-2 overflow-x-auto text-xs">
+        <div className="px-4 py-2.5 bg-background border-b border-border/60 flex items-center justify-between gap-3 overflow-x-auto text-xs">
           <div className="flex items-center gap-1.5 text-muted-foreground shrink-0 font-medium">
             <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
             <span>{lang === "NEP" ? "छान्नुहोस् (Scope):" : "Print Scope:"}</span>
           </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            <Badge
+          <div className="flex items-center gap-2 overflow-x-auto py-1">
+            <button
+              type="button"
               onClick={() => setSelectedModuleId("all")}
-              variant={selectedModuleId === "all" ? "default" : "outline"}
-              className="cursor-pointer font-bold px-2.5 py-0.5 text-[11px]"
+              className={cn(
+                "cursor-pointer font-bold px-3 py-1 rounded-lg text-xs transition-all whitespace-nowrap shadow-2xs",
+                selectedModuleId === "all"
+                  ? "bg-primary text-primary-foreground font-extrabold shadow-sm ring-2 ring-primary/20"
+                  : "bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/60"
+              )}
             >
               {lang === "NEP" ? "सम्पूर्ण ९ खण्डहरू (Complete Manual)" : "All 9 Modules"}
-            </Badge>
-            {modules.map((m) => (
-              <Badge
-                key={m.id}
-                onClick={() => setSelectedModuleId(m.id)}
-                variant={selectedModuleId === m.id ? "default" : "outline"}
-                className="cursor-pointer font-semibold px-2 py-0.5 text-[11px] whitespace-nowrap"
-              >
-                {lang === "NEP" ? m.titleNep.split(" ")[0] + " " + m.titleNep.split(" ")[1] : m.titleEng.split(" ")[0] + " " + m.titleEng.split(" ")[1]}
-              </Badge>
-            ))}
+            </button>
+            {modules.map((m) => {
+              const label = MODULE_SHORT_LABELS[m.id]
+                ? (lang === "NEP" ? MODULE_SHORT_LABELS[m.id].nep : MODULE_SHORT_LABELS[m.id].eng)
+                : (lang === "NEP" ? m.titleNep : m.titleEng);
+              const isSelected = selectedModuleId === m.id;
+
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setSelectedModuleId(m.id)}
+                  className={cn(
+                    "cursor-pointer font-semibold px-2.5 py-1 rounded-lg text-xs transition-all whitespace-nowrap shadow-2xs",
+                    isSelected
+                      ? "bg-primary text-primary-foreground font-bold shadow-sm ring-2 ring-primary/20"
+                      : "bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/60"
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Visual Live A4 Page Scrollable Preview */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-900/40 flex justify-center">
+        {/* Visual Live A4 Page Scrollable Preview with Always-High-Contrast Light Theme */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-900/60 flex justify-center">
           <div className="w-full max-w-[780px] bg-white text-slate-900 rounded-xl shadow-2xl p-6 sm:p-8 space-y-6 border border-slate-300">
             {/* Visual Cover / Header */}
             <div className={cn(
@@ -566,11 +577,14 @@ export function HelpPrintModal({
                     <BookOpen className="h-6 w-6 text-sky-600" />
                     KhataPlus
                   </div>
-                  <p className="text-[11px] font-semibold text-slate-500">नेपालको आधुनिक बिलिङ तथा लेखा व्यवस्थापन सफ्टवेयर</p>
+                  <p className="text-[11px] font-semibold text-slate-600">नेपालको आधुनिक बिलिङ तथा लेखा व्यवस्थापन सफ्टवेयर</p>
                 </div>
-                <Badge className={cn("font-bold text-xs", colorMode === "color" ? "bg-sky-600 text-white" : "bg-slate-800 text-white")}>
+                <div className={cn(
+                  "font-bold text-xs px-3 py-1 rounded-full",
+                  colorMode === "color" ? "bg-sky-600 text-white shadow-xs" : "bg-slate-800 text-white"
+                )}>
                   v2.2.0 Complete SOP Manual
-                </Badge>
+                </div>
               </div>
 
               <h1 className="text-lg sm:text-xl font-black text-slate-900 leading-snug">
@@ -578,7 +592,7 @@ export function HelpPrintModal({
                   ? "KhataPlus प्रयोग तथा सञ्चालन निर्देशिका (Official SOP Guide)"
                   : "KhataPlus Official Operations & User Guide (SOP)"}
               </h1>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-700 mt-1 leading-relaxed">
                 {lang === "NEP"
                   ? "नयाँ पसलको ओपनिङ ब्यालेन्स, दैनिक काउन्टर बिलिङ, स्टक, खरिद, साहु-ग्राहक खाता, क्यासबुक तथा वित्तीय रिपोर्टहरू सम्बन्धी सम्पूर्ण तालिम पुस्तिका।"
                   : "Complete operating handbook covering shop onboarding, POS billing, inventory, purchases, ledger accounts, cashbook, and financial reporting."}
@@ -586,12 +600,15 @@ export function HelpPrintModal({
 
               {selectedModuleId === "all" && (
                 <div className="mt-4 pt-3 border-t border-sky-200/60">
-                  <div className="text-[11px] font-bold text-slate-700 mb-2">
+                  <div className="text-[11px] font-bold text-slate-800 mb-2">
                     {lang === "NEP" ? "विषय-सूची (Table of Contents):" : "Table of Contents:"}
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {modules.map((m) => (
-                      <div key={m.id} className="bg-white/90 border border-sky-100 rounded-md p-1.5 text-[10.5px] font-semibold text-slate-800 truncate shadow-2xs">
+                      <div
+                        key={m.id}
+                        className="bg-white/95 border border-sky-200 rounded-md p-2 text-[11px] font-semibold text-slate-900 flex items-center shadow-2xs min-h-[36px]"
+                      >
                         {lang === "NEP" ? m.titleNep : m.titleEng}
                       </div>
                     ))}
@@ -604,56 +621,57 @@ export function HelpPrintModal({
             <div className="space-y-6">
               {filteredModules.map((m) => (
                 <div key={m.id} className="space-y-3">
-                  {/* Module Title Card */}
+                  {/* Module Title Card with Guaranteed High Contrast */}
                   <div className={cn(
-                    "rounded-lg p-3 border-l-4 flex items-center justify-between gap-2",
+                    "rounded-lg p-3.5 border-l-4 flex items-center justify-between gap-3 shadow-2xs",
                     colorMode === "color"
-                      ? "bg-slate-100/90 border-sky-600 border-t border-r border-b border-slate-200"
+                      ? "bg-slate-100 border-sky-600 border-t border-r border-b border-slate-200"
                       : "bg-slate-100 border-slate-800 border-t border-r border-b border-slate-300"
                   )}>
                     <div>
                       <h2 className="text-sm font-black text-slate-900">
                         {lang === "NEP" ? m.titleNep : m.titleEng}
                       </h2>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11.5px] text-slate-600 mt-0.5">
                         {lang === "NEP" ? m.descNep : m.descEng}
                       </p>
                     </div>
-                    <Badge variant="outline" className="text-[10px] font-bold shrink-0 bg-white">
+                    {/* Always-visible High Contrast Badge */}
+                    <div className="text-[10.5px] font-bold shrink-0 bg-white text-slate-900 px-3 py-1 rounded-md border border-slate-300 shadow-2xs">
                       {m.badge}
-                    </Badge>
+                    </div>
                   </div>
 
                   {/* Topics List */}
                   <div className="space-y-3 pl-1">
                     {m.topics.map((t, tIdx) => (
-                      <div key={t.id} className="border border-slate-200 rounded-lg p-3.5 bg-white space-y-3 shadow-2xs">
-                        <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <div key={t.id} className="border border-slate-200 rounded-lg p-4 bg-white space-y-3 shadow-2xs">
+                        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-2">
                           <span className={cn(
-                            "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0",
+                            "h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-black text-white shrink-0 shadow-2xs",
                             colorMode === "color" ? "bg-sky-600" : "bg-slate-800"
                           )}>
                             {tIdx + 1}
                           </span>
                           <div>
-                            <h3 className="text-xs font-bold text-slate-900">
+                            <h3 className="text-xs sm:text-sm font-bold text-slate-900">
                               {lang === "NEP" ? t.titleNep : t.titleEng}
                             </h3>
-                            <p className="text-[10.5px] text-slate-500 italic">
+                            <p className="text-[11px] text-slate-600 italic">
                               {lang === "NEP" ? t.summaryNep : t.summaryEng}
                             </p>
                           </div>
                         </div>
 
-                        {/* Step By Step List */}
+                        {/* Step By Step List with Crisp Numbers */}
                         <div className="space-y-1.5">
                           {(lang === "NEP" ? t.stepsNep : t.stepsEng).map((s, sIdx) => {
                             const cleanStep = s.replace(/^[०-९\d]+[\.\)]\s*/, '');
                             return (
-                              <div key={sIdx} className="flex items-start gap-2 text-[11px] text-slate-800 bg-slate-50/80 rounded p-2 border border-slate-100">
+                              <div key={sIdx} className="flex items-start gap-2.5 text-[11.5px] text-slate-900 bg-slate-50 rounded-md p-2.5 border border-slate-100">
                                 <span className={cn(
-                                  "h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5",
-                                  colorMode === "color" ? "bg-sky-100 text-sky-800" : "bg-slate-200 text-slate-700"
+                                  "h-4.5 w-4.5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5",
+                                  colorMode === "color" ? "bg-sky-100 text-sky-900 border border-sky-200" : "bg-slate-200 text-slate-900"
                                 )}>
                                   {sIdx + 1}
                                 </span>
@@ -666,30 +684,30 @@ export function HelpPrintModal({
                         {/* Example Box */}
                         {t.examples && (
                           <div className={cn(
-                            "rounded p-2.5 text-[10.5px] border",
+                            "rounded-md p-3 text-[11px] border space-y-1",
                             colorMode === "color"
-                              ? "bg-blue-50/60 border-blue-200 text-slate-800"
-                              : "bg-slate-50 border-slate-200 text-slate-800"
+                              ? "bg-blue-50 border-blue-200 text-slate-900"
+                              : "bg-slate-50 border-slate-300 text-slate-900"
                           )}>
-                            <div className="font-bold text-blue-700 mb-0.5 flex items-center gap-1">
-                              <BookMarked className="h-3 w-3" />
+                            <div className="font-bold text-blue-800 flex items-center gap-1.5">
+                              <BookMarked className="h-3.5 w-3.5" />
                               {lang === "NEP" ? t.examples.titleNep : t.examples.titleEng}
                             </div>
-                            <div className="leading-relaxed">{lang === "NEP" ? t.examples.contentNep : t.examples.contentEng}</div>
+                            <div className="leading-relaxed text-slate-800">{lang === "NEP" ? t.examples.contentNep : t.examples.contentEng}</div>
                           </div>
                         )}
 
                         {/* Tips Box */}
                         {(t.tipsNep || t.tipsEng) && (
                           <div className={cn(
-                            "rounded p-2 text-[10.5px] border flex items-start gap-1.5",
+                            "rounded-md p-3 text-[11px] border flex items-start gap-2",
                             colorMode === "color"
-                              ? "bg-emerald-50/70 border-emerald-200 text-slate-800"
-                              : "bg-slate-50 border-slate-200 text-slate-800"
+                              ? "bg-emerald-50 border-emerald-200 text-slate-900"
+                              : "bg-slate-50 border-slate-300 text-slate-900"
                           )}>
-                            <Lightbulb className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                            <div className="leading-snug">
-                              <strong className="font-bold text-emerald-700 mr-1">
+                            <Lightbulb className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                            <div className="leading-relaxed text-slate-800">
+                              <strong className="font-bold text-emerald-800 mr-1">
                                 {lang === "NEP" ? "💡 मुख्य टिप्स:" : "💡 Pro Tip:"}
                               </strong>
                               {lang === "NEP" ? t.tipsNep : t.tipsEng}
@@ -704,7 +722,7 @@ export function HelpPrintModal({
             </div>
 
             {/* Footer */}
-            <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-500">
+            <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-[10.5px] text-slate-600 font-medium">
               <div>KhataPlus — Nepal's Smart Cloud POS & Financial Accounting Software</div>
               <div>support@khataplus.com</div>
             </div>
@@ -712,16 +730,16 @@ export function HelpPrintModal({
         </div>
 
         {/* Modal Bottom Footer Actions */}
-        <div className="p-3 bg-secondary/30 border-t border-border/70 flex items-center justify-between text-xs">
+        <div className="p-3 bg-secondary/40 border-t border-border/70 flex items-center justify-between text-xs">
           <div className="text-muted-foreground flex items-center gap-1.5 hidden sm:flex">
             <Info className="h-3.5 w-3.5 text-primary" />
-            <span>{lang === "NEP" ? "Tip: प्रिन्ट डाइलगमा Destination मा 'Save as PDF' छान्नुहोस्।" : "Tip: Choose 'Save as PDF' in the destination dropdown to download."}</span>
+            <span>{lang === "NEP" ? "Tip: प्रिन्ट विन्डोमा Destination मा 'Save as PDF' छान्नुहोस्।" : "Tip: Choose 'Save as PDF' in destination dropdown to save the manual."}</span>
           </div>
           <div className="flex items-center gap-2 ml-auto">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="h-8">
               {lang === "NEP" ? "बन्द गर्नुहोस् (Close)" : "Close"}
             </Button>
-            <Button onClick={handlePrint} size="sm" className="h-8 font-bold gap-1.5 bg-primary text-primary-foreground">
+            <Button onClick={handlePrint} size="sm" className="h-8 font-bold gap-1.5 bg-primary text-primary-foreground shadow-sm">
               <Printer className="h-3.5 w-3.5" />
               {lang === "NEP" ? "प्रिन्ट / PDF डाउनलोड" : "Print / Download PDF"}
             </Button>
