@@ -1425,15 +1425,15 @@ export const AppShell = () => {
                                          {/* Fiscal Year Rollover Banner */}
                                          <div className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 space-y-2">
                                              <div className="flex items-center justify-between flex-wrap gap-2">
-                                                 <div>
+                                                 <div className="max-w-md">
                                                      <div className="text-xs font-bold text-primary flex items-center gap-1.5">
                                                          <RotateCcw className="h-3.5 w-3.5" />
-                                                         <span>{lang === "NEP" ? "आर्थिक वर्ष व्यवस्थापन (Fiscal Year Rollover)" : "Fiscal Year Rollover (आर्थिक वर्ष)"}</span>
+                                                         <span>{lang === "NEP" ? "आर्थिक वर्ष नवीकरण (Fiscal Year Rollover)" : "Fiscal Year Rollover (वार्षिक नवीकरण)"}</span>
                                                      </div>
-                                                     <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                     <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
                                                          {lang === "NEP"
-                                                             ? "नयाँ आर्थिक वर्ष (साउन १) लाग्दा १-क्लिकमा बिल नम्बरहरू १ बाट सुरु गर्न र नयाँ सफिक्स मिलाउनुहोस्।"
-                                                             : "Safely start bill series from #1 and set new fiscal year suffix (e.g. /82-83) with zero data loss."}
+                                                             ? "साउन १ मा नयाँ आर्थिक वर्ष सुरु हुँदा नयाँ कोड (जस्तै: /82-83) सहित बिल नम्बरहरू १ बाट सुरु गर्न। (डाटा १००% सुरक्षित रहन्छ)"
+                                                             : "Safely start bill series from #1 and set new fiscal year suffix (e.g. /82-83) on Shrawan 1 with zero data loss."}
                                                      </p>
                                                  </div>
                                                  <Button
@@ -1802,24 +1802,29 @@ export const AppShell = () => {
                                 );
                             })()}
 
-                            <div className="flex items-center justify-between pt-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-border/40">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    className="text-xs h-7 text-muted-foreground hover:text-foreground"
+                                    className="text-xs h-8 text-muted-foreground hover:text-foreground shrink-0 border-dashed"
                                     onClick={() => {
                                         setTaxInvoiceNextNo("1");
                                         setAbbreviatedNextNo("1");
                                         setBillNextNo("1");
                                         setPurchaseNextNo("1");
                                         setBarcodeStartingNo("1001");
-                                        toast.info(lang === "NEP" ? "काउन्टरहरू रिसेट भए। लागू गर्न सेभ गर्नुहोस्।" : "Counters reset to defaults. Click Save to apply.");
+                                        toast.info(lang === "NEP" ? "काउन्टरहरू १ मा सेट भए। लागू गर्न तल 'Save changes' थिच्नुहोस्।" : "Counters set to defaults (1). Click Save changes below to apply.");
                                     }}
                                 >
                                     <RotateCcw className="h-3 w-3 mr-1" />
-                                    {lang === "NEP" ? "काउन्टर १ मा रिसेट गर्नुहोस्" : "Reset Counters to 1"}
+                                    {lang === "NEP" ? "सबै काउन्टर १ मा ल्याउनुहोस् (Reset Counters to 1)" : "Reset Counters to 1 (काउन्टर १)"}
                                 </Button>
+                                <p className="text-[11px] text-muted-foreground leading-tight">
+                                    💡 <strong>{lang === "NEP" ? "प्रयोजन:" : "Purpose:"}</strong> {lang === "NEP" 
+                                        ? "आर्थिक वर्ष नफेरीकनै केवल बिल, खरिद र बारकोड (1001) का बक्सहरूलाई १ मा ल्याउन (टेस्टिङ वा सुरुवाती सेटअपका लागि)।" 
+                                        : "Resets bill & barcode (1001) form inputs back to 1 without changing fiscal year code."}
+                                </p>
                             </div>
                         </div>
 
