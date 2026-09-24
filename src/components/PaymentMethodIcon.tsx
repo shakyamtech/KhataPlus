@@ -37,28 +37,46 @@ export const PaymentMethodIcon: React.FC<PaymentMethodIconProps> = ({
     );
   }
 
-  // Khalti Official Brand Icon
+  // Khalti Official Brand Icon (New Rebrand Shield + Tag)
   if (normalized === "khalti" || normalized.includes("khalti") || normalized.includes("खल्ती")) {
     return (
       <div
-        className={cn("inline-flex items-center justify-center shrink-0 rounded-md overflow-hidden shadow-xs", className)}
+        className={cn("inline-flex items-center justify-center shrink-0 overflow-hidden shadow-xs", className)}
         style={{ width: size, height: size }}
         title="Khalti Wallet"
       >
-        <svg viewBox="0 0 48 48" className="w-full h-full" fill="none">
-          {/* Brand Background */}
-          <rect width="48" height="48" rx="10" fill="#5C2D91" />
-          {/* Khalti Origami Bird / Stylized K */}
-          <g transform="translate(10, 10)">
-            {/* Top Left Triangle */}
-            <polygon points="0,0 12,0 0,12" fill="#FFFFFF" opacity="0.95" />
-            {/* Top Right Beak / Wing */}
-            <polygon points="12,0 28,6 16,14" fill="#FFFFFF" />
-            {/* Center Body */}
-            <polygon points="0,12 16,14 12,28" fill="#FFFFFF" opacity="0.9" />
-            {/* Bottom Tail */}
-            <polygon points="12,28 28,24 18,16" fill="#FFFFFF" opacity="0.95" />
-          </g>
+        <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
+          {/* Left Orange/Yellow Tag */}
+          <rect
+            x="3"
+            y="33"
+            width="10"
+            height="25"
+            rx="2.5"
+            fill="#F7A600"
+            transform="rotate(-8 8 45)"
+          />
+          {/* Purple Shield Body */}
+          <path
+            d="M20 18C17.5 18 15.5 20 16 23L20.5 62C21.5 75 35 87 51 93C67 87 80.5 75 81.5 62L86 23C86.5 20 84.5 18 82 18H20Z"
+            fill="#522687"
+          />
+          {/* White Bold Rounded Letter K */}
+          <rect x="34.5" y="29" width="8.5" height="42" rx="4.25" fill="#FFFFFF" />
+          <path
+            d="M40 50L62 31"
+            stroke="#FFFFFF"
+            strokeWidth="8.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M43 47L64 70"
+            stroke="#FFFFFF"
+            strokeWidth="8.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </div>
     );
