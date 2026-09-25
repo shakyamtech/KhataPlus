@@ -12,6 +12,7 @@ import { generateBatchSamplePreview, getNepaliFiscalYear } from "@/lib/batch";
 import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
 import { InstallAppModal } from "@/components/InstallAppModal";
 import { BackupModal } from "@/components/BackupModal";
+import { LogoCropModal } from "@/components/LogoCropModal";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -104,6 +105,8 @@ export const AppShell = () => {
     const { colorTheme, setColorTheme } = useColorTheme();
     const [shopName, setShopName] = useState("My Shop");
     const [shopLogo, setShopLogo] = useState<string>("");
+    const [rawImageSrc, setRawImageSrc] = useState<string>("");
+    const [cropModalOpen, setCropModalOpen] = useState<boolean>(false);
     const [newName, setNewName] = useState("");
     const [shopPhone, setShopPhone] = useState("");
     const [panNo, setPanNo] = useState("");
@@ -398,38 +401,15 @@ export const AppShell = () => {
 
         const reader = new FileReader();
         reader.onload = (event) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement("canvas");
-                const maxDim = 256;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > maxDim) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    }
-                } else {
-                    if (height > maxDim) {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                if (ctx) {
-                    ctx.drawImage(img, 0, 0, width, height);
-                    const compressedBase64 = canvas.toDataURL("image/png", 0.9);
-                    setShopLogo(compressedBase64);
-                    toast.success(lang === "NEP" ? "लोगो तयार भयो! सुरक्षित गर्न Save थिच्नुहोस्।" : "Logo uploaded! Click Save to apply.");
-                }
-            };
-            img.src = event.target?.result as string;
+            const result = event.target?.result as string;
+            if (result) {
+                setRawImageSrc(result);
+                setCropModalOpen(true);
+            }
         };
         reader.readAsDataURL(file);
+        // Reset file input so same file can be re-picked
+        e.target.value = "";
     };
 
     const handleSaveShop = async () => {
@@ -2507,6 +2487,20 @@ export const AppShell = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Logo Crop, Zoom & WebP Optimizer Modal */}
+            <LogoCropModal
+                open={cropModalOpen}
+                onClose={() => setCropModalOpen(false)}
+                imageSrc={rawImageSrc}
+                shopName={newName || shopName}
+                userName={fullName || user?.displayName || user?.email?.split("@")[0] || ""}
+                isAdmin={isAdmin}
+                lang={lang}
+                onApply={(croppedWebpBase64) => {
+                    setShopLogo(croppedWebpBase64);
+                }}
+            />
         </div>
     );
 };
