@@ -2299,11 +2299,11 @@ export const AppShell = () => {
                             </div>
 
                             <div className="max-h-60 overflow-y-auto pr-2 space-y-3.5 text-xs divide-y divide-border/40">
-                                {/* Version 2.2.0 */}
+                                {/* Version 2.3.0 */}
                                 <div className="space-y-2 pt-1">
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-foreground text-sm">v2.2.0</span>
+                                            <span className="font-bold text-foreground text-sm">v2.3.0</span>
                                             <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                                 <span>{lang === "NEP" ? "हालको" : "Latest"}</span>
                                                 <span className="relative flex h-2 w-2 shrink-0">
@@ -2312,6 +2312,24 @@ export const AppShell = () => {
                                                 </span>
                                             </span>
                                         </div>
+                                        <span className="text-[10px] text-muted-foreground font-medium shrink-0">25 Sep 2026</span>
+                                    </div>
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1.5 pl-3 list-disc list-outside">
+                                        <li>{lang === "NEP" ? "कम्पनी White-Labeling: इन्टर्याक्टिभ Crop, Zoom, Pan र Auto-WebP (< 100KB) सहित कम्पनी Logo अपलोड प्रणाली" : "Custom White-Labeling: Upload Company Logo with interactive Crop, Zoom, Pan & Auto-WebP Compression (< 100KB)"}</li>
+                                        <li>{lang === "NEP" ? "ब्रान्डेड हेडर: कम्पनीको आफ्नै Logo, कम्पनीको नाम र अपरेटरको नाम प्रमुख रूपमा देखिने व्यवस्था" : "Dynamic Branded Header: Replaced generic logo with client's Company Logo/Name and Operator Name"}</li>
+                                        <li>{lang === "NEP" ? "आधिकारिक भुक्तानी लोगो: eSewa, Khalti (पर्पल शिल्ड), Fonepay, Bank र Cash का वास्तविक भ्याक्टर लोगोहरू" : "Authentic Vector Payment Brand Logos for eSewa, Khalti (Shield), Fonepay, Bank & Cash in POS & Cashbook"}</li>
+                                        <li>{lang === "NEP" ? "पीओएस एनिमेसन र सफा रकम: सामान कार्टमा खस्ने ३D एनिमेसन र दशमलव विहीन सफा रकम डिस्प्ले" : "Interactive Animated POS Cart (Spring Roll & Item Drop) & Clean Whole-Currency Display"}</li>
+                                        <li>{lang === "NEP" ? "मद्दत तथा ज्ञान केन्द्र (/help): A4 प्रिन्ट तथा PDF डाउनलोड सुविधा सहितको पूर्ण नेपाली प्रयोग निर्देशिका" : "Comprehensive Bilingual Help & User Guide (/help) with A4 Print & PDF Export Studio"}</li>
+                                        <li>{lang === "NEP" ? "स्मार्ट नाफा क्याल्कुलेटर: खरिद मूल्यबाट स्वतः बिक्री मूल्य निकाल्ने रियल-टाइम प्रोफिट मार्जिन सिंक" : "Smart Cost-to-Sell Profit Margin Calculator & Real-Time Sync"}</li>
+                                        <li>{lang === "NEP" ? "ओपनिङ स्टक र पूंजी भाउचर: स्टक समायोजनबाट नयाँ स्टक थप्दा स्वचालित डबल-एन्ट्री पूँजी लेजर भाउचर" : "Opening Stock & Batch Adjustments with Owner's Capital Equity Double-Entry Accounting"}</li>
+                                        <li>{lang === "NEP" ? "एडमिन प्यानल रि-डिजाइन: युजर म्यानेजमेन्ट कार्डहरू प्रिमियम गोल्ड प्लान र २×३ एक्सन ग्रिडमा व्यवस्थित" : "Streamlined Admin User Management Action Grid (2x3 Layout)"}</li>
+                                    </ul>
+                                </div>
+
+                                {/* Version 2.2.0 */}
+                                <div className="space-y-2 pt-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="font-bold text-foreground text-sm">v2.2.0</span>
                                         <span className="text-[10px] text-muted-foreground font-medium shrink-0">14 Sep 2026</span>
                                     </div>
                                     <ul className="text-[11.5px] text-muted-foreground space-y-1.5 pl-3 list-disc list-outside">
