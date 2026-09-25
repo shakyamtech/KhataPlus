@@ -5,7 +5,7 @@ import { APP_VERSION, APP_VERSION_NEP } from "@/lib/version";
 import {
     LayoutDashboard, ShoppingCart, Package, Users, Truck,
     BookOpen, Wallet, BarChart3, FileSpreadsheet, LogOut, BookText, Shield, Settings,
-    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, AlertTriangle, Check, Loader2, Scale, Languages, Landmark, Volume2, TrendingUp, Percent, HelpCircle
+    Eye, EyeOff, Menu, RotateCcw, Trash2, User, Store, Palette, Sun, Moon, Laptop, Info, ArrowRight, Sparkles, Smartphone, QrCode, Layers, Crown, Database, Clock, AlertCircle, AlertTriangle, Check, Loader2, Scale, Languages, Landmark, Volume2, TrendingUp, Percent, HelpCircle, Upload, X, Camera
 } from "lucide-react";
 import { BARCODE_SOUND_OPTIONS, BarcodeSoundType, playScanBeep } from "@/lib/sound";
 import { generateBatchSamplePreview, getNepaliFiscalYear } from "@/lib/batch";
@@ -83,6 +83,16 @@ function getUserInitials(name?: string, email?: string): string {
     return "US";
 }
 
+function getShopInitials(name?: string): string {
+    const clean = (name || "").trim().replace(/^(M\/S|M\/s|m\/s)\s+/i, "");
+    if (!clean) return "KP";
+    const words = clean.split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+        return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return clean.slice(0, 2).toUpperCase();
+}
+
 export const AppShell = () => {
     const { lang, setLang, t } = useLanguage();
     const { user, signOut } = useAuth();
@@ -93,6 +103,7 @@ export const AppShell = () => {
     const { setTheme } = useTheme();
     const { colorTheme, setColorTheme } = useColorTheme();
     const [shopName, setShopName] = useState("My Shop");
+    const [shopLogo, setShopLogo] = useState<string>("");
     const [newName, setNewName] = useState("");
     const [shopPhone, setShopPhone] = useState("");
     const [panNo, setPanNo] = useState("");
@@ -284,6 +295,7 @@ export const AppShell = () => {
     useEffect(() => {
         if (!user) {
             setShopName("My Shop");
+            setShopLogo("");
             return;
         }
 
@@ -295,10 +307,14 @@ export const AppShell = () => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     const sName = data.shop_name || "KhataPlus Shop";
+                    const sLogo = data.shop_logo || data.logo_url || "";
                     setShopName(sName);
+                    setShopLogo(sLogo);
                     setNewName(sName);
                     setFullName(data.full_name || data.name || user.displayName || "");
                     localStorage.setItem("khataplus_shop_name", sName);
+                    if (sLogo) localStorage.setItem("khataplus_shop_logo", sLogo);
+                    else localStorage.removeItem("khataplus_shop_logo");
                     setShopPhone(data.shop_phone || data.phone || "");
                     setShopAddress(data.shop_address || data.address || "");
                     setPanNo(data.pan_no || "");
@@ -359,6 +375,7 @@ export const AppShell = () => {
                     }
                 } else {
                     setShopName("KhataPlus Shop");
+                    setShopLogo("");
                     setHasMigrated(true);
                 }
             } catch (e) {
@@ -369,6 +386,105 @@ export const AppShell = () => {
 
         loadProfile();
     }, [user]);
+
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith("image/")) {
+            toast.error(lang === "NEP" ? "कृपया तस्बिर (Image) फाइल मात्र छान्नुहोस्" : "Please select an image file");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                const maxDim = 256;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxDim) {
+                        height = Math.round((height * maxDim) / width);
+                        width = maxDim;
+                    }
+                } else {
+                    if (height > maxDim) {
+                        width = Math.round((width * maxDim) / height);
+                        height = maxDim;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressedBase64 = canvas.toDataURL("image/png", 0.9);
+                    setShopLogo(compressedBase64);
+                    toast.success(lang === "NEP" ? "लोगो तयार भयो! सुरक्षित गर्न Save थिच्नुहोस्।" : "Logo uploaded! Click Save to apply.");
+                }
+            };
+            img.src = event.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleSaveShop = async () => {
+        if (!newName.trim()) return toast.error("Shop name cannot be empty");
+
+        setBusy(true);
+        try {
+            await setDoc(doc(db, "profiles", user.uid), {
+                shop_name: newName,
+                shop_logo: shopLogo || null,
+                shop_phone: shopPhone.trim() || null,
+                shop_address: shopAddress.trim() || null,
+                pan_no: panNo,
+                tax_type: taxType,
+                is_vat_registered: taxType === "vat",
+                tax_invoice_prefix: taxInvoicePrefix.trim() || "TAX-",
+                tax_invoice_suffix: taxInvoiceSuffix.trim(),
+                tax_invoice_next_no: Math.max(1, parseInt(taxInvoiceNextNo) || 1),
+                abbreviated_prefix: abbreviatedPrefix.trim() || "ABB-",
+                abbreviated_suffix: abbreviatedSuffix.trim(),
+                abbreviated_next_no: Math.max(1, parseInt(abbreviatedNextNo) || 1),
+                bill_prefix: billPrefix.trim() || "BILL-",
+                bill_suffix: billSuffix.trim(),
+                bill_next_no: Math.max(1, parseInt(billNextNo) || 1),
+                purchase_prefix: purchasePrefix.trim() || "INW-",
+                purchase_suffix: purchaseSuffix.trim(),
+                purchase_next_no: Math.max(1, parseInt(purchaseNextNo) || 1),
+                batch_prefix_style: batchPrefixStyle,
+                batch_custom_prefix: batchCustomPrefix.trim().toUpperCase() || "BATCH-",
+                batch_date_format: batchDateFormat,
+                batch_digits: batchDigits === "4" ? 4 : 3,
+                barcode_starting_no: Math.max(1, parseInt(barcodeStartingNo) || 1001),
+                local_level_type: localLevelType,
+                business_nature: businessNature,
+                entity_type: entityType,
+                marital_status: maritalStatus,
+                barcode_scan_sound: barcodeScanSound,
+                default_profit_margin: defaultProfitMargin.trim() ? Math.max(0, parseFloat(defaultProfitMargin) || 0) : null
+            }, { merge: true });
+
+            setShopName(newName);
+            localStorage.setItem("khataplus_shop_name", newName);
+            if (shopLogo) localStorage.setItem("khataplus_shop_logo", shopLogo);
+            else localStorage.removeItem("khataplus_shop_logo");
+            localStorage.setItem("khataplus_barcode_scan_sound", barcodeScanSound);
+
+            toast.success("Shop settings saved successfully!");
+            setShopOpen(false);
+        } catch (err: any) {
+            toast.error(err.message || "An error occurred");
+        } finally {
+            setBusy(false);
+            setPassword("");
+        }
+    };
 
     useEffect(() => {
         if (!shopOpen || !user) return;
@@ -473,57 +589,6 @@ export const AppShell = () => {
 
             toast.success("Profile details updated successfully!");
             setProfileOpen(false);
-        } catch (err: any) {
-            toast.error(err.message || "An error occurred");
-        } finally {
-            setBusy(false);
-            setPassword("");
-        }
-    };
-
-    const handleSaveShop = async () => {
-        if (!newName.trim()) return toast.error("Shop name cannot be empty");
-
-        setBusy(true);
-        try {
-            await setDoc(doc(db, "profiles", user.uid), {
-                shop_name: newName,
-                shop_phone: shopPhone.trim() || null,
-                shop_address: shopAddress.trim() || null,
-                pan_no: panNo,
-                tax_type: taxType,
-                is_vat_registered: taxType === "vat",
-                tax_invoice_prefix: taxInvoicePrefix.trim() || "TAX-",
-                tax_invoice_suffix: taxInvoiceSuffix.trim(),
-                tax_invoice_next_no: Math.max(1, parseInt(taxInvoiceNextNo) || 1),
-                abbreviated_prefix: abbreviatedPrefix.trim() || "ABB-",
-                abbreviated_suffix: abbreviatedSuffix.trim(),
-                abbreviated_next_no: Math.max(1, parseInt(abbreviatedNextNo) || 1),
-                bill_prefix: billPrefix.trim() || "BILL-",
-                bill_suffix: billSuffix.trim(),
-                bill_next_no: Math.max(1, parseInt(billNextNo) || 1),
-                purchase_prefix: purchasePrefix.trim() || "INW-",
-                purchase_suffix: purchaseSuffix.trim(),
-                purchase_next_no: Math.max(1, parseInt(purchaseNextNo) || 1),
-                batch_prefix_style: batchPrefixStyle,
-                batch_custom_prefix: batchCustomPrefix.trim().toUpperCase() || "BATCH-",
-                batch_date_format: batchDateFormat,
-                batch_digits: batchDigits === "4" ? 4 : 3,
-                barcode_starting_no: Math.max(1, parseInt(barcodeStartingNo) || 1001),
-                local_level_type: localLevelType,
-                business_nature: businessNature,
-                entity_type: entityType,
-                marital_status: maritalStatus,
-                barcode_scan_sound: barcodeScanSound,
-                default_profit_margin: defaultProfitMargin.trim() ? Math.max(0, parseFloat(defaultProfitMargin) || 0) : null
-            }, { merge: true });
-
-            setShopName(newName);
-            localStorage.setItem("khataplus_shop_name", newName);
-            localStorage.setItem("khataplus_barcode_scan_sound", barcodeScanSound);
-
-            toast.success("Shop settings saved successfully!");
-            setShopOpen(false);
         } catch (err: any) {
             toast.error(err.message || "An error occurred");
         } finally {
@@ -931,14 +996,36 @@ export const AppShell = () => {
     return (
         <div className="flex min-h-screen bg-background">
             <aside className="hidden md:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-                <div className="px-6 py-6 border-b border-sidebar-border">
-                    <div className="flex items-center gap-2">
-                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] shadow-[0_2px_10px_rgba(6,182,212,0.4)] flex items-center justify-center hover:scale-110 hover:shadow-[0_4px_15px_rgba(6,182,212,0.6)] hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer group shrink-0">
-                            <BookText className="h-5 w-5 text-white group-hover:-rotate-12 transition-transform duration-300" />
-                        </div>
+                <div 
+                    onClick={() => {
+                        setNewName(shopName);
+                        setShopOpen(true);
+                    }}
+                    className="px-4 py-4 border-b border-sidebar-border cursor-pointer hover:bg-sidebar-accent/40 transition-colors group select-none"
+                    title={lang === "NEP" ? "पसलको सेटिङ खोल्न यहाँ क्लिक गर्नुहोस्" : "Click to manage shop settings"}
+                >
+                    <div className="flex items-center gap-3">
+                        {shopLogo ? (
+                            <div className="h-10 w-10 rounded-xl overflow-hidden border border-sidebar-border shadow-md bg-white/5 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:shadow-primary/20 transition-all">
+                                <img src={shopLogo} alt={shopName} className="h-full w-full object-contain p-0.5" />
+                            </div>
+                        ) : (
+                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] shadow-[0_2px_10px_rgba(6,182,212,0.4)] flex items-center justify-center font-bold text-white text-sm group-hover:scale-105 group-hover:shadow-[0_4px_15px_rgba(6,182,212,0.6)] group-hover:-translate-y-0.5 transition-all duration-300 shrink-0">
+                                {getShopInitials(shopName)}
+                            </div>
+                        )}
                         <div className="flex-1 min-w-0">
-                            <div className="font-display text-lg leading-tight">KhataPlus</div>
-                            <div className="text-xs text-sidebar-foreground/60 truncate">{shopName}</div>
+                            <div className="font-display font-bold text-sm md:text-[15px] leading-tight text-sidebar-foreground truncate" title={shopName}>
+                                {shopName || "My Shop"}
+                            </div>
+                            <div className="text-[11px] text-sidebar-foreground/60 truncate flex items-center gap-1.5 mt-0.5 font-medium">
+                                <span className="truncate">{fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "प्रयोगकर्ता" : "User")}</span>
+                                {isAdmin && (
+                                    <span className="text-[9px] px-1.5 py-0.2 font-bold rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+                                        Admin
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -984,7 +1071,7 @@ export const AppShell = () => {
                     </div>
                 </div>
 
-                <div className="p-3 border-t border-sidebar-border mt-auto space-y-2">
+                <div className="p-3 border-t border-sidebar-border mt-auto space-y-2.5">
                     <button
                         onClick={() => setInstallModalOpen(true)}
                         className="w-full flex items-center justify-between p-2.5 rounded-xl bg-sidebar-accent/50 hover:bg-sidebar-accent text-sidebar-foreground border border-sidebar-border/40 text-xs font-semibold transition-all group shadow-xs hover:border-primary/40"
@@ -997,7 +1084,15 @@ export const AppShell = () => {
                         </div>
                         <QrCode className="h-4 w-4 text-sidebar-foreground/60 group-hover:text-primary transition-colors" />
                     </button>
-                    <div className="px-1 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} {lang === "NEP" ? APP_VERSION_NEP : APP_VERSION}</div>
+                    <div className="pt-2 px-1 flex items-center justify-between text-[11px] text-sidebar-foreground/50 border-t border-sidebar-border/30 select-none">
+                        <div className="flex items-center gap-1.5 font-bold tracking-tight text-primary/80">
+                            <BookText className="h-3.5 w-3.5" />
+                            <span>KhataPlus</span>
+                        </div>
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-md bg-sidebar-accent/60 border border-sidebar-border/50 text-sidebar-foreground/60">
+                            v{lang === "NEP" ? APP_VERSION_NEP : APP_VERSION}
+                        </span>
+                    </div>
                 </div>
             </aside>
 
@@ -1008,24 +1103,46 @@ export const AppShell = () => {
 
             {/* Mobile top bar */}
             <div className="md:hidden fixed top-0 inset-x-0 z-50 bg-sidebar text-sidebar-foreground px-4 py-3 flex items-center justify-between border-b border-sidebar-border shadow-md">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
                     <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                         <SheetTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-10 w-10 active:scale-95">
+                            <Button size="icon" variant="ghost" className="h-10 w-10 active:scale-95 shrink-0">
                                 <Menu className="h-6 w-6" />
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" className="w-[85%] max-w-[300px] p-0 bg-sidebar border-r-sidebar-border flex flex-col [&>button]:text-white [&>button]:opacity-70 hover:[&>button]:opacity-100">
                             <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                             <SheetDescription className="sr-only">Quick access links and account management</SheetDescription>
-                            <div className="px-6 py-8 border-b border-sidebar-border bg-sidebar-accent/30">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] flex items-center justify-center shadow-[0_4px_15px_rgba(6,182,212,0.5)] shrink-0 hover:scale-110 hover:shadow-[0_6px_20px_rgba(6,182,212,0.7)] hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer group">
-                                        <BookText className="h-7 w-7 text-white group-hover:-rotate-12 transition-transform duration-300" />
-                                    </div>
-                                    <div>
-                                        <div className="font-display text-xl leading-tight text-sidebar-foreground">KhataPlus</div>
-                                        <div className="text-xs text-sidebar-foreground/60 uppercase tracking-tight truncate mt-0.5">{shopName}</div>
+                            <div 
+                                onClick={() => {
+                                    setMobileMenuOpen(false);
+                                    setNewName(shopName);
+                                    setShopOpen(true);
+                                }}
+                                className="px-5 py-6 border-b border-sidebar-border bg-sidebar-accent/30 cursor-pointer hover:bg-sidebar-accent/50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3.5">
+                                    {shopLogo ? (
+                                        <div className="h-12 w-12 rounded-2xl overflow-hidden border border-sidebar-border shadow-md bg-white/5 flex items-center justify-center shrink-0">
+                                            <img src={shopLogo} alt={shopName} className="h-full w-full object-contain p-0.5" />
+                                        </div>
+                                    ) : (
+                                        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] flex items-center justify-center shadow-[0_4px_15px_rgba(6,182,212,0.5)] font-bold text-white text-base shrink-0">
+                                            {getShopInitials(shopName)}
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-display font-bold text-base leading-tight text-sidebar-foreground truncate" title={shopName}>
+                                            {shopName || "My Shop"}
+                                        </div>
+                                        <div className="text-xs text-sidebar-foreground/60 truncate flex items-center gap-1.5 mt-0.5 font-medium">
+                                            <span className="truncate">{fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "प्रयोगकर्ता" : "User")}</span>
+                                            {isAdmin && (
+                                                <span className="text-[9px] px-1.5 py-0.2 font-bold rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+                                                    Admin
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1045,16 +1162,38 @@ export const AppShell = () => {
                                 })}
                             </nav>
 
-                            <div className="p-6 border-t border-sidebar-border mt-auto">
-                                <div className="px-1 mb-4 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-widest">{t.version} {lang === "NEP" ? APP_VERSION_NEP : APP_VERSION}</div>
-                                <Button className="w-full justify-start gap-3 h-12 rounded-xl shadow-lg bg-[#FACC15] hover:bg-[#EAB308] text-black border-none font-bold"
+                            <div className="p-4 border-t border-sidebar-border mt-auto space-y-3">
+                                <div className="flex items-center justify-between text-xs text-sidebar-foreground/60 bg-sidebar-accent/40 px-3 py-2 rounded-xl border border-sidebar-border/40">
+                                    <div className="flex items-center gap-1.5 font-bold text-sidebar-foreground">
+                                        <BookText className="h-4 w-4 text-primary" />
+                                        <span>KhataPlus</span>
+                                    </div>
+                                    <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-sidebar-accent text-sidebar-foreground/80 border border-sidebar-border/60">
+                                        v{lang === "NEP" ? APP_VERSION_NEP : APP_VERSION}
+                                    </span>
+                                </div>
+                                <Button className="w-full justify-start gap-3 h-11 rounded-xl shadow-lg bg-[#FACC15] hover:bg-[#EAB308] text-black border-none font-bold"
                                     onClick={async () => { await signOut(); navigate("/auth"); }}>
                                     <LogOut className="h-5 w-5" /> {t.signOut}
                                 </Button>
                             </div>
                         </SheetContent>
                     </Sheet>
-                    <div className="text-sm font-bold bg-sidebar-accent px-3 py-1.5 rounded-lg text-sidebar-foreground truncate max-w-[220px] uppercase tracking-tight">{shopName}</div>
+                    
+                    <div 
+                        onClick={() => {
+                            setNewName(shopName);
+                            setShopOpen(true);
+                        }}
+                        className="flex items-center gap-2 bg-sidebar-accent/80 hover:bg-sidebar-accent px-2.5 py-1.5 rounded-xl text-sidebar-foreground min-w-0 max-w-[200px] cursor-pointer border border-sidebar-border/50 truncate transition-colors"
+                    >
+                        {shopLogo ? (
+                            <img src={shopLogo} alt={shopName} className="h-5 w-5 rounded-md object-contain shrink-0" />
+                        ) : (
+                            <Store className="h-4 w-4 text-primary shrink-0" />
+                        )}
+                        <span className="text-xs font-bold truncate tracking-tight">{shopName}</span>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
@@ -1264,6 +1403,70 @@ export const AppShell = () => {
                         </div>
                     </DialogHeader>
                     <div className="space-y-4 py-2 overflow-y-auto overflow-x-hidden flex-1 px-1">
+                        {/* Shop / Company Logo Upload */}
+                        <div className="p-3.5 rounded-2xl bg-secondary/30 border border-border/70 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <Store className="h-3.5 w-3.5 text-primary" />
+                                    <span>{lang === "NEP" ? "कम्पनी / पसलको Logo (White-labeling)" : "Company / Shop Logo"}</span>
+                                </Label>
+                                <span className="text-[10px] text-muted-foreground">
+                                    {lang === "NEP" ? "PNG / JPG (सिफारिस: स्क्वायर)" : "PNG / JPG (Square recommended)"}
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <div className="relative group shrink-0">
+                                    {shopLogo ? (
+                                        <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-primary/30 shadow-md bg-background flex items-center justify-center p-1">
+                                            <img src={shopLogo} alt="Shop Logo" className="h-full w-full object-contain" />
+                                        </div>
+                                    ) : (
+                                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] shadow-md flex items-center justify-center font-bold text-white text-lg tracking-wider">
+                                            {getShopInitials(newName || shopName)}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex-1 space-y-1.5">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <label className="cursor-pointer">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleLogoUpload}
+                                                className="hidden"
+                                            />
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all shadow-xs active:scale-95">
+                                                <Upload className="h-3.5 w-3.5" />
+                                                {shopLogo ? (lang === "NEP" ? "लोगो परिवर्तन गर्नुहोस्" : "Change Logo") : (lang === "NEP" ? "लोगो अपलोड गर्नुहोस्" : "Upload Logo")}
+                                            </span>
+                                        </label>
+                                        {shopLogo && (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setShopLogo("");
+                                                    toast.info(lang === "NEP" ? "लोगो हटाइयो। सुरक्षित गर्न Save थिच्नुहोस्।" : "Logo removed. Click Save to apply.");
+                                                }}
+                                                className="h-8 text-xs text-destructive hover:bg-destructive/10 border-destructive/30"
+                                            >
+                                                <X className="h-3.5 w-3.5 mr-1" />
+                                                {lang === "NEP" ? "हटाउनुहोस्" : "Remove"}
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground leading-tight">
+                                        {lang === "NEP" 
+                                            ? "यहाँ राखिएको लोगो सफ्टवेयरको Header तथा Sidebar मा प्रमुख रूपमा देखिनेछ।"
+                                            : "This logo will appear prominently on the top header and sidebar."}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <Label>{t.shopName}</Label>
                             <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Enter shop name..." />
