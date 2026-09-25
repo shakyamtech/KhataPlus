@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Crop, ZoomIn, ZoomOut, RotateCw, Check, Sparkles, Move, ShieldCheck } from "lucide-react";
+import { Crop, ZoomIn, ZoomOut, RotateCw, Check, Sparkles, Move, ShieldCheck, Maximize2, Minimize2, Palette } from "lucide-react";
 import { toast } from "sonner";
 
 interface LogoCropModalProps {
@@ -24,7 +24,7 @@ interface LogoCropModalProps {
 }
 
 const VIEWPORT_SIZE = 280; // Size of the interactive crop box
-const OUTPUT_SIZE = 256;   // Standard export size for crisp retina display
+const OUTPUT_SIZE = 256;   // Standard export size for retina display
 
 export const LogoCropModal: React.FC<LogoCropModalProps> = ({
     open,
@@ -41,13 +41,14 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
     const [zoom, setZoom] = useState<number>(1);
     const [rotation, setRotation] = useState<number>(0);
     const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+    const [bgColor, setBgColor] = useState<"transparent" | "white" | "dark">("transparent");
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
     const [livePreviewUrl, setLivePreviewUrl] = useState<string>("");
     const [approxSizeKb, setApproxSizeKb] = useState<number>(0);
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-    // Load Image
+    // Load Image & auto-center
     useEffect(() => {
         if (!imageSrc) return;
         const img = new Image();
@@ -75,13 +76,22 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
         // Clear canvas
         ctx.clearRect(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE);
 
+        // Fill user-selected background if white or dark
+        if (bgColor === "white") {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE);
+        } else if (bgColor === "dark") {
+            ctx.fillStyle = "#0f172a";
+            ctx.fillRect(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE);
+        }
+
         ctx.save();
         // Move to center of viewport
         ctx.translate(VIEWPORT_SIZE / 2 + offset.x, VIEWPORT_SIZE / 2 + offset.y);
         ctx.rotate((rotation * Math.PI) / 180);
         ctx.scale(zoom, zoom);
 
-        // Fit base image aspect ratio
+        // Base image dimension calculation
         const imgAspect = imgElement.width / imgElement.height;
         let drawW = VIEWPORT_SIZE;
         let drawH = VIEWPORT_SIZE;
@@ -96,7 +106,7 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
 
         // Generate live thumbnail preview data URL
         try {
-            const previewData = canvas.toDataURL("image/webp", 0.85);
+            const previewData = canvas.toDataURL("image/webp", 0.88);
             setLivePreviewUrl(previewData);
             const kb = Math.round((previewData.length * 0.75) / 1024);
             setApproxSizeKb(kb);
@@ -104,7 +114,7 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
             const previewData = canvas.toDataURL("image/png");
             setLivePreviewUrl(previewData);
         }
-    }, [imgElement, zoom, rotation, offset]);
+    }, [imgElement, zoom, rotation, offset, bgColor]);
 
     useEffect(() => {
         drawCanvas();
@@ -136,7 +146,21 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
     const handleWheel = (e: React.WheelEvent) => {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        setZoom((prev) => Math.min(3.5, Math.max(0.6, parseFloat((prev + delta).toFixed(2)))));
+        setZoom((prev) => Math.min(3.5, Math.max(0.5, parseFloat((prev + delta).toFixed(2)))));
+    };
+
+    // Fit / Fill Shortcuts
+    const handleFitInside = () => {
+        if (!imgElement) return;
+        const imgAspect = imgElement.width / imgElement.height;
+        const fitZoom = imgAspect > 1 ? 1 / imgAspect : imgAspect;
+        setZoom(parseFloat(fitZoom.toFixed(2)));
+        setOffset({ x: 0, y: 0 });
+    };
+
+    const handleFillCover = () => {
+        setZoom(1);
+        setOffset({ x: 0, y: 0 });
     };
 
     // Apply Crop & Compress to WebP under 100KB
@@ -151,10 +175,16 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
             const ctx = exportCanvas.getContext("2d");
             if (!ctx) throw new Error("Could not initialize canvas context");
 
-            // Fill transparent/clean
             ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
 
-            // Calculate scale from viewport to export
+            if (bgColor === "white") {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+            } else if (bgColor === "dark") {
+                ctx.fillStyle = "#0f172a";
+                ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+            }
+
             const scaleMultiplier = OUTPUT_SIZE / VIEWPORT_SIZE;
 
             ctx.save();
@@ -177,18 +207,17 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
             ctx.drawImage(imgElement, -drawW / 2, -drawH / 2, drawW, drawH);
             ctx.restore();
 
-            // Export to WebP and ensure under 100KB
+            // Export to WebP with smart compression
             let quality = 0.88;
             let webpData = exportCanvas.toDataURL("image/webp", quality);
 
-            // Fallback for browsers that don't support webp encoding
             if (!webpData.startsWith("data:image/webp")) {
-                webpData = exportCanvas.toDataURL("image/jpeg", quality);
+                webpData = exportCanvas.toDataURL("image/png");
             }
 
             let sizeKb = Math.round((webpData.length * 0.75) / 1024);
 
-            // Auto-compress iteratively if needed to ensure strictly < 90KB
+            // Auto-compress if needed to stay strictly under 85KB
             while (sizeKb > 85 && quality > 0.25) {
                 quality -= 0.1;
                 webpData = exportCanvas.toDataURL("image/webp", quality);
@@ -198,8 +227,8 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
             onApply(webpData, sizeKb);
             toast.success(
                 lang === "NEP"
-                    ? `लोगो क्रप तथा कम्प्रेस भयो (${sizeKb} KB)! पसल सेटिङ सुरक्षित गर्न Save थिच्नुहोस्।`
-                    : `Logo cropped & optimized (${sizeKb} KB)! Click Save to apply.`
+                    ? `लोगो सफलतापूर्वक तयार भयो (${sizeKb} KB)! पसल सेटिङ सुरक्षित गर्न Save थिच्नुहोस्।`
+                    : `Logo updated & optimized (${sizeKb} KB)! Click Save to apply.`
             );
             onClose();
         } catch (err: any) {
@@ -221,13 +250,13 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
                             <DialogTitle className="text-base font-bold flex items-center gap-2">
                                 <span>{lang === "NEP" ? "कम्पनीको लोगो मिलाउनुहोस् (Crop & Zoom)" : "Adjust & Crop Logo"}</span>
                                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
-                                    Auto-WebP &lt;100KB
+                                    WebP &lt;100KB
                                 </span>
                             </DialogTitle>
                             <DialogDescription className="text-xs text-muted-foreground mt-0.5">
                                 {lang === "NEP"
-                                    ? "तस्बिरलाई तानेर (Drag) वा जुम (Zoom) गरेर उपयुक्त साइजमा मिलाउनुहोस्।"
-                                    : "Drag to reposition and use the slider to zoom your logo."}
+                                    ? "माउसले तानेर र जुम स्लाइडर चलाएर लोगोलाई बाकसभित्र मिलाउनुहोस्।"
+                                    : "Drag to position and use the slider/buttons to zoom your logo."}
                             </DialogDescription>
                         </div>
                     </div>
@@ -238,8 +267,14 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
                         {/* Interactive Crop Viewport */}
                         <div className="sm:col-span-7 flex flex-col items-center">
                             <div
-                                className="relative rounded-2xl overflow-hidden border-2 border-primary/40 bg-slate-950/80 shadow-inner select-none cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
-                                style={{ width: VIEWPORT_SIZE, height: VIEWPORT_SIZE }}
+                                className="relative rounded-2xl overflow-hidden border-2 border-primary/50 shadow-md select-none cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
+                                style={{
+                                    width: VIEWPORT_SIZE,
+                                    height: VIEWPORT_SIZE,
+                                    backgroundColor: bgColor === "white" ? "#ffffff" : bgColor === "dark" ? "#0f172a" : "#020617",
+                                    backgroundImage: bgColor === "transparent" ? "radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px)" : "none",
+                                    backgroundSize: "14px 14px",
+                                }}
                                 onPointerDown={handlePointerDown}
                                 onPointerMove={handlePointerMove}
                                 onPointerUp={handlePointerUp}
@@ -247,28 +282,26 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
                             >
                                 <canvas ref={canvasRef} className="pointer-events-none block" />
 
-                                {/* Viewport Overlay Grid & Focus Frame */}
-                                <div className="absolute inset-0 pointer-events-none border border-white/10 rounded-2xl">
-                                    {/* Rule of Thirds Grid Guidelines */}
-                                    <div className="absolute inset-x-0 top-1/3 border-b border-white/15 border-dashed" />
-                                    <div className="absolute inset-x-0 top-2/3 border-b border-white/15 border-dashed" />
-                                    <div className="absolute inset-y-0 left-1/3 border-r border-white/15 border-dashed" />
-                                    <div className="absolute inset-y-0 left-2/3 border-r border-white/15 border-dashed" />
+                                {/* Focus Frame & Grid Guides */}
+                                <div className="absolute inset-0 pointer-events-none rounded-2xl border border-primary/30">
+                                    <div className="absolute inset-x-0 top-1/3 border-b border-primary/20 border-dashed" />
+                                    <div className="absolute inset-x-0 top-2/3 border-b border-primary/20 border-dashed" />
+                                    <div className="absolute inset-y-0 left-1/3 border-r border-primary/20 border-dashed" />
+                                    <div className="absolute inset-y-0 left-2/3 border-r border-primary/20 border-dashed" />
 
-                                    {/* Corner Guides */}
-                                    <div className="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-primary" />
-                                    <div className="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-primary" />
-                                    <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-primary" />
-                                    <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-primary" />
+                                    <div className="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 border-primary" />
+                                    <div className="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 border-primary" />
+                                    <div className="absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 border-primary" />
+                                    <div className="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 border-primary" />
                                 </div>
 
-                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-sm border border-white/10 text-[10px] text-white/80 font-medium flex items-center gap-1 pointer-events-none whitespace-nowrap">
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-sm border border-white/10 text-[10px] text-white/90 font-medium flex items-center gap-1.5 pointer-events-none whitespace-nowrap shadow-sm">
                                     <Move className="h-3 w-3 text-primary animate-pulse" />
                                     <span>{lang === "NEP" ? "तानेर मिलाउनुहोस्" : "Drag to Reposition"}</span>
                                 </div>
                             </div>
 
-                            {/* Zoom & Rotation Toolbar */}
+                            {/* Controls: Zoom, Fit, Rotate */}
                             <div className="w-full max-w-[280px] mt-3 space-y-2">
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -276,14 +309,14 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
                                         size="icon"
                                         variant="outline"
                                         className="h-8 w-8 shrink-0 rounded-lg"
-                                        onClick={() => setZoom((z) => Math.max(0.6, parseFloat((z - 0.1).toFixed(2))))}
+                                        onClick={() => setZoom((z) => Math.max(0.5, parseFloat((z - 0.1).toFixed(2))))}
                                         title="Zoom Out"
                                     >
                                         <ZoomOut className="h-3.5 w-3.5" />
                                     </Button>
                                     <input
                                         type="range"
-                                        min="0.6"
+                                        min="0.5"
                                         max="3.0"
                                         step="0.05"
                                         value={zoom}
@@ -311,6 +344,33 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
                                         <RotateCw className="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
+
+                                {/* Quick Fit Options */}
+                                <div className="flex items-center justify-between gap-2 pt-1 text-[11px]">
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="secondary"
+                                            className="h-6 text-[10px] px-2 rounded-md"
+                                            onClick={handleFillCover}
+                                        >
+                                            <Maximize2 className="h-2.5 w-2.5 mr-1" />
+                                            {lang === "NEP" ? "बाकस भर्नुहोस् (Fill)" : "Fill Frame"}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-6 text-[10px] px-2 rounded-md"
+                                            onClick={handleFitInside}
+                                        >
+                                            <Minimize2 className="h-2.5 w-2.5 mr-1" />
+                                            {lang === "NEP" ? "सबै देखाउनुहोस् (Fit)" : "Fit All"}
+                                        </Button>
+                                    </div>
+                                    <span className="font-mono text-muted-foreground text-[10px] font-semibold">{Math.round(zoom * 100)}%</span>
+                                </div>
                             </div>
                         </div>
 
@@ -323,20 +383,20 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
                                 </Label>
                                 <p className="text-[10px] text-muted-foreground leading-tight">
                                     {lang === "NEP"
-                                        ? "सफ्टवेयरको Sidebar मा यस्तै आकारमा बस्नेछ।"
-                                        : "This is how your brand will display in the header."}
+                                        ? "सफ्टवेयरको Header मा यस्तै स्लिक देखिनेछ।"
+                                        : "This is how your brand will look in the app header."}
                                 </p>
                             </div>
 
                             {/* Simulated Sidebar Header Widget */}
                             <div className="p-3.5 rounded-xl bg-slate-900 text-white border border-slate-800 shadow-md">
                                 <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold mb-2">
-                                    App Header Simulation
+                                    Header Preview
                                 </div>
                                 <div className="flex items-center gap-2.5">
-                                    <div className="h-10 w-10 rounded-xl overflow-hidden border border-white/15 bg-white/5 shadow-sm flex items-center justify-center shrink-0">
+                                    <div className="h-10 w-10 rounded-xl overflow-hidden border border-white/20 shadow-sm flex items-center justify-center shrink-0">
                                         {livePreviewUrl ? (
-                                            <img src={livePreviewUrl} alt="Preview" className="h-full w-full object-contain p-0.5" />
+                                            <img src={livePreviewUrl} alt="Preview" className="h-full w-full object-cover" />
                                         ) : (
                                             <div className="h-full w-full bg-cyan-500/20" />
                                         )}
@@ -357,16 +417,47 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
                                 </div>
                             </div>
 
-                            {/* Compression Specs Badge */}
+                            {/* Background Fill Option */}
                             <div className="pt-2 border-t border-border/50 space-y-1.5">
-                                <div className="flex items-center justify-between text-[11px]">
+                                <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1">
+                                    <Palette className="h-3 w-3 text-primary" />
+                                    <span>{lang === "NEP" ? "पृष्ठभूमि (Background):" : "Background Fill:"}</span>
+                                </Label>
+                                <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                                    <button
+                                        type="button"
+                                        onClick={() => setBgColor("transparent")}
+                                        className={`py-1 px-2 rounded-lg border font-medium transition-all ${bgColor === "transparent" ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs" : "bg-background border-border text-muted-foreground hover:text-foreground"}`}
+                                    >
+                                        {lang === "NEP" ? "पारदर्शी" : "Transparent"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setBgColor("white")}
+                                        className={`py-1 px-2 rounded-lg border font-medium transition-all ${bgColor === "white" ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs" : "bg-background border-border text-muted-foreground hover:text-foreground"}`}
+                                    >
+                                        {lang === "NEP" ? "सेतो" : "White"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setBgColor("dark")}
+                                        className={`py-1 px-2 rounded-lg border font-medium transition-all ${bgColor === "dark" ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs" : "bg-background border-border text-muted-foreground hover:text-foreground"}`}
+                                    >
+                                        {lang === "NEP" ? "गाढा" : "Dark"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Compression Specs Badge */}
+                            <div className="pt-2 border-t border-border/50 space-y-1 text-[11px]">
+                                <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground flex items-center gap-1">
                                         <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
                                         Format:
                                     </span>
-                                    <span className="font-semibold text-foreground">WebP (Compressed)</span>
+                                    <span className="font-semibold text-foreground">WebP (Optimized)</span>
                                 </div>
-                                <div className="flex items-center justify-between text-[11px]">
+                                <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Estimated Size:</span>
                                     <span className="font-mono font-bold text-emerald-500">
                                         ~{approxSizeKb || 18} KB <span className="text-[10px] font-normal text-muted-foreground">(&lt; 100 KB)</span>

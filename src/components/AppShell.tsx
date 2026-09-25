@@ -986,8 +986,8 @@ export const AppShell = () => {
                 >
                     <div className="flex items-center gap-3">
                         {shopLogo ? (
-                            <div className="h-10 w-10 rounded-xl overflow-hidden border border-sidebar-border shadow-md bg-white/5 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:shadow-primary/20 transition-all">
-                                <img src={shopLogo} alt={shopName} className="h-full w-full object-contain p-0.5" />
+                            <div className="h-10 w-10 rounded-xl overflow-hidden border border-sidebar-border shadow-md flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:shadow-primary/20 transition-all">
+                                <img src={shopLogo} alt={shopName} className="h-full w-full object-cover" />
                             </div>
                         ) : (
                             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] shadow-[0_2px_10px_rgba(6,182,212,0.4)] flex items-center justify-center font-bold text-white text-sm group-hover:scale-105 group-hover:shadow-[0_4px_15px_rgba(6,182,212,0.6)] group-hover:-translate-y-0.5 transition-all duration-300 shrink-0">
@@ -1103,8 +1103,8 @@ export const AppShell = () => {
                             >
                                 <div className="flex items-center gap-3.5">
                                     {shopLogo ? (
-                                        <div className="h-12 w-12 rounded-2xl overflow-hidden border border-sidebar-border shadow-md bg-white/5 flex items-center justify-center shrink-0">
-                                            <img src={shopLogo} alt={shopName} className="h-full w-full object-contain p-0.5" />
+                                        <div className="h-12 w-12 rounded-2xl overflow-hidden border border-sidebar-border shadow-md flex items-center justify-center shrink-0">
+                                            <img src={shopLogo} alt={shopName} className="h-full w-full object-cover" />
                                         </div>
                                     ) : (
                                         <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] flex items-center justify-center shadow-[0_4px_15px_rgba(6,182,212,0.5)] font-bold text-white text-base shrink-0">
@@ -1168,7 +1168,7 @@ export const AppShell = () => {
                         className="flex items-center gap-2 bg-sidebar-accent/80 hover:bg-sidebar-accent px-2.5 py-1.5 rounded-xl text-sidebar-foreground min-w-0 max-w-[200px] cursor-pointer border border-sidebar-border/50 truncate transition-colors"
                     >
                         {shopLogo ? (
-                            <img src={shopLogo} alt={shopName} className="h-5 w-5 rounded-md object-contain shrink-0" />
+                            <img src={shopLogo} alt={shopName} className="h-5 w-5 rounded-md object-cover shrink-0" />
                         ) : (
                             <Store className="h-4 w-4 text-primary shrink-0" />
                         )}
@@ -1398,8 +1398,8 @@ export const AppShell = () => {
                             <div className="flex items-center gap-4">
                                 <div className="relative group shrink-0">
                                     {shopLogo ? (
-                                        <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-primary/30 shadow-md bg-background flex items-center justify-center p-1">
-                                            <img src={shopLogo} alt="Shop Logo" className="h-full w-full object-contain" />
+                                        <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-primary/30 shadow-md flex items-center justify-center">
+                                            <img src={shopLogo} alt="Shop Logo" className="h-full w-full object-cover" />
                                         </div>
                                     ) : (
                                         <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#06b6d4] to-[#3b82f6] shadow-md flex items-center justify-center font-bold text-white text-lg tracking-wider">
