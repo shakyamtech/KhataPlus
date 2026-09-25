@@ -119,6 +119,38 @@ const GUIDE_MODULES: GuideModule[] = [
           "4. Customize Invoice/Purchase number prefixes and select your Business Nature.",
           "5. Click 'Save Settings'."
         ]
+      },
+      {
+        id: "onboarding-shop-logo",
+        titleNep: "पसल/कम्पनीको Logo अपलोड र आफ्नै ब्रान्डिङ (White-labeling)",
+        titleEng: "Company Logo Upload, Image Cropper & White-labeling",
+        summaryNep: "पसलको आफ्नै लोगो हालेर Header र Sidebar मा ब्रान्ड देखाउने, Crop, Zoom, Rotate र ब्याकग्राउन्ड मिलाउने तरिका।",
+        summaryEng: "Upload shop logo with interactive pan/zoom crop modal, auto-WebP compression, and personalized header/sidebar branding.",
+        actionLink: "/",
+        actionLabelNep: "Shop Settings खोल्नुहोस्",
+        actionLabelEng: "Open Shop Settings",
+        stepsNep: [
+          "१. दायाँ माथिको प्रोफाइल आइकनमा क्लिक गरी 'पसल सेटिङ (Shop Settings)' खोल्नुहोस् र 'Logo & Branding' सेक्सनमा जानुहोस्।",
+          "२. 'अपलोड गर्नुहोस् (Upload)' बटनमा क्लिक गरी कम्प्युटर वा मोबाइलबाट Logo फोटो छान्नुहोस्।",
+          "३. 'Crop & Adjust Logo' विन्डोमा Zoom (०.५x – ३.०x) स्लाइडर वा माउस/टचले Drag गरेर लोगोलाई वृत्त/फ्रेमभित्र मिलाउनुहोस्।",
+          "४. आवश्यक भएमा 'Rotate ९०°', 'Fit' वा 'Fill' प्रयोग गर्नुहोस् र पारदर्शी लोगोका लागि Trans. / White / Dark ब्याकग्राउन्ड छान्नुहोस्।",
+          "५. तलको Live Header Simulation मा हेरी 'Crop & Apply' थिच्नुहोस् र तलको 'Save Settings' मा क्लिक गर्नुहोस्।"
+        ],
+        stepsEng: [
+          "1. Click your Profile Avatar on top right, open 'Shop Settings', and navigate to the 'Logo & Branding' section.",
+          "2. Click 'Upload Logo' and pick an image file from your computer or mobile.",
+          "3. In the Crop & Adjust Modal, use the Zoom slider (0.5x - 3.0x) or drag the image to frame your logo perfectly.",
+          "4. Optionally rotate 90°, click 'Fit' or 'Fill', and select a canvas background (Trans. / White / Dark) for transparent PNG logos.",
+          "5. Preview in the Live Simulation Header, click 'Crop & Apply', and save changes via 'Save Settings'."
+        ],
+        tipsNep: "💡 PNG वा पारदर्शी (Transparent) लोगो हाल्दा अति नै प्रिमियम देखिन्छ। १०MB सम्मको ठूलो फोटो हाले पनि KhataPlus ले स्वतः १ सेकेन्डमै हाइ-क्वालिटी WebP (< 100KB) मा कम्प्रेस गरी सुपर-फास्ट बनाउँछ!",
+        tipsEng: "💡 Transparent PNG logos look cleanest. KhataPlus automatically compresses high-res files into optimized WebP (< 100KB) instantly for lightning-fast loads!",
+        examples: {
+          titleNep: "कहाँ-कहाँ देखिन्छ यो Logo?",
+          titleEng: "Where will your Logo & Brand appear?",
+          contentNep: "लोगो सेभ गरेपछि डेस्कटप Sidebar, मोबाइलको Top Bar र मुख्य हेडरमा KhataPlus को साटो तपाईंको आफ्नै पसलको नाम र Logo चम्किनेछ, जसले ग्राहक वा स्टाफ अगाडि तपाईंको आफ्नै सफ्टवेयर जस्तो देखिन्छ।",
+          contentEng: "After saving, your custom logo and shop name replace generic branding on the Desktop Sidebar, Mobile Drawer, and Mobile Top Header for a complete white-labeled experience."
+        }
       }
     ]
   },
