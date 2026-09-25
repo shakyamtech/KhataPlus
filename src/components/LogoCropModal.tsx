@@ -427,21 +427,24 @@ export const LogoCropModal: React.FC<LogoCropModalProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => setBgColor("transparent")}
-                                        className={`py-1 px-2 rounded-lg border font-medium transition-all ${bgColor === "transparent" ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs" : "bg-background border-border text-muted-foreground hover:text-foreground"}`}
+                                        className={`py-1 px-1.5 rounded-lg border font-medium text-center transition-all truncate ${bgColor === "transparent" ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs" : "bg-background border-border text-muted-foreground hover:text-foreground"}`}
+                                        title={lang === "NEP" ? "पारदर्शी (Transparent)" : "Transparent"}
                                     >
-                                        {lang === "NEP" ? "पारदर्शी" : "Transparent"}
+                                        {lang === "NEP" ? "पारदर्शी" : "Trans."}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setBgColor("white")}
-                                        className={`py-1 px-2 rounded-lg border font-medium transition-all ${bgColor === "white" ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs" : "bg-background border-border text-muted-foreground hover:text-foreground"}`}
+                                        className={`py-1 px-1.5 rounded-lg border font-medium text-center transition-all truncate ${bgColor === "white" ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs" : "bg-background border-border text-muted-foreground hover:text-foreground"}`}
+                                        title={lang === "NEP" ? "सेतो (White)" : "White"}
                                     >
                                         {lang === "NEP" ? "सेतो" : "White"}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setBgColor("dark")}
-                                        className={`py-1 px-2 rounded-lg border font-medium transition-all ${bgColor === "dark" ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs" : "bg-background border-border text-muted-foreground hover:text-foreground"}`}
+                                        className={`py-1 px-1.5 rounded-lg border font-medium text-center transition-all truncate ${bgColor === "dark" ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs" : "bg-background border-border text-muted-foreground hover:text-foreground"}`}
+                                        title={lang === "NEP" ? "गाढा (Dark)" : "Dark"}
                                     >
                                         {lang === "NEP" ? "गाढा" : "Dark"}
                                     </button>
