@@ -1056,6 +1056,10 @@ export const AppShell = () => {
                                 {shopName || "My Shop"}
                             </div>
                             <div className="text-[11px] text-sidebar-foreground/60 flex items-center gap-1.5 mt-0.5 font-medium min-w-0">
+                                <span className="relative flex h-2 w-2 shrink-0">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
                                 <span className="truncate" title={currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email || "")}>
                                     {currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "साहुजी" : "Owner"))}
                                 </span>
@@ -1193,6 +1197,10 @@ export const AppShell = () => {
                                             {shopName || "My Shop"}
                                         </div>
                                         <div className="text-xs text-sidebar-foreground/60 flex items-center gap-1.5 mt-0.5 font-medium min-w-0">
+                                            <span className="relative flex h-2 w-2 shrink-0">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                            </span>
                                             <span className="truncate" title={currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email || "")}>
                                                 {currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "साहुजी" : "Owner"))}
                                             </span>

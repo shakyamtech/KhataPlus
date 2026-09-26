@@ -1037,25 +1037,6 @@ const POS = () => {
       <PageHeader 
         title="Point of Sale (POS)" 
         subtitle="Fast billing, instant credit ledger sync & stock management" 
-        actions={
-          (hasShopStaff || isStaff) ? (
-            <button
-              type="button"
-              onClick={() => setOperatorSwitchOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/70 hover:bg-secondary border border-border/80 hover:border-primary/40 text-xs font-semibold shadow-2xs transition-all cursor-pointer group active:scale-95"
-              title={lang === "NEP" ? "क्यासियर वा अपरेटर बदल्नुहोस् (Switch Operator)" : "Click to switch cashier / operator"}
-            >
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="font-bold text-foreground text-xs truncate max-w-[140px] sm:max-w-[200px]">
-                {currentStaff ? currentStaff.name : (lang === "NEP" ? "साहुजी (Owner)" : "Shop Owner")}
-              </span>
-              <ArrowLeftRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-            </button>
-          ) : undefined
-        }
       />
 
       {/* Operator PIN Switch Modal */}
