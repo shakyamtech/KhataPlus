@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty, numberToWords } from "@/lib/format";
-import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown, Calendar as CalendarIcon, ArrowDown, ArrowUp, Camera, ChevronDown } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingCart, Loader2, Check, ChevronsUpDown, Calendar as CalendarIcon, ArrowDown, ArrowUp, Camera, ChevronDown, ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
 import { printHTML, escapeHtml } from "@/lib/print";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
@@ -1039,24 +1039,21 @@ const POS = () => {
         subtitle="Fast billing, instant credit ledger sync & stock management" 
         actions={
           (hasShopStaff || isStaff) ? (
-            <Button
+            <button
               type="button"
-              variant="outline"
               onClick={() => setOperatorSwitchOpen(true)}
-              className="h-9 px-3 text-xs font-semibold bg-card hover:bg-primary/10 border-border/80 flex items-center gap-2 shadow-2xs group"
-              title="क्यासियर वा अपरेटर बदल्नुहोस् (Switch Cashier / Operator)"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/70 hover:bg-secondary border border-border/80 hover:border-primary/40 text-xs font-semibold shadow-2xs transition-all cursor-pointer group active:scale-95"
+              title={lang === "NEP" ? "क्यासियर वा अपरेटर बदल्नुहोस् (Switch Operator)" : "Click to switch cashier / operator"}
             >
-              <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold uppercase">
-                {currentStaff ? currentStaff.name.slice(0, 2) : "OW"}
-              </div>
-              <div className="text-left hidden sm:block">
-                <span className="text-[10px] text-muted-foreground block leading-none">Billed By:</span>
-                <span className="font-bold text-foreground text-xs">{currentStaff ? currentStaff.name : (lang === "NEP" ? "पसल धनी" : "Owner")}</span>
-              </div>
-              <span className="text-[10px] text-primary font-bold bg-primary/10 px-1.5 py-0.5 rounded ml-0.5 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                🔄 Switch
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-            </Button>
+              <span className="font-bold text-foreground text-xs truncate max-w-[140px] sm:max-w-[200px]">
+                {currentStaff ? currentStaff.name : (lang === "NEP" ? "साहुजी (Owner)" : "Shop Owner")}
+              </span>
+              <ArrowLeftRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+            </button>
           ) : undefined
         }
       />
