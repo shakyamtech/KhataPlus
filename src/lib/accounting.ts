@@ -760,6 +760,30 @@ export async function deleteVoucher(userId: string, voucherId: string): Promise<
   const ledgerSnap = await getDocs(ledgerByVoucherQ);
   ledgerSnap.docs.forEach(d => batch.delete(d.ref));
 
+  // 3. Remove associated payroll_transactions & reverse staff advance balances
+  try {
+    const payrollQ = query(
+      collection(db, "payroll_transactions"),
+      where("owner_id", "==", userId),
+      where("voucher_id", "==", voucherId)
+    );
+    const payrollSnap = await getDocs(payrollQ);
+    payrollSnap.docs.forEach(d => {
+      const pData = d.data();
+      if (pData.staff_id) {
+        const sRef = doc(db, "staff_members", pData.staff_id);
+        if (pData.type === "advance" && Number(pData.net_paid) > 0) {
+          batch.update(sRef, { advance_balance: increment(-Number(pData.net_paid)) });
+        } else if (pData.type === "salary_payout" && Number(pData.advance_deducted) > 0) {
+          batch.update(sRef, { advance_balance: increment(Number(pData.advance_deducted)) });
+        }
+      }
+      batch.delete(d.ref);
+    });
+  } catch (pErr) {
+    console.warn("Payroll voucher cleanup warning:", pErr);
+  }
+
   await batch.commit();
 }
 
