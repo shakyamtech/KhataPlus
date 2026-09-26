@@ -131,40 +131,19 @@ export async function recordStaffAdvance(params: {
     }
 
     // 2. Create Double Entry Payment Voucher
-    const nextVNo = await getNextVoucherNo(ownerId, "payment");
-    const vResult = await createVoucher({
-      user_id: ownerId,
-      voucher_no: nextVNo,
+    const voucher = await createVoucher(ownerId, {
       voucher_type: "payment",
       date: effectiveDate,
-      date_bs: nepDate,
       amount: amount,
       debit_account_id: advanceAcc.id,
       debit_account_name: advanceAcc.name,
       credit_account_id: paymentAcc.id,
       credit_account_name: paymentAcc.name,
       narration: `Staff Advance given to ${staff.name} (${staff.role.toUpperCase()})${note ? ` - ${note}` : ""}`,
-      reference_no: paymentMode === "bank" ? (bankName || "Bank Transfer") : "Cash Advance",
-      created_at: effectiveDate
+      reference_no: paymentMode === "bank" ? (bankName || "Bank Transfer") : "Cash Advance"
     });
 
-    // 3. Create Cashbook Out Entry
-    const cashTxRef = doc(collection(db, "cash_transactions"));
-    const cashTxId = cashTxRef.id;
-    await setDoc(cashTxRef, {
-      id: cashTxId,
-      user_id: ownerId,
-      direction: "out",
-      amount: amount,
-      category: "staff_advance",
-      payment_mode: paymentMode,
-      bank_name: bankName || null,
-      note: `Staff Salary Advance: ${staff.name}${note ? ` (${note})` : ""}`,
-      reference_id: vResult.voucher?.id || null,
-      created_at: effectiveDate
-    });
-
-    // 4. Create Payroll Transaction Record
+    // 3. Create Payroll Transaction Record
     const txRef = doc(collection(db, "payroll_transactions"));
     const payrollTx: PayrollTransaction = {
       id: txRef.id,
@@ -184,9 +163,8 @@ export async function recordStaffAdvance(params: {
       net_paid: amount,
       payment_mode: paymentMode,
       bank_name: bankName,
-      voucher_id: vResult.voucher?.id,
-      voucher_no: vResult.voucher?.voucher_no,
-      cash_tx_id: cashTxId,
+      voucher_id: voucher.id,
+      voucher_no: voucher.voucher_no,
       note: note || `Advance taken by ${staff.name}`,
       created_at: effectiveDate
     };
@@ -279,7 +257,6 @@ export async function processStaffSalaryPayout(params: {
     }
 
     // 2. Create Double Entry Compound Voucher
-    const nextVNo = await getNextVoucherNo(ownerId, "payment");
     const voucherEntries = [
       {
         account_id: salaryExpenseAcc.id,
@@ -298,10 +275,6 @@ export async function processStaffSalaryPayout(params: {
       });
     }
 
-    if (otherDeductions > 0 && advanceDeducted + netPaid < totalGross) {
-      // Direct deduction balance
-    }
-
     if (netPaid > 0) {
       voucherEntries.push({
         account_id: paymentAcc.id,
@@ -311,39 +284,16 @@ export async function processStaffSalaryPayout(params: {
       });
     }
 
-    const vResult = await createVoucher({
-      user_id: ownerId,
-      voucher_no: nextVNo,
+    const voucher = await createVoucher(ownerId, {
       voucher_type: "payment",
       date: effectiveDate,
-      date_bs: nepDate,
       amount: totalGross,
       entries: voucherEntries,
       narration: `Monthly Salary Payment to ${staff.name} (${staff.role.toUpperCase()}) for ${month}${advanceDeducted > 0 ? ` (Advance deducted: Rs. ${advanceDeducted})` : ""}${note ? ` - ${note}` : ""}`,
-      reference_no: paymentMode === "bank" ? (bankName || "Salary Bank Transfer") : "Cash Salary",
-      created_at: effectiveDate
+      reference_no: paymentMode === "bank" ? (bankName || "Salary Bank Transfer") : "Cash Salary"
     });
 
-    // 3. Create Cashbook Out Entry for Net Paid Cash/Bank
-    let cashTxId: string | undefined = undefined;
-    if (netPaid > 0) {
-      const cashTxRef = doc(collection(db, "cash_transactions"));
-      cashTxId = cashTxRef.id;
-      await setDoc(cashTxRef, {
-        id: cashTxId,
-        user_id: ownerId,
-        direction: "out",
-        amount: netPaid,
-        category: "salary",
-        payment_mode: paymentMode,
-        bank_name: bankName || null,
-        note: `Salary Payment (${month}): ${staff.name}${advanceDeducted > 0 ? ` (Gross: ${totalGross}, Adv: -${advanceDeducted})` : ""}`,
-        reference_id: vResult.voucher?.id || null,
-        created_at: effectiveDate
-      });
-    }
-
-    // 4. Create Payroll Transaction Record
+    // 3. Create Payroll Transaction Record
     const txRef = doc(collection(db, "payroll_transactions"));
     const payrollTx: PayrollTransaction = {
       id: txRef.id,
@@ -363,9 +313,8 @@ export async function processStaffSalaryPayout(params: {
       net_paid: netPaid,
       payment_mode: paymentMode,
       bank_name: bankName,
-      voucher_id: vResult.voucher?.id,
-      voucher_no: vResult.voucher?.voucher_no,
-      cash_tx_id: cashTxId,
+      voucher_id: voucher.id,
+      voucher_no: voucher.voucher_no,
       note: note || `Salary payout for ${month}`,
       created_at: effectiveDate
     };
