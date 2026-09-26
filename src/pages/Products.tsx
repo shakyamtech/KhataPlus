@@ -42,7 +42,7 @@ type Product = {
 };
 
 const Products = () => {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const { lang } = useLanguage();
   const [items, setItems] = useState<Product[]>([]);
   const [open, setOpen] = useState(false);
@@ -510,7 +510,9 @@ const Products = () => {
             >
               <Barcode className="h-4 w-4 mr-1.5 text-primary" /> Barcode Stickers
             </Button>
-            <Button onClick={() => { setSelectedProduct(null); setOpen(true); }} className="bg-gradient-primary text-primary-foreground shadow-soft"><Plus className="h-4 w-4 mr-1" /> Add Product</Button>
+            {can("canEditProducts") && (
+              <Button onClick={() => { setSelectedProduct(null); setOpen(true); }} className="bg-gradient-primary text-primary-foreground shadow-soft"><Plus className="h-4 w-4 mr-1" /> Add Product</Button>
+            )}
           </div>
         }
       />
@@ -538,7 +540,7 @@ const Products = () => {
                 : isLow 
                   ? "bg-orange-50/10 dark:bg-orange-950/10 border-orange-200/50" 
                   : "bg-card hover:-translate-y-1"
-              }`}>
+            }`}>
               {/* Top Accent Line */}
               <div className={`absolute top-0 left-0 right-0 h-1 ${
                 isEmpty ? "bg-red-500" : isLow ? "bg-orange-500" : "bg-gradient-primary opacity-50 group-hover:opacity-100 transition-opacity"
@@ -574,34 +576,38 @@ const Products = () => {
                     >
                       <Barcode className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={() => loadBatches(p)} title="Active Batches" className="h-8 w-8 hover:bg-orange-500 hover:text-white text-muted-foreground rounded-md"><Layers className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => openAdjust(p, "add")} title="Adjust / Add Stock" className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><PackagePlus className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => loadSourcingHistory(p)} title="Sourcing History" className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><History className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => { setSelectedProduct(p); setOpen(true); }} className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><Pencil className="h-3.5 w-3.5" /></Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground text-destructive/70 rounded-md"><Trash2 className="h-3.5 w-3.5" /></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Product?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete <strong>{p.name}</strong>? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => remove(p.id)}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    {can("canEditProducts") && (
+                      <>
+                        <Button size="icon" variant="ghost" onClick={() => loadBatches(p)} title="Active Batches" className="h-8 w-8 hover:bg-orange-500 hover:text-white text-muted-foreground rounded-md"><Layers className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => openAdjust(p, "add")} title="Adjust / Add Stock" className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><PackagePlus className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => loadSourcingHistory(p)} title="Sourcing History" className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><History className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => { setSelectedProduct(p); setOpen(true); }} className="h-8 w-8 hover:bg-primary hover:text-primary-foreground text-muted-foreground rounded-md"><Pencil className="h-3.5 w-3.5" /></Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground text-destructive/70 rounded-md"><Trash2 className="h-3.5 w-3.5" /></Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Product?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete <strong>{p.name}</strong>? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => remove(p.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mt-5">
                   <div className="bg-secondary/40 rounded-lg p-2.5 border border-border/50">
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Cost Price</div>
-                    <div className="font-medium text-foreground/80">{fmt(p.cost_price)}</div>
+                    <div className="font-medium text-foreground/80">{can("canViewCostPrices") ? fmt(p.cost_price) : "••••••"}</div>
                   </div>
                   <div className="bg-primary/5 rounded-lg p-2.5 border border-primary/10">
                     <div className="text-[10px] text-primary uppercase tracking-wider font-semibold mb-0.5">Selling Price</div>
