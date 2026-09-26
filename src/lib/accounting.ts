@@ -149,6 +149,7 @@ export const DEFAULT_ACCOUNTS_TEMPLATE: (Omit<Account, "id" | "user_id"> & { key
   // Assets
   { key: "cash", name: "Cash in Hand (नगद मौज्दात)", type: "asset", group: "cash", is_system: true },
   { key: "bank_primary", name: "Bank Account - Primary (मुख्य बैंक खाता)", type: "asset", group: "bank_accounts", is_system: false },
+  { key: "staff_advance", name: "Staff Advance (कर्मचारी पेस्की/सापटी खाता)", type: "asset", group: "loans_advances_asset", is_system: false },
   { key: "vehicle", name: "Office Vehicle / Van (पसलको गाडी)", type: "asset", group: "fixed_assets", is_system: false },
   { key: "computers", name: "Computers & Electronics (कम्प्युटर/इलेक्ट्रोनिक्स)", type: "asset", group: "fixed_assets", is_system: false },
   { key: "furniture", name: "Furniture & Fixtures (फर्निचर तथा फिक्सचर)", type: "asset", group: "fixed_assets", is_system: false },
@@ -375,6 +376,18 @@ export async function createVoucher(
   // Helper to detect liquid account payment mode
   const getLiquidPaymentMode = (accName: string, fallbackContra?: "bank" | "cash"): "cash" | "bank" | "esewa" | "khalti" | null => {
     const str = (accName || "").toLowerCase();
+    // Exclude non-liquid accounts that might contain the word bank/cash (e.g. Bank Loan, Staff Advance, Bank Charges, Cash Discount, Salaries)
+    if (
+      str.includes("loan") || str.includes("ऋण") ||
+      str.includes("advance") || str.includes("पेस्की") || str.includes("सापटी") ||
+      str.includes("charges") || str.includes("शुल्क") ||
+      str.includes("interest") || str.includes("ब्याज") ||
+      str.includes("discount") || str.includes("छुट") ||
+      str.includes("salary") || str.includes("तलब") ||
+      str.includes("rent") || str.includes("भाडा")
+    ) {
+      return null;
+    }
     if (str.includes("esewa") || str.includes("ईसेवा")) return "esewa";
     if (str.includes("khalti") || str.includes("खल्ती")) return "khalti";
     if (str.includes("bank") || str.includes("बैंक") || str.includes("nabil") || str.includes("nic") || str.includes("prabhu") || str.includes("nmb") || str.includes("sanima") || str.includes("siddhartha") || str.includes("global") || str.includes("kumari") || str.includes("everest") || str.includes("prime") || str.includes("machhapuchchhre") || str.includes("himalayan") || str.includes("sbi") || str.includes("citizens") || str.includes("rbb") || str.includes("rastriya") || str.includes("agriculture") || str.includes("laxmi") || str.includes("standard")) return "bank";

@@ -140,10 +140,25 @@ export async function recordStaffAdvance(params: {
                    accounts.find((a) => a.group === "bank_accounts") || cashAcc;
     }
 
-    // Find or locate Advance account
+    // Find or locate Advance account (never fall back to liquid accounts)
     let advanceAcc = accounts.find((a) => a.name.toLowerCase().includes("staff advance") || a.name.toLowerCase().includes("salary advance"));
     if (!advanceAcc) {
-      advanceAcc = accounts.find((a) => a.group === "loans_advances_asset" || a.group === "current_assets") || cashAcc;
+      advanceAcc = accounts.find((a) => a.group === "loans_advances_asset");
+    }
+    if (!advanceAcc) {
+      const advRef = doc(collection(db, "accounts"));
+      const newAdv = {
+        id: advRef.id,
+        user_id: ownerId,
+        name: "Staff Advance (कर्मचारी पेस्की/सापटी खाता)",
+        type: "asset" as const,
+        group: "loans_advances_asset" as const,
+        opening_balance: 0,
+        is_system: false,
+        created_at: new Date().toISOString()
+      };
+      await setDoc(advRef, newAdv);
+      advanceAcc = newAdv;
     }
 
     const refNo = paymentMode === "bank"
@@ -279,7 +294,22 @@ export async function processStaffSalaryPayout(params: {
       (a) => a.group === "indirect_expenses" && (a.name.toLowerCase().includes("salary") || a.name.toLowerCase().includes("wage"))
     );
     if (!salaryExpenseAcc) {
-      salaryExpenseAcc = accounts.find((a) => a.group === "indirect_expenses") || cashAcc;
+      salaryExpenseAcc = accounts.find((a) => a.group === "indirect_expenses");
+    }
+    if (!salaryExpenseAcc) {
+      const salRef = doc(collection(db, "accounts"));
+      const newSal = {
+        id: salRef.id,
+        user_id: ownerId,
+        name: "Salaries & Wages (कर्मचारी तलब खर्च)",
+        type: "expense" as const,
+        group: "indirect_expenses" as const,
+        opening_balance: 0,
+        is_system: false,
+        created_at: new Date().toISOString()
+      };
+      await setDoc(salRef, newSal);
+      salaryExpenseAcc = newSal;
     }
 
     // Locate Advance Account
@@ -287,7 +317,22 @@ export async function processStaffSalaryPayout(params: {
       (a) => a.name.toLowerCase().includes("staff advance") || a.name.toLowerCase().includes("salary advance")
     );
     if (!advanceAcc) {
-      advanceAcc = accounts.find((a) => a.group === "loans_advances_asset" || a.group === "current_assets") || cashAcc;
+      advanceAcc = accounts.find((a) => a.group === "loans_advances_asset");
+    }
+    if (!advanceAcc) {
+      const advRef = doc(collection(db, "accounts"));
+      const newAdv = {
+        id: advRef.id,
+        user_id: ownerId,
+        name: "Staff Advance (कर्मचारी पेस्की/सापटी खाता)",
+        type: "asset" as const,
+        group: "loans_advances_asset" as const,
+        opening_balance: 0,
+        is_system: false,
+        created_at: new Date().toISOString()
+      };
+      await setDoc(advRef, newAdv);
+      advanceAcc = newAdv;
     }
 
     // 2. Create Double Entry Compound Voucher
