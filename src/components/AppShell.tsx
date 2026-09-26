@@ -13,6 +13,7 @@ import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
 import { InstallAppModal } from "@/components/InstallAppModal";
 import { BackupModal } from "@/components/BackupModal";
 import { LogoCropModal } from "@/components/LogoCropModal";
+import { StaffManagementSection } from "@/components/StaffManagementSection";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -120,6 +121,7 @@ export const AppShell = () => {
     const [busy, setBusy] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const [shopOpen, setShopOpen] = useState(false);
+    const [shopSettingsTab, setShopSettingsTab] = useState<"general" | "tax" | "staff">("general");
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [aboutOpen, setAboutOpen] = useState(false);
     const [installModalOpen, setInstallModalOpen] = useState(false);
@@ -1382,7 +1384,53 @@ export const AppShell = () => {
                             </div>
                         </div>
                     </DialogHeader>
+
+                    {/* Shop Settings Tab Navigation */}
+                    <div className="flex items-center gap-1.5 p-1 bg-secondary/50 rounded-xl border shrink-0 mt-1">
+                        <button
+                            type="button"
+                            onClick={() => setShopSettingsTab("general")}
+                            className={cn(
+                                "flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                                shopSettingsTab === "general"
+                                    ? "bg-background text-primary shadow-xs border border-border"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <Store className="h-3.5 w-3.5" />
+                            <span>{lang === "NEP" ? "सामान्य र ब्रान्डिङ" : "General & Logo"}</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShopSettingsTab("tax")}
+                            className={cn(
+                                "flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                                shopSettingsTab === "tax"
+                                    ? "bg-background text-primary shadow-xs border border-border"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <Scale className="h-3.5 w-3.5" />
+                            <span>{lang === "NEP" ? "कर तथा बिलिङ" : "Tax & Invoicing"}</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShopSettingsTab("staff")}
+                            className={cn(
+                                "flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                                shopSettingsTab === "staff"
+                                    ? "bg-background text-primary shadow-xs border border-border"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <Users className="h-3.5 w-3.5" />
+                            <span>{lang === "NEP" ? "स्टाफ तथा कर्मचारी" : "Staff & Roles"}</span>
+                        </button>
+                    </div>
+
                     <div className="space-y-4 py-2 overflow-y-auto overflow-x-hidden flex-1 px-1">
+                        {shopSettingsTab === "general" && (
+                            <>
                         {/* Shop / Company Logo Upload */}
                         <div className="p-3.5 rounded-2xl bg-secondary/30 border border-border/70 space-y-3">
                             <div className="flex items-center justify-between">
@@ -1580,7 +1628,11 @@ export const AppShell = () => {
                                 </div>
                             </div>
                         </div>
+                            </>
+                        )}
 
+                        {shopSettingsTab === "tax" && (
+                            <>
                         {/* Invoice Numbering & Prefix Configuration */}
                         <div className="pt-3 border-t space-y-3">
                             <div className="space-y-0.5">
@@ -2256,12 +2308,27 @@ export const AppShell = () => {
                                 </AlertDialog>
                             </div>
                         </div>
+                            </>
+                        )}
+
+                        {shopSettingsTab === "staff" && (
+                            <StaffManagementSection
+                                ownerId={user?.uid || ""}
+                                shopName={newName || shopName}
+                            />
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShopOpen(false)}>{t.cancel}</Button>
-                        <Button onClick={handleSaveShop} disabled={busy} className="bg-primary text-primary-foreground">
-                            {busy ? t.saving : t.saveChanges}
-                        </Button>
+                        {shopSettingsTab !== "staff" ? (
+                            <Button onClick={handleSaveShop} disabled={busy} className="bg-primary text-primary-foreground">
+                                {busy ? t.saving : t.saveChanges}
+                            </Button>
+                        ) : (
+                            <Button onClick={() => setShopOpen(false)} className="bg-primary text-primary-foreground">
+                                {lang === "NEP" ? "बन्द गर्नुहोस् (Close)" : "Done / Close"}
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
