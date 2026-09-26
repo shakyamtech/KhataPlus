@@ -97,6 +97,10 @@ const Auth = () => {
             : `Welcome back, ${staffCheck.staff.name}!`
         );
         return;
+      } else if (staffCheck.error && !staffCheck.error.includes("भेटिएन") && !staffCheck.error.includes("not found")) {
+        // Staff exists but wrong PIN or account suspended
+        toast.error(staffCheck.error);
+        return;
       }
 
       // 2. Otherwise attempt standard Firebase Account login (Shop Owner / Admin)
@@ -121,10 +125,12 @@ const Auth = () => {
       setLoginSplashShop(sName);
       setShowLoginSplash(true);
     } catch (error: any) {
-      // If staffCheck had a specific error like invalid PIN, prioritize showing it
-      const fallbackStaff = await verifyStaffLogin(email, password);
-      if (fallbackStaff.error) {
-        toast.error(fallbackStaff.error);
+      if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+        toast.error(
+          lang === "NEP" 
+            ? "इमेल वा पासवर्ड/PIN गलत छ। (Invalid email or password/PIN)" 
+            : "Invalid email or password/PIN"
+        );
       } else {
         toast.error(error.message || "लगइन गर्न असफल भयो (Sign in failed)");
       }

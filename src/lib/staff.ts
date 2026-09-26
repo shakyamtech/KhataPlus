@@ -1,4 +1,5 @@
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { signInAnonymously } from "firebase/auth";
 import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from "firebase/firestore";
 
 export type StaffRole = "cashier" | "storekeeper" | "accountant";
@@ -227,6 +228,14 @@ export async function findStaffByEmail(email: string): Promise<StaffMember | nul
   const cleanEmail = email.trim().toLowerCase();
   if (!cleanEmail) return null;
   try {
+    if (!auth.currentUser) {
+      try {
+        await signInAnonymously(auth);
+      } catch (authErr) {
+        console.warn("Anonymous sign-in before staff lookup:", authErr);
+      }
+    }
+
     const q = query(
       collection(db, "staff_members"),
       where("email", "==", cleanEmail)
