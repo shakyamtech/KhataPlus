@@ -37,7 +37,7 @@ interface OperatorSwitchModalProps {
 }
 
 export function OperatorSwitchModal({ open, onOpenChange }: OperatorSwitchModalProps) {
-  const { user, currentStaff, switchOperator } = useAuth();
+  const { user, currentStaff, canSwitchToOwner, switchOperator } = useAuth();
   const { lang } = useLanguage();
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,6 +71,9 @@ export function OperatorSwitchModal({ open, onOpenChange }: OperatorSwitchModalP
   };
 
   const handleSelect = (target: StaffMember | "owner") => {
+    if (target === "owner" && !canSwitchToOwner) {
+      return;
+    }
     setErrorMsg("");
     setPin("");
     setSelectedStaff(target);
@@ -80,10 +83,18 @@ export function OperatorSwitchModal({ open, onOpenChange }: OperatorSwitchModalP
     if (!selectedStaff) return;
 
     if (selectedStaff === "owner") {
+      if (!canSwitchToOwner) {
+        setErrorMsg(lang === "NEP" ? "स्टाफ खाताबाट साहुजी मोडमा स्विच गर्न मिल्दैन।" : "Staff accounts cannot switch to Owner mode.");
+        return;
+      }
       // Switching to Owner
-      await switchOperator(null);
-      toast.success(lang === "NEP" ? "👑 पसल धनी (Owner) मोडमा स्विच गरियो!" : "Switched to Shop Owner mode!");
-      onOpenChange(false);
+      const success = await switchOperator(null);
+      if (success) {
+        toast.success(lang === "NEP" ? "👑 पसल धनी (Owner) मोडमा स्विच गरियो!" : "Switched to Shop Owner mode!");
+        onOpenChange(false);
+      } else {
+        setErrorMsg(lang === "NEP" ? "स्विच गर्न असफल भयो।" : "Failed to switch operator.");
+      }
       return;
     }
 
@@ -179,36 +190,38 @@ export function OperatorSwitchModal({ open, onOpenChange }: OperatorSwitchModalP
             </Label>
 
             <div className="max-h-60 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
-              {/* Option: Shop Owner */}
-              <button
-                type="button"
-                onClick={() => handleSelect("owner")}
-                className={cn(
-                  "w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group",
-                  !currentStaff
-                    ? "bg-primary/10 border-primary/40 shadow-xs ring-1 ring-primary/20"
-                    : "bg-card hover:bg-secondary/40 border-border/70 hover:border-primary/30"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/30 flex items-center justify-center text-amber-500 font-bold text-xs">
-                    👑
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-foreground">
-                      {lang === "NEP" ? "पसल धनी (Shop Owner / Admin)" : "Shop Owner / Admin"}
+              {/* Option: Shop Owner - Only available on Owner's authenticated machine */}
+              {canSwitchToOwner && (
+                <button
+                  type="button"
+                  onClick={() => handleSelect("owner")}
+                  className={cn(
+                    "w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group",
+                    !currentStaff
+                      ? "bg-primary/10 border-primary/40 shadow-xs ring-1 ring-primary/20"
+                      : "bg-card hover:bg-secondary/40 border-border/70 hover:border-primary/30"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/30 flex items-center justify-center text-amber-500 font-bold text-xs">
+                      👑
                     </div>
-                    <div className="text-[10.5px] text-muted-foreground">
-                      {lang === "NEP" ? "पूर्ण पहुँच (Full Control & Settings)" : "Full administrative access"}
+                    <div>
+                      <div className="text-xs font-bold text-foreground">
+                        {lang === "NEP" ? "पसल धनी (Shop Owner / Admin)" : "Shop Owner / Admin"}
+                      </div>
+                      <div className="text-[10.5px] text-muted-foreground">
+                        {lang === "NEP" ? "पूर्ण पहुँच (Full Control & Settings)" : "Full administrative access"}
+                      </div>
                     </div>
                   </div>
-                </div>
-                {!currentStaff && (
-                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                    {lang === "NEP" ? "हाल सक्रिय" : "Active"}
-                  </span>
-                )}
-              </button>
+                  {!currentStaff && (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      {lang === "NEP" ? "हाल सक्रिय" : "Active"}
+                    </span>
+                  )}
+                </button>
+              )}
 
               {/* Staff List */}
               {staffList.map((s) => {
