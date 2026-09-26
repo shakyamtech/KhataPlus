@@ -98,7 +98,7 @@ function getShopInitials(name?: string): string {
 
 export const AppShell = () => {
     const { lang, setLang, t } = useLanguage();
-    const { user, currentStaff, staffRole, isStaff, can, signOut } = useAuth();
+    const { user, currentStaff, staffRole, isStaff, hasShopStaff, can, signOut } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const isHelpPage = location.pathname === "/help";
@@ -904,9 +904,11 @@ export const AppShell = () => {
                         </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setOperatorSwitchOpen(true)} className="cursor-pointer font-semibold gap-2 text-primary bg-primary/5 hover:bg-primary/10">
-                    <Users className="h-4 w-4 text-primary" /> {lang === "NEP" ? "क्यासियर / अपरेटर बदल्नुहोस् (PIN)" : "Switch Operator / PIN"}
-                </DropdownMenuItem>
+                {(hasShopStaff || isStaff) && (
+                    <DropdownMenuItem onClick={() => setOperatorSwitchOpen(true)} className="cursor-pointer font-semibold gap-2 text-primary bg-primary/5 hover:bg-primary/10">
+                        <Users className="h-4 w-4 text-primary" /> {lang === "NEP" ? "क्यासियर / अपरेटर बदल्नुहोस् (PIN)" : "Switch Operator / PIN"}
+                    </DropdownMenuItem>
+                )}
                 {!currentStaff && (
                     <>
                         <DropdownMenuItem onClick={() => {

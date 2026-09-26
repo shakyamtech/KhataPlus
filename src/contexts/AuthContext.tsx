@@ -10,6 +10,7 @@ import {
   storeStaffSession, 
   hasStaffPermission, 
   findStaffByEmail,
+  getShopStaffMembers,
   ROLE_DEFINITIONS 
 } from "@/lib/staff";
 
@@ -30,6 +31,8 @@ type AuthCtx = {
   isStaff: boolean;
   isStaffAccount: boolean;
   canSwitchToOwner: boolean;
+  hasShopStaff: boolean;
+  refreshShopStaff: () => Promise<void>;
   can: (permission: keyof StaffPermission) => boolean;
   loginStaff: (staff: StaffMember) => Promise<void>;
   switchOperator: (staff: StaffMember | null, pin?: string) => Promise<boolean>;
@@ -46,6 +49,8 @@ const Ctx = createContext<AuthCtx>({
   isStaff: false,
   isStaffAccount: false,
   canSwitchToOwner: true,
+  hasShopStaff: false,
+  refreshShopStaff: async () => {},
   can: () => true,
   loginStaff: async () => {},
   switchOperator: async () => false,
@@ -56,6 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [currentStaff, setCurrentStaff] = useState<StaffMember | null>(() => getStoredStaffSession());
   const [isStaffAccount, setIsStaffAccount] = useState<boolean>(false);
+  const [hasShopStaff, setHasShopStaff] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [onlineUsers] = useState<Set<string>>(new Set());
 
@@ -171,6 +177,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return true;
   };
 
+  const refreshShopStaff = async () => {
+    const ownerId = currentStaff?.owner_id || firebaseUser?.uid;
+    if (!ownerId) {
+      setHasShopStaff(false);
+      return;
+    }
+    try {
+      const list = await getShopStaffMembers(ownerId);
+      setHasShopStaff(list.length > 0);
+    } catch (err) {
+      console.warn("Failed to check shop staff members:", err);
+    }
+  };
+
+  useEffect(() => {
+    const ownerId = currentStaff?.owner_id || firebaseUser?.uid;
+    if (ownerId) {
+      refreshShopStaff();
+    } else {
+      setHasShopStaff(false);
+    }
+  }, [currentStaff?.owner_id, firebaseUser?.uid]);
+
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
@@ -180,6 +209,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       storeStaffSession(null);
       setCurrentStaff(null);
       setIsStaffAccount(false);
+      setHasShopStaff(false);
       localStorage.removeItem("khataplus_shop_name");
       setFirebaseUser(null);
     }
@@ -197,6 +227,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isStaff,
         isStaffAccount,
         canSwitchToOwner,
+        hasShopStaff,
+        refreshShopStaff,
         can,
         loginStaff,
         switchOperator,

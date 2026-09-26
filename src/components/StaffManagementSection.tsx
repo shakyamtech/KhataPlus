@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   StaffMember, 
   StaffRole, 
@@ -30,6 +31,7 @@ interface StaffManagementSectionProps {
 
 export function StaffManagementSection({ ownerId, shopName }: StaffManagementSectionProps) {
   const { lang } = useLanguage();
+  const { refreshShopStaff } = useAuth();
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -160,6 +162,7 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
       }
       setDialogOpen(false);
       fetchStaff();
+      refreshShopStaff();
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || (lang === "NEP" ? "स्टाफ सेभ गर्न समस्या भयो।" : "Failed to save staff member."));
@@ -175,6 +178,7 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
       setStaffList((prev) =>
         prev.map((s) => (s.id === staff.id ? { ...s, status: newStatus } : s))
       );
+      refreshShopStaff();
       toast.info(
         newStatus === "active"
           ? (lang === "NEP" ? `${staff.name} सक्रिय बनाइयो।` : `${staff.name} activated.`)
@@ -190,6 +194,7 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
       await deleteStaffMember(staffId);
       setStaffList((prev) => prev.filter((s) => s.id !== staffId));
       setDeleteConfirmId(null);
+      refreshShopStaff();
       toast.success(lang === "NEP" ? "स्टाफ हटाइयो।" : "Staff deleted.");
     } catch (err) {
       toast.error(lang === "NEP" ? "स्टाफ मेटाउन समस्या भयो।" : "Failed to delete staff.");

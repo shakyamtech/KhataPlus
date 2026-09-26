@@ -70,7 +70,7 @@ type CartItem = {
 };
 
 const POS = () => {
-  const { user, currentStaff } = useAuth();
+  const { user, currentStaff, isStaff, hasShopStaff } = useAuth();
   const { lang } = useLanguage();
   const [operatorSwitchOpen, setOperatorSwitchOpen] = useState(false);
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
@@ -1038,24 +1038,26 @@ const POS = () => {
         title="Point of Sale (POS)" 
         subtitle="Fast billing, instant credit ledger sync & stock management" 
         actions={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setOperatorSwitchOpen(true)}
-            className="h-9 px-3 text-xs font-semibold bg-card hover:bg-primary/10 border-border/80 flex items-center gap-2 shadow-2xs group"
-            title="क्यासियर वा अपरेटर बदल्नुहोस् (Switch Cashier / Operator)"
-          >
-            <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold uppercase">
-              {currentStaff ? currentStaff.name.slice(0, 2) : "OW"}
-            </div>
-            <div className="text-left hidden sm:block">
-              <span className="text-[10px] text-muted-foreground block leading-none">Billed By:</span>
-              <span className="font-bold text-foreground text-xs">{currentStaff ? currentStaff.name : (lang === "NEP" ? "पसल धनी" : "Owner")}</span>
-            </div>
-            <span className="text-[10px] text-primary font-bold bg-primary/10 px-1.5 py-0.5 rounded ml-0.5 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-              🔄 Switch
-            </span>
-          </Button>
+          (hasShopStaff || isStaff) ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOperatorSwitchOpen(true)}
+              className="h-9 px-3 text-xs font-semibold bg-card hover:bg-primary/10 border-border/80 flex items-center gap-2 shadow-2xs group"
+              title="क्यासियर वा अपरेटर बदल्नुहोस् (Switch Cashier / Operator)"
+            >
+              <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold uppercase">
+                {currentStaff ? currentStaff.name.slice(0, 2) : "OW"}
+              </div>
+              <div className="text-left hidden sm:block">
+                <span className="text-[10px] text-muted-foreground block leading-none">Billed By:</span>
+                <span className="font-bold text-foreground text-xs">{currentStaff ? currentStaff.name : (lang === "NEP" ? "पसल धनी" : "Owner")}</span>
+              </div>
+              <span className="text-[10px] text-primary font-bold bg-primary/10 px-1.5 py-0.5 rounded ml-0.5 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                🔄 Switch
+              </span>
+            </Button>
+          ) : undefined
         }
       />
 
