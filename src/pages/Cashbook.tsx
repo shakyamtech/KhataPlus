@@ -22,7 +22,7 @@ import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { formatNepaliDate } from "@/lib/fiscalYear";
 import { PaymentMethodIcon } from "@/components/PaymentMethodIcon";
 import { cn } from "@/lib/utils";
-import { deleteVoucher } from "@/lib/accounting";
+import { deleteVoucher, createCashbookVoucher, syncUnsyncedCashTransactions } from "@/lib/accounting";
 
 const inCategories = [
   "sale",
@@ -98,6 +98,36 @@ const Cashbook = () => {
   const [newCatName, setNewCatName] = useState("");
   const [newCatGroup, setNewCatGroup] = useState<string>("expense");
   const [savingCat, setSavingCat] = useState(false);
+  const [syncingToDaybook, setSyncingToDaybook] = useState(false);
+
+  const unsyncedCount = useMemo(() => {
+    return rows.filter((r) => {
+      if (r.voucher_id || r.reference_id) return false;
+      const cat = (r.category || "").toLowerCase();
+      if (["sale", "sales", "purchase", "purchases", "voucher_payment", "voucher_receipt", "contra_bank_deposit", "contra_bank_withdrawal"].includes(cat)) return false;
+      return true;
+    }).length;
+  }, [rows]);
+
+  const handleSyncToDaybook = async () => {
+    if (!user || unsyncedCount === 0 || syncingToDaybook) return;
+    setSyncingToDaybook(true);
+    const toastId = toast.loading(lang === "NEP" ? "रोकड किताबबाट Daybook भाउचर सिङ्क हुँदैछ..." : "Syncing Cashbook to Daybook vouchers...");
+    try {
+      const res = await syncUnsyncedCashTransactions(user.uid);
+      toast.success(
+        lang === "NEP"
+          ? `${res.syncedCount} वटा पुराना कारोबारको Daybook भाउचर सफलतापूर्वक बन्यो!`
+          : `Successfully synced ${res.syncedCount} past entries to Daybook!`,
+        { id: toastId }
+      );
+      await load();
+    } catch (err: any) {
+      toast.error(err.message || "Sync failed", { id: toastId });
+    } finally {
+      setSyncingToDaybook(false);
+    }
+  };
 
   const load = async () => {
     if (!user) return;
@@ -626,36 +656,38 @@ const Cashbook = () => {
         await updateDoc(ref, payload);
         toast.success("Entry updated");
       } else {
+        const vResult = await createCashbookVoucher(user!.uid, {
+          direction,
+          amount: Number(amount),
+          category,
+          note: note || null,
+          payment_mode: paymentMode,
+          party_id: partyId,
+          party_name: pName,
+          created_at: payload.created_at
+        });
+
         if (category === "customer_payment" || category === "supplier_payment") {
           const pType = category === "customer_payment" ? "customer" : "supplier";
-          const batch = writeBatch(db);
-
-          const txRef = doc(collection(db, "cash_transactions"));
-          batch.set(txRef, {
-            ...payload, id: txRef.id, user_id: user!.uid,
-          });
-
           const lRef = doc(collection(db, "ledger_entries"));
-          batch.set(lRef, {
+          await setDoc(lRef, {
             id: lRef.id,
             user_id: user!.uid,
             party_type: pType,
             party_id: partyId,
+            party_name: pName,
             entry_type: pType === "customer" ? "payment_in" : "payment_out",
             amount: Number(amount),
+            voucher_id: vResult.voucherId,
             note: note || null,
             created_at: payload.created_at
           });
-
-          await batch.commit();
-          toast.success("Payment recorded & balance synced");
-        } else {
-          const txRef = doc(collection(db, "cash_transactions"));
-          await setDoc(txRef, {
-            ...payload, id: txRef.id, user_id: user!.uid,
-          });
-          toast.success("Entry added");
         }
+        toast.success(
+          lang === "NEP"
+            ? `कारोबार थपियो र भाउचर (${vResult.voucherNo}) सिङ्क भयो`
+            : `Entry added & voucher ${vResult.voucherNo} synced`
+        );
       }
       setOpen(false); resetForm(); load();
     } catch (e: any) {
@@ -886,6 +918,23 @@ const Cashbook = () => {
         subtitle={lang === "NEP" ? "नगद, डिजिटल वालेट तथा बैंक कारोबार" : "All cash, wallets & bank in/out"}
         actions={
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {unsyncedCount > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleSyncToDaybook}
+                disabled={syncingToDaybook}
+                className="h-9 px-2.5 sm:px-3 text-xs border border-primary/30 text-primary hover:bg-primary/10 font-medium"
+                title={lang === "NEP" ? "भाउचर नबनेका पुराना कारोबारलाई Daybook मा सिङ्क गर्नुहोस्" : "Sync past entries to Daybook"}
+              >
+                {syncingToDaybook ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <span className="mr-1">🔄</span>
+                )}
+                {lang === "NEP" ? `Daybook सिङ्क (${unsyncedCount})` : `Sync Daybook (${unsyncedCount})`}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={printBook} className="h-9 px-2.5 sm:px-3 text-xs"><Printer className="h-4 w-4 mr-1" />Print</Button>
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild><Button onClick={resetForm} size="sm" className="h-9 px-2.5 sm:px-3 text-xs bg-gradient-primary text-primary-foreground"><Plus className="h-4 w-4 mr-1" />New Entry</Button></DialogTrigger>

@@ -950,3 +950,180 @@ export function printVoucherSlip(voucher: Voucher, shopInfo: any) {
 
   printHTML(`Voucher_${voucher.voucher_no}`, body, { paperSize: "a4" });
 }
+
+/**
+ * Resolves or creates a matching Ledger Account for a given cash transaction category
+ */
+export async function getOrCreateAccountForCategory(
+  userId: string,
+  category: string,
+  direction: "in" | "out",
+  accounts: Account[]
+): Promise<Account> {
+  const normCat = (category || "").toLowerCase().trim();
+
+  // Standard category to group/name mapping
+  const categoryMap: Record<string, { name: string; group: AccountGroup; type: "asset" | "liability" | "equity" | "income" | "expense" }> = {
+    expense: { name: "Office & General Expenses (कार्यालय तथा सामान्य खर्च)", group: "indirect_expenses", type: "expense" },
+    rent: { name: "Rent Expense (घर/कोठा भाडा खर्च)", group: "indirect_expenses", type: "expense" },
+    electricity: { name: "Electricity & Water (बिजुली तथा पानी खर्च)", group: "indirect_expenses", type: "expense" },
+    maintenance: { name: "Repair & Maintenance (मर्मत तथा सम्भार)", group: "indirect_expenses", type: "expense" },
+    salary: { name: "Salaries & Wages (कर्मचारी तलब तथा ज्याला)", group: "indirect_expenses", type: "expense" },
+    capital: { name: "Owner's Capital (साहुको पुँजी खाता)", group: "capital_account", type: "equity" },
+    opening: { name: "Owner's Capital (साहुको पुँजी खाता)", group: "capital_account", type: "equity" },
+    personal: { name: "Owner Drawings (व्यक्तिगत खर्च/निकासी खाता)", group: "drawings", type: "equity" },
+    loan: { name: "Bank & Other Loans (बैंक तथा अन्य ऋण खाता)", group: "loans_liability", type: "liability" },
+    loan_repayment: { name: "Bank & Other Loans (बैंक तथा अन्य ऋण खाता)", group: "loans_liability", type: "liability" },
+    fixed_asset: { name: "Furniture & Fixtures (फर्निचर तथा फिक्चर्स)", group: "fixed_assets", type: "asset" },
+    sale: { name: "Sales Account (बिक्री खाता)", group: "sales_account", type: "income" },
+    sales: { name: "Sales Account (बिक्री खाता)", group: "sales_account", type: "income" },
+    purchase: { name: "Purchase Account (खरिद खाता)", group: "purchase_account", type: "expense" },
+    purchases: { name: "Purchase Account (खरिद खाता)", group: "purchase_account", type: "expense" },
+    customer_payment: { name: "Sundry Debtors / Customers (आसामी / ग्राहक खाता)", group: "sundry_debtors", type: "asset" },
+    supplier_payment: { name: "Sundry Creditors / Suppliers (साहु / आपूर्तिकर्ता खाता)", group: "sundry_creditors", type: "liability" }
+  };
+
+  const mapped = categoryMap[normCat];
+  if (mapped) {
+    const existing = accounts.find(a => a.group === mapped.group || a.name.toLowerCase().includes(normCat));
+    if (existing) return existing;
+  }
+
+  // Check if account with same name exists
+  const byName = accounts.find(a => a.name.toLowerCase().includes(normCat) || normCat.includes(a.name.toLowerCase()));
+  if (byName) return byName;
+
+  // Otherwise create on demand
+  const accRef = doc(collection(db, "accounts"));
+  const isExp = direction === "out";
+  const newAcc: Account = {
+    id: accRef.id,
+    user_id: userId,
+    name: category.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
+    type: isExp ? "expense" : "income",
+    group: isExp ? "indirect_expenses" : "indirect_incomes",
+    opening_balance: 0,
+    current_balance: 0,
+    is_system: false,
+    created_at: new Date().toISOString()
+  };
+  await setDoc(accRef, newAcc);
+  accounts.push(newAcc);
+  return newAcc;
+}
+
+/**
+ * Creates a linked Voucher for a Cashbook Cash In / Cash Out entry
+ */
+export async function createCashbookVoucher(
+  userId: string,
+  entry: {
+    direction: "in" | "out";
+    amount: number;
+    category: string;
+    note?: string | null;
+    payment_mode?: string;
+    party_id?: string | null;
+    party_name?: string | null;
+    created_at?: string;
+  }
+): Promise<{ voucherId: string; voucherNo: string }> {
+  const accounts = await ensureDefaultAccounts(userId);
+
+  // 1. Resolve Liquid Account
+  const pMode = (entry.payment_mode || "cash").toLowerCase();
+  let liquidAcc = accounts.find(a => {
+    if (pMode === "bank") return a.group === "bank_accounts";
+    if (pMode === "esewa" || pMode === "khalti") return a.name.toLowerCase().includes(pMode);
+    return a.group === "cash" || a.name.toLowerCase().includes("cash");
+  });
+
+  if (!liquidAcc) {
+    liquidAcc = accounts.find(a => a.group === "cash") || accounts[0];
+  }
+
+  // 2. Resolve Counter Account
+  const counterAcc = await getOrCreateAccountForCategory(userId, entry.category, entry.direction, accounts);
+
+  // 3. Determine Voucher Type & Debit/Credit accounts
+  const isOut = entry.direction === "out";
+  const vType: VoucherType = isOut ? "payment" : "receipt";
+  const drAcc = isOut ? counterAcc : liquidAcc;
+  const crAcc = isOut ? liquidAcc : counterAcc;
+
+  const vDate = entry.created_at ? entry.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const cleanCategoryName = entry.category.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+  const vNarration = entry.note?.trim() 
+    ? `${cleanCategoryName}: ${entry.note.trim()}`
+    : `${cleanCategoryName} via ${pMode.toUpperCase()}`;
+
+  const voucher = await createVoucher(userId, {
+    voucher_type: vType,
+    date: vDate,
+    amount: Number(entry.amount),
+    debit_account_id: drAcc.id,
+    debit_account_name: drAcc.name,
+    credit_account_id: crAcc.id,
+    credit_account_name: crAcc.name,
+    narration: vNarration,
+    party_id: entry.party_id || undefined,
+    party_name: entry.party_name || undefined
+  });
+
+  return { voucherId: voucher.id, voucherNo: voucher.voucher_no };
+}
+
+/**
+ * Scans for standalone cash_transactions that don't have a linked voucher yet,
+ * and creates corresponding vouchers in Daybook safely.
+ */
+export async function syncUnsyncedCashTransactions(userId: string): Promise<{ syncedCount: number; totalCount: number }> {
+  const cashQ = query(collection(db, "cash_transactions"), where("user_id", "==", userId));
+  const cashSnap = await getDocs(cashQ);
+
+  const nonVoucherCategories = [
+    "voucher_payment", "voucher_receipt", "contra_bank_deposit", "contra_bank_withdrawal",
+    "sales_refund", "purchase_refund"
+  ];
+
+  const unsyncedDocs = cashSnap.docs.filter(d => {
+    const data = d.data();
+    if (data.voucher_id || data.reference_id) return false;
+    const cat = (data.category || "").toLowerCase();
+    if (nonVoucherCategories.includes(cat)) return false;
+    if (cat === "sale" || cat === "sales" || cat === "purchase" || cat === "purchases") return false;
+    return true;
+  });
+
+  if (unsyncedDocs.length === 0) {
+    return { syncedCount: 0, totalCount: cashSnap.docs.length };
+  }
+
+  let count = 0;
+  for (const docSnap of unsyncedDocs) {
+    try {
+      const data = docSnap.data();
+      const res = await createCashbookVoucher(userId, {
+        direction: data.direction || "out",
+        amount: Number(data.amount || 0),
+        category: data.category || "expense",
+        note: data.note || null,
+        payment_mode: data.payment_mode || "cash",
+        party_id: data.party_id || null,
+        party_name: data.party_name || null,
+        created_at: data.created_at || new Date().toISOString()
+      });
+
+      await updateDoc(docSnap.ref, {
+        voucher_id: res.voucherId,
+        reference_id: res.voucherId
+      });
+      count++;
+    } catch (err) {
+      console.warn("Error syncing individual cash transaction:", err);
+    }
+  }
+
+  return { syncedCount: count, totalCount: cashSnap.docs.length };
+}
+
