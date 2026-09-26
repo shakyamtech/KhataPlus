@@ -17,7 +17,7 @@ import { InstallAppModal } from "@/components/InstallAppModal";
 import { InstallAppQRCard } from "@/components/InstallAppQRCard";
 import { SplashScreen } from "@/components/SplashScreen";
 
-import { verifyStaffLogin } from "@/lib/staff";
+import { verifyStaffLogin, getStaffAuthPassword, ensureStaffAuthAccount, storeStaffSession } from "@/lib/staff";
 
 const emailSchema = z.string().trim().email("Invalid email").max(255);
 const pwSchema = z.string().min(4, "Min 4 characters/PIN").max(100);
@@ -84,27 +84,44 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // 1. Check if this is a registered Staff Member login (Email + 4-digit PIN)
-      const staffCheck = await verifyStaffLogin(email, password);
-      if (staffCheck.success && staffCheck.staff) {
-        await loginStaff(staffCheck.staff);
-        const sName = staffCheck.staff.shop_name || "KhataPlus Shop";
-        setLoginSplashShop(sName);
-        setShowLoginSplash(true);
-        toast.success(
-          lang === "NEP" 
-            ? `🎉 स्वागत छ, ${staffCheck.staff.name}! (${staffCheck.staff.role.toUpperCase()})` 
-            : `Welcome back, ${staffCheck.staff.name}!`
-        );
-        return;
-      } else if (staffCheck.error && !staffCheck.error.includes("भेटिएन") && !staffCheck.error.includes("not found")) {
-        // Staff exists but wrong PIN or account suspended
-        toast.error(staffCheck.error);
-        return;
+      const cleanEmail = email.trim().toLowerCase();
+      const passwordsToTry = [password];
+      if (password.trim().length < 6) {
+        passwordsToTry.push(getStaffAuthPassword(password));
       }
 
-      // 2. Otherwise attempt standard Firebase Account login (Shop Owner / Admin)
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      let userCredential = null;
+      let lastError: any = null;
+
+      // 1. Try standard sign-in (or with padded PIN)
+      for (const pw of passwordsToTry) {
+        try {
+          userCredential = await signInWithEmailAndPassword(auth, cleanEmail, pw);
+          break;
+        } catch (err: any) {
+          lastError = err;
+        }
+      }
+
+      // 2. If user wasn't found in Auth, check if they are a staff member who needs on-the-fly Auth account creation
+      if (!userCredential && (lastError?.code === "auth/user-not-found" || lastError?.code === "auth/invalid-credential")) {
+        const autoAuthResult = await ensureStaffAuthAccount(cleanEmail, password);
+        if (autoAuthResult.success) {
+          for (const pw of passwordsToTry) {
+            try {
+              userCredential = await signInWithEmailAndPassword(auth, cleanEmail, pw);
+              break;
+            } catch (err2) {
+              // keep going
+            }
+          }
+        }
+      }
+
+      if (!userCredential) {
+        throw lastError || new Error("Invalid email or password/PIN");
+      }
+
       try {
         await updateDoc(doc(db, "profiles", userCredential.user.uid), {
           updated_at: new Date().toISOString()
@@ -117,8 +134,29 @@ const Auth = () => {
       try {
         const pSnap = await getDoc(doc(db, "profiles", userCredential.user.uid));
         if (pSnap.exists()) {
-          sName = pSnap.data().shop_name || "My Shop";
+          const pData = pSnap.data();
+          sName = pData.shop_name || "My Shop";
           localStorage.setItem("khataplus_shop_name", sName);
+
+          if (pData.is_staff) {
+            const staffObj = {
+              id: pData.staff_id || userCredential.user.uid,
+              owner_id: pData.owner_id || userCredential.user.uid,
+              shop_name: sName,
+              name: pData.full_name || cleanEmail.split("@")[0],
+              email: pData.email || cleanEmail,
+              role: pData.role || "cashier",
+              status: pData.status || "active",
+              pin: pData.pin || password.trim(),
+              created_at: pData.created_at || new Date().toISOString()
+            };
+            storeStaffSession(staffObj as any);
+            toast.success(
+              lang === "NEP" 
+                ? `🎉 स्वागत छ, ${staffObj.name}! (${staffObj.role.toUpperCase()})` 
+                : `Welcome back, ${staffObj.name}!`
+            );
+          }
         }
       } catch (err) {}
 

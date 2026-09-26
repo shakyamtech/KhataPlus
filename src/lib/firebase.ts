@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyADe52Ppu9O5rQ9HXFec96JEbx94elBxOU",
   authDomain: "khataplus-f13b1.firebaseapp.com",
   projectId: "khataplus-f13b1",

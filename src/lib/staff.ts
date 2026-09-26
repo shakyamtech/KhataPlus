@@ -1,5 +1,11 @@
-import { auth, db } from "@/lib/firebase";
-import { signInAnonymously } from "firebase/auth";
+import { auth, db, firebaseConfig } from "@/lib/firebase";
+import { initializeApp, deleteApp } from "firebase/app";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  updatePassword as firebaseUpdatePassword 
+} from "firebase/auth";
 import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from "firebase/firestore";
 
 export type StaffRole = "cashier" | "storekeeper" | "accountant";
@@ -111,9 +117,21 @@ export interface StaffMember {
   phone?: string;
   role: StaffRole;
   pin?: string;
+  auth_uid?: string;
   status: "active" | "inactive";
   created_at: string;
   updated_at?: string;
+}
+
+/**
+ * Standard password padding helper for Firebase Auth 6-char minimum.
+ */
+export function getStaffAuthPassword(pinOrPassword: string): string {
+  const clean = (pinOrPassword || "1234").trim();
+  if (clean.length < 6) {
+    return `${clean}_khataplus2026`;
+  }
+  return clean;
 }
 
 /**
@@ -136,6 +154,7 @@ export async function getShopStaffMembers(ownerId: string): Promise<StaffMember[
         phone: data.phone || "",
         role: (data.role as StaffRole) || "cashier",
         pin: data.pin || "",
+        auth_uid: data.auth_uid || undefined,
         status: data.status === "inactive" ? "inactive" : "active",
         created_at: data.created_at || new Date().toISOString(),
         updated_at: data.updated_at || undefined,
@@ -149,19 +168,89 @@ export async function getShopStaffMembers(ownerId: string): Promise<StaffMember[
 }
 
 /**
- * Add a new staff member to Firestore.
+ * Create a Firebase Auth user account for a staff member without interrupting the owner's session.
+ */
+export async function ensureStaffAuthAccount(email: string, pinOrPassword: string): Promise<{ success: boolean; uid?: string }> {
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const effectivePassword = getStaffAuthPassword(pinOrPassword);
+    const secondaryAppName = `StaffAutoAuth_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+    const secondaryAuth = getAuth(secondaryApp);
+    
+    try {
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, cleanEmail, effectivePassword);
+      const uid = userCredential.user.uid;
+      await deleteApp(secondaryApp);
+      return { success: true, uid };
+    } catch (createErr: any) {
+      // If already exists, try signing in on secondary app to get uid
+      if (createErr.code === "auth/email-already-in-use") {
+        try {
+          const cred = await signInWithEmailAndPassword(secondaryAuth, cleanEmail, effectivePassword);
+          const uid = cred.user.uid;
+          await deleteApp(secondaryApp);
+          return { success: true, uid };
+        } catch (signErr) {
+          await deleteApp(secondaryApp);
+          return { success: true };
+        }
+      }
+      await deleteApp(secondaryApp);
+      return { success: false };
+    }
+  } catch (err) {
+    return { success: false };
+  }
+}
+
+/**
+ * Add a new staff member to Firestore and create their Firebase Auth credentials.
  */
 export async function addStaffMember(data: Omit<StaffMember, "id" | "created_at">): Promise<string> {
   const staffRef = doc(collection(db, "staff_members"));
+  let authUid = "";
+
+  // 1. Create real Firebase Auth account via secondary app
+  const authRes = await ensureStaffAuthAccount(data.email, data.pin || "1234");
+  if (authRes.uid) {
+    authUid = authRes.uid;
+  }
+
   const newStaff: StaffMember = {
     ...data,
     id: staffRef.id,
+    auth_uid: authUid || undefined,
     created_at: new Date().toISOString(),
   };
+
   await setDoc(staffRef, {
     ...newStaff,
     _serverTimestamp: serverTimestamp(),
   });
+
+  // 2. Also register in profiles so login resolves instantly
+  if (authUid) {
+    try {
+      await setDoc(doc(db, "profiles", authUid), {
+        id: authUid,
+        email: data.email,
+        full_name: data.name,
+        shop_name: data.shop_name,
+        owner_id: data.owner_id,
+        is_staff: true,
+        staff_id: staffRef.id,
+        role: data.role,
+        pin: data.pin || "",
+        status: data.status || "active",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, { merge: true });
+    } catch (profErr) {
+      console.warn("Staff profile creation warning:", profErr);
+    }
+  }
+
   return staffRef.id;
 }
 
@@ -177,6 +266,11 @@ export async function updateStaffMember(
     ...updates,
     updated_at: new Date().toISOString(),
   });
+
+  // If email and PIN are provided, ensure Auth account is ready
+  if (updates.email) {
+    await ensureStaffAuthAccount(updates.email, updates.pin || "1234");
+  }
 }
 
 /**
