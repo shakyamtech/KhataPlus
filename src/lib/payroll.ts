@@ -81,10 +81,16 @@ export async function updateStaffSalaryDetails(
   if (!staffId) return false;
   try {
     const ref = doc(db, "staff_members", staffId);
-    await updateDoc(ref, {
-      ...salaryData,
+    const updates: any = {
       updated_at: new Date().toISOString()
-    });
+    };
+    if (salaryData.monthly_salary !== undefined) updates.monthly_salary = Number(salaryData.monthly_salary) || 0;
+    if (salaryData.advance_balance !== undefined) updates.advance_balance = Number(salaryData.advance_balance) || 0;
+    if (salaryData.pan_no !== undefined) updates.pan_no = salaryData.pan_no || "";
+    if (salaryData.bank_name !== undefined) updates.bank_name = salaryData.bank_name || "";
+    if (salaryData.bank_account_no !== undefined) updates.bank_account_no = salaryData.bank_account_no || "";
+
+    await updateDoc(ref, updates);
     return true;
   } catch (err) {
     console.error("Error updating staff salary details:", err);
@@ -145,7 +151,7 @@ export async function recordStaffAdvance(params: {
 
     // 3. Create Payroll Transaction Record
     const txRef = doc(collection(db, "payroll_transactions"));
-    const payrollTx: PayrollTransaction = {
+    const payrollTx: any = {
       id: txRef.id,
       owner_id: ownerId,
       staff_id: staff.id,
@@ -162,15 +168,15 @@ export async function recordStaffAdvance(params: {
       other_deductions: 0,
       net_paid: amount,
       payment_mode: paymentMode,
-      bank_name: bankName,
-      voucher_id: voucher.id,
-      voucher_no: voucher.voucher_no,
+      bank_name: bankName || null,
+      voucher_id: voucher?.id || null,
+      voucher_no: voucher?.voucher_no || null,
       note: note || `Advance taken by ${staff.name}`,
       created_at: effectiveDate
     };
     await setDoc(txRef, payrollTx);
 
-    // 5. Update Staff Advance Balance
+    // 4. Update Staff Advance Balance
     const staffRef = doc(db, "staff_members", staff.id);
     await updateDoc(staffRef, {
       advance_balance: increment(amount),
@@ -295,7 +301,7 @@ export async function processStaffSalaryPayout(params: {
 
     // 3. Create Payroll Transaction Record
     const txRef = doc(collection(db, "payroll_transactions"));
-    const payrollTx: PayrollTransaction = {
+    const payrollTx: any = {
       id: txRef.id,
       owner_id: ownerId,
       staff_id: staff.id,
@@ -312,15 +318,15 @@ export async function processStaffSalaryPayout(params: {
       other_deductions: otherDeductions,
       net_paid: netPaid,
       payment_mode: paymentMode,
-      bank_name: bankName,
-      voucher_id: voucher.id,
-      voucher_no: voucher.voucher_no,
+      bank_name: bankName || null,
+      voucher_id: voucher?.id || null,
+      voucher_no: voucher?.voucher_no || null,
       note: note || `Salary payout for ${month}`,
       created_at: effectiveDate
     };
     await setDoc(txRef, payrollTx);
 
-    // 5. Update Staff Advance Balance (deduct the amount recovered)
+    // 4. Update Staff Advance Balance (deduct the amount recovered)
     if (advanceDeducted > 0) {
       const staffRef = doc(db, "staff_members", staff.id);
       await updateDoc(staffRef, {
@@ -329,7 +335,7 @@ export async function processStaffSalaryPayout(params: {
       });
     }
 
-    return { success: true, transaction: payrollTx };
+    return { success: true, transaction: payrollTx as PayrollTransaction };
   } catch (err: any) {
     console.error("Error processing salary payout:", err);
     return { success: false, error: err.message || "Failed to process salary payout" };
