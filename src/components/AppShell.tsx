@@ -884,7 +884,7 @@ export const AppShell = () => {
                     >
                         <Avatar className={triggerSizeClass}>
                             <AvatarFallback className={fallbackClass}>
-                                {getUserInitials(fullName, user?.email)}
+                                {getUserInitials(currentStaff ? currentStaff.name : fullName, currentStaff ? currentStaff.email : user?.email)}
                             </AvatarFallback>
                         </Avatar>
                     </Button>
@@ -1031,11 +1031,13 @@ export const AppShell = () => {
             <aside className="hidden md:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
                 <div 
                     onClick={() => {
-                        setNewName(shopName);
-                        setShopOpen(true);
+                        if (!currentStaff) {
+                            setNewName(shopName);
+                            setShopOpen(true);
+                        }
                     }}
-                    className="px-4 py-4 border-b border-sidebar-border cursor-pointer hover:bg-sidebar-accent/40 transition-colors group select-none"
-                    title={lang === "NEP" ? "पसलको सेटिङ खोल्न यहाँ क्लिक गर्नुहोस्" : "Click to manage shop settings"}
+                    className={`px-4 py-4 border-b border-sidebar-border ${!currentStaff ? "cursor-pointer hover:bg-sidebar-accent/40" : ""} transition-colors group select-none`}
+                    title={!currentStaff ? (lang === "NEP" ? "पसलको सेटिङ खोल्न यहाँ क्लिक गर्नुहोस्" : "Click to manage shop settings") : shopName}
                 >
                     <div className="flex items-center gap-3">
                         {shopLogo ? (
@@ -1052,11 +1054,27 @@ export const AppShell = () => {
                                 {shopName || "My Shop"}
                             </div>
                             <div className="text-[11px] text-sidebar-foreground/60 truncate flex items-center gap-1.5 mt-0.5 font-medium">
-                                <span className="truncate">{fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "प्रयोगकर्ता" : "User")}</span>
-                                {isAdmin && (
-                                    <span className="text-[9px] px-1.5 py-0.2 font-bold rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
-                                        Admin
+                                <span className="truncate">{currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "साहुजी" : "Owner"))}</span>
+                                {currentStaff ? (
+                                    <span className={`text-[9px] px-1.5 py-0.2 font-bold rounded uppercase border shrink-0 ${
+                                        currentStaff.role === "cashier"
+                                            ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                            : currentStaff.role === "storekeeper"
+                                                ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+                                                : "bg-purple-500/20 text-purple-400 border-purple-500/30"
+                                    }`}>
+                                        {currentStaff.role}
                                     </span>
+                                ) : (
+                                    isAdmin ? (
+                                        <span className="text-[9px] px-1.5 py-0.2 font-bold rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+                                            Admin
+                                        </span>
+                                    ) : (
+                                        <span className="text-[9px] px-1.5 py-0.2 font-bold rounded bg-amber-500/15 text-amber-400/90 border border-amber-500/25 shrink-0">
+                                            Owner
+                                        </span>
+                                    )
                                 )}
                             </div>
                         </div>
@@ -1148,11 +1166,13 @@ export const AppShell = () => {
                             <SheetDescription className="sr-only">Quick access links and account management</SheetDescription>
                             <div 
                                 onClick={() => {
-                                    setMobileMenuOpen(false);
-                                    setNewName(shopName);
-                                    setShopOpen(true);
+                                    if (!currentStaff) {
+                                        setMobileMenuOpen(false);
+                                        setNewName(shopName);
+                                        setShopOpen(true);
+                                    }
                                 }}
-                                className="px-5 py-6 border-b border-sidebar-border bg-sidebar-accent/30 cursor-pointer hover:bg-sidebar-accent/50 transition-colors"
+                                className={`px-5 py-6 border-b border-sidebar-border bg-sidebar-accent/30 ${!currentStaff ? "cursor-pointer hover:bg-sidebar-accent/50" : ""} transition-colors`}
                             >
                                 <div className="flex items-center gap-3.5">
                                     {shopLogo ? (
@@ -1169,11 +1189,27 @@ export const AppShell = () => {
                                             {shopName || "My Shop"}
                                         </div>
                                         <div className="text-xs text-sidebar-foreground/60 truncate flex items-center gap-1.5 mt-0.5 font-medium">
-                                            <span className="truncate">{fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "प्रयोगकर्ता" : "User")}</span>
-                                            {isAdmin && (
-                                                <span className="text-[9px] px-1.5 py-0.2 font-bold rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
-                                                    Admin
+                                            <span className="truncate">{currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "साहुजी" : "Owner"))}</span>
+                                            {currentStaff ? (
+                                                <span className={`text-[9px] px-1.5 py-0.2 font-bold rounded uppercase border shrink-0 ${
+                                                    currentStaff.role === "cashier"
+                                                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                                        : currentStaff.role === "storekeeper"
+                                                            ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+                                                            : "bg-purple-500/20 text-purple-400 border-purple-500/30"
+                                                }`}>
+                                                    {currentStaff.role}
                                                 </span>
+                                            ) : (
+                                                isAdmin ? (
+                                                    <span className="text-[9px] px-1.5 py-0.2 font-bold rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+                                                        Admin
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[9px] px-1.5 py-0.2 font-bold rounded bg-amber-500/15 text-amber-400/90 border border-amber-500/25 shrink-0">
+                                                        Owner
+                                                    </span>
+                                                )
                                             )}
                                         </div>
                                     </div>
