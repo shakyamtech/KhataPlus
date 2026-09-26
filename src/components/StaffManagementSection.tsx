@@ -31,7 +31,7 @@ interface StaffManagementSectionProps {
 
 export function StaffManagementSection({ ownerId, shopName }: StaffManagementSectionProps) {
   const { lang } = useLanguage();
-  const { refreshShopStaff } = useAuth();
+  const { user, refreshShopStaff } = useAuth();
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -127,12 +127,37 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
+    const cleanName = formData.name.trim();
+    const cleanEmail = formData.email.trim().toLowerCase();
+    const cleanPin = formData.pin.trim();
+
+    if (!cleanName) {
       toast.error(lang === "NEP" ? "कृपया स्टाफको नाम लेख्नुहोस्।" : "Please enter staff name.");
       return;
     }
-    if (!formData.email.trim()) {
+    if (!cleanEmail) {
       toast.error(lang === "NEP" ? "कृपया लगइन इमेल/युजरनेम लेख्नुहोस्।" : "Please enter login email/ID.");
+      return;
+    }
+
+    // Validation: Cannot use Owner's own login email
+    if (user?.email && cleanEmail === user.email.toLowerCase()) {
+      toast.error(
+        lang === "NEP"
+          ? "साहुजीको आफ्नै लगइन इमेल स्टाफको लागि प्रयोग गर्न मिल्दैन। कृपया स्टाफको छुट्टै इमेल/आईडी लेख्नुहोस्।"
+          : "Owner's own login email cannot be used for staff. Please enter a unique email/ID for this staff."
+      );
+      return;
+    }
+
+    // Validation: Duplicate staff email
+    const duplicate = staffList.find(s => s.email.toLowerCase() === cleanEmail && s.id !== editingStaff?.id);
+    if (duplicate) {
+      toast.error(
+        lang === "NEP"
+          ? `यो इमेल पहिल्यै '${duplicate.name}' ले प्रयोग गरिसकेको छ।`
+          : `This email is already assigned to '${duplicate.name}'.`
+      );
       return;
     }
 
@@ -140,22 +165,22 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
     try {
       if (editingStaff) {
         await updateStaffMember(editingStaff.id, {
-          name: formData.name.trim(),
-          email: formData.email.trim().toLowerCase(),
+          name: cleanName,
+          email: cleanEmail,
           phone: formData.phone.trim(),
           role: formData.role,
-          pin: formData.pin.trim(),
+          pin: cleanPin,
         });
         toast.success(lang === "NEP" ? "स्टाफको विवरण सफलतापूर्वक अद्यावधिक गरियो!" : "Staff updated successfully!");
       } else {
         await addStaffMember({
           owner_id: ownerId,
           shop_name: shopName,
-          name: formData.name.trim(),
-          email: formData.email.trim().toLowerCase(),
+          name: cleanName,
+          email: cleanEmail,
           phone: formData.phone.trim(),
           role: formData.role,
-          pin: formData.pin.trim(),
+          pin: cleanPin,
           status: "active",
         });
         toast.success(lang === "NEP" ? "नयाँ स्टाफ सफलतापूर्वक दर्ता गरियो!" : "New staff member added successfully!");

@@ -149,6 +149,33 @@ export function OperatorSwitchModal({ open, onOpenChange }: OperatorSwitchModalP
     setErrorMsg("");
   };
 
+  // Keyboard Support (0-9, Numpad, Backspace, Enter, Escape)
+  useEffect(() => {
+    if (!open || !selectedStaff) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const targetTag = (e.target as HTMLElement)?.tagName;
+      if (targetTag === "INPUT" || targetTag === "TEXTAREA") return;
+
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        handlePinPad(e.key);
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        handlePinBackspace();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleConfirmSwitch();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setSelectedStaff(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, selectedStaff, pin, ownerId]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md w-[95vw] p-5 sm:p-6 overflow-hidden">
