@@ -549,29 +549,29 @@ export async function printStaffPayslip(params: {
             <td>
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                 <span>Basic Salary:</span>
-                <span class="num">Rs. ${fmt(transaction.base_salary)}</span>
+                <span class="num">${fmt(transaction.base_salary)}</span>
               </div>
               ${transaction.allowance_amount > 0 ? `
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                 <span>Allowances / खाजा:</span>
-                <span class="num">Rs. ${fmt(transaction.allowance_amount)}</span>
+                <span class="num">${fmt(transaction.allowance_amount)}</span>
               </div>` : ""}
               ${transaction.bonus_amount > 0 ? `
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                 <span>Bonus / Commission:</span>
-                <span class="num">Rs. ${fmt(transaction.bonus_amount)}</span>
+                <span class="num">${fmt(transaction.bonus_amount)}</span>
               </div>` : ""}
             </td>
             <td style="vertical-align: top;">
               ${transaction.advance_deducted > 0 ? `
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #dc2626;">
                 <span>Advance Deducted (पेस्की):</span>
-                <span class="num">- Rs. ${fmt(transaction.advance_deducted)}</span>
+                <span class="num">- ${fmt(transaction.advance_deducted)}</span>
               </div>` : `<div style="color: #64748b; font-style: italic;">No Advance Deducted</div>`}
               ${transaction.other_deductions > 0 ? `
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #dc2626;">
                 <span>Other Deductions / TDS:</span>
-                <span class="num">- Rs. ${fmt(transaction.other_deductions)}</span>
+                <span class="num">- ${fmt(transaction.other_deductions)}</span>
               </div>` : ""}
             </td>
           </tr>
@@ -579,13 +579,13 @@ export async function printStaffPayslip(params: {
             <td>
               <div style="display: flex; justify-content: space-between;">
                 <span>Gross Earnings:</span>
-                <span class="num">Rs. ${fmt(totalGross)}</span>
+                <span class="num">${fmt(totalGross)}</span>
               </div>
             </td>
             <td>
               <div style="display: flex; justify-content: space-between;">
                 <span>Total Deductions:</span>
-                <span class="num">Rs. ${fmt(totalDeductions)}</span>
+                <span class="num">${fmt(totalDeductions)}</span>
               </div>
             </td>
           </tr>
@@ -595,7 +595,7 @@ export async function printStaffPayslip(params: {
       <div class="payslip-summary-box">
         <div class="payslip-net-row">
           <span>NET PAYABLE / AMOUNT PAID:</span>
-          <span>Rs. ${fmt(netPay)}</span>
+          <span>${fmt(netPay)}</span>
         </div>
         <div style="font-size: 11px; color: #475569; margin-top: 4px; font-style: italic;">
           In Words: ${escapeHtml(payInWords)} Rupees Only.

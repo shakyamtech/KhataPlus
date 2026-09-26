@@ -348,7 +348,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-extrabold text-foreground">{stats.totalStaff}</span>
             <span className="text-xs text-muted-foreground">
-              {lang === "NEP" ? `सक्रिय कर्मचारी (बजेट: रु. ${fmt(stats.totalBaseBudget)})` : `Active Staffs (Rs. ${fmt(stats.totalBaseBudget)})`}
+              {lang === "NEP" ? `सक्रिय कर्मचारी (बजेट: ${fmt(stats.totalBaseBudget)})` : `Active Staffs (${fmt(stats.totalBaseBudget)})`}
             </span>
           </div>
         </Card>
@@ -364,7 +364,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-amber-500">Rs. {fmt(stats.totalAdvanceBalance)}</span>
+            <span className="text-2xl font-extrabold text-amber-500">{fmt(stats.totalAdvanceBalance)}</span>
             <span className="text-xs text-muted-foreground">
               {lang === "NEP" ? "तलबबाट कट्टी हुन बाँकी" : "Unrecovered Advance"}
             </span>
@@ -382,7 +382,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-emerald-500">Rs. {fmt(stats.monthPaidTotal)}</span>
+            <span className="text-2xl font-extrabold text-emerald-500">{fmt(stats.monthPaidTotal)}</span>
             <span className="text-xs text-muted-foreground">
               {lang === "NEP" ? `${stats.paidCount} जनालाई भुक्तान` : `${stats.paidCount} settled`}
             </span>
@@ -518,7 +518,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                           </button>
                         </div>
                         <div className="text-sm font-bold text-foreground mt-0.5">
-                          {baseSalary > 0 ? `Rs. ${fmt(baseSalary)}` : (
+                          {baseSalary > 0 ? `${fmt(baseSalary)}` : (
                             <span className="text-[11px] text-muted-foreground/60 italic font-normal">
                               {lang === "NEP" ? "तोकिएको छैन" : "Not set"}
                             </span>
@@ -531,7 +531,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                           {lang === "NEP" ? "लिएको पेस्की (Advance):" : "Advance Taken:"}
                         </div>
                         <div className={cn("text-sm font-bold mt-0.5", advanceBal > 0 ? "text-amber-500" : "text-muted-foreground")}>
-                          Rs. {fmt(advanceBal)}
+                          {fmt(advanceBal)}
                         </div>
                       </div>
                     </div>
@@ -625,13 +625,13 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                       </td>
                       <td className="p-2.5 font-semibold text-muted-foreground">{t.month || "-"}</td>
                       <td className="p-2.5 text-right font-mono font-medium">
-                        {t.type === "salary_payout" ? `Rs. ${fmt(t.base_salary + (t.allowance_amount || 0) + (t.bonus_amount || 0))}` : "-"}
+                        {t.type === "salary_payout" ? `${fmt(t.base_salary + (t.allowance_amount || 0) + (t.bonus_amount || 0))}` : "-"}
                       </td>
                       <td className="p-2.5 text-right font-mono text-amber-500 font-medium">
-                        {t.advance_deducted > 0 ? `- Rs. ${fmt(t.advance_deducted)}` : "-"}
+                        {t.advance_deducted > 0 ? `- ${fmt(t.advance_deducted)}` : "-"}
                       </td>
                       <td className="p-2.5 text-right font-mono font-bold text-foreground">
-                        Rs. {fmt(t.net_paid)}
+                        {fmt(t.net_paid)}
                       </td>
                       <td className="p-2.5 font-mono uppercase text-[11px]">
                         {t.payment_mode}{t.bank_name ? ` (${t.bank_name})` : ""}
@@ -683,7 +683,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
               </div>
               <div>
                 <span className="text-muted-foreground font-medium">हालको पेस्की:</span>{" "}
-                <strong className="text-amber-500 font-mono">Rs. {fmt(Number((selectedStaff as any)?.advance_balance) || 0)}</strong>
+                <strong className="text-amber-500 font-mono">{fmt(Number((selectedStaff as any)?.advance_balance) || 0)}</strong>
               </div>
             </div>
 
@@ -854,7 +854,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                 <div>
                   <div className="flex justify-between items-center text-[10px] text-muted-foreground">
                     <span>{lang === "NEP" ? "पेस्की कट्टी (Advance):" : "Advance Deduct:"}</span>
-                    <span className="text-amber-500 font-mono">Max: Rs. {fmt(Number((selectedStaff as any)?.advance_balance) || 0)}</span>
+                    <span className="text-amber-500 font-mono">Max: {fmt(Number((selectedStaff as any)?.advance_balance) || 0)}</span>
                   </div>
                   <Input
                     type="number"
@@ -886,12 +886,12 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                   {lang === "NEP" ? "दिनुपर्ने खुद रकम (Net Payable):" : "Net Payable Salary:"}
                 </span>
                 <span className="text-[10.5px] text-muted-foreground italic mt-0.5 block">
-                  (Gross: Rs. {fmt(salaryCalc.gross)} - Deductions: Rs. {fmt(salaryCalc.adv + salaryCalc.other)})
+                  (Gross: {fmt(salaryCalc.gross)} - Deductions: {fmt(salaryCalc.adv + salaryCalc.other)})
                 </span>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-black text-primary font-mono">
-                  Rs. {fmt(salaryCalc.net)}
+                  {fmt(salaryCalc.net)}
                 </span>
               </div>
             </div>
