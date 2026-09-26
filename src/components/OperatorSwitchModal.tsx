@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { StaffMember, getShopStaffMembers, ROLE_DEFINITIONS } from "@/lib/staff";
+import { StaffMember, getShopStaffMembers, ROLE_DEFINITIONS, verifyOwnerMasterPin } from "@/lib/staff";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -87,6 +87,20 @@ export function OperatorSwitchModal({ open, onOpenChange }: OperatorSwitchModalP
         setErrorMsg(lang === "NEP" ? "स्टाफ खाताबाट साहुजी मोडमा स्विच गर्न मिल्दैन।" : "Staff accounts cannot switch to Owner mode.");
         return;
       }
+      if (!ownerId) {
+        setErrorMsg("Shop owner ID missing");
+        return;
+      }
+      if (!pin.trim()) {
+        setErrorMsg(lang === "NEP" ? "कृपया साहुजीको ४-अङ्कको Master PIN प्रविष्ट गर्नुहोस्" : "Please enter 4-digit Master Owner PIN");
+        return;
+      }
+      const isValid = await verifyOwnerMasterPin(ownerId, pin.trim());
+      if (!isValid) {
+        setErrorMsg(lang === "NEP" ? "गलत PIN नम्बर! साहुजीको Master PIN मिलेन।" : "Incorrect PIN! Master Owner PIN mismatch.");
+        return;
+      }
+
       // Switching to Owner
       const success = await switchOperator(null);
       if (success) {
@@ -296,11 +310,19 @@ export function OperatorSwitchModal({ open, onOpenChange }: OperatorSwitchModalP
               </span>
             </div>
 
-            {selectedStaff !== "owner" && selectedStaff.pin ? (
+            {(selectedStaff === "owner" || (selectedStaff !== "owner" && selectedStaff.pin)) ? (
               <div className="space-y-3">
                 <div className="text-center">
-                  <Label className="text-xs font-semibold text-muted-foreground block mb-1">
-                    {lang === "NEP" ? "४-अङ्कको PIN प्रविष्ट गर्नुहोस्:" : "Enter 4-Digit PIN:"}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold mb-1.5 border border-primary/20">
+                    <KeyRound className="h-3.5 w-3.5" />
+                    {selectedStaff === "owner"
+                      ? (lang === "NEP" ? "👑 साहुजीको मास्टर PIN" : "👑 Owner Master PIN")
+                      : (lang === "NEP" ? `स्टाफ PIN: ${selectedStaff.name}` : `Staff PIN: ${selectedStaff.name}`)}
+                  </div>
+                  <Label className="text-xs font-medium text-muted-foreground block mb-1">
+                    {selectedStaff === "owner"
+                      ? (lang === "NEP" ? "साहुजीको ४-अङ्कको Master PIN प्रविष्ट गर्नुहोस्:" : "Enter 4-Digit Owner Master PIN:")
+                      : (lang === "NEP" ? "४-अङ्कको PIN प्रविष्ट गर्नुहोस्:" : "Enter 4-Digit PIN:")}
                   </Label>
                   <div className="flex justify-center gap-2 my-2">
                     {[0, 1, 2, 3].map((idx) => (
@@ -356,7 +378,11 @@ export function OperatorSwitchModal({ open, onOpenChange }: OperatorSwitchModalP
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setSelectedStaff(null)}
+                onClick={() => {
+                  setSelectedStaff(null);
+                  setPin("");
+                  setErrorMsg("");
+                }}
                 className="flex-1 h-9 text-xs"
               >
                 {lang === "NEP" ? "रद्द गर्नुहोस्" : "Cancel"}
@@ -364,7 +390,10 @@ export function OperatorSwitchModal({ open, onOpenChange }: OperatorSwitchModalP
               <Button
                 type="button"
                 onClick={handleConfirmSwitch}
-                disabled={Boolean(selectedStaff !== "owner" && selectedStaff.pin && pin.length < 4)}
+                disabled={Boolean(
+                  (selectedStaff === "owner" && pin.length < 4) ||
+                  (selectedStaff !== "owner" && selectedStaff.pin && pin.length < 4)
+                )}
                 className="flex-1 h-9 text-xs font-bold bg-primary text-primary-foreground"
               >
                 {lang === "NEP" ? "स्विच गर्नुहोस् (Confirm)" : "Confirm Switch"}

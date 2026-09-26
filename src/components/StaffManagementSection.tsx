@@ -7,12 +7,14 @@ import {
   getShopStaffMembers, 
   addStaffMember, 
   updateStaffMember, 
-  deleteStaffMember 
+  deleteStaffMember,
+  getOwnerMasterPin,
+  setOwnerMasterPin
 } from "@/lib/staff";
 import { 
   Users, UserPlus, Shield, ShieldCheck, ShieldAlert, KeyRound, 
   Trash2, Edit3, CheckCircle2, XCircle, ShoppingCart, Package, 
-  FileSpreadsheet, Sparkles, AlertCircle, Lock, Phone, Mail, UserCheck
+  FileSpreadsheet, Sparkles, AlertCircle, Lock, Phone, Mail, UserCheck, Eye, EyeOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +32,13 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
   const { lang } = useLanguage();
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Master Owner PIN State
+  const [ownerMasterPin, setOwnerMasterPinState] = useState<string>("1234");
+  const [ownerPinModalOpen, setOwnerPinModalOpen] = useState(false);
+  const [newOwnerPin, setNewOwnerPin] = useState("");
+  const [showOwnerPin, setShowOwnerPin] = useState(false);
+  const [savingOwnerPin, setSavingOwnerPin] = useState(false);
 
   // Dialog State
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -54,12 +63,35 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
     if (!ownerId) return;
     setLoading(true);
     try {
-      const data = await getShopStaffMembers(ownerId);
+      const [data, pin] = await Promise.all([
+        getShopStaffMembers(ownerId),
+        getOwnerMasterPin(ownerId)
+      ]);
       setStaffList(data);
+      setOwnerMasterPinState(pin);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveOwnerPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newOwnerPin.trim().length < 4) {
+      toast.error(lang === "NEP" ? "PIN कम्तीमा ४-अङ्कको हुनुपर्छ।" : "PIN must be at least 4 digits.");
+      return;
+    }
+    setSavingOwnerPin(true);
+    try {
+      await setOwnerMasterPin(ownerId, newOwnerPin.trim());
+      setOwnerMasterPinState(newOwnerPin.trim());
+      setOwnerPinModalOpen(false);
+      toast.success(lang === "NEP" ? "साहुजीको मास्टर PIN सफलतापूर्वक परिवर्तन गरियो!" : "Owner Master PIN updated successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update Master PIN");
+    } finally {
+      setSavingOwnerPin(false);
     }
   };
 
@@ -208,6 +240,56 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
           <UserPlus className="h-4 w-4" />
           {lang === "NEP" ? "+ नयाँ स्टाफ थप्नुहोस्" : "+ Add Staff Member"}
         </Button>
+      </div>
+
+      {/* Master Owner Security PIN Card */}
+      <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold shrink-0">
+            <KeyRound className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h5 className="text-xs font-bold text-foreground">
+                {lang === "NEP" ? "👑 साहुजीको मास्टर PIN (Master Owner Security PIN)" : "👑 Master Owner Security PIN"}
+              </h5>
+              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 font-medium">
+                {lang === "NEP" ? "काउन्टर लक" : "Counter Lock"}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5 max-w-md">
+              {lang === "NEP"
+                ? "काउन्टरमा क्यासियरबाट साहुजी (Owner) मोडमा फर्किन यो ४-अङ्कको Master PIN अनिवार्य चाहिन्छ।"
+                : "Required to switch back from staff to Shop Owner mode on the counter terminal."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="bg-background/90 px-3 py-1.5 rounded-lg border border-border/80 text-xs font-mono font-bold flex items-center gap-2 shadow-xs">
+            <span>{showOwnerPin ? ownerMasterPin : "••••"}</span>
+            <button
+              type="button"
+              onClick={() => setShowOwnerPin(!showOwnerPin)}
+              className="text-muted-foreground hover:text-foreground text-[10.5px] uppercase font-sans font-semibold cursor-pointer ml-1"
+            >
+              {showOwnerPin ? (lang === "NEP" ? "लुकाउनुहोस्" : "Hide") : (lang === "NEP" ? "हेर्नुहोस्" : "Show")}
+            </button>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setNewOwnerPin(ownerMasterPin);
+              setOwnerPinModalOpen(true);
+            }}
+            className="h-8 text-xs font-semibold border-amber-500/40 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400 cursor-pointer"
+          >
+            <Edit3 className="h-3.5 w-3.5 mr-1" />
+            {lang === "NEP" ? "PIN बदल्नुहोस्" : "Change PIN"}
+          </Button>
+        </div>
       </div>
 
       {/* Staff Members List */}
@@ -515,6 +597,72 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
                 {saving
                   ? (lang === "NEP" ? "सुरक्षित गर्दै..." : "Saving...")
                   : (lang === "NEP" ? "स्टाफ सुरक्षित गर्नुहोस्" : "Save Staff Member")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Owner Master PIN Change Modal */}
+      <Dialog open={ownerPinModalOpen} onOpenChange={setOwnerPinModalOpen}>
+        <DialogContent className="max-w-sm w-[95vw] p-5">
+          <DialogHeader>
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold">
+                  {lang === "NEP" ? "साहुजीको मास्टर PIN परिवर्तन गर्नुहोस्" : "Change Owner Master PIN"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {lang === "NEP"
+                    ? "काउन्टरमा क्यासियरबाट साहुजी मोडमा स्विच गर्न यो PIN चाहिन्छ।"
+                    : "Security PIN used to unlock Owner mode on the counter terminal."}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveOwnerPin} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">
+                {lang === "NEP" ? "नयाँ ४-अङ्कको Master PIN:" : "New 4-Digit Master PIN:"}
+              </Label>
+              <Input
+                type="password"
+                maxLength={6}
+                value={newOwnerPin}
+                onChange={(e) => setNewOwnerPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="e.g. 1234"
+                className="font-mono text-center tracking-widest text-lg h-11 bg-background"
+                autoFocus
+                required
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {lang === "NEP"
+                  ? "यो PIN साहुजीले मात्र जान्नुपर्छ। क्यासियरलाई यो PIN नदिनुहोस्।"
+                  : "Keep this PIN confidential. Do not share it with counter operators."}
+              </p>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOwnerPinModalOpen(false)}
+                className="text-xs"
+              >
+                {lang === "NEP" ? "रद्द" : "Cancel"}
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingOwnerPin || newOwnerPin.length < 4}
+                className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {savingOwnerPin
+                  ? (lang === "NEP" ? "सुरक्षित गर्दै..." : "Saving...")
+                  : (lang === "NEP" ? "PIN सेभ गर्नुहोस्" : "Save PIN")}
               </Button>
             </DialogFooter>
           </form>

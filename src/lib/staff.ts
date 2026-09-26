@@ -6,7 +6,7 @@ import {
   signInWithEmailAndPassword, 
   updatePassword as firebaseUpdatePassword 
 } from "firebase/auth";
-import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from "firebase/firestore";
 
 export type StaffRole = "cashier" | "storekeeper" | "accountant";
 
@@ -405,4 +405,45 @@ export function hasStaffPermission(
   const def = ROLE_DEFINITIONS[role];
   if (!def) return true;
   return Boolean(def.permissions[permission]);
+}
+
+/**
+ * Get the Shop Owner's master security PIN. Defaults to "1234" if not explicitly configured.
+ */
+export async function getOwnerMasterPin(ownerId: string): Promise<string> {
+  if (!ownerId) return "1234";
+  try {
+    const pSnap = await getDoc(doc(db, "profiles", ownerId));
+    if (pSnap.exists()) {
+      const data = pSnap.data();
+      return (data.owner_pin || data.master_pin || "1234").toString().trim();
+    }
+  } catch (err) {
+    console.warn("Failed to get owner master PIN:", err);
+  }
+  return "1234";
+}
+
+/**
+ * Update the Shop Owner's master security PIN in their profile.
+ */
+export async function setOwnerMasterPin(ownerId: string, pin: string): Promise<void> {
+  if (!ownerId) throw new Error("Owner ID is required");
+  const cleanPin = pin.trim();
+  if (cleanPin.length < 4) {
+    throw new Error("Master PIN must be at least 4 digits");
+  }
+  await updateDoc(doc(db, "profiles", ownerId), {
+    owner_pin: cleanPin,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+/**
+ * Verify whether an input PIN matches the Shop Owner's master PIN.
+ */
+export async function verifyOwnerMasterPin(ownerId: string, inputPin: string): Promise<boolean> {
+  if (!ownerId || !inputPin) return false;
+  const actualPin = await getOwnerMasterPin(ownerId);
+  return actualPin === inputPin.trim();
 }
