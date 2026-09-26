@@ -63,10 +63,12 @@ import {
   Sparkles,
   RotateCcw,
   Check,
-  ChevronDown
+  ChevronDown,
+  Users
 } from "lucide-react";
 import { StockSummaryView } from "@/components/StockSummaryView";
 import { TrialBalanceDifferenceHelperModal } from "@/components/TrialBalanceDifferenceHelperModal";
+import { PayrollSection } from "@/components/PayrollSection";
 import { collection, query, where, getDocs, doc, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -76,7 +78,7 @@ export default function Accounting() {
   const [searchParams, setSearchParams] = useSearchParams();
   const lastHandledReturnRef = useRef<string>("");
 
-  const [activeTab, setActiveTab] = useState<"vouchers" | "daybook" | "stock" | "trial" | "chart">("vouchers");
+  const [activeTab, setActiveTab] = useState<"vouchers" | "daybook" | "stock" | "trial" | "chart" | "payroll">("vouchers");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,7 +100,7 @@ export default function Accounting() {
   // Sync tab with URL search params
   useEffect(() => {
     const t = searchParams.get("tab");
-    if (t === "trial" || t === "daybook" || t === "chart" || t === "vouchers" || t === "stock") {
+    if (t === "trial" || t === "daybook" || t === "chart" || t === "vouchers" || t === "stock" || t === "payroll") {
       setActiveTab(t as any);
     }
   }, [searchParams]);
@@ -3542,7 +3544,7 @@ export default function Accounting() {
 
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-4">
         <div className="w-full overflow-x-auto pb-1 no-scrollbar">
-          <TabsList className="inline-flex sm:grid sm:grid-cols-5 w-auto sm:w-[780px] h-10 p-1">
+          <TabsList className="inline-flex sm:grid sm:grid-cols-6 w-auto sm:w-[940px] h-10 p-1">
             <TabsTrigger value="vouchers" className="gap-2 text-xs font-semibold px-3">
               <CreditCard className="h-3.5 w-3.5" />
               {lang === "NEP" ? "भाउचर इन्ट्री" : "Voucher Entry"}
@@ -3562,6 +3564,10 @@ export default function Accounting() {
             <TabsTrigger value="chart" className="gap-2 text-xs font-semibold px-3">
               <FolderTree className="h-3.5 w-3.5 text-blue-500" />
               {lang === "NEP" ? "लेखा समूह" : "Chart of Accounts"}
+            </TabsTrigger>
+            <TabsTrigger value="payroll" className="gap-2 text-xs font-semibold px-3">
+              <Users className="h-3.5 w-3.5 text-purple-500" />
+              {lang === "NEP" ? "तलब तथा पेरोल" : "Staff & Payroll"}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -4474,6 +4480,11 @@ export default function Accounting() {
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        {/* TAB 6: STAFF & PAYROLL MANAGEMENT */}
+        <TabsContent value="payroll" className="space-y-6">
+          <PayrollSection ownerId={user?.uid || ""} shopInfo={shopInfo} />
         </TabsContent>
       </Tabs>
 
