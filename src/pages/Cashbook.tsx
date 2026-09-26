@@ -134,6 +134,17 @@ const Cashbook = () => {
           if (a?.group === "cash") return "cash";
         }
         const str = `${accName || ""} ${accId || ""}`.toLowerCase();
+        if (
+          str.includes("loan") || str.includes("ऋण") ||
+          str.includes("advance") || str.includes("पेस्की") || str.includes("सापटी") ||
+          str.includes("charges") || str.includes("शुल्क") ||
+          str.includes("interest") || str.includes("ब्याज") ||
+          str.includes("discount") || str.includes("छुट") ||
+          str.includes("salary") || str.includes("तलब") ||
+          str.includes("rent") || str.includes("भाडा")
+        ) {
+          return null;
+        }
         if (str.includes("esewa") || str.includes("ईसेवा")) return "esewa";
         if (str.includes("khalti") || str.includes("खल्ती")) return "khalti";
         if (str.includes("bank") || str.includes("बैंक") || str.includes("nabil") || str.includes("nic") || str.includes("prabhu") || str.includes("nmb") || str.includes("sanima") || str.includes("siddhartha") || str.includes("global") || str.includes("kumari") || str.includes("everest") || str.includes("prime") || str.includes("machhapuchchhre") || str.includes("himalayan") || str.includes("sbi") || str.includes("citizens") || str.includes("rbb") || str.includes("rastriya") || str.includes("agriculture") || str.includes("laxmi") || str.includes("standard")) return "bank";
