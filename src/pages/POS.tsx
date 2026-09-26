@@ -24,6 +24,7 @@ import { formatNepaliDate, NEPALI_MONTHS, getDaysInBSMonth, bsToAdDateString, ad
 import { CameraBarcodeScannerModal } from "@/components/CameraBarcodeScannerModal";
 import { AnimatedCartIcon } from "@/components/AnimatedCartIcon";
 import { PaymentMethodIcon } from "@/components/PaymentMethodIcon";
+import { OperatorSwitchModal } from "@/components/OperatorSwitchModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type ActiveBatch = {
@@ -69,8 +70,9 @@ type CartItem = {
 };
 
 const POS = () => {
-  const { user } = useAuth();
+  const { user, currentStaff } = useAuth();
   const { lang } = useLanguage();
+  const [operatorSwitchOpen, setOperatorSwitchOpen] = useState(false);
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [invoiceType, setInvoiceType] = useState<"abbreviated" | "tax_invoice">("abbreviated");
   const [buyerPan, setBuyerPan] = useState("");
@@ -882,7 +884,10 @@ const POS = () => {
         non_taxable_amount: nonTaxableAmount,
         taxable_amount: taxableAmount,
         vat_amount: vatAmount,
-        prepared_by: shop.owner_name || user?.displayName || null,
+        prepared_by: currentStaff ? `${currentStaff.name} (${currentStaff.role})` : (shop.owner_name || user?.displayName || null),
+        billed_by_name: currentStaff?.name || user?.displayName || "Admin",
+        billed_by_id: currentStaff?.id || user?.uid,
+        billed_by_role: currentStaff?.role || "owner",
         created_at: effectiveDate
       });
 
@@ -1007,7 +1012,7 @@ const POS = () => {
           changeAmount,
           isVatInvoice,
           invoiceType,
-          preparedBy: shop.owner_name || user?.displayName || null
+          preparedBy: currentStaff ? `${currentStaff.name} (${currentStaff.role})` : (shop.owner_name || user?.displayName || null)
         });
       } catch (err: any) {
         console.error("Print receipt error:", err);
@@ -1029,7 +1034,33 @@ const POS = () => {
 
   return (
     <div className="p-4 pb-28 md:p-8 max-w-7xl mx-auto">
-      <PageHeader title="Point of Sale (POS)" subtitle="Fast billing, instant credit ledger sync & stock management" />
+      <PageHeader 
+        title="Point of Sale (POS)" 
+        subtitle="Fast billing, instant credit ledger sync & stock management" 
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOperatorSwitchOpen(true)}
+            className="h-9 px-3 text-xs font-semibold bg-card hover:bg-primary/10 border-border/80 flex items-center gap-2 shadow-2xs group"
+            title="क्यासियर वा अपरेटर बदल्नुहोस् (Switch Cashier / Operator)"
+          >
+            <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold uppercase">
+              {currentStaff ? currentStaff.name.slice(0, 2) : "OW"}
+            </div>
+            <div className="text-left hidden sm:block">
+              <span className="text-[10px] text-muted-foreground block leading-none">Billed By:</span>
+              <span className="font-bold text-foreground text-xs">{currentStaff ? currentStaff.name : (lang === "NEP" ? "पसल धनी" : "Owner")}</span>
+            </div>
+            <span className="text-[10px] text-primary font-bold bg-primary/10 px-1.5 py-0.5 rounded ml-0.5 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+              🔄 Switch
+            </span>
+          </Button>
+        }
+      />
+
+      {/* Operator PIN Switch Modal */}
+      <OperatorSwitchModal open={operatorSwitchOpen} onOpenChange={setOperatorSwitchOpen} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div ref={productsSectionRef} className="lg:col-span-2 flex flex-col space-y-3 scroll-mt-20">

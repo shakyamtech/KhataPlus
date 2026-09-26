@@ -17,12 +17,14 @@ import { InstallAppModal } from "@/components/InstallAppModal";
 import { InstallAppQRCard } from "@/components/InstallAppQRCard";
 import { SplashScreen } from "@/components/SplashScreen";
 
+import { verifyStaffLogin } from "@/lib/staff";
+
 const emailSchema = z.string().trim().email("Invalid email").max(255);
-const pwSchema = z.string().min(6, "Min 6 characters").max(100);
+const pwSchema = z.string().min(4, "Min 4 characters/PIN").max(100);
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loginStaff } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,17 +46,17 @@ const Auth = () => {
 
   const PasswordField = (
     <div>
-      <Label className="text-foreground/90 font-medium mb-1.5 block">{t.password}</Label>
+      <Label className="text-foreground/90 font-medium mb-1.5 block">{t.password} / 4-Digit PIN</Label>
       <div className="relative">
         <Input
           type={showPw ? "text" : "password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          minLength={6}
+          minLength={4}
           className="pr-10 bg-white/70 border-border/60 focus:bg-white transition-all duration-300 dark:bg-secondary/40 dark:border-border/30 dark:focus:bg-secondary/80 dark:text-foreground"
           autoComplete="current-password"
-          placeholder={t.pwPlaceholder}
+          placeholder={lang === "NEP" ? "पासवर्ड वा ४-अङ्कको PIN" : "Password or 4-digit Staff PIN"}
         />
         <button
           type="button"
@@ -80,7 +82,24 @@ const Auth = () => {
       emailSchema.parse(email); pwSchema.parse(password);
     } catch (err: any) { toast.error(err.errors?.[0]?.message ?? "Invalid input"); return; }
     setLoading(true);
+
     try {
+      // 1. Check if this is a registered Staff Member login (Email + 4-digit PIN)
+      const staffCheck = await verifyStaffLogin(email, password);
+      if (staffCheck.success && staffCheck.staff) {
+        await loginStaff(staffCheck.staff);
+        const sName = staffCheck.staff.shop_name || "KhataPlus Shop";
+        setLoginSplashShop(sName);
+        setShowLoginSplash(true);
+        toast.success(
+          lang === "NEP" 
+            ? `🎉 स्वागत छ, ${staffCheck.staff.name}! (${staffCheck.staff.role.toUpperCase()})` 
+            : `Welcome back, ${staffCheck.staff.name}!`
+        );
+        return;
+      }
+
+      // 2. Otherwise attempt standard Firebase Account login (Shop Owner / Admin)
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       try {
         await updateDoc(doc(db, "profiles", userCredential.user.uid), {
@@ -102,7 +121,13 @@ const Auth = () => {
       setLoginSplashShop(sName);
       setShowLoginSplash(true);
     } catch (error: any) {
-      toast.error(error.message);
+      // If staffCheck had a specific error like invalid PIN, prioritize showing it
+      const fallbackStaff = await verifyStaffLogin(email, password);
+      if (fallbackStaff.error) {
+        toast.error(fallbackStaff.error);
+      } else {
+        toast.error(error.message || "लगइन गर्न असफल भयो (Sign in failed)");
+      }
     } finally {
       setLoading(false);
     }

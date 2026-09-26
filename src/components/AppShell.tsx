@@ -14,6 +14,7 @@ import { InstallAppModal } from "@/components/InstallAppModal";
 import { BackupModal } from "@/components/BackupModal";
 import { LogoCropModal } from "@/components/LogoCropModal";
 import { StaffManagementSection } from "@/components/StaffManagementSection";
+import { OperatorSwitchModal } from "@/components/OperatorSwitchModal";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -97,7 +98,7 @@ function getShopInitials(name?: string): string {
 
 export const AppShell = () => {
     const { lang, setLang, t } = useLanguage();
-    const { user, signOut } = useAuth();
+    const { user, currentStaff, staffRole, isStaff, can, signOut } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const isHelpPage = location.pathname === "/help";
@@ -108,6 +109,7 @@ export const AppShell = () => {
     const [shopLogo, setShopLogo] = useState<string>("");
     const [rawImageSrc, setRawImageSrc] = useState<string>("");
     const [cropModalOpen, setCropModalOpen] = useState<boolean>(false);
+    const [operatorSwitchOpen, setOperatorSwitchOpen] = useState<boolean>(false);
     const [newName, setNewName] = useState("");
     const [shopPhone, setShopPhone] = useState("");
     const [panNo, setPanNo] = useState("");
@@ -131,6 +133,22 @@ export const AppShell = () => {
     const [masterResetDialogOpen, setMasterResetDialogOpen] = useState(false);
     const [busyMasterReset, setBusyMasterReset] = useState(false);
     const [hasMigrated, setHasMigrated] = useState(true);
+
+    // Route protection guard based on active staff role
+    useEffect(() => {
+        if (currentStaff?.role === "cashier") {
+            const cashierDisallowed = ["/", "/accounting", "/cashbook", "/purchases", "/suppliers", "/reports"];
+            if (cashierDisallowed.includes(location.pathname)) {
+                navigate("/pos", { replace: true });
+            }
+        } else if (currentStaff?.role === "storekeeper") {
+            const storekeeperDisallowed = ["/accounting", "/cashbook", "/reports"];
+            if (storekeeperDisallowed.includes(location.pathname)) {
+                navigate("/products", { replace: true });
+            }
+        }
+    }, [currentStaff, location.pathname, navigate]);
+
 
     const [taxInvoicePrefix, setTaxInvoicePrefix] = useState("TAX-");
     const [taxInvoiceSuffix, setTaxInvoiceSuffix] = useState("");
@@ -295,7 +313,24 @@ export const AppShell = () => {
         "Admin": t.admin,
     };
 
-    const navItems = isAdmin ? [...nav, { to: "/admin", label: "Admin", icon: Shield }] : nav;
+    // Base nav including Admin if applicable (owner only)
+    const baseNav = isAdmin && !currentStaff ? [...nav, { to: "/admin", label: "Admin", icon: Shield }] : nav;
+
+    // Role-filtered navigation items
+    const navItems = baseNav.filter((n) => {
+        if (!currentStaff) return true;
+        if (n.to === "/pos") return can("canPOS");
+        if (n.to === "/products") return can("canViewProducts");
+        if (n.to === "/customers") return true;
+        if (n.to === "/suppliers") return can("canViewPurchases") || can("canViewLedgers");
+        if (n.to === "/purchases") return can("canViewPurchases");
+        if (n.to === "/cashbook") return can("canViewCashbook");
+        if (n.to === "/accounting") return can("canViewBalanceSheet") || can("canViewLedgers");
+        if (n.to === "/reports") return can("canViewReports");
+        if (n.to === "/") return can("canViewReports") || can("canViewCashbook");
+        if (n.to === "/help") return true;
+        return false;
+    });
 
     useEffect(() => {
         if (!user) {
@@ -854,32 +889,48 @@ export const AppShell = () => {
                         </Avatar>
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-60" align="end" sideOffset={8}>
+                <DropdownMenuContent className="w-64" align="end" sideOffset={8}>
                     <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-bold leading-none text-foreground truncate">{fullName || "User Profile"}</p>
-                            <p className="text-xs leading-none text-muted-foreground truncate">{user?.email}</p>
+                            <div className="flex items-center justify-between gap-1">
+                                <p className="text-sm font-bold leading-none text-foreground truncate">
+                                    {currentStaff ? currentStaff.name : (fullName || "User Profile")}
+                                </p>
+                                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/20">
+                                    {currentStaff ? currentStaff.role : "Owner"}
+                                </span>
+                            </div>
+                            <p className="text-xs leading-none text-muted-foreground truncate">{currentStaff?.email || user?.email}</p>
                         </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => {
-                    setNewName(shopName);
-                    setProfileOpen(true);
-                }} className="cursor-pointer font-medium gap-2">
-                    <User className="h-4 w-4 text-primary" /> {lang === "NEP" ? "प्रोफाइल सेटिङ" : "Profile Settings"}
+                <DropdownMenuItem onClick={() => setOperatorSwitchOpen(true)} className="cursor-pointer font-semibold gap-2 text-primary bg-primary/5 hover:bg-primary/10">
+                    <Users className="h-4 w-4 text-primary" /> {lang === "NEP" ? "क्यासियर / अपरेटर बदल्नुहोस् (PIN)" : "Switch Operator / PIN"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                    setNewName(shopName);
-                    setShopOpen(true);
-                }} className="cursor-pointer font-medium gap-2">
-                    <Store className="h-4 w-4 text-primary" /> {lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}
-                </DropdownMenuItem>
+                {!currentStaff && (
+                    <>
+                        <DropdownMenuItem onClick={() => {
+                            setNewName(shopName);
+                            setProfileOpen(true);
+                        }} className="cursor-pointer font-medium gap-2">
+                            <User className="h-4 w-4 text-primary" /> {lang === "NEP" ? "प्रोफाइल सेटिङ" : "Profile Settings"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                            setNewName(shopName);
+                            setShopOpen(true);
+                        }} className="cursor-pointer font-medium gap-2">
+                            <Store className="h-4 w-4 text-primary" /> {lang === "NEP" ? "पसल सेटिङ" : "Shop Settings"}
+                        </DropdownMenuItem>
+                    </>
+                )}
                 <DropdownMenuItem onClick={() => setInstallModalOpen(true)} className="cursor-pointer font-medium gap-2">
                     <Smartphone className="h-4 w-4 text-primary" /> {lang === "NEP" ? "मोबाइल एप (QR Scan)" : "Mobile App (QR Scan)"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setBackupOpen(true)} className="cursor-pointer font-medium gap-2">
-                    <Database className="h-4 w-4 text-emerald-500" /> {lang === "NEP" ? "डाटा ब्याकअप र रिस्टोर" : "Backup & Restore"}
-                </DropdownMenuItem>
+                {!currentStaff && (
+                    <DropdownMenuItem onClick={() => setBackupOpen(true)} className="cursor-pointer font-medium gap-2">
+                        <Database className="h-4 w-4 text-emerald-500" /> {lang === "NEP" ? "डाटा ब्याकअप र रिस्टोर" : "Backup & Restore"}
+                    </DropdownMenuItem>
+                )}
 
                 {/* Theme options Submenu */}
                 <DropdownMenuSub>
@@ -1207,8 +1258,11 @@ export const AppShell = () => {
             </main>
 
             {/* Mobile bottom nav (Quick Access) */}
-            <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur-md text-sidebar-foreground border-t border-sidebar-border grid grid-cols-5 h-16">
-                {[nav[0], nav[1], nav[2], nav[6], nav[7]].map((n) => {
+            <nav 
+                className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur-md text-sidebar-foreground border-t border-sidebar-border h-16 grid"
+                style={{ gridTemplateColumns: `repeat(${Math.min(5, Math.max(1, navItems.length))}, minmax(0, 1fr))` }}
+            >
+                {navItems.slice(0, 5).map((n) => {
                     const translatedLabel = navTranslationKeys[n.label] || n.label;
                     return (
                         <NavLink key={n.to} to={n.to} end={n.end}
@@ -2583,6 +2637,12 @@ export const AppShell = () => {
                 onApply={(croppedWebpBase64) => {
                     setShopLogo(croppedWebpBase64);
                 }}
+            />
+
+            {/* Operator PIN Switch Modal */}
+            <OperatorSwitchModal
+                open={operatorSwitchOpen}
+                onOpenChange={setOperatorSwitchOpen}
             />
         </div>
     );

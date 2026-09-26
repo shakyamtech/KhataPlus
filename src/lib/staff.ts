@@ -185,3 +185,121 @@ export async function deleteStaffMember(staffId: string): Promise<void> {
   const staffRef = doc(db, "staff_members", staffId);
   await deleteDoc(staffRef);
 }
+
+const STAFF_SESSION_KEY = "khataplus_staff_session";
+
+/**
+ * Get the currently logged-in staff session from localStorage.
+ */
+export function getStoredStaffSession(): StaffMember | null {
+  try {
+    const raw = localStorage.getItem(STAFF_SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (err) {
+    console.warn("Failed to parse stored staff session:", err);
+    return null;
+  }
+}
+
+/**
+ * Store the active staff session in localStorage.
+ */
+export function storeStaffSession(staff: StaffMember | null): void {
+  try {
+    if (!staff) {
+      localStorage.removeItem(STAFF_SESSION_KEY);
+    } else {
+      localStorage.setItem(STAFF_SESSION_KEY, JSON.stringify(staff));
+      if (staff.shop_name) {
+        localStorage.setItem("khataplus_shop_name", staff.shop_name);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to store staff session:", err);
+  }
+}
+
+/**
+ * Look up a staff member by email address across all shops.
+ */
+export async function findStaffByEmail(email: string): Promise<StaffMember | null> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail) return null;
+  try {
+    const q = query(
+      collection(db, "staff_members"),
+      where("email", "==", cleanEmail)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+
+    const d = snap.docs[0];
+    const data = d.data();
+    return {
+      id: d.id,
+      owner_id: data.owner_id || "",
+      shop_name: data.shop_name || "",
+      name: data.name || "",
+      email: data.email || cleanEmail,
+      phone: data.phone || "",
+      role: (data.role as StaffRole) || "cashier",
+      pin: data.pin || "",
+      status: data.status === "inactive" ? "inactive" : "active",
+      created_at: data.created_at || new Date().toISOString(),
+      updated_at: data.updated_at || undefined,
+    };
+  } catch (err) {
+    console.error("Error finding staff by email:", err);
+    return null;
+  }
+}
+
+/**
+ * Verify staff email and 4-digit PIN for authentication.
+ */
+export async function verifyStaffLogin(
+  email: string,
+  pin: string
+): Promise<{ success: boolean; staff?: StaffMember; error?: string }> {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPin = pin.trim();
+
+  if (!cleanEmail) {
+    return { success: false, error: "कृपया इमेल ठेगाना प्रविष्ट गर्नुहोस् (Please enter email)" };
+  }
+  if (!cleanPin) {
+    return { success: false, error: "कृपया ४-अङ्कको PIN प्रविष्ट गर्नुहोस् (Please enter 4-digit PIN)" };
+  }
+
+  const staff = await findStaffByEmail(cleanEmail);
+  if (!staff) {
+    return { success: false, error: "यो इमेल दर्ता भएको स्टाफ भेटिएन (Staff with this email not found)" };
+  }
+
+  if (staff.status === "inactive") {
+    return {
+      success: false,
+      error: "तपाईंको खाता हाल निष्क्रिय (Suspended) गरिएको छ। पसल साहुजीसँग सम्पर्क गर्नुहोस्।",
+    };
+  }
+
+  if (staff.pin && staff.pin !== cleanPin) {
+    return { success: false, error: "गलत PIN नम्बर! कृपया सही ४-अङ्कको PIN हान्नुहोस्।" };
+  }
+
+  return { success: true, staff };
+}
+
+/**
+ * Check if a specific permission is granted to a staff role.
+ */
+export function hasStaffPermission(
+  role: StaffRole | "owner" | undefined | null,
+  permission: keyof StaffPermission
+): boolean {
+  if (!role || role === "owner") return true;
+  const def = ROLE_DEFINITIONS[role];
+  if (!def) return true;
+  return Boolean(def.permissions[permission]);
+}
