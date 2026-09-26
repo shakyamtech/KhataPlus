@@ -80,7 +80,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
   // Advance Form State
   const [advAmount, setAdvAmount] = useState("");
-  const [advPaymentMode, setAdvPaymentMode] = useState<"cash" | "bank">("cash");
+  const [advPaymentMode, setAdvPaymentMode] = useState<"cash" | "bank" | "esewa" | "khalti">("cash");
   const [advBankAccId, setAdvBankAccId] = useState<string>("");
   const [advDate, setAdvDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [advNote, setAdvNote] = useState("");
@@ -92,7 +92,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
   const [salBonus, setSalBonus] = useState<string>("0");
   const [salAdvDeduct, setSalAdvDeduct] = useState<string>("0");
   const [salOtherDeduct, setSalOtherDeduct] = useState<string>("0");
-  const [salPaymentMode, setSalPaymentMode] = useState<"cash" | "bank">("cash");
+  const [salPaymentMode, setSalPaymentMode] = useState<"cash" | "bank" | "esewa" | "khalti">("cash");
   const [salBankAccId, setSalBankAccId] = useState<string>("");
   const [salDate, setSalDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [salNote, setSalNote] = useState("");
@@ -633,8 +633,25 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                       <td className="p-2.5 text-right font-mono font-bold text-foreground">
                         {fmt(t.net_paid)}
                       </td>
-                      <td className="p-2.5 font-mono uppercase text-[11px]">
-                        {t.payment_mode}{t.bank_name ? ` (${t.bank_name})` : ""}
+                      <td className="p-2.5 font-mono text-[11px]">
+                        <span className={cn(
+                          "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
+                          t.payment_mode === "esewa"
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : t.payment_mode === "khalti"
+                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                            : t.payment_mode === "bank"
+                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                            : "bg-secondary text-muted-foreground"
+                        )}>
+                          {t.payment_mode === "esewa"
+                            ? "eSewa"
+                            : t.payment_mode === "khalti"
+                            ? "Khalti"
+                            : t.payment_mode === "bank"
+                            ? (t.bank_name ? `Bank (${t.bank_name})` : "Bank")
+                            : "Cash"}
+                        </span>
                       </td>
                       <td className="p-2.5 text-center">
                         {t.type === "salary_payout" ? (
@@ -703,13 +720,15 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-bold">{lang === "NEP" ? "भुक्तानी माध्यम (Mode):" : "Payment Mode:"}</Label>
-                <Select value={advPaymentMode} onValueChange={(v: "cash" | "bank") => setAdvPaymentMode(v)}>
+                <Select value={advPaymentMode} onValueChange={(v: "cash" | "bank" | "esewa" | "khalti") => setAdvPaymentMode(v)}>
                   <SelectTrigger className="h-9 text-xs mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="cash">नगद (Cash in Hand)</SelectItem>
                     <SelectItem value="bank">बैंक खाता (Bank Transfer)</SelectItem>
+                    <SelectItem value="esewa">ईसेवा (eSewa Wallet)</SelectItem>
+                    <SelectItem value="khalti">खल्ती (Khalti Wallet)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -900,13 +919,15 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-bold">{lang === "NEP" ? "भुक्तानी माध्यम (Pay Via):" : "Pay Via:"}</Label>
-                <Select value={salPaymentMode} onValueChange={(v: "cash" | "bank") => setSalPaymentMode(v)}>
+                <Select value={salPaymentMode} onValueChange={(v: "cash" | "bank" | "esewa" | "khalti") => setSalPaymentMode(v)}>
                   <SelectTrigger className="h-9 text-xs mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="cash">नगद (Cash in Hand)</SelectItem>
                     <SelectItem value="bank">बैंक खाता (Bank Transfer)</SelectItem>
+                    <SelectItem value="esewa">ईसेवा (eSewa Wallet)</SelectItem>
+                    <SelectItem value="khalti">खल्ती (Khalti Wallet)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -37,7 +37,7 @@ export interface PayrollTransaction {
   advance_deducted: number;
   other_deductions: number;
   net_paid: number;
-  payment_mode: "cash" | "bank";
+  payment_mode: "cash" | "bank" | "esewa" | "khalti";
   bank_name?: string;
   voucher_id?: string;
   voucher_no?: string;
@@ -106,7 +106,7 @@ export async function recordStaffAdvance(params: {
   ownerId: string;
   staff: StaffMember;
   amount: number;
-  paymentMode: "cash" | "bank";
+  paymentMode: "cash" | "bank" | "esewa" | "khalti";
   bankAccountId?: string;
   bankName?: string;
   date?: string;
@@ -125,16 +125,34 @@ export async function recordStaffAdvance(params: {
     // 1. Ensure accounting accounts exist
     const accounts = await ensureDefaultAccounts(ownerId);
     const cashAcc = accounts.find((a) => a.group === "cash") || accounts[0];
-    const bankAcc = bankAccountId 
-      ? accounts.find((a) => a.id === bankAccountId) 
-      : accounts.find((a) => a.group === "bank_accounts") || cashAcc;
-    const paymentAcc = paymentMode === "bank" ? bankAcc : cashAcc;
+    
+    // Resolve liquid payment account
+    let paymentAcc = cashAcc;
+    if (paymentMode === "bank") {
+      paymentAcc = bankAccountId 
+        ? accounts.find((a) => a.id === bankAccountId) || cashAcc
+        : accounts.find((a) => a.group === "bank_accounts") || cashAcc;
+    } else if (paymentMode === "esewa") {
+      paymentAcc = accounts.find((a) => a.name.toLowerCase().includes("esewa") || a.name.includes("ईसेवा")) ||
+                   accounts.find((a) => a.group === "bank_accounts") || cashAcc;
+    } else if (paymentMode === "khalti") {
+      paymentAcc = accounts.find((a) => a.name.toLowerCase().includes("khalti") || a.name.includes("खल्ती")) ||
+                   accounts.find((a) => a.group === "bank_accounts") || cashAcc;
+    }
 
     // Find or locate Advance account
     let advanceAcc = accounts.find((a) => a.name.toLowerCase().includes("staff advance") || a.name.toLowerCase().includes("salary advance"));
     if (!advanceAcc) {
       advanceAcc = accounts.find((a) => a.group === "loans_advances_asset" || a.group === "current_assets") || cashAcc;
     }
+
+    const refNo = paymentMode === "bank"
+      ? (bankName || "Bank Transfer")
+      : paymentMode === "esewa"
+      ? "eSewa Wallet"
+      : paymentMode === "khalti"
+      ? "Khalti Wallet"
+      : "Cash Advance";
 
     // 2. Create Double Entry Payment Voucher
     const voucher = await createVoucher(ownerId, {
@@ -146,7 +164,7 @@ export async function recordStaffAdvance(params: {
       credit_account_id: paymentAcc.id,
       credit_account_name: paymentAcc.name,
       narration: `Staff Advance given to ${staff.name} (${staff.role.toUpperCase()})${note ? ` - ${note}` : ""}`,
-      reference_no: paymentMode === "bank" ? (bankName || "Bank Transfer") : "Cash Advance"
+      reference_no: refNo
     });
 
     // 3. Create Payroll Transaction Record
@@ -168,7 +186,7 @@ export async function recordStaffAdvance(params: {
       other_deductions: 0,
       net_paid: amount,
       payment_mode: paymentMode,
-      bank_name: bankName || null,
+      bank_name: paymentMode === "bank" ? (bankName || null) : null,
       voucher_id: voucher?.id || null,
       voucher_no: voucher?.voucher_no || null,
       note: note || `Advance taken by ${staff.name}`,
@@ -204,7 +222,7 @@ export async function processStaffSalaryPayout(params: {
   bonusAmount?: number;
   advanceDeducted?: number;
   otherDeductions?: number; // Absent / TDS
-  paymentMode: "cash" | "bank";
+  paymentMode: "cash" | "bank" | "esewa" | "khalti";
   bankAccountId?: string;
   bankName?: string;
   date?: string;
@@ -241,10 +259,20 @@ export async function processStaffSalaryPayout(params: {
     // 1. Ensure accounting accounts exist
     const accounts = await ensureDefaultAccounts(ownerId);
     const cashAcc = accounts.find((a) => a.group === "cash") || accounts[0];
-    const bankAcc = bankAccountId 
-      ? accounts.find((a) => a.id === bankAccountId) 
-      : accounts.find((a) => a.group === "bank_accounts") || cashAcc;
-    const paymentAcc = paymentMode === "bank" ? bankAcc : cashAcc;
+    
+    // Resolve payment account
+    let paymentAcc = cashAcc;
+    if (paymentMode === "bank") {
+      paymentAcc = bankAccountId 
+        ? accounts.find((a) => a.id === bankAccountId) || cashAcc
+        : accounts.find((a) => a.group === "bank_accounts") || cashAcc;
+    } else if (paymentMode === "esewa") {
+      paymentAcc = accounts.find((a) => a.name.toLowerCase().includes("esewa") || a.name.includes("ईसेवा")) ||
+                   accounts.find((a) => a.group === "bank_accounts") || cashAcc;
+    } else if (paymentMode === "khalti") {
+      paymentAcc = accounts.find((a) => a.name.toLowerCase().includes("khalti") || a.name.includes("खल्ती")) ||
+                   accounts.find((a) => a.group === "bank_accounts") || cashAcc;
+    }
 
     // Locate Salary Expense Account (Indirect Expense)
     let salaryExpenseAcc = accounts.find(
@@ -290,13 +318,21 @@ export async function processStaffSalaryPayout(params: {
       });
     }
 
+    const refNo = paymentMode === "bank"
+      ? (bankName || "Salary Bank Transfer")
+      : paymentMode === "esewa"
+      ? "eSewa Salary Transfer"
+      : paymentMode === "khalti"
+      ? "Khalti Salary Transfer"
+      : "Cash Salary";
+
     const voucher = await createVoucher(ownerId, {
       voucher_type: "payment",
       date: effectiveDate,
       amount: totalGross,
       entries: voucherEntries,
       narration: `Monthly Salary Payment to ${staff.name} (${staff.role.toUpperCase()}) for ${month}${advanceDeducted > 0 ? ` (Advance deducted: Rs. ${advanceDeducted})` : ""}${note ? ` - ${note}` : ""}`,
-      reference_no: paymentMode === "bank" ? (bankName || "Salary Bank Transfer") : "Cash Salary"
+      reference_no: refNo
     });
 
     // 3. Create Payroll Transaction Record
