@@ -119,6 +119,11 @@ export interface StaffMember {
   pin?: string;
   auth_uid?: string;
   status: "active" | "inactive";
+  monthly_salary?: number;
+  advance_balance?: number;
+  pan_no?: string;
+  bank_name?: string;
+  bank_account_no?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -156,6 +161,11 @@ export async function getShopStaffMembers(ownerId: string): Promise<StaffMember[
         pin: data.pin || "",
         auth_uid: data.auth_uid || undefined,
         status: data.status === "inactive" ? "inactive" : "active",
+        monthly_salary: Number(data.monthly_salary) || 0,
+        advance_balance: Number(data.advance_balance) || 0,
+        pan_no: data.pan_no || "",
+        bank_name: data.bank_name || "",
+        bank_account_no: data.bank_account_no || "",
         created_at: data.created_at || new Date().toISOString(),
         updated_at: data.updated_at || undefined,
       });

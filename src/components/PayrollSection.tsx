@@ -297,10 +297,10 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
   // Open Edit Salary Modal
   const handleOpenEditSalary = (staff: StaffMember) => {
     setSelectedStaff(staff);
-    setEditSalaryAmount(String((staff as any).monthly_salary || ""));
-    setEditPanNo((staff as any).pan_no || "");
-    setEditBankName((staff as any).bank_name || "");
-    setEditBankAccNo((staff as any).bank_account_no || "");
+    setEditSalaryAmount(staff.monthly_salary && staff.monthly_salary > 0 ? String(staff.monthly_salary) : "");
+    setEditPanNo(staff.pan_no || "");
+    setEditBankName(staff.bank_name || "");
+    setEditBankAccNo(staff.bank_account_no || "");
     setEditSalaryModalOpen(true);
   };
 
