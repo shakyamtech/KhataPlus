@@ -1595,103 +1595,6 @@ export const AppShell = () => {
                             </div>
                         </div>
 
-                        {/* 7. Default Profit Margin / Markup Setting */}
-                        <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
-                            <div className="flex items-center justify-between flex-wrap gap-1.5">
-                                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                    <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-                                    <span>{lang === "NEP" ? "सामान्य नाफा मार्जिन (Default Profit Margin %)" : "Default Profit Margin (%)"}</span>
-                                </Label>
-                                <span className="text-[10px] text-muted-foreground">
-                                    {lang === "NEP" ? "सामान थप्दा खरिद मूल्यबाट स्वतः बिक्री मूल्य निकाल्न" : "Auto-calculates sell price from cost"}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <div className="relative w-28 shrink-0">
-                                    <Input
-                                        type="number"
-                                        step="0.5"
-                                        min="0"
-                                        max="1000"
-                                        value={defaultProfitMargin}
-                                        onChange={(e) => setDefaultProfitMargin(e.target.value)}
-                                        placeholder="0"
-                                        className="pr-7 font-bold text-center h-9 text-xs bg-background"
-                                        onWheel={(e) => e.currentTarget.blur()}
-                                    />
-                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">%</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                    {["10", "15", "20", "25", "30"].map((pct) => (
-                                        <Button
-                                            key={pct}
-                                            type="button"
-                                            size="sm"
-                                            variant={defaultProfitMargin === pct ? "default" : "outline"}
-                                            className={cn(
-                                                "h-9 px-3 text-xs font-semibold cursor-pointer transition-all",
-                                                defaultProfitMargin === pct && "shadow-2xs font-bold"
-                                            )}
-                                            onClick={() => setDefaultProfitMargin(defaultProfitMargin === pct ? "" : pct)}
-                                        >
-                                            {pct}%
-                                        </Button>
-                                    ))}
-                                    {defaultProfitMargin ? (
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-9 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                            onClick={() => setDefaultProfitMargin("")}
-                                            title="Clear"
-                                        >
-                                            {lang === "NEP" ? "हटाउनुहोस्" : "Clear"}
-                                        </Button>
-                                    ) : null}
-                                </div>
-                            </div>
-                            <p className="text-[11px] text-muted-foreground leading-tight">
-                                💡 {lang === "NEP"
-                                    ? "उदाहरण: २०% राख्दा, खरिद मूल्य रु. १००० हाल्ने बित्तिकै बिक्री मूल्य रु. १२०० स्वतः भरिनेछ।"
-                                    : "Example: Setting 20% will auto-calculate Sell Price as Rs. 1,200 when Cost is Rs. 1,000."}
-                            </p>
-                        </div>
-
-                        {/* Reset Numbering Counters Container */}
-                        <div className="bg-secondary/30 border border-border/60 rounded-xl p-3.5 space-y-2.5">
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                                <div className="space-y-0.5 max-w-md">
-                                    <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                                        <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <span>{lang === "NEP" ? "काउन्टर सुरुवाती १ मा ल्याउनुहोस् (Reset Counters)" : "Reset Numbering Counters"}</span>
-                                    </div>
-                                    <p className="text-[11px] text-muted-foreground leading-snug">
-                                        {lang === "NEP" 
-                                            ? "आर्थिक वर्ष नफेरीकनै केवल बिल, खरिद र बारकोड (1001) का बक्सहरूलाई १ मा ल्याउन (सुरुवाती सेटअप वा परीक्षण पश्चात उपयोगी)।" 
-                                            : "Quickly set bill, purchase, and barcode (1001) input boxes back to 1 without altering fiscal year suffix."}
-                                    </p>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs h-8 text-muted-foreground hover:text-foreground shrink-0"
-                                    onClick={() => {
-                                        setTaxInvoiceNextNo("1");
-                                        setAbbreviatedNextNo("1");
-                                        setBillNextNo("1");
-                                        setPurchaseNextNo("1");
-                                        setBarcodeStartingNo("1001");
-                                        toast.info(lang === "NEP" ? "काउन्टरहरू १ मा सेट भए। लागू गर्न तल 'Save changes' थिच्नुहोस्।" : "Counters set to defaults (1). Click Save changes below to apply.");
-                                    }}
-                                >
-                                    <RotateCcw className="h-3 w-3 mr-1" />
-                                    {lang === "NEP" ? "काउन्टर १ बनाउनुहोस्" : "Reset Counters to 1"}
-                                </Button>
-                            </div>
-                        </div>
-
                         {/* Data Backup & Restore Shortcut */}
                         <div className="pt-4 border-t border-emerald-500/20 mt-6 space-y-2.5 bg-emerald-500/5 rounded-xl p-4 border">
                             <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
@@ -2300,6 +2203,103 @@ export const AppShell = () => {
                                                         ? "पसलमा बारकोड नभएका सामानमा ✨ Auto थिच्दा यो नम्बरबाट सुरु भएर क्रमैसँग अघि बढ्छ।"
                                                         : "Unbarcoded products will start from this number when clicking ✨ Auto."}
                                                 </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 6. Default Profit Margin / Markup Setting */}
+                                        <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
+                                            <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                                    <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                                                    <span>{lang === "NEP" ? "६. सामान्य नाफा मार्जिन (Default Profit Margin %)" : "Default Profit Margin (%)"}</span>
+                                                </Label>
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {lang === "NEP" ? "सामान थप्दा खरिद मूल्यबाट स्वतः बिक्री मूल्य निकाल्न" : "Auto-calculates sell price from cost"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <div className="relative w-28 shrink-0">
+                                                    <Input
+                                                        type="number"
+                                                        step="0.5"
+                                                        min="0"
+                                                        max="1000"
+                                                        value={defaultProfitMargin}
+                                                        onChange={(e) => setDefaultProfitMargin(e.target.value)}
+                                                        placeholder="0"
+                                                        className="pr-7 font-bold text-center h-9 text-xs bg-background"
+                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                    />
+                                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">%</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    {["10", "15", "20", "25", "30"].map((pct) => (
+                                                        <Button
+                                                            key={pct}
+                                                            type="button"
+                                                            size="sm"
+                                                            variant={defaultProfitMargin === pct ? "default" : "outline"}
+                                                            className={cn(
+                                                                "h-9 px-3 text-xs font-semibold cursor-pointer transition-all",
+                                                                defaultProfitMargin === pct && "shadow-2xs font-bold"
+                                                            )}
+                                                            onClick={() => setDefaultProfitMargin(defaultProfitMargin === pct ? "" : pct)}
+                                                        >
+                                                            {pct}%
+                                                        </Button>
+                                                    ))}
+                                                    {defaultProfitMargin ? (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-9 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                            onClick={() => setDefaultProfitMargin("")}
+                                                            title="Clear"
+                                                        >
+                                                            {lang === "NEP" ? "हटाउनुहोस्" : "Clear"}
+                                                        </Button>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground leading-tight">
+                                                💡 {lang === "NEP"
+                                                    ? "उदाहरण: २०% राख्दा, खरिद मूल्य रु. १००० हाल्ने बित्तिकै बिक्री मूल्य रु. १२०० स्वतः भरिनेछ।"
+                                                    : "Example: Setting 20% will auto-calculate Sell Price as Rs. 1,200 when Cost is Rs. 1,000."}
+                                            </p>
+                                        </div>
+
+                                        {/* 7. Reset Numbering Counters Container */}
+                                        <div className="bg-secondary/30 border border-border/60 rounded-xl p-3.5 space-y-2.5">
+                                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                                <div className="space-y-0.5 max-w-md">
+                                                    <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                                        <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                                                        <span>{lang === "NEP" ? "७. काउन्टर सुरुवाती १ मा ल्याउनुहोस् (Reset Counters)" : "Reset Numbering Counters"}</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-muted-foreground leading-snug">
+                                                        {lang === "NEP" 
+                                                            ? "आर्थिक वर्ष नफेरीकनै केवल बिल, खरिद र बारकोड (1001) का बक्सहरूलाई १ मा ल्याउन (सुरुवाती सेटअप वा परीक्षण पश्चात उपयोगी)।" 
+                                                            : "Quickly set bill, purchase, and barcode (1001) input boxes back to 1 without altering fiscal year suffix."}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="text-xs h-8 text-muted-foreground hover:text-foreground shrink-0"
+                                                    onClick={() => {
+                                                        setTaxInvoiceNextNo("1");
+                                                        setAbbreviatedNextNo("1");
+                                                        setBillNextNo("1");
+                                                        setPurchaseNextNo("1");
+                                                        setBarcodeStartingNo("1001");
+                                                        toast.info(lang === "NEP" ? "काउन्टरहरू १ मा सेट भए। लागू गर्न तल 'Save changes' थिच्नुहोस्।" : "Counters set to defaults (1). Click Save changes below to apply.");
+                                                    }}
+                                                >
+                                                    <RotateCcw className="h-3 w-3 mr-1" />
+                                                    {lang === "NEP" ? "काउन्टर १ बनाउनुहोस्" : "Reset Counters to 1"}
+                                                </Button>
                                             </div>
                                         </div>
                                     </>
