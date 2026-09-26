@@ -22,6 +22,7 @@ import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { formatNepaliDate } from "@/lib/fiscalYear";
 import { PaymentMethodIcon } from "@/components/PaymentMethodIcon";
 import { cn } from "@/lib/utils";
+import { deleteVoucher } from "@/lib/accounting";
 
 const inCategories = [
   "sale",
@@ -671,77 +672,85 @@ const Cashbook = () => {
       lang === "NEP" ? "रेकर्ड र स्टक मिलाउँदै मेटिँदैछ..." : "Deleting & syncing records..."
     );
     try {
-      if (row.reference_id) {
-        if (row.category === "sale" || row.category === "sales") {
-          const batch = writeBatch(db);
+      if (row.reference_id && (row.category === "sale" || row.category === "sales")) {
+        const batch = writeBatch(db);
 
-          const siQ = query(collection(db, "sale_items"), where("sale_id", "==", row.reference_id));
-          const siSnap = await getDocs(siQ);
-          for (const d of siSnap.docs) {
-            const item = d.data();
-            const pRef = doc(db, "products", item.product_id);
-            const pSnap = await getDoc(pRef);
-            if (pSnap.exists()) {
-              batch.update(pRef, { stock_qty: increment(item.qty) });
-            }
-
-            if (item.batch_id && item.batch_id !== "no-batch") {
-              const bRef = doc(db, "product_batches", item.batch_id);
-              const bSnap = await getDoc(bRef);
-              if (bSnap.exists()) {
-                batch.update(bRef, { remaining_qty: increment(item.qty) });
-              }
-            }
-
-            batch.delete(d.ref);
+        const siQ = query(collection(db, "sale_items"), where("sale_id", "==", row.reference_id));
+        const siSnap = await getDocs(siQ);
+        for (const d of siSnap.docs) {
+          const item = d.data();
+          const pRef = doc(db, "products", item.product_id);
+          const pSnap = await getDoc(pRef);
+          if (pSnap.exists()) {
+            batch.update(pRef, { stock_qty: increment(item.qty) });
           }
 
-          const cashQ = query(collection(db, "cash_transactions"), where("reference_id", "==", row.reference_id));
-          const cashSnap = await getDocs(cashQ);
-          cashSnap.docs.forEach(d => batch.delete(d.ref));
-
-          const lQ = query(collection(db, "ledger_entries"), where("reference_id", "==", row.reference_id));
-          const lSnap = await getDocs(lQ);
-          lSnap.docs.forEach(d => batch.delete(d.ref));
-
-          batch.delete(doc(db, "sales", row.reference_id));
-
-          await batch.commit();
-        } else if (row.category === "purchase" || row.category === "purchases") {
-          const batch = writeBatch(db);
-
-          const piQ = query(collection(db, "purchase_items"), where("purchase_id", "==", row.reference_id));
-          const piSnap = await getDocs(piQ);
-          for (const d of piSnap.docs) {
-            const item = d.data();
-            const pRef = doc(db, "products", item.product_id);
-            const pSnap = await getDoc(pRef);
-            if (pSnap.exists()) {
-              batch.update(pRef, { stock_qty: increment(-Number(item.qty)) });
+          if (item.batch_id && item.batch_id !== "no-batch") {
+            const bRef = doc(db, "product_batches", item.batch_id);
+            const bSnap = await getDoc(bRef);
+            if (bSnap.exists()) {
+              batch.update(bRef, { remaining_qty: increment(item.qty) });
             }
-            batch.delete(d.ref);
           }
 
-          const pbQ = query(collection(db, "product_batches"), where("purchase_id", "==", row.reference_id));
-          const pbSnap = await getDocs(pbQ);
-          pbSnap.docs.forEach((d) => batch.delete(d.ref));
+          batch.delete(d.ref);
+        }
 
-          const cashQ = query(collection(db, "cash_transactions"), where("reference_id", "==", row.reference_id));
-          const cashSnap = await getDocs(cashQ);
-          cashSnap.docs.forEach((d) => batch.delete(d.ref));
+        const cashQ = query(collection(db, "cash_transactions"), where("reference_id", "==", row.reference_id));
+        const cashSnap = await getDocs(cashQ);
+        cashSnap.docs.forEach(d => batch.delete(d.ref));
 
-          const lQ = query(collection(db, "ledger_entries"), where("reference_id", "==", row.reference_id));
-          const lSnap = await getDocs(lQ);
-          lSnap.docs.forEach((d) => batch.delete(d.ref));
+        const lQ = query(collection(db, "ledger_entries"), where("reference_id", "==", row.reference_id));
+        const lSnap = await getDocs(lQ);
+        lSnap.docs.forEach(d => batch.delete(d.ref));
 
-          batch.delete(doc(db, "purchases", row.reference_id));
+        batch.delete(doc(db, "sales", row.reference_id));
 
-          await batch.commit();
-        } else {
+        await batch.commit();
+      } else if (row.reference_id && (row.category === "purchase" || row.category === "purchases")) {
+        const batch = writeBatch(db);
+
+        const piQ = query(collection(db, "purchase_items"), where("purchase_id", "==", row.reference_id));
+        const piSnap = await getDocs(piQ);
+        for (const d of piSnap.docs) {
+          const item = d.data();
+          const pRef = doc(db, "products", item.product_id);
+          const pSnap = await getDoc(pRef);
+          if (pSnap.exists()) {
+            batch.update(pRef, { stock_qty: increment(-Number(item.qty)) });
+          }
+          batch.delete(d.ref);
+        }
+
+        const pbQ = query(collection(db, "product_batches"), where("purchase_id", "==", row.reference_id));
+        const pbSnap = await getDocs(pbQ);
+        pbSnap.docs.forEach((d) => batch.delete(d.ref));
+
+        const cashQ = query(collection(db, "cash_transactions"), where("reference_id", "==", row.reference_id));
+        const cashSnap = await getDocs(cashQ);
+        cashSnap.docs.forEach((d) => batch.delete(d.ref));
+
+        const lQ = query(collection(db, "ledger_entries"), where("reference_id", "==", row.reference_id));
+        const lSnap = await getDocs(lQ);
+        lSnap.docs.forEach((d) => batch.delete(d.ref));
+
+        batch.delete(doc(db, "purchases", row.reference_id));
+
+        await batch.commit();
+      } else {
+        const linkedVoucherId = row.voucher_id || row.reference_id;
+        let isVoucher = false;
+        if (linkedVoucherId && user?.uid) {
+          const vRef = doc(db, "vouchers", linkedVoucherId);
+          const vSnap = await getDoc(vRef);
+          if (vSnap.exists()) {
+            isVoucher = true;
+            await deleteVoucher(user.uid, linkedVoucherId);
+          }
+        }
+        if (!isVoucher) {
           await deleteDoc(doc(db, "cash_transactions", row.id));
         }
-      } else {
-        await deleteDoc(doc(db, "cash_transactions", row.id));
       }
       toast.success(
         lang === "NEP" ? "रेकर्ड मेटियो र हिसाब मिलान भयो" : "Entry deleted and records synced",
