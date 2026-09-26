@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, onAuthStateChanged, signOut as firebaseSignOut, signInAnonymously } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { 
   StaffMember, 
   StaffRole, 
@@ -8,6 +9,7 @@ import {
   getStoredStaffSession, 
   storeStaffSession, 
   hasStaffPermission, 
+  findStaffByEmail,
   ROLE_DEFINITIONS 
 } from "@/lib/staff";
 
@@ -55,8 +57,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [onlineUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setFirebaseUser(currentUser);
+
+      if (currentUser && currentUser.email) {
+        try {
+          // 1. Check if user is a staff member by looking up profiles or staff_members
+          const pSnap = await getDoc(doc(db, "profiles", currentUser.uid));
+          if (pSnap.exists() && pSnap.data().is_staff) {
+            const pData = pSnap.data();
+            const staffObj: StaffMember = {
+              id: pData.staff_id || currentUser.uid,
+              owner_id: pData.owner_id || "",
+              shop_name: pData.shop_name || "",
+              name: pData.full_name || currentUser.email.split("@")[0],
+              email: pData.email || currentUser.email,
+              role: (pData.role as StaffRole) || "cashier",
+              pin: pData.pin || "",
+              status: pData.status || "active",
+              created_at: pData.created_at || new Date().toISOString(),
+            };
+            storeStaffSession(staffObj);
+            setCurrentStaff(staffObj);
+          } else {
+            // Check if there is a staff member matching this email
+            const matchedStaff = await findStaffByEmail(currentUser.email);
+            if (matchedStaff) {
+              storeStaffSession(matchedStaff);
+              setCurrentStaff(matchedStaff);
+            }
+          }
+        } catch (err) {
+          console.warn("Error resolving staff profile in AuthContext:", err);
+        }
+      }
+
       setLoading(false);
     });
 
@@ -64,33 +99,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // Determine active user object:
-  // 1. If Staff is active in standalone mode (no Firebase owner session)
-  // 2. If Firebase owner is logged in
+  // If Staff: uid MUST BE currentStaff.owner_id so all Firestore queries load the owner's shop!
   const user: AppUser | User | null = (() => {
-    if (firebaseUser) {
-      // If owner is logged in and an operator is selected, tag the operator
-      if (currentStaff) {
-        return {
-          uid: firebaseUser.uid,
-          email: currentStaff.email || firebaseUser.email,
-          displayName: currentStaff.name || firebaseUser.displayName,
-          isStaff: true,
-          staffId: currentStaff.id,
-          staffRole: currentStaff.role,
-        };
-      }
-      return firebaseUser;
-    }
-
-    if (currentStaff) {
+    if (currentStaff && currentStaff.owner_id) {
       return {
-        uid: currentStaff.owner_id,
-        email: currentStaff.email,
-        displayName: currentStaff.name,
+        uid: currentStaff.owner_id, // Points directly to the Owner's shop tenant!
+        email: currentStaff.email || firebaseUser?.email || null,
+        displayName: currentStaff.name || firebaseUser?.displayName || null,
         isStaff: true,
         staffId: currentStaff.id,
         staffRole: currentStaff.role,
       };
+    }
+
+    if (firebaseUser) {
+      return firebaseUser;
     }
 
     return null;
@@ -107,8 +130,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loginStaff = async (staff: StaffMember) => {
     storeStaffSession(staff);
     setCurrentStaff(staff);
-    // Ensure Firebase has an anonymous auth session if not already logged in
-    // This allows Firestore rules expecting auth != null to work seamlessly
     if (!auth.currentUser) {
       try {
         await signInAnonymously(auth);
