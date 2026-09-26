@@ -1055,8 +1055,10 @@ export const AppShell = () => {
                             <div className="font-display font-bold text-sm md:text-[15px] leading-tight text-sidebar-foreground truncate" title={shopName}>
                                 {shopName || "My Shop"}
                             </div>
-                            <div className="text-[11px] text-sidebar-foreground/60 truncate flex items-center gap-1.5 mt-0.5 font-medium">
-                                <span className="truncate">{currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "साहुजी" : "Owner"))}</span>
+                            <div className="text-[11px] text-sidebar-foreground/60 flex items-center gap-1.5 mt-0.5 font-medium min-w-0">
+                                <span className="truncate" title={currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email || "")}>
+                                    {currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "साहुजी" : "Owner"))}
+                                </span>
                                 {currentStaff ? (
                                     <span className={`text-[9px] px-1.5 py-0.2 font-bold rounded uppercase border shrink-0 ${
                                         currentStaff.role === "cashier"
@@ -1190,8 +1192,10 @@ export const AppShell = () => {
                                         <div className="font-display font-bold text-base leading-tight text-sidebar-foreground truncate" title={shopName}>
                                             {shopName || "My Shop"}
                                         </div>
-                                        <div className="text-xs text-sidebar-foreground/60 truncate flex items-center gap-1.5 mt-0.5 font-medium">
-                                            <span className="truncate">{currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "साहुजी" : "Owner"))}</span>
+                                        <div className="text-xs text-sidebar-foreground/60 flex items-center gap-1.5 mt-0.5 font-medium min-w-0">
+                                            <span className="truncate" title={currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email || "")}>
+                                                {currentStaff ? currentStaff.name : (fullName || user?.displayName || user?.email?.split("@")[0] || (lang === "NEP" ? "साहुजी" : "Owner"))}
+                                            </span>
                                             {currentStaff ? (
                                                 <span className={`text-[9px] px-1.5 py-0.2 font-bold rounded uppercase border shrink-0 ${
                                                     currentStaff.role === "cashier"
