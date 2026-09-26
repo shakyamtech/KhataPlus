@@ -884,7 +884,7 @@ const POS = () => {
         non_taxable_amount: nonTaxableAmount,
         taxable_amount: taxableAmount,
         vat_amount: vatAmount,
-        prepared_by: currentStaff ? `${currentStaff.name} (${currentStaff.role})` : (shop.owner_name || user?.displayName || null),
+        prepared_by: currentStaff ? currentStaff.name : (shop.owner_name || user?.displayName || null),
         billed_by_name: currentStaff?.name || user?.displayName || "Admin",
         billed_by_id: currentStaff?.id || user?.uid,
         billed_by_role: currentStaff?.role || "owner",
@@ -1012,7 +1012,7 @@ const POS = () => {
           changeAmount,
           isVatInvoice,
           invoiceType,
-          preparedBy: currentStaff ? `${currentStaff.name} (${currentStaff.role})` : (shop.owner_name || user?.displayName || null)
+          preparedBy: currentStaff ? currentStaff.name : (shop.owner_name || user?.displayName || null)
         });
       } catch (err: any) {
         console.error("Print receipt error:", err);
