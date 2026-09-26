@@ -1545,8 +1545,321 @@ export const AppShell = () => {
                             <Input value={panNo} onChange={(e) => setPanNo(e.target.value)} placeholder={taxType === "vat" ? "Enter 9-digit VAT number..." : "Enter PAN number..."} />
                         </div>
 
+                        {/* 6. Barcode Notification Sound Setting */}
+                        <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
+                            <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <Volume2 className="h-3.5 w-3.5 text-primary" />
+                                    <span>{lang === "NEP" ? "बारकोड स्क्यानर आवाज (Barcode Scanner Sound)" : "Barcode Scanner Notification Sound"}</span>
+                                </Label>
+                                <span className="text-[10px] text-muted-foreground">
+                                    {lang === "NEP" ? "POS मा सामान स्क्यान हुँदा बज्ने आवाज" : "Chime sound played on barcode scan"}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {BARCODE_SOUND_OPTIONS.map((opt) => (
+                                    <div
+                                        key={opt.id}
+                                        onClick={() => {
+                                            setBarcodeScanSound(opt.id);
+                                            playScanBeep(opt.id);
+                                        }}
+                                        className={cn(
+                                            "p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between",
+                                            barcodeScanSound === opt.id
+                                                ? "bg-primary/10 border-primary ring-1 ring-primary/30 text-primary font-bold shadow-2xs"
+                                                : "bg-background hover:bg-muted/60 border-border text-foreground"
+                                        )}
+                                    >
+                                        <div>
+                                            <div className="font-bold text-xs">{opt.name}</div>
+                                            <div className="text-[10px] text-muted-foreground font-normal mt-0.5">{opt.desc}</div>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-7 w-7 rounded-full shrink-0 hover:bg-primary/20 text-primary"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setBarcodeScanSound(opt.id);
+                                                playScanBeep(opt.id);
+                                            }}
+                                            title="आवाज सुन्नुहोस् (Test Sound)"
+                                        >
+                                            <Volume2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 7. Default Profit Margin / Markup Setting */}
+                        <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
+                            <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                                    <span>{lang === "NEP" ? "सामान्य नाफा मार्जिन (Default Profit Margin %)" : "Default Profit Margin (%)"}</span>
+                                </Label>
+                                <span className="text-[10px] text-muted-foreground">
+                                    {lang === "NEP" ? "सामान थप्दा खरिद मूल्यबाट स्वतः बिक्री मूल्य निकाल्न" : "Auto-calculates sell price from cost"}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <div className="relative w-28 shrink-0">
+                                    <Input
+                                        type="number"
+                                        step="0.5"
+                                        min="0"
+                                        max="1000"
+                                        value={defaultProfitMargin}
+                                        onChange={(e) => setDefaultProfitMargin(e.target.value)}
+                                        placeholder="0"
+                                        className="pr-7 font-bold text-center h-9 text-xs bg-background"
+                                        onWheel={(e) => e.currentTarget.blur()}
+                                    />
+                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">%</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    {["10", "15", "20", "25", "30"].map((pct) => (
+                                        <Button
+                                            key={pct}
+                                            type="button"
+                                            size="sm"
+                                            variant={defaultProfitMargin === pct ? "default" : "outline"}
+                                            className={cn(
+                                                "h-9 px-3 text-xs font-semibold cursor-pointer transition-all",
+                                                defaultProfitMargin === pct && "shadow-2xs font-bold"
+                                            )}
+                                            onClick={() => setDefaultProfitMargin(defaultProfitMargin === pct ? "" : pct)}
+                                        >
+                                            {pct}%
+                                        </Button>
+                                    ))}
+                                    {defaultProfitMargin ? (
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-9 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            onClick={() => setDefaultProfitMargin("")}
+                                            title="Clear"
+                                        >
+                                            {lang === "NEP" ? "हटाउनुहोस्" : "Clear"}
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground leading-tight">
+                                💡 {lang === "NEP"
+                                    ? "उदाहरण: २०% राख्दा, खरिद मूल्य रु. १००० हाल्ने बित्तिकै बिक्री मूल्य रु. १२०० स्वतः भरिनेछ।"
+                                    : "Example: Setting 20% will auto-calculate Sell Price as Rs. 1,200 when Cost is Rs. 1,000."}
+                            </p>
+                        </div>
+
+                        {/* Reset Numbering Counters Container */}
+                        <div className="bg-secondary/30 border border-border/60 rounded-xl p-3.5 space-y-2.5">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="space-y-0.5 max-w-md">
+                                    <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                        <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span>{lang === "NEP" ? "काउन्टर सुरुवाती १ मा ल्याउनुहोस् (Reset Counters)" : "Reset Numbering Counters"}</span>
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground leading-snug">
+                                        {lang === "NEP" 
+                                            ? "आर्थिक वर्ष नफेरीकनै केवल बिल, खरिद र बारकोड (1001) का बक्सहरूलाई १ मा ल्याउन (सुरुवाती सेटअप वा परीक्षण पश्चात उपयोगी)।" 
+                                            : "Quickly set bill, purchase, and barcode (1001) input boxes back to 1 without altering fiscal year suffix."}
+                                    </p>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs h-8 text-muted-foreground hover:text-foreground shrink-0"
+                                    onClick={() => {
+                                        setTaxInvoiceNextNo("1");
+                                        setAbbreviatedNextNo("1");
+                                        setBillNextNo("1");
+                                        setPurchaseNextNo("1");
+                                        setBarcodeStartingNo("1001");
+                                        toast.info(lang === "NEP" ? "काउन्टरहरू १ मा सेट भए। लागू गर्न तल 'Save changes' थिच्नुहोस्।" : "Counters set to defaults (1). Click Save changes below to apply.");
+                                    }}
+                                >
+                                    <RotateCcw className="h-3 w-3 mr-1" />
+                                    {lang === "NEP" ? "काउन्टर १ बनाउनुहोस्" : "Reset Counters to 1"}
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Data Backup & Restore Shortcut */}
+                        <div className="pt-4 border-t border-emerald-500/20 mt-6 space-y-2.5 bg-emerald-500/5 rounded-xl p-4 border">
+                            <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                                <span className="flex items-center gap-1.5">
+                                    <Database className="h-4 w-4" />
+                                    {lang === "NEP" ? "डाटा ब्याकअप र रिस्टोर" : "Data Backup & Restore"}
+                                </span>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2.5 text-xs border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                                    onClick={() => {
+                                        setShopOpen(false);
+                                        setBackupOpen(true);
+                                    }}
+                                >
+                                    {lang === "NEP" ? "ब्याकअप खोल्नुहोस्" : "Open Backup"}
+                                </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {lang === "NEP"
+                                    ? "आफ्नो पसलको सम्पूर्ण डाटा (बिल, सामान, लेजर, हिसाब) सुरक्षित .json फाइलमा डाउनलोड गर्नुहोस् वा पुरानो ब्याकअप रिस्टोर गर्नुहोस्।"
+                                    : "Download a 100% offline .json backup of your entire store data or restore from a previous backup file."}
+                            </p>
+                        </div>
+
+                        <div className="pt-4 border-t border-destructive/20 mt-4 space-y-4 bg-destructive/5 rounded-xl p-4 border border-destructive/20">
+                            <div className="text-sm font-bold text-destructive flex items-center gap-1.5">
+                                <Trash2 className="h-4 w-4" />
+                                {lang === "NEP" ? "खतरा क्षेत्र (Danger Zone)" : "Danger Zone"}
+                            </div>
+
+                            {/* Option 1: Transactional & Ledger Reset */}
+                            <div className="p-3.5 bg-background/90 rounded-xl border border-border space-y-2.5 shadow-2xs">
+                                <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <RotateCcw className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                        {lang === "NEP" ? "१. कारोबार तथा लेजर रिसेट (Transactions Reset)" : "1. Transactions & Ledgers Reset"}
+                                    </span>
+                                    <span className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium border border-amber-500/20">
+                                        {lang === "NEP" ? "सामान सुरक्षित रहन्छ" : "Preserves Products"}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    {lang === "NEP"
+                                        ? "सबै बिक्री, खरिद, क्यासबुक, र लेजर इतिहास रिसेट हुन्छ। सामान (Products), ग्राहक र आपूर्तिकर्ताको नाम सुरक्षित रहनेछ।"
+                                        : "Resets all sales, purchases, cashbook, and ledger history. Your products, customers, and supplier profiles will remain intact."}
+                                </p>
+                                <AlertDialog open={resetDialogOpen} onOpenChange={(open) => { if (!busyReset) setResetDialogOpen(open); }}>
+                                    <AlertDialogTrigger asChild>
+                                        <Button 
+                                            type="button"
+                                            variant="outline" 
+                                            size="sm"
+                                            className="border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500 hover:text-white transition-all h-8 text-xs font-semibold w-full mt-1"
+                                        >
+                                            <RotateCcw className="h-3 w-3 mr-1.5" />
+                                            {lang === "NEP" ? "कारोबार र लेजर रिसेट गर्नुहोस्" : "Reset Transactions & Ledgers"}
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>
+                                                {lang === "NEP" ? "के तपाईं कारोबार र लेजर रिसेट गर्न चाहनुहुन्छ?" : "Reset store transactions & ledgers?"}
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                {lang === "NEP"
+                                                    ? "यसले तपाइँको पसलको सम्पूर्ण बिक्री, खरिद, क्यासबुक, भौचर र लेजर इतिहास मेटाउनेछ। सामानहरू (Products), ग्राहक र सप्लायरको विवरण सुरक्षित रहनेछन् (मौज्दात ० हुनेछ)। यो कार्य फिर्ता गर्न सकिने छैन।"
+                                                    : "This will delete all sales, purchases, cash transactions, vouchers, and ledgers. Your product catalog, customer and supplier lists will be preserved (balances reset to 0). This action cannot be undone."}
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel disabled={busyReset}>{t.cancel}</AlertDialogCancel>
+                                            <Button
+                                                type="button"
+                                                disabled={busyReset}
+                                                onClick={handleSelfReset}
+                                                className="bg-amber-600 hover:bg-amber-700 text-white min-w-[140px] font-bold"
+                                            >
+                                                {busyReset ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                                        {lang === "NEP" ? "रिसेट गरिँदैछ..." : "Resetting Data..."}
+                                                    </>
+                                                ) : (
+                                                    lang === "NEP" ? "कारोबार रिसेट गर्नुहोस्" : "Reset Transactions"
+                                                )}
+                                            </Button>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+
+                            {/* Option 2: Master Store Reset (Full Factory Wipe) */}
+                            <div className="p-3.5 bg-destructive/10 rounded-xl border border-destructive/30 space-y-2.5 shadow-2xs">
+                                <div className="flex items-center justify-between flex-wrap gap-1.5">
+                                    <span className="text-xs font-bold text-destructive flex items-center gap-1.5">
+                                        <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                                        {lang === "NEP" ? "२. मास्टर रिसेट / पूर्ण खाली (Master Factory Reset)" : "2. Master Store Reset (Full Wipe)"}
+                                    </span>
+                                    <span className="text-[10px] bg-destructive/20 text-destructive px-2 py-0.5 rounded-full font-bold border border-destructive/30">
+                                        {lang === "NEP" ? "पूर्ण खाली (Full Wipe)" : "Blank Store"}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-destructive/90 leading-relaxed font-medium">
+                                    {lang === "NEP"
+                                        ? "पसलको सम्पूर्ण सामान (Products), ग्राहक, आपूर्तिकर्ता, र सबै कारोबार पूर्ण रूपमा मेटिनेछ। पसलको प्रोफाइल फारम (नाम, फोन, प्यान) मात्र बाँकी रहनेछ।"
+                                        : "Permanently wipes all products, batches, customers, suppliers, and all transactions. Only basic shop registration info will be kept."}
+                                </p>
+                                <AlertDialog open={masterResetDialogOpen} onOpenChange={(open) => { if (!busyMasterReset) setMasterResetDialogOpen(open); }}>
+                                    <AlertDialogTrigger asChild>
+                                        <Button 
+                                            type="button"
+                                            variant="destructive" 
+                                            size="sm"
+                                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground transition-all h-8 text-xs font-bold w-full mt-1 shadow-sm"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                            {lang === "NEP" ? "पसल पूर्ण रूपमा खाली गर्नुहोस् (Master Wipe)" : "Master Wipe Store Data"}
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                                                <AlertTriangle className="h-5 w-5" />
+                                                {lang === "NEP" ? "के तपाईं पसलको सम्पूर्ण डाटा मेटाउन निश्चित हुनुहुन्छ?" : "Permanently wipe entire store database?"}
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription className="text-xs space-y-2 text-foreground/90">
+                                                <p className="font-semibold text-destructive">
+                                                    ⚠️ {lang === "NEP" ? "यो अति संवेदनशील कार्य हो। यो कार्य फिर्ता लिन सकिने छैन।" : "CRITICAL WARNING: This action is permanent and cannot be undone."}
+                                                </p>
+                                                <p>
+                                                    {lang === "NEP"
+                                                        ? "यसले पसलका सबै सामानहरू (Products), स्टक ब्याचहरू, ग्राहक, आपूर्तिकर्ता, बिक्री बिलहरू, खरिद, क्यासबुक, र सबै हिसाब-किताब पूर्ण रूपमा मेटाउनेछ। सफ्टवेयर पहिलो पटक खोलेको जस्तो बिल्कुल खाली हुनेछ।"
+                                                        : "This will wipe ALL inventory catalog, batches, parties, sales bills, purchases, cash transactions, and ledgers. The application will be reset to a clean blank state."}
+                                                </p>
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel disabled={busyMasterReset}>{t.cancel}</AlertDialogCancel>
+                                            <Button
+                                                type="button"
+                                                disabled={busyMasterReset}
+                                                onClick={handleMasterReset}
+                                                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground min-w-[160px] font-bold"
+                                            >
+                                                {busyMasterReset ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                                        {lang === "NEP" ? "पूर्ण रिसेट गरिँदैछ..." : "Master Resetting..."}
+                                                    </>
+                                                ) : (
+                                                    lang === "NEP" ? "सबै पूर्ण मेटाउनुहोस् (Master Wipe)" : "Confirm Master Wipe"
+                                                )}
+                                            </Button>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                        </div>
+                            </>
+                        )}
+
+                        {shopSettingsTab === "tax" && (
+                            <>
                         {/* Nepal Tax Compliance Profile Configuration */}
-                        <div className="pt-3 border-t space-y-3">
+                        <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
                             <div className="space-y-0.5">
                                 <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                                     <Scale className="h-3.5 w-3.5 text-primary" />
@@ -1557,7 +1870,7 @@ export const AppShell = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-secondary/30 rounded-xl p-3 border">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                                 {/* Local Level Type */}
                                 <div className="space-y-1.5">
                                     <Label className="text-[11px] font-semibold text-foreground">
@@ -1628,11 +1941,7 @@ export const AppShell = () => {
                                 </div>
                             </div>
                         </div>
-                            </>
-                        )}
 
-                        {shopSettingsTab === "tax" && (
-                            <>
                         {/* Invoice Numbering & Prefix Configuration */}
                         <div className="pt-3 border-t space-y-3">
                             <div className="space-y-0.5">
@@ -1993,320 +2302,9 @@ export const AppShell = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    
-                                         {/* 6. Barcode Notification Sound Setting */}
-                                         <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
-                                             <div className="flex items-center justify-between flex-wrap gap-1.5">
-                                                 <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                                     <Volume2 className="h-3.5 w-3.5 text-primary" />
-                                                     {lang === "NEP" ? "६. बारकोड स्क्यानर आवाज (Barcode Scanner Sound)" : "Barcode Scanner Notification Sound"}
-                                                 </Label>
-                                                 <span className="text-[10px] text-muted-foreground">
-                                                     {lang === "NEP" ? "POS मा सामान स्क्यान हुँदा बज्ने आवाज" : "Chime sound played on barcode scan"}
-                                                 </span>
-                                             </div>
-
-                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                 {BARCODE_SOUND_OPTIONS.map((opt) => (
-                                                     <div
-                                                         key={opt.id}
-                                                         onClick={() => {
-                                                             setBarcodeScanSound(opt.id);
-                                                             playScanBeep(opt.id);
-                                                         }}
-                                                         className={cn(
-                                                             "p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between",
-                                                             barcodeScanSound === opt.id
-                                                                 ? "bg-primary/10 border-primary ring-1 ring-primary/30 text-primary font-bold shadow-2xs"
-                                                                 : "bg-background hover:bg-muted/60 border-border text-foreground"
-                                                         )}
-                                                     >
-                                                         <div>
-                                                             <div className="font-bold text-xs">{opt.name}</div>
-                                                             <div className="text-[10px] text-muted-foreground font-normal mt-0.5">{opt.desc}</div>
-                                                         </div>
-                                                         <Button
-                                                             type="button"
-                                                             size="icon"
-                                                             variant="ghost"
-                                                             className="h-7 w-7 rounded-full shrink-0 hover:bg-primary/20 text-primary"
-                                                             onClick={(e) => {
-                                                                 e.stopPropagation();
-                                                                 setBarcodeScanSound(opt.id);
-                                                                 playScanBeep(opt.id);
-                                                             }}
-                                                             title="आवाज सुन्नुहोस् (Test Sound)"
-                                                         >
-                                                             <Volume2 className="h-3.5 w-3.5" />
-                                                         </Button>
-                                                     </div>
-                                                 ))}
-                                             </div>
-                                         </div>
-                                     </>
+                                    </>
                                 );
                             })()}
-
-                            {/* 7. Default Profit Margin / Markup Setting */}
-                            <div className="space-y-3 bg-secondary/30 rounded-xl p-3.5 border">
-                                <div className="flex items-center justify-between flex-wrap gap-1.5">
-                                    <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                        <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-                                        {lang === "NEP" ? "७. सामान्य नाफा मार्जिन (Default Profit Margin %)" : "Default Profit Margin (%)"}
-                                    </Label>
-                                    <span className="text-[10px] text-muted-foreground">
-                                        {lang === "NEP" ? "सामान थप्दा खरिद मूल्यबाट स्वतः बिक्री मूल्य निकाल्न" : "Auto-calculates sell price from cost"}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <div className="relative w-28 shrink-0">
-                                        <Input
-                                            type="number"
-                                            step="0.5"
-                                            min="0"
-                                            max="1000"
-                                            value={defaultProfitMargin}
-                                            onChange={(e) => setDefaultProfitMargin(e.target.value)}
-                                            placeholder="0"
-                                            className="pr-7 font-bold text-center h-9 text-xs bg-background"
-                                            onWheel={(e) => e.currentTarget.blur()}
-                                        />
-                                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">%</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                        {["10", "15", "20", "25", "30"].map((pct) => (
-                                            <Button
-                                                key={pct}
-                                                type="button"
-                                                size="sm"
-                                                variant={defaultProfitMargin === pct ? "default" : "outline"}
-                                                className={cn(
-                                                    "h-9 px-3 text-xs font-semibold cursor-pointer transition-all",
-                                                    defaultProfitMargin === pct && "shadow-2xs font-bold"
-                                                )}
-                                                onClick={() => setDefaultProfitMargin(defaultProfitMargin === pct ? "" : pct)}
-                                            >
-                                                {pct}%
-                                            </Button>
-                                        ))}
-                                        {defaultProfitMargin ? (
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-9 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                onClick={() => setDefaultProfitMargin("")}
-                                                title="Clear"
-                                            >
-                                                {lang === "NEP" ? "हटाउनुहोस्" : "Clear"}
-                                            </Button>
-                                        ) : null}
-                                    </div>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground leading-tight">
-                                    💡 {lang === "NEP"
-                                        ? "उदाहरण: २०% राख्दा, खरिद मूल्य रु. १००० हाल्ने बित्तिकै बिक्री मूल्य रु. १२०० स्वतः भरिनेछ।"
-                                        : "Example: Setting 20% will auto-calculate Sell Price as Rs. 1,200 when Cost is Rs. 1,000."}
-                                </p>
-                            </div>
-
-                            {/* Reset Numbering Counters Container */}
-                            <div className="bg-secondary/30 border border-border/60 rounded-xl p-3.5 space-y-2.5">
-                                <div className="flex items-center justify-between flex-wrap gap-2">
-                                    <div className="space-y-0.5 max-w-md">
-                                        <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                                            <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
-                                            <span>{lang === "NEP" ? "काउन्टर सुरुवाती १ मा ल्याउनुहोस् (Reset Counters)" : "Reset Numbering Counters"}</span>
-                                        </div>
-                                        <p className="text-[11px] text-muted-foreground leading-snug">
-                                            {lang === "NEP" 
-                                                ? "आर्थिक वर्ष नफेरीकनै केवल बिल, खरिद र बारकोड (1001) का बक्सहरूलाई १ मा ल्याउन (सुरुवाती सेटअप वा परीक्षण पश्चात उपयोगी)।" 
-                                                : "Quickly set bill, purchase, and barcode (1001) input boxes back to 1 without altering fiscal year suffix."}
-                                        </p>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-xs h-8 text-muted-foreground hover:text-foreground shrink-0"
-                                        onClick={() => {
-                                            setTaxInvoiceNextNo("1");
-                                            setAbbreviatedNextNo("1");
-                                            setBillNextNo("1");
-                                            setPurchaseNextNo("1");
-                                            setBarcodeStartingNo("1001");
-                                            toast.info(lang === "NEP" ? "काउन्टरहरू १ मा सेट भए। लागू गर्न तल 'Save changes' थिच्नुहोस्।" : "Counters set to defaults (1). Click Save changes below to apply.");
-                                        }}
-                                    >
-                                        <RotateCcw className="h-3 w-3 mr-1" />
-                                        {lang === "NEP" ? "काउन्टर १ बनाउनुहोस्" : "Reset Counters to 1"}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Data Backup & Restore Shortcut */}
-                        <div className="pt-4 border-t border-emerald-500/20 mt-6 space-y-2.5 bg-emerald-500/5 rounded-xl p-4 border">
-                            <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
-                                <span className="flex items-center gap-1.5">
-                                    <Database className="h-4 w-4" />
-                                    {lang === "NEP" ? "डाटा ब्याकअप र रिस्टोर" : "Data Backup & Restore"}
-                                </span>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 px-2.5 text-xs border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
-                                    onClick={() => {
-                                        setShopOpen(false);
-                                        setBackupOpen(true);
-                                    }}
-                                >
-                                    {lang === "NEP" ? "ब्याकअप खोल्नुहोस्" : "Open Backup"}
-                                </Button>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {lang === "NEP"
-                                    ? "आफ्नो पसलको सम्पूर्ण डाटा (बिल, सामान, लेजर, हिसाब) सुरक्षित .json फाइलमा डाउनलोड गर्नुहोस् वा पुरानो ब्याकअप रिस्टोर गर्नुहोस्।"
-                                    : "Download a 100% offline .json backup of your entire store data or restore from a previous backup file."}
-                            </p>
-                        </div>
-
-                        <div className="pt-4 border-t border-destructive/20 mt-4 space-y-4 bg-destructive/5 rounded-xl p-4 border border-destructive/20">
-                            <div className="text-sm font-bold text-destructive flex items-center gap-1.5">
-                                <Trash2 className="h-4 w-4" />
-                                {lang === "NEP" ? "खतरा क्षेत्र (Danger Zone)" : "Danger Zone"}
-                            </div>
-
-                            {/* Option 1: Transactional & Ledger Reset */}
-                            <div className="p-3.5 bg-background/90 rounded-xl border border-border space-y-2.5 shadow-2xs">
-                                <div className="flex items-center justify-between flex-wrap gap-1.5">
-                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                        <RotateCcw className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                                        {lang === "NEP" ? "१. कारोबार तथा लेजर रिसेट (Transactions Reset)" : "1. Transactions & Ledgers Reset"}
-                                    </span>
-                                    <span className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium border border-amber-500/20">
-                                        {lang === "NEP" ? "सामान सुरक्षित रहन्छ" : "Preserves Products"}
-                                    </span>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                    {lang === "NEP"
-                                        ? "सबै बिक्री, खरिद, क्यासबुक, र लेजर इतिहास रिसेट हुन्छ। सामान (Products), ग्राहक र आपूर्तिकर्ताको नाम सुरक्षित रहनेछ।"
-                                        : "Resets all sales, purchases, cashbook, and ledger history. Your products, customers, and supplier profiles will remain intact."}
-                                </p>
-                                <AlertDialog open={resetDialogOpen} onOpenChange={(open) => { if (!busyReset) setResetDialogOpen(open); }}>
-                                    <AlertDialogTrigger asChild>
-                                        <Button 
-                                            type="button"
-                                            variant="outline" 
-                                            size="sm"
-                                            className="border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500 hover:text-white transition-all h-8 text-xs font-semibold w-full mt-1"
-                                        >
-                                            <RotateCcw className="h-3 w-3 mr-1.5" />
-                                            {lang === "NEP" ? "कारोबार र लेजर रिसेट गर्नुहोस्" : "Reset Transactions & Ledgers"}
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>
-                                                {lang === "NEP" ? "के तपाईं कारोबार र लेजर रिसेट गर्न चाहनुहुन्छ?" : "Reset store transactions & ledgers?"}
-                                            </AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                {lang === "NEP"
-                                                    ? "यसले तपाइँको पसलको सम्पूर्ण बिक्री, खरिद, क्यासबुक, भौचर र लेजर इतिहास मेटाउनेछ। सामानहरू (Products), ग्राहक र सप्लायरको विवरण सुरक्षित रहनेछन् (मौज्दात ० हुनेछ)। यो कार्य फिर्ता गर्न सकिने छैन।"
-                                                    : "This will delete all sales, purchases, cash transactions, vouchers, and ledgers. Your product catalog, customer and supplier lists will be preserved (balances reset to 0). This action cannot be undone."}
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel disabled={busyReset}>{t.cancel}</AlertDialogCancel>
-                                            <Button
-                                                type="button"
-                                                disabled={busyReset}
-                                                onClick={handleSelfReset}
-                                                className="bg-amber-600 hover:bg-amber-700 text-white min-w-[140px] font-bold"
-                                            >
-                                                {busyReset ? (
-                                                    <>
-                                                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                                                        {lang === "NEP" ? "रिसेट गरिँदैछ..." : "Resetting Data..."}
-                                                    </>
-                                                ) : (
-                                                    lang === "NEP" ? "कारोबार रिसेट गर्नुहोस्" : "Reset Transactions"
-                                                )}
-                                            </Button>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
-
-                            {/* Option 2: Master Store Reset (Full Factory Wipe) */}
-                            <div className="p-3.5 bg-destructive/10 rounded-xl border border-destructive/30 space-y-2.5 shadow-2xs">
-                                <div className="flex items-center justify-between flex-wrap gap-1.5">
-                                    <span className="text-xs font-bold text-destructive flex items-center gap-1.5">
-                                        <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                                        {lang === "NEP" ? "२. मास्टर रिसेट / पूर्ण खाली (Master Factory Reset)" : "2. Master Store Reset (Full Wipe)"}
-                                    </span>
-                                    <span className="text-[10px] bg-destructive/20 text-destructive px-2 py-0.5 rounded-full font-bold border border-destructive/30">
-                                        {lang === "NEP" ? "पूर्ण खाली (Full Wipe)" : "Blank Store"}
-                                    </span>
-                                </div>
-                                <p className="text-[11px] text-destructive/90 leading-relaxed font-medium">
-                                    {lang === "NEP"
-                                        ? "पसलको सम्पूर्ण सामान (Products), ग्राहक, आपूर्तिकर्ता, र सबै कारोबार पूर्ण रूपमा मेटिनेछ। पसलको प्रोफाइल फारम (नाम, फोन, प्यान) मात्र बाँकी रहनेछ।"
-                                        : "Permanently wipes all products, batches, customers, suppliers, and all transactions. Only basic shop registration info will be kept."}
-                                </p>
-                                <AlertDialog open={masterResetDialogOpen} onOpenChange={(open) => { if (!busyMasterReset) setMasterResetDialogOpen(open); }}>
-                                    <AlertDialogTrigger asChild>
-                                        <Button 
-                                            type="button"
-                                            variant="destructive" 
-                                            size="sm"
-                                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground transition-all h-8 text-xs font-bold w-full mt-1 shadow-sm"
-                                        >
-                                            <Trash2 className="h-3 w-3 mr-1.5" />
-                                            {lang === "NEP" ? "सम्पूर्ण डाटा (Master Store) खाली गर्नुहोस्" : "Execute Master Factory Reset"}
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle className="text-destructive flex items-center gap-2">
-                                                <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
-                                                {lang === "NEP" ? "के तपाईं पसलको सम्पूर्ण डाटा मेट्न निश्चित हुनुहुन्छ?" : "Perform Master Factory Reset?"}
-                                            </AlertDialogTitle>
-                                            <AlertDialogDescription className="space-y-2 text-left">
-                                                <p className="font-semibold text-destructive">
-                                                    {lang === "NEP"
-                                                        ? "चेतावनी: यो अन्तिम फ्याक्ट्री रिसेट हो!"
-                                                        : "Warning: This is a full factory reset!"}
-                                                </p>
-                                                <p>
-                                                    {lang === "NEP"
-                                                        ? "यसले तपाइँको पसलका सबै सामानहरू (Products), ग्राहकहरू (Customers), आपूर्तिकर्ताहरू (Suppliers), र सम्पूर्ण कारोबार इतिहास सदाका लागि मेटाउनेछ। तपाईंको पसल सुरुवाती खाली (Brand New Blank Store) अवस्थामा फर्किनेछ। यो कार्य कुनै पनि हालतमा फिर्ता (Undo) गर्न सकिने छैन।"
-                                                        : "This will permanently delete all products, batches, customers, suppliers, and every transaction record. Your store will return to a completely fresh blank state. This action CANNOT be undone."}
-                                                </p>
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel disabled={busyMasterReset}>{t.cancel}</AlertDialogCancel>
-                                            <Button
-                                                type="button"
-                                                disabled={busyMasterReset}
-                                                onClick={handleMasterReset}
-                                                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground min-w-[160px] font-bold"
-                                            >
-                                                {busyMasterReset ? (
-                                                    <>
-                                                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                                                        {lang === "NEP" ? "पूर्ण रिसेट गरिँदैछ..." : "Master Resetting..."}
-                                                    </>
-                                                ) : (
-                                                    lang === "NEP" ? "सबै पूर्ण मेटाउनुहोस् (Master Wipe)" : "Confirm Master Wipe"
-                                                )}
-                                            </Button>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
                         </div>
                             </>
                         )}
