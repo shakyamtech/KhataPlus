@@ -10,6 +10,7 @@ import {
   updateStaffSalaryDetails,
   printStaffPayslip
 } from "@/lib/payroll";
+import { StaffAttendanceDashboard } from "@/components/StaffAttendanceDashboard";
 import { getAccounts, Account } from "@/lib/accounting";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"roster" | "attendance">("roster");
 
   // Current Month calculation
   const currentNepDate = useMemo(() => formatNepaliDate(new Date()), []);
@@ -338,8 +340,41 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
   return (
     <div className="space-y-6">
-      {/* Top 3 Summary Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Sub-navigation Tabs: Roster / Attendance */}
+      <div className="flex items-center gap-2 border-b pb-3">
+        <Button
+          variant={activeTab === "roster" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveTab("roster")}
+          className={cn(
+            "h-8 text-xs font-bold gap-1.5 rounded-xl cursor-pointer",
+            activeTab === "roster" ? "bg-primary text-primary-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Users className="h-3.5 w-3.5" />
+          <span>{lang === "NEP" ? "तलब तथा पेस्की (Salary Roster)" : "Salary & Payout Roster"}</span>
+        </Button>
+
+        <Button
+          variant={activeTab === "attendance" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveTab("attendance")}
+          className={cn(
+            "h-8 text-xs font-bold gap-1.5 rounded-xl cursor-pointer",
+            activeTab === "attendance" ? "bg-primary text-primary-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Clock className="h-3.5 w-3.5" />
+          <span>{lang === "NEP" ? "📅 कर्मचारी हाजिरी (Staff Attendance)" : "Staff Attendance"}</span>
+        </Button>
+      </div>
+
+      {activeTab === "attendance" ? (
+        <StaffAttendanceDashboard ownerId={ownerId} />
+      ) : (
+        <>
+          {/* Top 3 Summary Metrics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Active Staff & Monthly Budget */}
         <Card className="p-4 bg-gradient-to-br from-purple-500/10 via-card to-card border-purple-500/20 shadow-xs">
           <div className="flex items-center justify-between">
@@ -706,6 +741,8 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* 1. GIVE ADVANCE MODAL */}
       <Dialog open={advanceModalOpen} onOpenChange={setAdvanceModalOpen}>

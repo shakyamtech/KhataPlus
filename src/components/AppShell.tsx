@@ -15,6 +15,7 @@ import { BackupModal } from "@/components/BackupModal";
 import { LogoCropModal } from "@/components/LogoCropModal";
 import { StaffManagementSection } from "@/components/StaffManagementSection";
 import { OperatorSwitchModal } from "@/components/OperatorSwitchModal";
+import { StaffAttendanceHeaderButton } from "@/components/StaffAttendanceHeaderButton";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -1210,6 +1211,7 @@ export const AppShell = () => {
 
             {/* Desktop top-right profile corner */}
             <div className="hidden md:flex fixed top-4 right-6 z-50 items-center gap-2.5">
+                <StaffAttendanceHeaderButton />
                 {renderUserProfileDropdown("h-10 w-10", false)}
             </div>
 
@@ -1332,6 +1334,7 @@ export const AppShell = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <StaffAttendanceHeaderButton />
                     <Button
                         variant="ghost"
                         size="icon"
