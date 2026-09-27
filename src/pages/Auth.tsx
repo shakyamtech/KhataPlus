@@ -174,6 +174,18 @@ const Auth = () => {
           localStorage.setItem("khataplus_shop_name", sName);
 
           if (pData.is_staff) {
+            // Strict Active PIN Verification: ensure old/previous PINs are blocked
+            const currentPin = pData.pin || "";
+            if (currentPin && enteredPassword !== currentPin) {
+              await signOut(auth);
+              clearStoredStaffSession();
+              throw new Error(
+                lang === "NEP"
+                  ? "तपाईंको PIN परिवर्तन भइसकेको छ। कृपया हालको नयाँ PIN प्रयोग गर्नुहोस्।"
+                  : "Your PIN has been changed. Please use your current updated PIN."
+              );
+            }
+
             const staffObj = {
               id: pData.staff_id || userCredential.user.uid,
               owner_id: pData.owner_id || userCredential.user.uid,
@@ -182,7 +194,7 @@ const Auth = () => {
               email: pData.email || cleanEmail,
               role: pData.role || "cashier",
               status: pData.status || "active",
-              pin: pData.pin || password.trim(),
+              pin: currentPin || enteredPassword,
               created_at: pData.created_at || new Date().toISOString()
             };
             storeStaffSession(staffObj as any);
@@ -194,7 +206,14 @@ const Auth = () => {
           }
         }
       } catch (err: any) {
-        if (err.message && err.message.includes("suspended") || (err.message && err.message.includes("निलम्बित"))) {
+        if (
+          err.message && (
+            err.message.includes("suspended") ||
+            err.message.includes("निलम्बित") ||
+            err.message.includes("परिवर्तन") ||
+            err.message.includes("PIN")
+          )
+        ) {
           throw err;
         }
       }
