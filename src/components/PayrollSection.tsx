@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
+import { PaymentMethodIcon } from "@/components/PaymentMethodIcon";
 import { fmt, numberToWords } from "@/lib/format";
 import { formatNepaliDate, getNepaliFiscalYear, NEPALI_MONTHS } from "@/lib/fiscalYear";
 import { toast } from "sonner";
@@ -729,10 +730,30 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">नगद (Cash in Hand)</SelectItem>
-                    <SelectItem value="bank">बैंक खाता (Bank Transfer)</SelectItem>
-                    <SelectItem value="esewa">ईसेवा (eSewa Wallet)</SelectItem>
-                    <SelectItem value="khalti">खल्ती (Khalti Wallet)</SelectItem>
+                    <SelectItem value="cash">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="cash" size={16} />
+                        <span>{lang === "NEP" ? "नगद (Cash in Hand)" : "Cash in Hand"}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="bank">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="bank" size={16} />
+                        <span>{lang === "NEP" ? "बैंक खाता (Bank Transfer)" : "Bank Transfer"}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="esewa">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="esewa" size={16} />
+                        <span>{lang === "NEP" ? "ईसेवा (eSewa Wallet)" : "eSewa Wallet"}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="khalti">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="khalti" size={16} />
+                        <span>{lang === "NEP" ? "खल्ती (Khalti Wallet)" : "Khalti Wallet"}</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -758,12 +779,12 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
             <div>
               <Label className="text-xs font-bold">{lang === "NEP" ? "मिति (Date):" : "Date:"}</Label>
-              <Input
-                type="date"
-                value={advDate}
-                onChange={(e) => setAdvDate(e.target.value)}
-                className="h-9 text-xs mt-1 font-mono"
-              />
+              <div className="mt-1">
+                <CustomDatePicker
+                  value={advDate}
+                  onChange={(d) => setAdvDate(d)}
+                />
+              </div>
             </div>
 
             <div>
@@ -817,12 +838,12 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
               <div>
                 <Label className="text-xs font-bold">{lang === "NEP" ? "भुक्तानी मिति (Date):" : "Date:"}</Label>
-                <Input
-                  type="date"
-                  value={salDate}
-                  onChange={(e) => setSalDate(e.target.value)}
-                  className="h-9 text-xs mt-1 font-mono"
-                />
+                <div className="mt-1">
+                  <CustomDatePicker
+                    value={salDate}
+                    onChange={(d) => setSalDate(d)}
+                  />
+                </div>
               </div>
             </div>
 
@@ -928,10 +949,30 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">नगद (Cash in Hand)</SelectItem>
-                    <SelectItem value="bank">बैंक खाता (Bank Transfer)</SelectItem>
-                    <SelectItem value="esewa">ईसेवा (eSewa Wallet)</SelectItem>
-                    <SelectItem value="khalti">खल्ती (Khalti Wallet)</SelectItem>
+                    <SelectItem value="cash">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="cash" size={16} />
+                        <span>{lang === "NEP" ? "नगद (Cash in Hand)" : "Cash in Hand"}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="bank">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="bank" size={16} />
+                        <span>{lang === "NEP" ? "बैंक खाता (Bank Transfer)" : "Bank Transfer"}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="esewa">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="esewa" size={16} />
+                        <span>{lang === "NEP" ? "ईसेवा (eSewa Wallet)" : "eSewa Wallet"}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="khalti">
+                      <div className="flex items-center gap-2">
+                        <PaymentMethodIcon mode="khalti" size={16} />
+                        <span>{lang === "NEP" ? "खल्ती (Khalti Wallet)" : "Khalti Wallet"}</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
