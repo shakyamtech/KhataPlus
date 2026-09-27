@@ -44,7 +44,12 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
 
   // Dialog State
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [revealedPins, setRevealedPins] = useState<Record<string, boolean>>({});
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+
+  const togglePinVisibility = (id: string) => {
+    setRevealedPins(prev => ({ ...prev, [id]: !prev[id] }));
+  };
   const [formData, setFormData] = useState<{
     name: string;
     email: string;
@@ -392,8 +397,21 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
                         </span>
                       )}
                       {staff.pin && (
-                        <span className="flex items-center gap-1 font-mono bg-background/80 px-1.5 py-0.2 rounded border text-[10px]">
-                          <Lock className="h-2.5 w-2.5" /> PIN: ••••
+                        <span className="flex items-center gap-1 font-mono bg-background/80 px-2 py-0.5 rounded-md border text-[10.5px] shadow-2xs">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
+                          <span>PIN: <b className="tracking-wider">{revealedPins[staff.id] ? staff.pin : "••••"}</b></span>
+                          <button
+                            type="button"
+                            onClick={() => togglePinVisibility(staff.id)}
+                            className="text-muted-foreground hover:text-foreground ml-1 p-0.5 rounded cursor-pointer transition-colors"
+                            title={revealedPins[staff.id] ? "Hide PIN" : "Show PIN"}
+                          >
+                            {revealedPins[staff.id] ? (
+                              <EyeOff className="h-3 w-3" />
+                            ) : (
+                              <Eye className="h-3 w-3" />
+                            )}
+                          </button>
                         </span>
                       )}
                     </div>

@@ -14,7 +14,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download, Upload, Crown, Sparkles, AlertCircle, Users, ShoppingCart, Package, FileSpreadsheet, CheckCircle2, UserPlus } from "lucide-react";
+import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download, Upload, Crown, Sparkles, AlertCircle, Users, ShoppingCart, Package, FileSpreadsheet, CheckCircle2, UserPlus, Lock, Mail, Phone, Eye, EyeOff, XCircle, Edit3 } from "lucide-react";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, writeBatch, doc, updateDoc, setDoc } from "firebase/firestore";
@@ -54,6 +54,7 @@ const Admin = () => {
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [managingSubUser, setManagingSubUser] = useState<AdminUser | null>(null);
   const [viewingStaffOwner, setViewingStaffOwner] = useState<AdminUser | null>(null);
+  const [revealedStaffPins, setRevealedStaffPins] = useState<Record<string, boolean>>({});
   const [subBusy, setSubBusy] = useState(false);
   const [planFilter, setPlanFilter] = useState<"all" | "pro" | "trial" | "expired" | "staff">("all");
   const [editName, setEditName] = useState("");
@@ -63,6 +64,10 @@ const Admin = () => {
   const [editRole, setEditRole] = useState<StaffRole>("cashier");
   const [editPassword, setEditPassword] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const toggleAdminStaffPin = (id: string) => {
+    setRevealedStaffPins(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const load = async () => {
     setBusy(true);
@@ -1215,77 +1220,87 @@ const Admin = () => {
                 No staff members registered under this shop yet.
               </div>
             ) : (
-              viewingStaffOwner.staffMembers.map((staff) => (
-                <div key={staff.id} className="p-3.5 rounded-xl border bg-card/60 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      {(() => {
-                        const isOnline = staff.last_sign_in_at && 
-                          (new Date().getTime() - new Date(staff.last_sign_in_at).getTime() < 5 * 60 * 1000);
-                        return isOnline && (
-                          <span className="relative flex h-2 w-2 shrink-0">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                          </span>
-                        );
-                      })()}
-                      <span className="font-semibold text-sm">{staff.email}</span>
-                      <Badge variant="outline" className="bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-400/30 font-bold text-[10px] uppercase">
-                        {staff.staff_role || "Staff"}
-                      </Badge>
-                      {staff.banned_until && new Date(staff.banned_until) > new Date() && (
-                        <Badge variant="destructive" className="text-[10px] py-0 font-bold uppercase">Suspended</Badge>
-                      )}
-                    </div>
+              viewingStaffOwner.staffMembers.map((staff) => {
+                const roleKey = (staff.staff_role as StaffRole) || "cashier";
+                const roleMeta = ROLE_DEFINITIONS[roleKey] || ROLE_DEFINITIONS.cashier;
+                const isInactive = Boolean(staff.banned_until && new Date(staff.banned_until) > new Date());
+                const staffInitial = (staff.full_name || staff.email || "ST").trim().slice(0, 2).toUpperCase();
 
-                    {/* Inherited Subscription badge */}
-                    <Badge variant="default" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-400/30 text-[10px] font-bold">
-                      {viewingStaffOwner.subInfo.isPro ? (
-                        <>
-                          <Crown className="h-3 w-3 mr-1 fill-current" />
-                          {viewingStaffOwner.subInfo.plan === "lifetime" ? "Lifetime Premium" : `Premium (${viewingStaffOwner.subInfo.daysLeft}d)`}
-                        </>
-                      ) : viewingStaffOwner.subInfo.isExpired ? "Expired" : `Trial (${viewingStaffOwner.subInfo.daysLeft}d)`}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t text-xs text-muted-foreground flex-wrap">
-                    <div className="flex items-center gap-3">
-                      <span>Name: <b className="text-foreground">{staff.full_name || "N/A"}</b></span>
-                      <span>Joined: <b className="text-foreground">{format(new Date(staff.created_at), "dd MMM yyyy")}</b></span>
-                      {staff.last_sign_in_at && (
-                        <span>Active: <b className="text-foreground">{format(new Date(staff.last_sign_in_at), "dd MMM yyyy")}</b></span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 ml-auto">
-                      {/* Edit Staff */}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 text-[11px] px-2 gap-1"
-                        onClick={() => {
-                          setEditing(staff);
-                          setEditName(staff.full_name || "");
-                          setEditShop(staff.shop_name || "");
-                          setEditPhone(staff.phone || "");
-                          setEditPin(staff.pin || "1234");
-                          setEditRole((staff.staff_role as StaffRole) || "cashier");
-                          setEditPassword("");
-                        }}
+                return (
+                  <div
+                    key={staff.id}
+                    className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap ${
+                      isInactive
+                        ? "bg-secondary/20 border-border/50 opacity-60"
+                        : "bg-secondary/40 border-border hover:border-primary/40 shadow-xs"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 uppercase border ${
+                          isInactive
+                            ? "bg-muted text-muted-foreground border-muted-foreground/20"
+                            : "bg-primary/10 text-primary border-primary/30 shadow-xs"
+                        }`}
                       >
-                        <Pencil className="h-2.5 w-2.5" /> Edit
-                      </Button>
+                        {staffInitial}
+                      </div>
 
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-xs text-foreground truncate">
+                            {staff.full_name || staff.email.split("@")[0]}
+                          </span>
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${roleMeta.badgeColor}`}
+                          >
+                            {getRoleIcon(roleKey)}
+                            {roleMeta.titleNep.split(" (")[0]}
+                          </span>
+                          {isInactive && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                              निष्क्रिय (Suspended)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+                          <span className="flex items-center gap-1 font-mono">
+                            <Mail className="h-3 w-3" /> {staff.email}
+                          </span>
+                          {staff.phone && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="h-3 w-3" /> {staff.phone}
+                            </span>
+                          )}
+                          {staff.pin && (
+                            <span className="flex items-center gap-1 font-mono bg-background/80 px-2 py-0.5 rounded-md border text-[10.5px] shadow-2xs">
+                              <Lock className="h-3 w-3 text-muted-foreground" />
+                              <span>PIN: <b className="tracking-wider">{revealedStaffPins[staff.id] ? staff.pin : "••••"}</b></span>
+                              <button
+                                type="button"
+                                onClick={() => toggleAdminStaffPin(staff.id)}
+                                className="text-muted-foreground hover:text-foreground ml-1 p-0.5 rounded cursor-pointer transition-colors"
+                                title={revealedStaffPins[staff.id] ? "Hide PIN" : "Show PIN"}
+                              >
+                                {revealedStaffPins[staff.id] ? (
+                                  <EyeOff className="h-3 w-3" />
+                                ) : (
+                                  <Eye className="h-3 w-3" />
+                                )}
+                              </button>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
                       {/* Ban / Unban Staff */}
                       <Button
                         size="sm"
-                        variant="outline"
-                        className={`h-6 text-[11px] px-2 gap-1 ${
-                          staff.banned_until && new Date(staff.banned_until) > new Date()
-                            ? "text-purple-600 border-purple-300"
-                            : "text-destructive border-destructive/30"
-                        }`}
+                        variant="ghost"
+                        className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                        title={isInactive ? "Activate Staff" : "Suspend Staff"}
                         onClick={async () => {
                           await toggleBan(staff);
                           setViewingStaffOwner(prev => {
@@ -1297,18 +1312,37 @@ const Admin = () => {
                           });
                         }}
                       >
-                        {staff.banned_until && new Date(staff.banned_until) > new Date() ? (
-                          <><UserCheck className="h-2.5 w-2.5" /> Unban</>
+                        {isInactive ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 mr-1" />
                         ) : (
-                          <><Ban className="h-2.5 w-2.5" /> Ban</>
+                          <XCircle className="h-3.5 w-3.5 text-amber-500 mr-1" />
                         )}
+                        {isInactive ? "सक्रिय पार्नुहोस्" : "रोक्नुहोस्"}
+                      </Button>
+
+                      {/* Edit Staff */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-[11px] gap-1"
+                        onClick={() => {
+                          setEditing(staff);
+                          setEditName(staff.full_name || "");
+                          setEditShop(staff.shop_name || "");
+                          setEditPhone(staff.phone || "");
+                          setEditPin(staff.pin || "1234");
+                          setEditRole((staff.staff_role as StaffRole) || "cashier");
+                          setEditPassword("");
+                        }}
+                      >
+                        <Edit3 className="h-3 w-3" /> सम्पादन
                       </Button>
 
                       {/* Delete Staff */}
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
                         title="Delete staff account"
                         onClick={async () => {
                           if (confirm(`Are you sure you want to permanently delete staff ${staff.email}?`)) {
@@ -1323,12 +1357,12 @@ const Admin = () => {
                           }
                         }}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </DialogContent>
