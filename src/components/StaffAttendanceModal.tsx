@@ -28,9 +28,11 @@ import {
   Calendar,
   AlertCircle,
   Timer,
-  UserCheck
+  UserCheck,
+  CalendarDays
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StaffAttendanceCalendarModal } from "./StaffAttendanceCalendarModal";
 
 interface StaffAttendanceModalProps {
   open: boolean;
@@ -51,6 +53,7 @@ export function StaffAttendanceModal({
   const [loading, setLoading] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [note, setNote] = useState("");
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const ownerId = currentStaff?.owner_id || user?.uid;
   const staffId = currentStaff?.id || user?.uid;
@@ -265,17 +268,36 @@ export function StaffAttendanceModal({
               </div>
             )}
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
-            >
-              {lang === "NEP" ? "बन्द गर्नुहोस् (Close)" : "Close"}
-            </Button>
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCalendarOpen(true)}
+                className="flex-1 h-9 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 rounded-xl cursor-pointer"
+              >
+                <CalendarDays className="h-4 w-4" />
+                <span>{lang === "NEP" ? "मेरो मासिक क्यालेन्डर" : "My Monthly Calendar"}</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+                className="h-9 px-3 text-xs text-muted-foreground hover:text-foreground rounded-xl"
+              >
+                {lang === "NEP" ? "बन्द" : "Close"}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
+
+      <StaffAttendanceCalendarModal
+        open={calendarOpen}
+        onOpenChange={setCalendarOpen}
+        staff={currentStaff as any}
+        isAdminView={false}
+      />
     </Dialog>
   );
 }

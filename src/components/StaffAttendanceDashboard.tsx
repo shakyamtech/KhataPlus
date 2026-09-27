@@ -46,9 +46,11 @@ import {
   Timer,
   AlertCircle,
   ShieldCheck,
-  FileSpreadsheet
+  FileSpreadsheet,
+  CalendarDays
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StaffAttendanceCalendarModal } from "./StaffAttendanceCalendarModal";
 
 interface StaffAttendanceDashboardProps {
   ownerId?: string;
@@ -68,6 +70,10 @@ export function StaffAttendanceDashboard({ ownerId: propOwnerId }: StaffAttendan
   // Manual mark dialog state
   const [manualDialogOpen, setManualDialogOpen] = useState(false);
   const [manualStaffId, setManualStaffId] = useState("");
+
+  // Individual Monthly Calendar Modal State
+  const [calendarStaff, setCalendarStaff] = useState<StaffMember | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [manualDate, setManualDate] = useState(new Date().toISOString().slice(0, 10));
   const [manualStatus, setManualStatus] = useState<"present" | "absent" | "half_day" | "leave">("present");
   const [manualInTime, setManualInTime] = useState("10:00 AM");
@@ -288,6 +294,19 @@ export function StaffAttendanceDashboard({ ownerId: propOwnerId }: StaffAttendan
           </div>
 
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setCalendarStaff(staffList[0] || null);
+              setCalendarOpen(true);
+            }}
+            className="h-8 text-xs font-semibold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 shrink-0 cursor-pointer"
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            <span>{lang === "NEP" ? "मासिक क्यालेन्डर (Calendar)" : "Monthly Calendar"}</span>
+          </Button>
+
+          <Button
             size="sm"
             onClick={() => {
               setManualDate(selectedDate);
@@ -431,6 +450,18 @@ export function StaffAttendanceDashboard({ ownerId: propOwnerId }: StaffAttendan
                         </td>
                         <td className="p-2.5 text-center">
                           <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-primary hover:bg-primary/10 cursor-pointer"
+                              title="मासिक क्यालेन्डर हेर्नुहोस् (View Calendar)"
+                              onClick={() => {
+                                setCalendarStaff(staff);
+                                setCalendarOpen(true);
+                              }}
+                            >
+                              <CalendarDays className="h-3.5 w-3.5" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -584,6 +615,17 @@ export function StaffAttendanceDashboard({ ownerId: propOwnerId }: StaffAttendan
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Individual Staff Monthly Calendar Modal */}
+      <StaffAttendanceCalendarModal
+        open={calendarOpen}
+        onOpenChange={setCalendarOpen}
+        staff={calendarStaff}
+        staffList={staffList}
+        onStaffChange={(s) => setCalendarStaff(s)}
+        onDataUpdated={loadData}
+        isAdminView={true}
+      />
     </div>
   );
 }
