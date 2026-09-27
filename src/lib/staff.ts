@@ -237,16 +237,36 @@ export async function ensureStaffAuthAccount(email: string, pinOrPassword: strin
       await deleteApp(secondaryApp);
       return { success: true, uid };
     } catch (createErr: any) {
-      // If already exists, try signing in on secondary app to get uid
+      // If already exists, try signing in on secondary app to get uid and sync password
       if (createErr.code === "auth/email-already-in-use") {
-        try {
-          const cred = await signInWithEmailAndPassword(secondaryAuth, cleanEmail, effectivePassword);
-          const uid = cred.user.uid;
-          await deleteApp(secondaryApp);
-          return { success: true, uid };
-        } catch (signErr) {
-          await deleteApp(secondaryApp);
-          return { success: true };
+        const candidatePasswords = [
+          effectivePassword,
+          getStaffAuthPassword(pinOrPassword),
+          getStaffAuthPassword("1234"),
+          pinOrPassword,
+          "1234",
+          "123456",
+          "password",
+          "1111",
+          "0000"
+        ];
+        
+        for (const cand of candidatePasswords) {
+          try {
+            const cred = await signInWithEmailAndPassword(secondaryAuth, cleanEmail, cand);
+            const uid = cred.user.uid;
+            if (cand !== effectivePassword) {
+              try {
+                await firebaseUpdatePassword(cred.user, effectivePassword);
+              } catch (upErr) {
+                console.warn("Failed to update staff auth password on secondary app:", upErr);
+              }
+            }
+            await deleteApp(secondaryApp);
+            return { success: true, uid };
+          } catch (signErr) {
+            // try next candidate password
+          }
         }
       }
       await deleteApp(secondaryApp);

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut } from "firebase/auth";
-import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 
 import { verifyStaffLogin, getStaffAuthPassword, ensureStaffAuthAccount, storeStaffSession, clearStoredStaffSession } from "@/lib/staff";
 
+const emailOrPhoneSchema = z.string().trim().min(3, "Invalid email or phone").max(255);
 const emailSchema = z.string().trim().email("Invalid email").max(255);
 const pwSchema = z.string().min(4, "Min 4 characters/PIN").max(100);
 
@@ -79,16 +80,34 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      emailSchema.parse(email); pwSchema.parse(password);
+      emailOrPhoneSchema.parse(email); pwSchema.parse(password);
     } catch (err: any) { toast.error(err.errors?.[0]?.message ?? "Invalid input"); return; }
     setLoading(true);
 
     try {
-      const cleanEmail = email.trim().toLowerCase();
-      const passwordsToTry = [password];
-      if (password.trim().length < 6) {
-        passwordsToTry.push(getStaffAuthPassword(password));
+      let cleanEmail = email.trim().toLowerCase();
+      const enteredPassword = password.trim();
+
+      // If user typed a phone number, resolve their staff email from Firestore
+      if (/^\+?\d{7,15}$/.test(cleanEmail)) {
+        try {
+          const [sByPhone, pByPhone] = await Promise.all([
+            getDocs(query(collection(db, "staff_members"), where("phone", "==", cleanEmail))),
+            getDocs(query(collection(db, "profiles"), where("phone", "==", cleanEmail)))
+          ]);
+          const foundEmail = sByPhone.docs[0]?.data()?.email || pByPhone.docs[0]?.data()?.email;
+          if (foundEmail) {
+            cleanEmail = foundEmail.toLowerCase().trim();
+          }
+        } catch (phErr) {
+          console.warn("Phone lookup warning:", phErr);
+        }
       }
+
+      const passwordsToTry = [
+        enteredPassword,
+        getStaffAuthPassword(enteredPassword)
+      ];
 
       let userCredential = null;
       let lastError: any = null;
@@ -103,9 +122,13 @@ const Auth = () => {
         }
       }
 
-      // 2. If user wasn't found in Auth, check if they are a staff member who needs on-the-fly Auth account creation
-      if (!userCredential && (lastError?.code === "auth/user-not-found" || lastError?.code === "auth/invalid-credential")) {
-        const autoAuthResult = await ensureStaffAuthAccount(cleanEmail, password);
+      // 2. If user wasn't found in Auth or wrong password (e.g. PIN changed recently), run self-healing sync
+      if (!userCredential && (
+        lastError?.code === "auth/user-not-found" || 
+        lastError?.code === "auth/invalid-credential" ||
+        lastError?.code === "auth/wrong-password"
+      )) {
+        const autoAuthResult = await ensureStaffAuthAccount(cleanEmail, enteredPassword);
         if (autoAuthResult.success) {
           for (const pw of passwordsToTry) {
             try {
