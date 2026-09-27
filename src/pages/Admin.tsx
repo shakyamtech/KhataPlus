@@ -134,9 +134,6 @@ const Admin = () => {
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
 
-  if (loading) return <div className="p-8">Loading…</div>;
-  if (!isAdmin) return <Navigate to="/" replace />;
-
   const toggleAdmin = async (u: AdminUser) => {
     const isCurrentlyAdmin = u.roles.includes("admin");
     setBusy(true);
@@ -486,6 +483,9 @@ const Admin = () => {
       );
     });
   }, [sortedUsers, planFilter, searchQuery]);
+
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading Admin panel...</div>;
+  if (!isAdmin) return <Navigate to="/" replace />;
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-4">
