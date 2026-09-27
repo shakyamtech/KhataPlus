@@ -49,7 +49,8 @@ import {
   Edit,
   Trash2,
   User,
-  Coffee
+  Coffee,
+  Globe
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +65,22 @@ interface StaffAttendanceCalendarModalProps {
 }
 
 const WEEKDAY_NAMES_NEP = ["आइत", "सोम", "मंगलबार", "बुध", "बिही", "शुक्र", "शनि (Off)"];
-const WEEKDAY_NAMES_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAY_NAMES_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat (Off)"];
+
+export const AD_MONTHS = [
+  { index: 0, name: "January", short: "Jan" },
+  { index: 1, name: "February", short: "Feb" },
+  { index: 2, name: "March", short: "Mar" },
+  { index: 3, name: "April", short: "Apr" },
+  { index: 4, name: "May", short: "May" },
+  { index: 5, name: "June", short: "Jun" },
+  { index: 6, name: "July", short: "Jul" },
+  { index: 7, name: "August", short: "Aug" },
+  { index: 8, name: "September", short: "Sep" },
+  { index: 9, name: "October", short: "Oct" },
+  { index: 10, name: "November", short: "Nov" },
+  { index: 11, name: "December", short: "Dec" },
+];
 
 export function StaffAttendanceCalendarModal({
   open,
@@ -78,9 +94,13 @@ export function StaffAttendanceCalendarModal({
   const { user } = useAuth();
   const { lang } = useLanguage();
 
+  // Calendar mode: BS (Nepali Bikram Sambat) vs AD (English Gregorian)
+  const [calendarType, setCalendarType] = useState<"BS" | "AD">("BS");
+
   // Current BS Date setup
-  const todayAd = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const todayBs = useMemo(() => formatNepaliDate(new Date()), []);
+  const now = useMemo(() => new Date(), []);
+  const todayAd = useMemo(() => now.toISOString().slice(0, 10), [now]);
+  const todayBs = useMemo(() => formatNepaliDate(now), [now]);
   const todayBsParts = useMemo(() => {
     const p = todayBs.split("/");
     return {
@@ -90,14 +110,20 @@ export function StaffAttendanceCalendarModal({
     };
   }, [todayBs]);
 
-  const [selectedYear, setSelectedYear] = useState<number>(todayBsParts.year);
-  const [selectedMonthIdx, setSelectedMonthIdx] = useState<number>(todayBsParts.monthIndex);
+  // BS Selection State
+  const [selectedBsYear, setSelectedBsYear] = useState<number>(todayBsParts.year);
+  const [selectedBsMonthIdx, setSelectedBsMonthIdx] = useState<number>(todayBsParts.monthIndex);
+
+  // AD Selection State
+  const [selectedAdYear, setSelectedAdYear] = useState<number>(now.getFullYear());
+  const [selectedAdMonthIdx, setSelectedAdMonthIdx] = useState<number>(now.getMonth());
+
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Selected Day Popover / Quick Edit State
   const [selectedDayInfo, setSelectedDayInfo] = useState<{
-    bsDay: number;
+    displayDay: string | number;
     bsDate: string;
     adDate: string;
     isSaturday: boolean;
@@ -134,15 +160,11 @@ export function StaffAttendanceCalendarModal({
     if (open && staff) {
       loadStaffAttendance();
     }
-  }, [open, staff?.id, selectedYear, selectedMonthIdx]);
+  }, [open, staff?.id, selectedBsYear, selectedBsMonthIdx, selectedAdYear, selectedAdMonthIdx, calendarType]);
 
-  // Calendar Calculation for the selected BS Month
+  // Calendar Days Calculation (BS or AD)
   const calendarDays = useMemo(() => {
-    const daysInMonth = getDaysInBSMonth(selectedYear, selectedMonthIdx);
-    const firstDayAdStr = bsToAdDateString(selectedYear, selectedMonthIdx, 1);
-    const startDayOfWeek = new Date(firstDayAdStr).getDay(); // 0 = Sun, 6 = Sat
-
-    // Create a map of records by AD date & BS date
+    // Record lookup map
     const recMap = new Map<string, AttendanceRecord>();
     attendanceRecords.forEach((r) => {
       recMap.set(r.date, r);
@@ -150,36 +172,73 @@ export function StaffAttendanceCalendarModal({
     });
 
     const days = [];
-    // Leading empty cells before the 1st of month
-    for (let i = 0; i < startDayOfWeek; i++) {
-      days.push({ empty: true, key: `empty-${i}` });
-    }
 
-    for (let d = 1; d <= daysInMonth; d++) {
-      const adDateStr = bsToAdDateString(selectedYear, selectedMonthIdx, d);
-      const bsDateStr = `${selectedYear}/${String(selectedMonthIdx + 1).padStart(2, "0")}/${String(d).padStart(2, "0")}`;
-      const weekday = (startDayOfWeek + d - 1) % 7;
-      const isSaturday = weekday === 6;
-      const isToday = adDateStr === todayAd;
-      const isFuture = adDateStr > todayAd;
+    if (calendarType === "BS") {
+      const daysInMonth = getDaysInBSMonth(selectedBsYear, selectedBsMonthIdx);
+      const firstDayAdStr = bsToAdDateString(selectedBsYear, selectedBsMonthIdx, 1);
+      const startDayOfWeek = new Date(firstDayAdStr).getDay(); // 0 = Sun, 6 = Sat
 
-      const record = recMap.get(adDateStr) || recMap.get(bsDateStr);
+      for (let i = 0; i < startDayOfWeek; i++) {
+        days.push({ empty: true, key: `empty-${i}` });
+      }
 
-      days.push({
-        empty: false,
-        key: `day-${d}`,
-        dayNumber: d,
-        adDateStr,
-        bsDateStr,
-        isSaturday,
-        isToday,
-        isFuture,
-        record
-      });
+      for (let d = 1; d <= daysInMonth; d++) {
+        const adDateStr = bsToAdDateString(selectedBsYear, selectedBsMonthIdx, d);
+        const bsDateStr = `${selectedBsYear}/${String(selectedBsMonthIdx + 1).padStart(2, "0")}/${String(d).padStart(2, "0")}`;
+        const weekday = (startDayOfWeek + d - 1) % 7;
+        const isSaturday = weekday === 6;
+        const isToday = adDateStr === todayAd;
+        const isFuture = adDateStr > todayAd;
+        const record = recMap.get(adDateStr) || recMap.get(bsDateStr);
+
+        days.push({
+          empty: false,
+          key: `day-${d}`,
+          displayDay: toNepaliDigits(d),
+          rawDay: d,
+          adDateStr,
+          bsDateStr,
+          isSaturday,
+          isToday,
+          isFuture,
+          record
+        });
+      }
+    } else {
+      // AD Mode (Gregorian)
+      const daysInMonth = new Date(selectedAdYear, selectedAdMonthIdx + 1, 0).getDate();
+      const startDayOfWeek = new Date(selectedAdYear, selectedAdMonthIdx, 1).getDay();
+
+      for (let i = 0; i < startDayOfWeek; i++) {
+        days.push({ empty: true, key: `empty-${i}` });
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const adDateStr = `${selectedAdYear}-${String(selectedAdMonthIdx + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const bsDateStr = formatNepaliDate(new Date(selectedAdYear, selectedAdMonthIdx, d));
+        const weekday = (startDayOfWeek + d - 1) % 7;
+        const isSaturday = weekday === 6;
+        const isToday = adDateStr === todayAd;
+        const isFuture = adDateStr > todayAd;
+        const record = recMap.get(adDateStr) || recMap.get(bsDateStr);
+
+        days.push({
+          empty: false,
+          key: `day-${d}`,
+          displayDay: String(d),
+          rawDay: d,
+          adDateStr,
+          bsDateStr,
+          isSaturday,
+          isToday,
+          isFuture,
+          record
+        });
+      }
     }
 
     return days;
-  }, [selectedYear, selectedMonthIdx, attendanceRecords, todayAd]);
+  }, [calendarType, selectedBsYear, selectedBsMonthIdx, selectedAdYear, selectedAdMonthIdx, attendanceRecords, todayAd]);
 
   // Monthly summary stats
   const monthSummary = useMemo(() => {
@@ -214,26 +273,45 @@ export function StaffAttendanceCalendarModal({
     return { present, absent, halfDay, leave, weeklyOff, totalWorkingHours };
   }, [calendarDays]);
 
-  // Month navigation
+  // Month navigation (Previous / Next)
   const handlePrevMonth = () => {
-    if (selectedMonthIdx === 0) {
-      setSelectedYear((prev) => prev - 1);
-      setSelectedMonthIdx(11);
+    if (calendarType === "BS") {
+      if (selectedBsMonthIdx === 0) {
+        setSelectedBsYear((prev) => prev - 1);
+        setSelectedBsMonthIdx(11);
+      } else {
+        setSelectedBsMonthIdx((prev) => prev - 1);
+      }
     } else {
-      setSelectedMonthIdx((prev) => prev - 1);
+      if (selectedAdMonthIdx === 0) {
+        setSelectedAdYear((prev) => prev - 1);
+        setSelectedAdMonthIdx(11);
+      } else {
+        setSelectedAdMonthIdx((prev) => prev - 1);
+      }
     }
   };
 
   const handleNextMonth = () => {
-    if (selectedMonthIdx === 11) {
-      setSelectedYear((prev) => prev + 1);
-      setSelectedMonthIdx(0);
+    if (calendarType === "BS") {
+      if (selectedBsMonthIdx === 11) {
+        setSelectedBsYear((prev) => prev + 1);
+        setSelectedBsMonthIdx(0);
+      } else {
+        setSelectedBsMonthIdx((prev) => prev + 1);
+      }
     } else {
-      setSelectedMonthIdx((prev) => prev + 1);
+      if (selectedAdMonthIdx === 11) {
+        setSelectedAdYear((prev) => prev + 1);
+        setSelectedAdMonthIdx(0);
+      } else {
+        setSelectedAdMonthIdx((prev) => prev + 1);
+      }
     }
   };
 
-  const currentMonthMeta = NEPALI_MONTHS[selectedMonthIdx] || NEPALI_MONTHS[5];
+  const currentBsMonthMeta = NEPALI_MONTHS[selectedBsMonthIdx] || NEPALI_MONTHS[5];
+  const currentAdMonthMeta = AD_MONTHS[selectedAdMonthIdx] || AD_MONTHS[8];
 
   // Save Edit from Admin
   const handleSaveDayEdit = async () => {
@@ -255,9 +333,9 @@ export function StaffAttendanceCalendarModal({
 
       if (ok) {
         toast.success(
-          lang === "NEP"
+          calendarType === "BS"
             ? `${selectedDayInfo.bsDate} को हाजिरी (${editStatus.toUpperCase()}) अद्यावधिक भयो`
-            : `Attendance updated for ${selectedDayInfo.bsDate}`
+            : `Attendance updated for ${selectedDayInfo.adDate}`
         );
         setEditDialogOpen(false);
         await loadStaffAttendance();
@@ -277,7 +355,7 @@ export function StaffAttendanceCalendarModal({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden bg-gradient-to-b from-card to-background border-primary/20 shadow-2xl">
           <div className="p-5 sm:p-6 space-y-4">
-            {/* Header: Staff Selector & Details */}
+            {/* Header: Staff Details & BS/AD Switch */}
             <DialogHeader className="space-y-2 text-left">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -301,29 +379,58 @@ export function StaffAttendanceCalendarModal({
                   </div>
                 </div>
 
-                {/* Staff switcher for Admin */}
-                {isAdminView && staffList.length > 1 && (
-                  <div className="w-full sm:w-48">
-                    <Select
-                      value={staff?.id}
-                      onValueChange={(id) => {
-                        const s = staffList.find((item) => item.id === id);
-                        if (s && onStaffChange) onStaffChange(s);
-                      }}
+                {/* Top Controls: BS/AD Segmented Toggle & Staff Switcher */}
+                <div className="flex items-center gap-2">
+                  {/* BS / AD Toggle Switch */}
+                  <div className="bg-secondary/80 p-1 rounded-xl border flex items-center shadow-xs">
+                    <button
+                      onClick={() => setCalendarType("BS")}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                        calendarType === "BS"
+                          ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
                     >
-                      <SelectTrigger className="h-8 text-xs bg-background">
-                        <SelectValue placeholder="कर्मचारी बदल्नुहोस्..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {staffList.map((s) => (
-                          <SelectItem key={s.id} value={s.id} className="text-xs font-medium">
-                            {s.name} ({s.role})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      🇳🇵 BS (वि.सं.)
+                    </button>
+                    <button
+                      onClick={() => setCalendarType("AD")}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                        calendarType === "AD"
+                          ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      🌐 AD (ई.सं.)
+                    </button>
                   </div>
-                )}
+
+                  {/* Staff switcher for Admin */}
+                  {isAdminView && staffList.length > 1 && (
+                    <div className="w-40 sm:w-44">
+                      <Select
+                        value={staff?.id}
+                        onValueChange={(id) => {
+                          const s = staffList.find((item) => item.id === id);
+                          if (s && onStaffChange) onStaffChange(s);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue placeholder="स्टाफ..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {staffList.map((s) => (
+                            <SelectItem key={s.id} value={s.id} className="text-xs font-medium">
+                              {s.name} ({s.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
               </div>
             </DialogHeader>
 
@@ -339,12 +446,20 @@ export function StaffAttendanceCalendarModal({
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
+
                 <div className="text-sm font-black text-foreground px-2 flex items-center gap-1.5 font-mono">
                   <CalendarIcon className="h-4 w-4 text-primary shrink-0" />
-                  <span>
-                    {lang === "NEP" ? currentMonthMeta.nepali : currentMonthMeta.english} {toNepaliDigits(selectedYear)} ({selectedYear})
-                  </span>
+                  {calendarType === "BS" ? (
+                    <span>
+                      {lang === "NEP" ? currentBsMonthMeta.nepali : currentBsMonthMeta.english} {toNepaliDigits(selectedBsYear)} ({selectedBsYear})
+                    </span>
+                  ) : (
+                    <span>
+                      {currentAdMonthMeta.name} {selectedAdYear}
+                    </span>
+                  )}
                 </div>
+
                 <Button
                   variant="ghost"
                   size="icon"
@@ -358,21 +473,39 @@ export function StaffAttendanceCalendarModal({
 
               {/* Month Quick Select */}
               <div className="flex items-center gap-2">
-                <Select
-                  value={String(selectedMonthIdx)}
-                  onValueChange={(v) => setSelectedMonthIdx(parseInt(v, 10))}
-                >
-                  <SelectTrigger className="h-8 text-xs w-28 bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NEPALI_MONTHS.map((m) => (
-                      <SelectItem key={m.index} value={String(m.index)} className="text-xs">
-                        {lang === "NEP" ? m.nepali : m.english}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {calendarType === "BS" ? (
+                  <Select
+                    value={String(selectedBsMonthIdx)}
+                    onValueChange={(v) => setSelectedBsMonthIdx(parseInt(v, 10))}
+                  >
+                    <SelectTrigger className="h-8 text-xs w-28 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NEPALI_MONTHS.map((m) => (
+                        <SelectItem key={m.index} value={String(m.index)} className="text-xs">
+                          {lang === "NEP" ? m.nepali : m.english}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select
+                    value={String(selectedAdMonthIdx)}
+                    onValueChange={(v) => setSelectedAdMonthIdx(parseInt(v, 10))}
+                  >
+                    <SelectTrigger className="h-8 text-xs w-28 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AD_MONTHS.map((m) => (
+                        <SelectItem key={m.index} value={String(m.index)} className="text-xs">
+                          {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
@@ -404,7 +537,7 @@ export function StaffAttendanceCalendarModal({
             <div className="rounded-2xl border bg-card/60 p-2 sm:p-3 shadow-inner">
               {/* Day of week headers */}
               <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-1 text-center font-bold text-[11px] text-muted-foreground">
-                {(lang === "NEP" ? WEEKDAY_NAMES_NEP : WEEKDAY_NAMES_EN).map((wName, idx) => (
+                {(calendarType === "BS" ? WEEKDAY_NAMES_NEP : WEEKDAY_NAMES_EN).map((wName, idx) => (
                   <div
                     key={wName}
                     className={cn(
@@ -429,7 +562,7 @@ export function StaffAttendanceCalendarModal({
                     );
                   }
 
-                  const { dayNumber, bsDateStr, adDateStr, isSaturday, isToday, isFuture, record } = cell;
+                  const { displayDay, bsDateStr, adDateStr, isSaturday, isToday, isFuture, record } = cell;
 
                   let cellStyle = "bg-secondary/30 text-foreground border-border/40 hover:border-primary/50";
                   let statusBadge = null;
@@ -464,7 +597,7 @@ export function StaffAttendanceCalendarModal({
                       key={cell.key}
                       onClick={() => {
                         setSelectedDayInfo({
-                          bsDay: dayNumber,
+                          displayDay,
                           bsDate: bsDateStr,
                           adDate: adDateStr,
                           isSaturday,
@@ -485,11 +618,11 @@ export function StaffAttendanceCalendarModal({
                         cellStyle,
                         isToday && "ring-2 ring-primary ring-offset-1 shadow-md"
                       )}
-                      title={`${bsDateStr} (${adDateStr})${record ? ` - ${record.status.toUpperCase()} (${record.punch_in_formatted || ''})` : isSaturday ? ' - Weekly Off' : ''}`}
+                      title={`${calendarType === "BS" ? bsDateStr : adDateStr} (${calendarType === "BS" ? adDateStr : bsDateStr})${record ? ` - ${record.status.toUpperCase()} (${record.punch_in_formatted || ''})` : isSaturday ? ' - Weekly Off' : ''}`}
                     >
                       <div className="flex items-center justify-between w-full">
                         <span className="font-mono font-bold text-xs sm:text-sm">
-                          {toNepaliDigits(dayNumber)}
+                          {displayDay}
                         </span>
                         {statusBadge}
                       </div>
@@ -551,10 +684,12 @@ export function StaffAttendanceCalendarModal({
             <DialogHeader>
               <DialogTitle className="text-base font-bold flex items-center gap-2">
                 <Edit className="h-4 w-4 text-primary" />
-                <span>{selectedDayInfo?.bsDate} को हाजिरी सच्याउनुहोस्</span>
+                <span>
+                  {calendarType === "BS" ? selectedDayInfo?.bsDate : selectedDayInfo?.adDate} को हाजिरी सच्याउनुहोस्
+                </span>
               </DialogTitle>
               <DialogDescription className="text-xs">
-                कर्मचारी: <strong>{staff?.name}</strong> | मिति: {selectedDayInfo?.adDate}
+                कर्मचारी: <strong>{staff?.name}</strong> | मिति: {selectedDayInfo?.adDate} ({selectedDayInfo?.bsDate})
               </DialogDescription>
             </DialogHeader>
 
