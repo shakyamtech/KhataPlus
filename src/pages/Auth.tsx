@@ -221,10 +221,16 @@ const Auth = () => {
       setLoginSplashShop(sName);
       setShowLoginSplash(true);
     } catch (error: any) {
-      if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+      if (error.code === "auth/too-many-requests") {
         toast.error(
           lang === "NEP" 
-            ? "इमेल वा पासवर्ड/PIN गलत छ। (Invalid email or password/PIN)" 
+            ? "धेरै पटक गलत प्रयास गरिएकाले यो खाता अस्थायी रूपमा ब्लक भएको छ। कृपया ५-१० मिनेट पर्खनुहोस् वा साहुजीलाई PIN रिसेट गर्न भन्नुहोस्।" 
+            : "Too many failed attempts. Access temporarily disabled. Please wait a few minutes or reset PIN."
+        );
+      } else if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+        toast.error(
+          lang === "NEP" 
+            ? "इमेल वा पासवर्ड/PIN मिलेन। कृपया सही PIN प्रविष्ट गर्नुहोस्।" 
             : "Invalid email or password/PIN"
         );
       } else {

@@ -45,7 +45,7 @@ export function StaffAttendanceModal({
   onOpenChange,
   onAttendanceUpdated
 }: StaffAttendanceModalProps) {
-  const { user, currentStaff } = useAuth();
+  const { user, currentStaff, isStaff, isStaffAccount, signOut } = useAuth();
   const { lang } = useLanguage();
 
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -124,7 +124,7 @@ export function StaffAttendanceModal({
     }
   };
 
-  // Handle Punch Out
+  // Handle Punch Out & Safe Auto-Logout
   const handlePunchOut = async () => {
     if (!ownerId || !staffId) return;
     setActionBusy(true);
@@ -139,11 +139,16 @@ export function StaffAttendanceModal({
         setTodayRecord(res.record);
         toast.success(
           lang === "NEP"
-            ? `काम सम्पन्न भयो! प्रस्थान (${res.record.punch_out_formatted}) दर्ता भयो। कुल समय: ${res.record.working_hours} घण्टा।`
-            : `Punch-out recorded at ${res.record.punch_out_formatted}. Total hours: ${res.record.working_hours} hrs.`
+            ? `ड्युटी सम्पन्न भयो! प्रस्थान (${res.record.punch_out_formatted}) दर्ता भयो। कुल समय: ${res.record.working_hours} घण्टा। सुरक्षित रूपमा लगआउट हुँदैछ...`
+            : `Punch-out recorded at ${res.record.punch_out_formatted} (${res.record.working_hours} hrs). Logging out safely...`
         );
         onAttendanceUpdated?.();
-        setTimeout(() => onOpenChange(false), 1400);
+        
+        // Auto-logout staff session cleanly after brief toast confirmation
+        setTimeout(async () => {
+          onOpenChange(false);
+          await signOut();
+        }, 1500);
       } else {
         toast.error(res.error || "Failed to record punch out");
       }
@@ -258,7 +263,7 @@ export function StaffAttendanceModal({
                 className="w-full h-12 text-sm font-bold gap-2 bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/20 transition-all rounded-xl cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
-                {lang === "NEP" ? `छुट्टी / प्रस्थान (Punch Out - ${formatTimeAmPm(currentTime)})` : `Punch Out (${formatTimeAmPm(currentTime)})`}
+                {lang === "NEP" ? `छुट्टी / प्रस्थान (Punch Out & Log Out - ${formatTimeAmPm(currentTime)})` : `Punch Out & Log Out (${formatTimeAmPm(currentTime)})`}
               </Button>
             ) : (
               <div className="p-3 bg-secondary/50 rounded-xl text-center text-xs text-muted-foreground border">

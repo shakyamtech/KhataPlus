@@ -246,9 +246,15 @@ export async function ensureStaffAuthAccount(email: string, pinOrPassword: strin
           pinOrPassword,
           "1234",
           "123456",
+          "12345678",
           "password",
           "1111",
-          "0000"
+          "0000",
+          "admin123",
+          `KP_Staff_${pinOrPassword}_Auth!`,
+          `KP_Staff_1234_Auth!`,
+          `${pinOrPassword}_khataplus2026`,
+          `1234_khataplus2026`
         ];
         
         for (const cand of candidatePasswords) {
