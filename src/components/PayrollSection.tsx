@@ -540,6 +540,26 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                         </div>
                       </div>
                     </div>
+
+                    {/* Bank Account & PAN Information Badge Row */}
+                    {(staff.bank_name || staff.bank_account_no || staff.pan_no) && (
+                      <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-border/40 text-[11px] text-muted-foreground flex-wrap">
+                        {(staff.bank_name || staff.bank_account_no) && (
+                          <div className="inline-flex items-center gap-1 font-mono bg-muted/50 px-2 py-0.5 rounded-md border text-foreground/90 text-[11px] shadow-2xs">
+                            <Landmark className="h-3 w-3 text-primary shrink-0" />
+                            <span className="truncate max-w-[170px]" title={`${staff.bank_name ? staff.bank_name + ': ' : ''}${staff.bank_account_no || ''}`}>
+                              {staff.bank_name ? `${staff.bank_name}: ` : ""}{staff.bank_account_no || "N/A"}
+                            </span>
+                          </div>
+                        )}
+                        {staff.pan_no && (
+                          <div className="inline-flex items-center gap-1 font-mono bg-muted/50 px-2 py-0.5 rounded-md border text-foreground/90 text-[11px] shadow-2xs">
+                            <CreditCard className="h-3 w-3 text-amber-500 shrink-0" />
+                            <span>PAN: {staff.pan_no}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions Bar */}
