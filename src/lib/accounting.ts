@@ -771,22 +771,24 @@ export async function deleteVoucher(userId: string, voucherId: string): Promise<
   try {
     const payrollQ = query(
       collection(db, "payroll_transactions"),
-      where("owner_id", "==", userId),
       where("voucher_id", "==", voucherId)
     );
     const payrollSnap = await getDocs(payrollQ);
-    payrollSnap.docs.forEach(d => {
+    for (const d of payrollSnap.docs) {
       const pData = d.data();
       if (pData.staff_id) {
         const sRef = doc(db, "staff_members", pData.staff_id);
-        if (pData.type === "advance" && Number(pData.net_paid) > 0) {
-          batch.update(sRef, { advance_balance: increment(-Number(pData.net_paid)) });
-        } else if (pData.type === "salary_payout" && Number(pData.advance_deducted) > 0) {
-          batch.update(sRef, { advance_balance: increment(Number(pData.advance_deducted)) });
+        const sSnap = await getDoc(sRef);
+        if (sSnap.exists()) {
+          if (pData.type === "advance" && Number(pData.net_paid) > 0) {
+            batch.update(sRef, { advance_balance: increment(-Number(pData.net_paid)) });
+          } else if (pData.type === "salary_payout" && Number(pData.advance_deducted) > 0) {
+            batch.update(sRef, { advance_balance: increment(Number(pData.advance_deducted)) });
+          }
         }
       }
       batch.delete(d.ref);
-    });
+    }
   } catch (pErr) {
     console.warn("Payroll voucher cleanup warning:", pErr);
   }
