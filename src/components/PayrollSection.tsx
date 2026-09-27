@@ -460,7 +460,12 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
               // Check if already paid for selected month
               const monthPaidTx = transactions.find(
-                (t) => t.staff_id === staff.id && t.type === "salary_payout" && t.month === selectedMonth
+                (t) =>
+                  (t.staff_id === staff.id ||
+                    (staff.auth_uid && t.staff_id === staff.auth_uid) ||
+                    (t.staff_name && t.staff_name.toLowerCase() === staff.name.toLowerCase())) &&
+                  t.type === "salary_payout" &&
+                  t.month === selectedMonth
               );
 
               return (

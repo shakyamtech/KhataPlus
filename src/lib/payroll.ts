@@ -52,13 +52,16 @@ export interface PayrollTransaction {
 export async function getShopPayrollTransactions(ownerId: string): Promise<PayrollTransaction[]> {
   if (!ownerId) return [];
   try {
-    const q = query(
-      collection(db, "payroll_transactions"),
-      where("owner_id", "==", ownerId),
-      orderBy("created_at", "desc")
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as PayrollTransaction));
+    const [snap1, snap2] = await Promise.all([
+      getDocs(query(collection(db, "payroll_transactions"), where("owner_id", "==", ownerId))),
+      getDocs(query(collection(db, "payroll_transactions"), where("user_id", "==", ownerId)))
+    ]);
+    const map = new Map<string, PayrollTransaction>();
+    snap1.docs.forEach((d) => map.set(d.id, { id: d.id, ...d.data() } as PayrollTransaction));
+    snap2.docs.forEach((d) => map.set(d.id, { id: d.id, ...d.data() } as PayrollTransaction));
+    const list = Array.from(map.values());
+    list.sort((a, b) => new Date(b.created_at || b.date || 0).getTime() - new Date(a.created_at || a.date || 0).getTime());
+    return list;
   } catch (err) {
     console.error("Error fetching payroll transactions:", err);
     return [];
@@ -197,6 +200,7 @@ export async function recordStaffAdvance(params: {
     const payrollTx: any = {
       id: txRef.id,
       owner_id: ownerId,
+      user_id: ownerId,
       staff_id: staff.id,
       staff_name: staff.name,
       staff_role: staff.role,
@@ -220,11 +224,15 @@ export async function recordStaffAdvance(params: {
     await setDoc(txRef, payrollTx);
 
     // 4. Update Staff Advance Balance
-    const staffRef = doc(db, "staff_members", staff.id);
-    await updateDoc(staffRef, {
-      advance_balance: increment(amount),
-      updated_at: new Date().toISOString()
-    });
+    try {
+      const staffRef = doc(db, "staff_members", staff.id);
+      await setDoc(staffRef, {
+        advance_balance: increment(amount),
+        updated_at: new Date().toISOString()
+      }, { merge: true });
+    } catch (sErr) {
+      console.warn("Could not update staff advance balance:", sErr);
+    }
 
     return { success: true, id: txRef.id };
   } catch (err: any) {
@@ -395,6 +403,7 @@ export async function processStaffSalaryPayout(params: {
     const payrollTx: any = {
       id: txRef.id,
       owner_id: ownerId,
+      user_id: ownerId,
       staff_id: staff.id,
       staff_name: staff.name,
       staff_role: staff.role,
@@ -419,11 +428,15 @@ export async function processStaffSalaryPayout(params: {
 
     // 4. Update Staff Advance Balance (deduct the amount recovered)
     if (advanceDeducted > 0) {
-      const staffRef = doc(db, "staff_members", staff.id);
-      await updateDoc(staffRef, {
-        advance_balance: increment(-advanceDeducted),
-        updated_at: new Date().toISOString()
-      });
+      try {
+        const staffRef = doc(db, "staff_members", staff.id);
+        await setDoc(staffRef, {
+          advance_balance: increment(-advanceDeducted),
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+      } catch (sErr) {
+        console.warn("Could not update staff advance balance:", sErr);
+      }
     }
 
     return { success: true, transaction: payrollTx as PayrollTransaction };
