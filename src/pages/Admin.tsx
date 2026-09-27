@@ -36,6 +36,7 @@ type AdminUser = {
   owner_name?: string | null;
   owner_email?: string | null;
   owner_shop_name?: string | null;
+  staffMembers?: AdminUser[];
 };
 
 const Admin = () => {
@@ -49,6 +50,7 @@ const Admin = () => {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [managingSubUser, setManagingSubUser] = useState<AdminUser | null>(null);
+  const [viewingStaffOwner, setViewingStaffOwner] = useState<AdminUser | null>(null);
   const [subBusy, setSubBusy] = useState(false);
   const [planFilter, setPlanFilter] = useState<"all" | "pro" | "trial" | "expired" | "staff">("all");
   const [editName, setEditName] = useState("");
@@ -77,7 +79,7 @@ const Admin = () => {
         profilesMap.set(docSnap.id, docSnap.data());
       });
 
-      const loadedUsers: AdminUser[] = [];
+      const allUsers: AdminUser[] = [];
       profilesSnap.forEach((docSnap) => {
         const data = docSnap.data();
         const userRoles: string[] = Array.isArray(data.roles) ? [...data.roles] : [];
@@ -100,7 +102,7 @@ const Admin = () => {
         const effectiveIsAdmin = (is_staff && ownerData) ? isOwnerAdmin : isUserAdmin;
         const subInfo = calculateSubscription(effectiveSubData, effectiveIsAdmin);
 
-        loadedUsers.push({
+        allUsers.push({
           id: docSnap.id,
           email: data.email || docSnap.id + "@unknown",
           created_at: data.created_at || new Date().toISOString(),
@@ -119,11 +121,37 @@ const Admin = () => {
           owner_id,
           owner_name: ownerData?.full_name || ownerData?.shop_name || null,
           owner_email: ownerData?.email || null,
-          owner_shop_name: ownerData?.shop_name || data.shop_name || null
+          owner_shop_name: ownerData?.shop_name || data.shop_name || null,
+          staffMembers: []
         });
       });
+
+      // Group staff members under their respective shop owners
+      const ownerMap = new Map<string, AdminUser>();
+      const ownersList: AdminUser[] = [];
+      const staffList: AdminUser[] = [];
+
+      allUsers.forEach((u) => {
+        if (u.is_staff) {
+          staffList.push(u);
+        } else {
+          ownerMap.set(u.id, u);
+          ownersList.push(u);
+        }
+      });
+
+      staffList.forEach((staff) => {
+        if (staff.owner_id && ownerMap.has(staff.owner_id)) {
+          const owner = ownerMap.get(staff.owner_id)!;
+          if (!owner.staffMembers) owner.staffMembers = [];
+          owner.staffMembers.push(staff);
+        } else {
+          // If staff has no owner found, include as standalone so no account is lost
+          ownersList.push(staff);
+        }
+      });
       
-      setUsers(loadedUsers);
+      setUsers(ownersList);
     } catch (error) {
       console.error("Error loading users:", error);
       toast.error("Failed to load users from database");
@@ -179,6 +207,20 @@ const Admin = () => {
       await load();
     } catch (e: any) {
       toast.error(e.message || "Failed to update suspension status");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const del = async (u: AdminUser) => {
+    setBusy(true);
+    try {
+      const { doc, deleteDoc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, "profiles", u.id));
+      toast.success(`User ${u.email} deleted`);
+      await load();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete user");
     } finally {
       setBusy(false);
     }
@@ -463,24 +505,34 @@ const Admin = () => {
   const proCount = useMemo(() => users.filter(u => u.subInfo.isPro).length, [users]);
   const trialCount = useMemo(() => users.filter(u => !u.subInfo.isPro && !u.subInfo.isExpired).length, [users]);
   const expiredCount = useMemo(() => users.filter(u => u.subInfo.isExpired).length, [users]);
-  const staffCount = useMemo(() => users.filter(u => u.is_staff).length, [users]);
+  const staffOwnersCount = useMemo(() => users.filter(u => (u.staffMembers?.length || 0) > 0).length, [users]);
 
   const filteredUsers = useMemo(() => {
     return sortedUsers.filter((u) => {
       if (planFilter === "pro" && !u.subInfo.isPro) return false;
       if (planFilter === "trial" && (u.subInfo.isPro || u.subInfo.isExpired)) return false;
       if (planFilter === "expired" && !u.subInfo.isExpired) return false;
-      if (planFilter === "staff" && !u.is_staff) return false;
+      if (planFilter === "staff" && (!u.staffMembers || u.staffMembers.length === 0)) return false;
 
       const query = searchQuery.toLowerCase().trim();
       if (!query) return true;
-      return (
+
+      const ownerMatch = (
         u.email.toLowerCase().includes(query) ||
         (u.full_name || "").toLowerCase().includes(query) ||
         (u.shop_name || "").toLowerCase().includes(query) ||
         (u.owner_name || "").toLowerCase().includes(query) ||
         (u.owner_email || "").toLowerCase().includes(query)
       );
+      if (ownerMatch) return true;
+
+      const staffMatch = u.staffMembers?.some(s => 
+        s.email.toLowerCase().includes(query) ||
+        (s.full_name || "").toLowerCase().includes(query) ||
+        (s.staff_role || "").toLowerCase().includes(query)
+      );
+
+      return Boolean(staffMatch);
     });
   }, [sortedUsers, planFilter, searchQuery]);
 
@@ -494,8 +546,8 @@ const Admin = () => {
           <h1 className="font-display text-2xl flex items-center gap-2"><Shield className="h-6 w-6 text-primary" /> Admin</h1>
           <p className="text-sm text-muted-foreground">
             {searchQuery 
-              ? `${filteredUsers.length} of ${users.length} users` 
-              : `${users.length} user${users.length !== 1 ? "s" : ""}`
+              ? `${filteredUsers.length} of ${users.length} shops` 
+              : `${users.length} registered shop${users.length !== 1 ? "s" : ""}`
             }
           </p>
         </div>
@@ -512,7 +564,7 @@ const Admin = () => {
         <Input 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search users by email, full name, or shop name..."
+          placeholder="Search shops, owners, or staff members by name/email..."
           className="pl-10 h-11 w-full bg-white/80 dark:bg-purple-950/30 backdrop-blur-md focus:bg-white dark:focus:bg-purple-950/50 dark:text-foreground shadow-soft transition-all duration-300 rounded-xl border-sidebar-border/40 focus:ring-primary/20"
         />
       </div>
@@ -525,7 +577,7 @@ const Admin = () => {
           onClick={() => setPlanFilter("all")}
           className="h-8 text-xs font-semibold rounded-lg"
         >
-          All Users ({users.length})
+          All Shops ({users.length})
         </Button>
         <Button
           size="sm"
@@ -551,14 +603,14 @@ const Admin = () => {
         >
           <AlertCircle className="h-3 w-3 mr-1" /> Expired ({expiredCount})
         </Button>
-        {staffCount > 0 && (
+        {staffOwnersCount > 0 && (
           <Button
             size="sm"
             variant={planFilter === "staff" ? "default" : "outline"}
             onClick={() => setPlanFilter("staff")}
             className={`h-8 text-xs font-semibold rounded-lg ${planFilter !== "staff" ? "border-purple-300 text-purple-700 dark:border-purple-500/30 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10" : "bg-purple-600 hover:bg-purple-700 text-white"}`}
           >
-            <Users className="h-3 w-3 mr-1" /> Staff ({staffCount})
+            <Users className="h-3 w-3 mr-1" /> With Staff ({staffOwnersCount})
           </Button>
         )}
       </div>
@@ -585,6 +637,21 @@ const Admin = () => {
                     })()}
                     <span className="font-display font-semibold text-base truncate max-w-full">{u.email}</span>
                   </div>
+
+                  {/* Staff Members interactive badge on Owner card */}
+                  {u.staffMembers && u.staffMembers.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setViewingStaffOwner(u)}
+                      className="h-6 text-[11px] px-2.5 bg-purple-500/15 hover:bg-purple-500/25 text-purple-700 dark:text-purple-300 border-purple-400/40 font-bold gap-1.5 rounded-lg shadow-none"
+                      title={`Click to view and manage ${u.staffMembers.length} staff member${u.staffMembers.length !== 1 ? 's' : ''}`}
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      {u.staffMembers.length} Staff{u.staffMembers.length > 1 ? "s" : ""}
+                    </Button>
+                  )}
+
                   {u.is_staff && (
                     <Badge variant="outline" className="bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-400/30 font-bold text-[10px] uppercase">
                       <Users className="h-3 w-3 mr-1" />
@@ -605,7 +672,7 @@ const Admin = () => {
                     <Badge variant="default" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-400/30 hover:bg-amber-500/25 transition-colors font-bold text-[10px]">
                       <Crown className="h-3 w-3 mr-1 fill-current" />
                       {u.subInfo.plan === "lifetime" || u.subInfo.isAdmin 
-                        ? (u.is_staff ? `Premium (via ${u.owner_shop_name || "Owner"})` : "Premium") 
+                        ? (u.is_staff ? `Premium (via ${u.owner_shop_name || "Owner"})` : "Lifetime Premium") 
                         : (u.is_staff ? `Premium (${u.subInfo.daysLeft}d via ${u.owner_shop_name || "Owner"})` : `Premium (${u.subInfo.daysLeft}d)`)}
                     </Badge>
                   ) : u.subInfo.isExpired ? (
@@ -1071,6 +1138,150 @@ const Admin = () => {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Staff Members Management Dialog */}
+      <Dialog open={!!viewingStaffOwner} onOpenChange={(open) => { if (!open) setViewingStaffOwner(null); }}>
+        <DialogContent className="max-w-xl w-full max-h-[85vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-5 pb-3 border-b bg-muted/20">
+            <div className="flex items-center gap-3 text-left">
+              <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+                <Users className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-bold flex items-center gap-2">
+                  <span>Staff Members</span>
+                  <Badge variant="outline" className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-400/30 text-xs font-bold">
+                    {viewingStaffOwner?.staffMembers?.length || 0}
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground truncate">
+                  {viewingStaffOwner?.shop_name || "Shop"} • Owner: {viewingStaffOwner?.full_name || viewingStaffOwner?.email} ({viewingStaffOwner?.email})
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-5 space-y-3">
+            {(!viewingStaffOwner?.staffMembers || viewingStaffOwner.staffMembers.length === 0) ? (
+              <div className="p-8 text-center text-muted-foreground text-xs">
+                No staff members registered under this shop yet.
+              </div>
+            ) : (
+              viewingStaffOwner.staffMembers.map((staff) => (
+                <div key={staff.id} className="p-3.5 rounded-xl border bg-card/60 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const isOnline = staff.last_sign_in_at && 
+                          (new Date().getTime() - new Date(staff.last_sign_in_at).getTime() < 5 * 60 * 1000);
+                        return isOnline && (
+                          <span className="relative flex h-2 w-2 shrink-0">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                          </span>
+                        );
+                      })()}
+                      <span className="font-semibold text-sm">{staff.email}</span>
+                      <Badge variant="outline" className="bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-400/30 font-bold text-[10px] uppercase">
+                        {staff.staff_role || "Staff"}
+                      </Badge>
+                      {staff.banned_until && new Date(staff.banned_until) > new Date() && (
+                        <Badge variant="destructive" className="text-[10px] py-0 font-bold uppercase">Suspended</Badge>
+                      )}
+                    </div>
+
+                    {/* Inherited Subscription badge */}
+                    <Badge variant="default" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-400/30 text-[10px] font-bold">
+                      {viewingStaffOwner.subInfo.isPro ? (
+                        <>
+                          <Crown className="h-3 w-3 mr-1 fill-current" />
+                          {viewingStaffOwner.subInfo.plan === "lifetime" ? "Lifetime Premium" : `Premium (${viewingStaffOwner.subInfo.daysLeft}d)`}
+                        </>
+                      ) : viewingStaffOwner.subInfo.isExpired ? "Expired" : `Trial (${viewingStaffOwner.subInfo.daysLeft}d)`}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t text-xs text-muted-foreground flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <span>Name: <b className="text-foreground">{staff.full_name || "N/A"}</b></span>
+                      <span>Joined: <b className="text-foreground">{format(new Date(staff.created_at), "dd MMM yyyy")}</b></span>
+                      {staff.last_sign_in_at && (
+                        <span>Active: <b className="text-foreground">{format(new Date(staff.last_sign_in_at), "dd MMM yyyy")}</b></span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      {/* Edit Staff */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-[11px] px-2 gap-1"
+                        onClick={() => {
+                          setEditing(staff);
+                          setEditName(staff.full_name);
+                          setEditShop(staff.shop_name);
+                          setEditPassword("");
+                        }}
+                      >
+                        <Pencil className="h-2.5 w-2.5" /> Edit
+                      </Button>
+
+                      {/* Ban / Unban Staff */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={`h-6 text-[11px] px-2 gap-1 ${
+                          staff.banned_until && new Date(staff.banned_until) > new Date()
+                            ? "text-purple-600 border-purple-300"
+                            : "text-destructive border-destructive/30"
+                        }`}
+                        onClick={async () => {
+                          await toggleBan(staff);
+                          setViewingStaffOwner(prev => {
+                            if (!prev || !prev.staffMembers) return prev;
+                            return {
+                              ...prev,
+                              staffMembers: prev.staffMembers.map(s => s.id === staff.id ? { ...s, banned_until: s.banned_until ? null : new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString() } : s)
+                            };
+                          });
+                        }}
+                      >
+                        {staff.banned_until && new Date(staff.banned_until) > new Date() ? (
+                          <><UserCheck className="h-2.5 w-2.5" /> Unban</>
+                        ) : (
+                          <><Ban className="h-2.5 w-2.5" /> Ban</>
+                        )}
+                      </Button>
+
+                      {/* Delete Staff */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Delete staff account"
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to permanently delete staff ${staff.email}?`)) {
+                            await del(staff);
+                            setViewingStaffOwner(prev => {
+                              if (!prev || !prev.staffMembers) return prev;
+                              return {
+                                ...prev,
+                                staffMembers: prev.staffMembers.filter(s => s.id !== staff.id)
+                              };
+                            });
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
