@@ -1480,33 +1480,35 @@ const Admin = () => {
                 </div>
               </>
             ) : (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Shop / Business Name</Label>
-                <Input 
-                  value={editShop} 
-                  onChange={(e) => setEditShop(e.target.value)} 
-                  placeholder="Enter shop name..." 
-                  className="h-9 text-xs"
-                />
-              </div>
-            )}
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Shop / Business Name</Label>
+                  <Input 
+                    value={editShop} 
+                    onChange={(e) => setEditShop(e.target.value)} 
+                    placeholder="Enter shop name..." 
+                    className="h-9 text-xs"
+                  />
+                </div>
 
-            <div className="space-y-1.5 border-t pt-2.5">
-              <Label className="text-xs font-semibold">Set New Password (Optional)</Label>
-              <Input 
-                type="password" 
-                value={editPassword} 
-                onChange={(e) => setEditPassword(e.target.value)} 
-                placeholder="Leave blank to keep unchanged..." 
-                className="h-9 text-xs"
-              />
-              <p className="text-[10px] text-muted-foreground">Min 6 characters.</p>
-            </div>
+                <div className="space-y-1.5 border-t pt-2.5">
+                  <Label className="text-xs font-semibold">Set New Password (Optional)</Label>
+                  <Input 
+                    type="password" 
+                    value={editPassword} 
+                    onChange={(e) => setEditPassword(e.target.value)} 
+                    placeholder="Leave blank to keep unchanged..." 
+                    className="h-9 text-xs"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Min 6 characters.</p>
+                </div>
+              </>
+            )}
 
             <Button 
               onClick={saveProfile} 
               disabled={savingId === editing?.id} 
-              className="w-full bg-primary text-primary-foreground h-9 font-semibold text-xs mt-2"
+              className="w-full bg-primary text-primary-foreground h-9 font-semibold text-xs mt-3"
             >
               {savingId === editing?.id ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Saving...</> : "Save Changes"}
             </Button>
