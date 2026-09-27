@@ -404,6 +404,17 @@ export function storeStaffSession(staff: StaffMember | null): void {
 }
 
 /**
+ * Clear stored staff session from localStorage.
+ */
+export function clearStoredStaffSession(): void {
+  try {
+    localStorage.removeItem(STAFF_SESSION_KEY);
+  } catch (err) {
+    console.warn("Failed to clear staff session:", err);
+  }
+}
+
+/**
  * Look up a staff member by email address across all shops.
  */
 export async function findStaffByEmail(email: string): Promise<StaffMember | null> {

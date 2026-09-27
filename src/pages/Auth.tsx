@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { auth, db } from "@/lib/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut } from "firebase/auth";
 import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import { InstallAppModal } from "@/components/InstallAppModal";
 import { InstallAppQRCard } from "@/components/InstallAppQRCard";
 import { SplashScreen } from "@/components/SplashScreen";
 
-import { verifyStaffLogin, getStaffAuthPassword, ensureStaffAuthAccount, storeStaffSession } from "@/lib/staff";
+import { verifyStaffLogin, getStaffAuthPassword, ensureStaffAuthAccount, storeStaffSession, clearStoredStaffSession } from "@/lib/staff";
 
 const emailSchema = z.string().trim().email("Invalid email").max(255);
 const pwSchema = z.string().min(4, "Min 4 characters/PIN").max(100);
@@ -135,6 +135,18 @@ const Auth = () => {
         const pSnap = await getDoc(doc(db, "profiles", userCredential.user.uid));
         if (pSnap.exists()) {
           const pData = pSnap.data();
+          const isBanned = Boolean(pData.banned_until && new Date(pData.banned_until) > new Date());
+          const isInactive = pData.status === "inactive";
+          if (isBanned || isInactive) {
+            await signOut(auth);
+            clearStoredStaffSession();
+            throw new Error(
+              lang === "NEP"
+                ? "तपाईंको खाता निष्क्रिय वा निलम्बित (Suspended) गरिएको छ। कृपया पसलको साहुजी वा एडमिनसँग सम्पर्क गर्नुहोस्।"
+                : "Your account has been suspended. Please contact your shop owner or administrator."
+            );
+          }
+
           sName = pData.shop_name || "My Shop";
           localStorage.setItem("khataplus_shop_name", sName);
 
@@ -158,7 +170,11 @@ const Auth = () => {
             );
           }
         }
-      } catch (err) {}
+      } catch (err: any) {
+        if (err.message && err.message.includes("suspended") || (err.message && err.message.includes("निलम्बित"))) {
+          throw err;
+        }
+      }
 
       setLoginSplashShop(sName);
       setShowLoginSplash(true);

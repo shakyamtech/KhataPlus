@@ -8,6 +8,7 @@ import {
   StaffPermission, 
   getStoredStaffSession, 
   storeStaffSession, 
+  clearStoredStaffSession,
   hasStaffPermission, 
   findStaffByEmail,
   getShopStaffMembers,
@@ -71,28 +72,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (currentUser && currentUser.email) {
         try {
-          // 1. Check if user is a staff member by looking up profiles or staff_members
+          // 1. Check if user is banned/suspended in profiles
           const pSnap = await getDoc(doc(db, "profiles", currentUser.uid));
-          if (pSnap.exists() && pSnap.data().is_staff) {
+          if (pSnap.exists()) {
             const pData = pSnap.data();
-            const staffObj: StaffMember = {
-              id: pData.staff_id || currentUser.uid,
-              owner_id: pData.owner_id || "",
-              shop_name: pData.shop_name || "",
-              name: pData.full_name || currentUser.email.split("@")[0],
-              email: pData.email || currentUser.email,
-              role: (pData.role as StaffRole) || "cashier",
-              pin: pData.pin || "",
-              status: pData.status || "active",
-              created_at: pData.created_at || new Date().toISOString(),
-            };
-            setIsStaffAccount(true);
-            storeStaffSession(staffObj);
-            setCurrentStaff(staffObj);
+            const isBanned = Boolean(pData.banned_until && new Date(pData.banned_until) > new Date());
+            const isInactive = pData.status === "inactive";
+            if (isBanned || isInactive) {
+              await firebaseSignOut(auth);
+              clearStoredStaffSession();
+              setFirebaseUser(null);
+              setCurrentStaff(null);
+              setIsStaffAccount(false);
+              setLoading(false);
+              return;
+            }
+
+            if (pData.is_staff) {
+              const staffObj: StaffMember = {
+                id: pData.staff_id || currentUser.uid,
+                owner_id: pData.owner_id || "",
+                shop_name: pData.shop_name || "",
+                name: pData.full_name || currentUser.email.split("@")[0],
+                email: pData.email || currentUser.email,
+                role: (pData.role as StaffRole) || "cashier",
+                pin: pData.pin || "",
+                status: pData.status || "active",
+                created_at: pData.created_at || new Date().toISOString(),
+              };
+              setIsStaffAccount(true);
+              storeStaffSession(staffObj);
+              setCurrentStaff(staffObj);
+            } else {
+              // Check if there is a staff member matching this email
+              const matchedStaff = await findStaffByEmail(currentUser.email);
+              if (matchedStaff) {
+                if (matchedStaff.status === "inactive") {
+                  await firebaseSignOut(auth);
+                  clearStoredStaffSession();
+                  setFirebaseUser(null);
+                  setCurrentStaff(null);
+                  setIsStaffAccount(false);
+                  setLoading(false);
+                  return;
+                }
+                setIsStaffAccount(true);
+                storeStaffSession(matchedStaff);
+                setCurrentStaff(matchedStaff);
+              } else {
+                setIsStaffAccount(false);
+              }
+            }
           } else {
             // Check if there is a staff member matching this email
             const matchedStaff = await findStaffByEmail(currentUser.email);
             if (matchedStaff) {
+              if (matchedStaff.status === "inactive") {
+                await firebaseSignOut(auth);
+                clearStoredStaffSession();
+                setFirebaseUser(null);
+                setCurrentStaff(null);
+                setIsStaffAccount(false);
+                setLoading(false);
+                return;
+              }
               setIsStaffAccount(true);
               storeStaffSession(matchedStaff);
               setCurrentStaff(matchedStaff);
