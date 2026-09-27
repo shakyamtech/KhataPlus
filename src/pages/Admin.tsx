@@ -14,12 +14,13 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download, Upload, Crown, Sparkles, AlertCircle, Users } from "lucide-react";
+import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download, Upload, Crown, Sparkles, AlertCircle, Users, ShoppingCart, Package, FileSpreadsheet, CheckCircle2, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, writeBatch, doc, updateDoc, setDoc } from "firebase/firestore";
 import { exportUserDataAsJson, downloadJsonFile, parseAndValidateBackupFile, restoreUserDataFromJson } from "@/lib/backup";
 import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
+import { ROLE_DEFINITIONS, StaffRole, updateStaffMember } from "@/lib/staff";
 
 type AdminUser = {
   id: string; email: string; created_at: string; last_sign_in_at: string | null;
@@ -32,6 +33,8 @@ type AdminUser = {
   subInfo: SubscriptionInfo;
   is_staff?: boolean;
   staff_role?: string;
+  phone?: string;
+  pin?: string;
   owner_id?: string | null;
   owner_name?: string | null;
   owner_email?: string | null;
@@ -55,7 +58,9 @@ const Admin = () => {
   const [planFilter, setPlanFilter] = useState<"all" | "pro" | "trial" | "expired" | "staff">("all");
   const [editName, setEditName] = useState("");
   const [editShop, setEditShop] = useState("");
-  const [editRole, setEditRole] = useState("Staff");
+  const [editPhone, setEditPhone] = useState("");
+  const [editPin, setEditPin] = useState("1234");
+  const [editRole, setEditRole] = useState<StaffRole>("cashier");
   const [editPassword, setEditPassword] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -119,6 +124,8 @@ const Admin = () => {
           subInfo,
           is_staff,
           staff_role: data.role || "Staff",
+          phone: data.phone || "",
+          pin: data.pin || "1234",
           owner_id,
           owner_name: ownerData?.full_name || ownerData?.shop_name || null,
           owner_email: ownerData?.email || null,
@@ -227,18 +234,57 @@ const Admin = () => {
     }
   };
 
+  const getRoleIcon = (role: StaffRole | string) => {
+    switch (role) {
+      case "cashier":
+        return <ShoppingCart className="h-3.5 w-3.5" />;
+      case "storekeeper":
+        return <Package className="h-3.5 w-3.5" />;
+      case "accountant":
+        return <FileSpreadsheet className="h-3.5 w-3.5" />;
+      default:
+        return <Shield className="h-3.5 w-3.5" />;
+    }
+  };
+
   const saveProfile = async () => {
     if (!editing) return;
     setSavingId(editing.id);
     try {
-      const updates: any = {
-        full_name: editName.trim(),
-        shop_name: editShop.trim(),
-      };
       if (editing.is_staff) {
-        updates.role = editRole.trim() || "Staff";
+        const cleanName = editName.trim();
+        const cleanPhone = editPhone.trim();
+        const cleanPin = editPin.trim();
+        const role = editRole || "cashier";
+
+        // 1. Update in profiles collection
+        await updateDoc(doc(db, "profiles", editing.id), {
+          full_name: cleanName,
+          role: role,
+          phone: cleanPhone,
+          pin: cleanPin,
+          updated_at: new Date().toISOString()
+        });
+
+        // 2. Sync in staff_members collection
+        try {
+          await updateStaffMember(editing.id, {
+            name: cleanName,
+            phone: cleanPhone,
+            role: role,
+            pin: cleanPin
+          });
+        } catch (staffErr) {
+          console.warn("Could not sync directly with staff_members by id:", staffErr);
+        }
+      } else {
+        await updateDoc(doc(db, "profiles", editing.id), {
+          full_name: editName.trim(),
+          shop_name: editShop.trim(),
+          updated_at: new Date().toISOString()
+        });
       }
-      await updateDoc(doc(db, "profiles", editing.id), updates);
+
       if (editPassword) {
         toast.info("Password change requires Firebase Console (Cloud Functions disabled).");
       }
@@ -253,7 +299,9 @@ const Admin = () => {
             staffMembers: prev.staffMembers.map(s => s.id === editing.id ? { 
               ...s, 
               full_name: editName.trim(), 
-              staff_role: editRole.trim() || s.staff_role 
+              staff_role: editRole || s.staff_role,
+              phone: editPhone.trim(),
+              pin: editPin.trim()
             } : s)
           };
         });
@@ -776,7 +824,9 @@ const Admin = () => {
                         setEditing(u); 
                         setEditName(u.full_name || ""); 
                         setEditShop(u.shop_name || ""); 
-                        setEditRole(u.staff_role || "Staff");
+                        setEditPhone(u.phone || "");
+                        setEditPin(u.pin || "1234");
+                        setEditRole((u.staff_role as StaffRole) || "cashier");
                         setEditPassword(""); 
                       }}
                     >
@@ -1218,7 +1268,9 @@ const Admin = () => {
                           setEditing(staff);
                           setEditName(staff.full_name || "");
                           setEditShop(staff.shop_name || "");
-                          setEditRole(staff.staff_role || "Staff");
+                          setEditPhone(staff.phone || "");
+                          setEditPin(staff.pin || "1234");
+                          setEditRole((staff.staff_role as StaffRole) || "cashier");
                           setEditPassword("");
                         }}
                       >
@@ -1284,65 +1336,143 @@ const Admin = () => {
 
       {/* Global Edit Profile Dialog (Works for Owners & Staff) */}
       <Dialog open={!!editing} onOpenChange={(o) => { if (!o) { setEditing(null); setEditPassword(""); } }}>
-        <DialogContent className="max-w-md w-full">
+        <DialogContent className="max-w-md w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <Pencil className="h-4 w-4 text-primary" />
-              {editing?.is_staff ? "Edit Staff Member Profile" : "Edit Shop Owner Profile"}
+              {editing?.is_staff ? (
+                <>
+                  <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  Edit Staff Member Profile
+                </>
+              ) : (
+                <>
+                  <Pencil className="h-4 w-4 text-primary" />
+                  Edit Shop Owner Profile
+                </>
+              )}
             </DialogTitle>
             <DialogDescription className="text-xs truncate text-muted-foreground">
-              {editing?.email} • {editing?.is_staff ? `Staff under ${editing.owner_shop_name || "Owner"}` : (editing?.shop_name || "No Shop")}
+              {editing?.email} • {editing?.is_staff ? `Staff under ${editing.owner_shop_name || editing.owner_name || "Owner"}` : (editing?.shop_name || "No Shop")}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-3">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Full Name</Label>
+
+          <div className="space-y-3.5 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">कर्मचारीको पूरा नाम (Full Name) *</Label>
               <Input 
                 value={editName} 
                 onChange={(e) => setEditName(e.target.value)} 
-                placeholder="Enter full name..." 
-                className="h-9 text-sm"
+                placeholder="e.g. Ramesh Shrestha" 
+                className="h-9 text-xs"
               />
             </div>
 
             {editing?.is_staff ? (
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">Staff Role / Designation</Label>
-                <Input 
-                  value={editRole} 
-                  onChange={(e) => setEditRole(e.target.value)} 
-                  placeholder="e.g. Cashier, Storekeeper, Accountant, Manager, Staff" 
-                  className="h-9 text-sm"
-                />
-              </div>
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">लगइन इमेल / युजर ID (Email / Login ID)</Label>
+                  <Input 
+                    value={editing.email} 
+                    disabled 
+                    className="h-9 text-xs font-mono bg-muted/60 opacity-80 cursor-not-allowed"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Staff login email is permanent and acts as the unique identifier.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">फोन नम्बर (Phone)</Label>
+                    <Input 
+                      value={editPhone} 
+                      onChange={(e) => setEditPhone(e.target.value)} 
+                      placeholder="98XXXXXXXX" 
+                      className="h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">४-अङ्कको Counter PIN</Label>
+                    <Input 
+                      type="password" 
+                      maxLength={4}
+                      value={editPin} 
+                      onChange={(e) => setEditPin(e.target.value.replace(/\D/g, ""))} 
+                      placeholder="1234" 
+                      className="h-9 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-xs font-bold text-foreground">
+                    जिम्मेवारी तथा पद (Assigned Role) *
+                  </Label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {(["cashier", "storekeeper", "accountant"] as StaffRole[]).map((r) => {
+                      const m = ROLE_DEFINITIONS[r];
+                      const isSelected = editRole === r;
+
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setEditRole(r)}
+                          className={`p-2.5 rounded-xl text-left border transition-all flex items-start gap-2.5 cursor-pointer ${
+                            isSelected
+                              ? "bg-primary/10 border-primary shadow-xs ring-1 ring-primary/20"
+                              : "bg-secondary/40 border-border hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="mt-0.5 p-1 rounded-md bg-background border shrink-0 text-primary">
+                            {getRoleIcon(r)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold flex items-center justify-between">
+                              <span className={isSelected ? "text-primary" : "text-foreground"}>
+                                {m.titleNep}
+                              </span>
+                              {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                              {m.descNep}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Shop / Business Name</Label>
                 <Input 
                   value={editShop} 
                   onChange={(e) => setEditShop(e.target.value)} 
                   placeholder="Enter shop name..." 
-                  className="h-9 text-sm"
+                  className="h-9 text-xs"
                 />
               </div>
             )}
 
-            <div className="space-y-2 border-t pt-3">
-              <Label className="text-xs font-semibold">Set New Password</Label>
+            <div className="space-y-1.5 border-t pt-2.5">
+              <Label className="text-xs font-semibold">Set New Password (Optional)</Label>
               <Input 
                 type="password" 
                 value={editPassword} 
                 onChange={(e) => setEditPassword(e.target.value)} 
                 placeholder="Leave blank to keep unchanged..." 
-                className="h-9 text-sm"
+                className="h-9 text-xs"
               />
-              <p className="text-[10px] text-muted-foreground">Min 6 characters. Overrides current login password.</p>
+              <p className="text-[10px] text-muted-foreground">Min 6 characters.</p>
             </div>
 
             <Button 
               onClick={saveProfile} 
               disabled={savingId === editing?.id} 
-              className="w-full bg-primary text-primary-foreground h-10 font-semibold text-xs"
+              className="w-full bg-primary text-primary-foreground h-9 font-semibold text-xs mt-2"
             >
               {savingId === editing?.id ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Saving...</> : "Save Changes"}
             </Button>
