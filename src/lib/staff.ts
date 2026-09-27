@@ -183,7 +183,13 @@ export async function getShopStaffMembers(ownerId: string): Promise<StaffMember[
       const data = d.data();
       const email = (data.email || "").toLowerCase().trim();
       const key = email || d.id;
-      if (!listMap.has(key)) {
+      if (listMap.has(key)) {
+        const existing = listMap.get(key)!;
+        if (!existing.phone && data.phone) existing.phone = data.phone;
+        if (!existing.pin && data.pin) existing.pin = data.pin;
+        if (!existing.name && (data.full_name || data.name)) existing.name = data.full_name || data.name;
+        if (!existing.auth_uid) existing.auth_uid = d.id;
+      } else {
         listMap.set(key, {
           id: d.id,
           owner_id: data.owner_id || ownerId,
@@ -332,13 +338,15 @@ export async function updateStaffMember(
   if (updates.pin !== undefined) cleanUpdates.pin = updates.pin;
   if (updates.status !== undefined) cleanUpdates.status = updates.status;
 
+  // 1. Update staff_members doc by staffId
   await setDoc(staffRef, cleanUpdates, { merge: true });
 
-  // Also update corresponding profile if exists
+  // 2. Update profile doc by staffId
   try {
     const pRef = doc(db, "profiles", staffId);
     await setDoc(pRef, {
       ...(updates.name !== undefined ? { full_name: updates.name } : {}),
+      ...(updates.phone !== undefined ? { phone: updates.phone || "" } : {}),
       ...(updates.role !== undefined ? { role: updates.role } : {}),
       ...(updates.pin !== undefined ? { pin: updates.pin } : {}),
       ...(updates.status !== undefined ? { status: updates.status } : {}),
@@ -348,8 +356,37 @@ export async function updateStaffMember(
     console.warn("Profile update warning:", err);
   }
 
-  // If email and PIN are provided, ensure Auth account is ready
+  // 3. If email is provided, sync any other doc matching this email across both collections
   if (updates.email) {
+    try {
+      const emailLower = updates.email.toLowerCase().trim();
+      const [smSnap, pSnap] = await Promise.all([
+        getDocs(query(collection(db, "staff_members"), where("email", "==", emailLower))),
+        getDocs(query(collection(db, "profiles"), where("email", "==", emailLower)))
+      ]);
+
+      for (const d of smSnap.docs) {
+        if (d.id !== staffId) {
+          await setDoc(d.ref, cleanUpdates, { merge: true });
+        }
+      }
+
+      for (const d of pSnap.docs) {
+        if (d.id !== staffId) {
+          await setDoc(d.ref, {
+            ...(updates.name !== undefined ? { full_name: updates.name } : {}),
+            ...(updates.phone !== undefined ? { phone: updates.phone || "" } : {}),
+            ...(updates.role !== undefined ? { role: updates.role } : {}),
+            ...(updates.pin !== undefined ? { pin: updates.pin } : {}),
+            ...(updates.status !== undefined ? { status: updates.status } : {}),
+            updated_at: new Date().toISOString()
+          }, { merge: true });
+        }
+      }
+    } catch (syncErr) {
+      console.warn("Could not sync email matching documents:", syncErr);
+    }
+
     await ensureStaffAuthAccount(updates.email, updates.pin || "1234");
   }
 }
