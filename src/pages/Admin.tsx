@@ -72,9 +72,10 @@ const Admin = () => {
   const load = async () => {
     setBusy(true);
     try {
-      const [profilesSnap, rolesSnap] = await Promise.all([
+      const [profilesSnap, rolesSnap, staffMembersSnap] = await Promise.all([
         getDocs(collection(db, "profiles")),
-        getDocs(collection(db, "user_roles"))
+        getDocs(collection(db, "user_roles")),
+        getDocs(collection(db, "staff_members"))
       ]);
 
       const adminUserIds = new Set<string>();
@@ -85,12 +86,21 @@ const Admin = () => {
         }
       });
 
+      const staffMembersMap = new Map<string, any>();
+      staffMembersSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.email) staffMembersMap.set(data.email.toLowerCase().trim(), data);
+        staffMembersMap.set(docSnap.id, data);
+      });
+
       const profilesMap = new Map<string, any>();
       profilesSnap.forEach((docSnap) => {
         profilesMap.set(docSnap.id, docSnap.data());
       });
 
       const allUsers: AdminUser[] = [];
+      const seenEmails = new Set<string>();
+
       profilesSnap.forEach((docSnap) => {
         const data = docSnap.data();
         const userRoles: string[] = Array.isArray(data.roles) ? [...data.roles] : [];
@@ -98,8 +108,13 @@ const Admin = () => {
           userRoles.push("admin");
         }
 
-        const is_staff = Boolean(data.is_staff || data.owner_id);
-        const owner_id = data.owner_id || null;
+        const emailKey = (data.email || "").toLowerCase().trim();
+        if (emailKey) seenEmails.add(emailKey);
+        seenEmails.add(docSnap.id);
+
+        const smData = (emailKey ? staffMembersMap.get(emailKey) : null) || staffMembersMap.get(docSnap.id) || {};
+        const is_staff = Boolean(data.is_staff || data.owner_id || smData.owner_id);
+        const owner_id = data.owner_id || smData.owner_id || null;
         let ownerData: any = null;
         if (is_staff && owner_id) {
           ownerData = profilesMap.get(owner_id) || null;
@@ -115,28 +130,72 @@ const Admin = () => {
 
         allUsers.push({
           id: docSnap.id,
-          email: data.email || docSnap.id + "@unknown",
-          created_at: data.created_at || new Date().toISOString(),
-          last_sign_in_at: data.updated_at || null,
-          full_name: data.full_name || "",
-          shop_name: data.shop_name || ownerData?.shop_name || "",
+          email: data.email || smData.email || docSnap.id + "@unknown",
+          created_at: data.created_at || smData.created_at || new Date().toISOString(),
+          last_sign_in_at: data.updated_at || smData.updated_at || null,
+          full_name: data.full_name || smData.name || smData.full_name || "",
+          shop_name: data.shop_name || smData.shop_name || ownerData?.shop_name || "",
           roles: userRoles,
-          banned_until: data.banned_until || null,
+          banned_until: data.banned_until || (smData.status === "inactive" ? new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString() : null),
           plan: effectiveSubData.plan || null,
           subscription_status: effectiveSubData.subscription_status || null,
           trial_ends_at: effectiveSubData.trial_ends_at || null,
           subscription_ends_at: effectiveSubData.subscription_ends_at || null,
           subInfo,
           is_staff,
-          staff_role: data.role || "Staff",
-          phone: data.phone || "",
-          pin: data.pin || "1234",
+          staff_role: data.role || smData.role || "cashier",
+          phone: data.phone || smData.phone || "",
+          pin: data.pin || smData.pin || "1234",
           owner_id,
           owner_name: ownerData?.full_name || ownerData?.shop_name || null,
           owner_email: ownerData?.email || null,
-          owner_shop_name: ownerData?.shop_name || data.shop_name || null,
+          owner_shop_name: ownerData?.shop_name || data.shop_name || smData.shop_name || null,
           staffMembers: []
         });
+      });
+
+      // Also include staff from staff_members collection if not already in profiles
+      staffMembersSnap.forEach((docSnap) => {
+        const smData = docSnap.data();
+        const emailLower = (smData.email || "").toLowerCase().trim();
+        const key = emailLower || docSnap.id;
+        if (!seenEmails.has(key) && !seenEmails.has(docSnap.id)) {
+          seenEmails.add(key);
+          seenEmails.add(docSnap.id);
+          const owner_id = smData.owner_id || null;
+          let ownerData: any = null;
+          if (owner_id) {
+            ownerData = profilesMap.get(owner_id) || null;
+          }
+          const isOwnerAdmin = owner_id ? (adminUserIds.has(owner_id) || (ownerData?.roles && ownerData.roles.includes("admin"))) : false;
+          const effectiveSubData = ownerData || smData;
+          const subInfo = calculateSubscription(effectiveSubData, isOwnerAdmin);
+
+          allUsers.push({
+            id: docSnap.id,
+            email: smData.email || docSnap.id + "@unknown",
+            created_at: smData.created_at || new Date().toISOString(),
+            last_sign_in_at: smData.updated_at || null,
+            full_name: smData.name || smData.full_name || "",
+            shop_name: smData.shop_name || ownerData?.shop_name || "",
+            roles: [],
+            banned_until: smData.status === "inactive" ? new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString() : null,
+            plan: effectiveSubData.plan || null,
+            subscription_status: effectiveSubData.subscription_status || null,
+            trial_ends_at: effectiveSubData.trial_ends_at || null,
+            subscription_ends_at: effectiveSubData.subscription_ends_at || null,
+            subInfo,
+            is_staff: true,
+            staff_role: smData.role || "cashier",
+            phone: smData.phone || "",
+            pin: smData.pin || "1234",
+            owner_id,
+            owner_name: ownerData?.full_name || ownerData?.shop_name || null,
+            owner_email: ownerData?.email || null,
+            owner_shop_name: ownerData?.shop_name || smData.shop_name || null,
+            staffMembers: []
+          });
+        }
       });
 
       // Group staff members under their respective shop owners
@@ -216,6 +275,11 @@ const Admin = () => {
       await updateDoc(doc(db, "profiles", u.id), {
         banned_until: targetDate
       });
+      if (u.is_staff) {
+        await updateStaffMember(u.id, {
+          status: isBanned ? "active" : "inactive"
+        });
+      }
       toast.success(isBanned ? `Restored access for ${u.email}` : `Suspended ${u.email}`);
       await load();
     } catch (e: any) {
@@ -230,6 +294,10 @@ const Admin = () => {
     try {
       const { doc, deleteDoc } = await import("firebase/firestore");
       await deleteDoc(doc(db, "profiles", u.id));
+      if (u.is_staff) {
+        const { deleteStaffMember } = await import("@/lib/staff");
+        await deleteStaffMember(u.id);
+      }
       toast.success(`User ${u.email} deleted`);
       await load();
     } catch (e: any) {
@@ -275,6 +343,7 @@ const Admin = () => {
         try {
           await updateStaffMember(editing.id, {
             name: cleanName,
+            email: editing.email,
             phone: cleanPhone,
             role: role,
             pin: cleanPin
