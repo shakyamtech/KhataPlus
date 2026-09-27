@@ -1255,11 +1255,11 @@ const Admin = () => {
                             className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${roleMeta.badgeColor}`}
                           >
                             {getRoleIcon(roleKey)}
-                            {roleMeta.titleNep.split(" (")[0]}
+                            {roleMeta.titleEng}
                           </span>
                           {isInactive && (
                             <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                              निष्क्रिय (Suspended)
+                              Suspended
                             </span>
                           )}
                         </div>
@@ -1317,7 +1317,7 @@ const Admin = () => {
                         ) : (
                           <XCircle className="h-3.5 w-3.5 text-amber-500 mr-1" />
                         )}
-                        {isInactive ? "सक्रिय पार्नुहोस्" : "रोक्नुहोस्"}
+                        {isInactive ? "Activate" : "Suspend"}
                       </Button>
 
                       {/* Edit Staff */}
@@ -1335,7 +1335,7 @@ const Admin = () => {
                           setEditPassword("");
                         }}
                       >
-                        <Edit3 className="h-3 w-3" /> सम्पादन
+                        <Edit3 className="h-3 w-3" /> Edit
                       </Button>
 
                       {/* Delete Staff */}
@@ -1392,7 +1392,7 @@ const Admin = () => {
 
           <div className="space-y-3.5 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">कर्मचारीको पूरा नाम (Full Name) *</Label>
+              <Label className="text-xs font-semibold">Full Name *</Label>
               <Input 
                 value={editName} 
                 onChange={(e) => setEditName(e.target.value)} 
@@ -1404,7 +1404,7 @@ const Admin = () => {
             {editing?.is_staff ? (
               <>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">लगइन इमेल / युजर ID (Email / Login ID)</Label>
+                  <Label className="text-xs font-semibold">Login Email / User ID</Label>
                   <Input 
                     value={editing.email} 
                     disabled 
@@ -1417,7 +1417,7 @@ const Admin = () => {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">फोन नम्बर (Phone)</Label>
+                    <Label className="text-xs font-semibold">Phone Number (Optional)</Label>
                     <Input 
                       value={editPhone} 
                       onChange={(e) => setEditPhone(e.target.value)} 
@@ -1427,7 +1427,7 @@ const Admin = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">४-अङ्कको Counter PIN</Label>
+                    <Label className="text-xs font-semibold">4-Digit Counter PIN (Optional)</Label>
                     <Input 
                       type="password" 
                       maxLength={4}
@@ -1441,7 +1441,7 @@ const Admin = () => {
 
                 <div className="space-y-2 pt-2 border-t">
                   <Label className="text-xs font-bold text-foreground">
-                    जिम्मेवारी तथा पद (Assigned Role) *
+                    Assigned Role *
                   </Label>
                   <div className="grid grid-cols-1 gap-2">
                     {(["cashier", "storekeeper", "accountant"] as StaffRole[]).map((r) => {
@@ -1465,12 +1465,12 @@ const Admin = () => {
                           <div className="min-w-0 flex-1">
                             <div className="text-xs font-bold flex items-center justify-between">
                               <span className={isSelected ? "text-primary" : "text-foreground"}>
-                                {m.titleNep}
+                                {m.titleEng}
                               </span>
                               {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
                             </div>
                             <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-                              {m.descNep}
+                              {m.descEng}
                             </p>
                           </div>
                         </button>
