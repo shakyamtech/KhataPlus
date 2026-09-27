@@ -14,13 +14,14 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download, Upload, Crown, Sparkles, AlertCircle, Users, ShoppingCart, Package, FileSpreadsheet, CheckCircle2, UserPlus, Lock, Mail, Phone, Eye, EyeOff, XCircle, Edit3 } from "lucide-react";
+import { Shield, Trash2, Pencil, RefreshCw, ShieldOff, RotateCcw, Ban, UserCheck, Search, Loader2, Download, Upload, Crown, Sparkles, AlertCircle, Users, ShoppingCart, Package, FileSpreadsheet, CheckCircle2, UserPlus, Lock, Mail, Phone, Eye, EyeOff, XCircle, Edit3, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, writeBatch, doc, updateDoc, setDoc } from "firebase/firestore";
 import { exportUserDataAsJson, downloadJsonFile, parseAndValidateBackupFile, restoreUserDataFromJson } from "@/lib/backup";
 import { calculateSubscription, SubscriptionInfo } from "@/lib/subscription";
-import { ROLE_DEFINITIONS, StaffRole, updateStaffMember } from "@/lib/staff";
+import { ROLE_DEFINITIONS, StaffRole, StaffMember, updateStaffMember } from "@/lib/staff";
+import { StaffModal } from "@/components/StaffModal";
 
 type AdminUser = {
   id: string; email: string; created_at: string; last_sign_in_at: string | null;
@@ -35,6 +36,8 @@ type AdminUser = {
   staff_role?: string;
   phone?: string;
   pin?: string;
+  joining_date?: string;
+  joining_date_bs?: string;
   owner_id?: string | null;
   owner_name?: string | null;
   owner_email?: string | null;
@@ -55,6 +58,8 @@ const Admin = () => {
   const [managingSubUser, setManagingSubUser] = useState<AdminUser | null>(null);
   const [viewingStaffOwner, setViewingStaffOwner] = useState<AdminUser | null>(null);
   const [revealedStaffPins, setRevealedStaffPins] = useState<Record<string, boolean>>({});
+  const [adminStaffModalOpen, setAdminStaffModalOpen] = useState(false);
+  const [adminEditingStaff, setAdminEditingStaff] = useState<StaffMember | null>(null);
   const [subBusy, setSubBusy] = useState(false);
   const [planFilter, setPlanFilter] = useState<"all" | "pro" | "trial" | "expired" | "staff">("all");
   const [editName, setEditName] = useState("");
@@ -146,6 +151,8 @@ const Admin = () => {
           staff_role: data.role || smData.role || "cashier",
           phone: data.phone || smData.phone || "",
           pin: data.pin || smData.pin || "1234",
+          joining_date: data.joining_date || smData.joining_date || (data.created_at ? data.created_at.slice(0, 10) : (smData.created_at ? smData.created_at.slice(0, 10) : undefined)),
+          joining_date_bs: data.joining_date_bs || smData.joining_date_bs || undefined,
           owner_id,
           owner_name: ownerData?.full_name || ownerData?.shop_name || null,
           owner_email: ownerData?.email || null,
@@ -189,6 +196,8 @@ const Admin = () => {
             staff_role: smData.role || "cashier",
             phone: smData.phone || "",
             pin: smData.pin || "1234",
+            joining_date: smData.joining_date || (smData.created_at ? smData.created_at.slice(0, 10) : undefined),
+            joining_date_bs: smData.joining_date_bs || undefined,
             owner_id,
             owner_name: ownerData?.full_name || ownerData?.shop_name || null,
             owner_email: ownerData?.email || null,
@@ -1265,21 +1274,35 @@ const Admin = () => {
       <Dialog open={!!viewingStaffOwner} onOpenChange={(open) => { if (!open) setViewingStaffOwner(null); }}>
         <DialogContent className="max-w-xl w-full max-h-[85vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="p-5 pb-3 border-b bg-muted/20">
-            <div className="flex items-center gap-3 text-left">
-              <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
-                <Users className="h-5 w-5" />
+            <div className="flex items-center justify-between gap-3 text-left flex-wrap">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <DialogTitle className="text-base font-bold flex items-center gap-2">
+                    <span>Staff Members</span>
+                    <Badge variant="outline" className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-400/30 text-xs font-bold">
+                      {viewingStaffOwner?.staffMembers?.length || 0}
+                    </Badge>
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground truncate">
+                    {viewingStaffOwner?.shop_name || "Shop"} • Owner: {viewingStaffOwner?.full_name || viewingStaffOwner?.email} ({viewingStaffOwner?.email})
+                  </DialogDescription>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <DialogTitle className="text-base font-bold flex items-center gap-2">
-                  <span>Staff Members</span>
-                  <Badge variant="outline" className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-400/30 text-xs font-bold">
-                    {viewingStaffOwner?.staffMembers?.length || 0}
-                  </Badge>
-                </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground truncate">
-                  {viewingStaffOwner?.shop_name || "Shop"} • Owner: {viewingStaffOwner?.full_name || viewingStaffOwner?.email} ({viewingStaffOwner?.email})
-                </DialogDescription>
-              </div>
+
+              <Button
+                size="sm"
+                className="h-8 text-xs font-bold gap-1.5 bg-primary text-primary-foreground"
+                onClick={() => {
+                  setAdminEditingStaff(null);
+                  setAdminStaffModalOpen(true);
+                }}
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                <span>Add Staff</span>
+              </Button>
             </div>
           </DialogHeader>
 
@@ -1359,6 +1382,12 @@ const Admin = () => {
                               </button>
                             </span>
                           )}
+                          {staff.joining_date && (
+                            <span className="flex items-center gap-1 font-mono text-[10.5px] bg-primary/5 text-primary px-2 py-0.5 rounded-md border border-primary/20">
+                              <Calendar className="h-3 w-3" />
+                              <span>Joined: {staff.joining_date.slice(0, 10)}</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1389,19 +1418,27 @@ const Admin = () => {
                         {isInactive ? "Activate" : "Suspend"}
                       </Button>
 
-                      {/* Edit Staff */}
+                      {/* Edit Staff using Unified StaffModal */}
                       <Button
                         size="sm"
                         variant="outline"
                         className="h-7 px-2 text-[11px] gap-1"
                         onClick={() => {
-                          setEditing(staff);
-                          setEditName(staff.full_name || "");
-                          setEditShop(staff.shop_name || "");
-                          setEditPhone(staff.phone || "");
-                          setEditPin(staff.pin || "1234");
-                          setEditRole((staff.staff_role as StaffRole) || "cashier");
-                          setEditPassword("");
+                          setAdminEditingStaff({
+                            id: staff.id,
+                            owner_id: viewingStaffOwner?.id || "",
+                            shop_name: viewingStaffOwner?.shop_name || "",
+                            name: staff.full_name,
+                            email: staff.email,
+                            phone: staff.phone,
+                            role: (staff.staff_role as StaffRole) || "cashier",
+                            pin: staff.pin,
+                            status: (staff.banned_until && new Date(staff.banned_until) > new Date()) ? "inactive" : "active",
+                            joining_date: staff.joining_date,
+                            joining_date_bs: staff.joining_date_bs,
+                            created_at: staff.created_at
+                          });
+                          setAdminStaffModalOpen(true);
                         }}
                       >
                         <Edit3 className="h-3 w-3" /> Edit
@@ -1436,6 +1473,20 @@ const Admin = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Unified Staff Modal for Super Admin */}
+      {viewingStaffOwner && (
+        <StaffModal
+          open={adminStaffModalOpen}
+          onOpenChange={setAdminStaffModalOpen}
+          ownerId={viewingStaffOwner.id}
+          shopName={viewingStaffOwner.shop_name}
+          staff={adminEditingStaff}
+          onSaved={async () => {
+            await load();
+          }}
+        />
+      )}
 
       {/* Global Edit Profile Dialog (Works for Owners & Staff) */}
       <Dialog open={!!editing} onOpenChange={(o) => { if (!o) { setEditing(null); setEditPassword(""); } }}>

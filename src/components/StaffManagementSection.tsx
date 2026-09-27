@@ -6,7 +6,6 @@ import {
   StaffRole, 
   ROLE_DEFINITIONS, 
   getShopStaffMembers, 
-  addStaffMember, 
   updateStaffMember, 
   deleteStaffMember,
   getOwnerMasterPin,
@@ -15,13 +14,14 @@ import {
 import { 
   Users, UserPlus, Shield, ShieldCheck, ShieldAlert, KeyRound, 
   Trash2, Edit3, CheckCircle2, XCircle, ShoppingCart, Package, 
-  FileSpreadsheet, Sparkles, AlertCircle, Lock, Phone, Mail, UserCheck, Eye, EyeOff
+  FileSpreadsheet, Sparkles, AlertCircle, Lock, Phone, Mail, UserCheck, Eye, EyeOff, Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { StaffModal } from "@/components/StaffModal";
 import { toast } from "sonner";
 
 interface StaffManagementSectionProps {
@@ -42,29 +42,15 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
   const [showOwnerPin, setShowOwnerPin] = useState(false);
   const [savingOwnerPin, setSavingOwnerPin] = useState(false);
 
-  // Dialog State
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [revealedPins, setRevealedPins] = useState<Record<string, boolean>>({});
+  // Unified StaffModal Dialog State
+  const [staffModalOpen, setStaffModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+  const [revealedPins, setRevealedPins] = useState<Record<string, boolean>>({});
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const togglePinVisibility = (id: string) => {
     setRevealedPins(prev => ({ ...prev, [id]: !prev[id] }));
   };
-  const [formData, setFormData] = useState<{
-    name: string;
-    email: string;
-    phone: string;
-    role: StaffRole;
-    pin: string;
-  }>({
-    name: "",
-    email: "",
-    phone: "",
-    role: "cashier",
-    pin: "",
-  });
-  const [saving, setSaving] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const fetchStaff = async () => {
     if (!ownerId) return;
@@ -108,97 +94,12 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
 
   const handleOpenAdd = () => {
     setEditingStaff(null);
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      role: "cashier",
-      pin: "",
-    });
-    setDialogOpen(true);
+    setStaffModalOpen(true);
   };
 
   const handleOpenEdit = (staff: StaffMember) => {
     setEditingStaff(staff);
-    setFormData({
-      name: staff.name,
-      email: staff.email,
-      phone: staff.phone || "",
-      role: staff.role,
-      pin: staff.pin || "",
-    });
-    setDialogOpen(true);
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanName = formData.name.trim();
-    const cleanEmail = formData.email.trim().toLowerCase();
-    const cleanPin = formData.pin.trim();
-
-    if (!cleanName) {
-      toast.error(lang === "NEP" ? "कृपया स्टाफको नाम लेख्नुहोस्।" : "Please enter staff name.");
-      return;
-    }
-    if (!cleanEmail) {
-      toast.error(lang === "NEP" ? "कृपया लगइन इमेल/युजरनेम लेख्नुहोस्।" : "Please enter login email/ID.");
-      return;
-    }
-
-    // Validation: Cannot use Owner's own login email
-    if (user?.email && cleanEmail === user.email.toLowerCase()) {
-      toast.error(
-        lang === "NEP"
-          ? "साहुजीको आफ्नै लगइन इमेल स्टाफको लागि प्रयोग गर्न मिल्दैन। कृपया स्टाफको छुट्टै इमेल/आईडी लेख्नुहोस्।"
-          : "Owner's own login email cannot be used for staff. Please enter a unique email/ID for this staff."
-      );
-      return;
-    }
-
-    // Validation: Duplicate staff email
-    const duplicate = staffList.find(s => s.email.toLowerCase() === cleanEmail && s.id !== editingStaff?.id);
-    if (duplicate) {
-      toast.error(
-        lang === "NEP"
-          ? `यो इमेल पहिल्यै '${duplicate.name}' ले प्रयोग गरिसकेको छ।`
-          : `This email is already assigned to '${duplicate.name}'.`
-      );
-      return;
-    }
-
-    setSaving(true);
-    try {
-      if (editingStaff) {
-        await updateStaffMember(editingStaff.id, {
-          name: cleanName,
-          email: cleanEmail,
-          phone: formData.phone.trim(),
-          role: formData.role,
-          pin: cleanPin,
-        });
-        toast.success(lang === "NEP" ? "स्टाफको विवरण सफलतापूर्वक अद्यावधिक गरियो!" : "Staff updated successfully!");
-      } else {
-        await addStaffMember({
-          owner_id: ownerId,
-          shop_name: shopName,
-          name: cleanName,
-          email: cleanEmail,
-          phone: formData.phone.trim(),
-          role: formData.role,
-          pin: cleanPin,
-          status: "active",
-        });
-        toast.success(lang === "NEP" ? "नयाँ स्टाफ सफलतापूर्वक दर्ता गरियो!" : "New staff member added successfully!");
-      }
-      setDialogOpen(false);
-      fetchStaff();
-      refreshShopStaff();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || (lang === "NEP" ? "स्टाफ सेभ गर्न समस्या भयो।" : "Failed to save staff member."));
-    } finally {
-      setSaving(false);
-    }
+    setStaffModalOpen(true);
   };
 
   const handleToggleStatus = async (staff: StaffMember) => {
@@ -248,102 +149,90 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
     <div className="space-y-4">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-bold">
-              <Users className="h-4 w-4" />
-            </div>
-            <h4 className="text-sm font-bold text-foreground">
-              {lang === "NEP" ? "स्टाफ तथा कर्मचारी व्यवस्थापन" : "Staff & Operator Management"}
-            </h4>
-            <Badge variant="outline" className="text-[10px] bg-background/80 font-mono">
-              {staffList.length} {lang === "NEP" ? "स्टाफ" : "Staffs"}
-            </Badge>
-          </div>
-          <p className="text-xs text-muted-foreground max-w-lg leading-relaxed">
-            {lang === "NEP"
-              ? "काउन्टर क्यासियर वा स्टोर स्टाफ थप्नुहोस्। उनीहरूले आफ्नो आइडीबाट लगइन गरी बिल काट्दा स्वतः तपाईंको पसलको खातामा हिसाब जोडिन्छ।"
-              : "Add counter cashiers or inventory operators with tailored roles and access control."}
-          </p>
-        </div>
-
-        <Button
-          type="button"
-          onClick={handleOpenAdd}
-          className="h-9 px-3.5 text-xs font-bold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-        >
-          <UserPlus className="h-4 w-4" />
-          {lang === "NEP" ? "+ नयाँ स्टाफ थप्नुहोस्" : "+ Add Staff Member"}
-        </Button>
-      </div>
-
-      {/* Master Owner Security PIN Card */}
-      <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold shrink-0">
-            <KeyRound className="h-5 w-5" />
+          <div className="h-10 w-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold shadow-xs">
+            <Users className="h-5 w-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h5 className="text-xs font-bold text-foreground">
-                {lang === "NEP" ? "👑 साहुजीको मास्टर PIN (Master Owner Security PIN)" : "👑 Master Owner Security PIN"}
-              </h5>
-              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 font-medium">
-                {lang === "NEP" ? "काउन्टर लक" : "Counter Lock"}
+            <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+              <span>{lang === "NEP" ? "स्टाफ तथा कर्मचारी व्यवस्थापन" : "Staff & Counter Management"}</span>
+              <Badge variant="outline" className="text-[10px] bg-primary/10 border-primary/30 text-primary">
+                Multi-Operator
               </Badge>
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5 max-w-md">
+            </h3>
+            <p className="text-xs text-muted-foreground">
               {lang === "NEP"
-                ? "काउन्टरमा क्यासियरबाट साहुजी (Owner) मोडमा फर्किन यो ४-अङ्कको Master PIN अनिवार्य चाहिन्छ।"
-                : "Required to switch back from staff to Shop Owner mode on the counter terminal."}
+                ? "क्यासियर, स्टोरकीपर र एकाउन्टेन्टको लगइन, सुरु मिति र अधिकार नियन्त्रण गर्नुहोस्।"
+                : "Manage counter logins, start dates, and role permissions for your shop."}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="bg-background/90 px-3 py-1.5 rounded-lg border border-border/80 text-xs font-mono font-bold flex items-center gap-2 shadow-xs">
-            <span>{showOwnerPin ? ownerMasterPin : "••••"}</span>
-            <button
-              type="button"
-              onClick={() => setShowOwnerPin(!showOwnerPin)}
-              className="text-muted-foreground hover:text-foreground text-[10.5px] uppercase font-sans font-semibold cursor-pointer ml-1"
-            >
-              {showOwnerPin ? (lang === "NEP" ? "लुकाउनुहोस्" : "Hide") : (lang === "NEP" ? "हेर्नुहोस्" : "Show")}
-            </button>
-          </div>
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             type="button"
-            variant="outline"
             size="sm"
+            variant="outline"
             onClick={() => {
               setNewOwnerPin(ownerMasterPin);
+              setShowOwnerPin(false);
               setOwnerPinModalOpen(true);
             }}
-            className="h-8 text-xs font-semibold border-amber-500/40 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400 cursor-pointer"
+            className="text-xs font-semibold gap-1.5 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
           >
-            <Edit3 className="h-3.5 w-3.5 mr-1" />
-            {lang === "NEP" ? "PIN बदल्नुहोस्" : "Change PIN"}
+            <KeyRound className="h-3.5 w-3.5" />
+            <span>{lang === "NEP" ? `मास्टर PIN: ${ownerMasterPin}` : `Master PIN: ${ownerMasterPin}`}</span>
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleOpenAdd}
+            className="text-xs font-bold gap-1.5 bg-primary text-primary-foreground shadow-sm hover:opacity-90"
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            <span>{lang === "NEP" ? "नयाँ स्टाफ थप्नुहोस्" : "Add New Staff"}</span>
           </Button>
         </div>
       </div>
 
       {/* Staff Members List */}
       <div className="space-y-2.5">
+        <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+          <span className="font-bold text-foreground">
+            {lang === "NEP" ? `कर्मचारी सूची (${staffList.length})` : `Staff Members (${staffList.length})`}
+          </span>
+          <span>{lang === "NEP" ? "कर्मचारी लगइन: staff@khataplus.com" : "Unique login email per staff"}</span>
+        </div>
+
         {loading ? (
-          <div className="p-8 text-center text-xs text-muted-foreground animate-pulse">
-            {lang === "NEP" ? "स्टाफहरूको विवरण लोड हुँदैछ..." : "Loading staff members..."}
+          <div className="p-8 text-center text-xs text-muted-foreground border rounded-2xl bg-secondary/20">
+            {lang === "NEP" ? "स्टाफ विवरण लोड हुँदैछ..." : "Loading staff members..."}
           </div>
         ) : staffList.length === 0 ? (
-          <div className="p-6 rounded-2xl border border-dashed text-center space-y-2 bg-secondary/15">
-            <Users className="h-8 w-8 text-muted-foreground/40 mx-auto" />
-            <div className="text-xs font-bold text-foreground">
-              {lang === "NEP" ? "कुनै पनि स्टाफ थपिएको छैन" : "No Staff Members Added Yet"}
+          <div className="p-8 text-center border border-dashed rounded-2xl bg-secondary/10 space-y-3">
+            <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
+              <Users className="h-6 w-6" />
             </div>
-            <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-              {lang === "NEP"
-                ? "यदि तपाईंको काउन्टरमा अरू कर्मचारी छन् भने '+ नयाँ स्टाफ थप्नुहोस्' मा क्लिक गरेर उनीहरूलाई POS बिल काट्ने अनुमति दिन सक्नुहुन्छ।"
-                : "Add cashiers or operators to let them issue bills securely under your shop account."}
-            </p>
+            <div className="space-y-1">
+              <h4 className="font-bold text-sm text-foreground">
+                {lang === "NEP" ? "कुनै पनि स्टाफ दर्ता गरिएको छैन" : "No Staff Members Added Yet"}
+              </h4>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                {lang === "NEP"
+                  ? "तपाईंको पसलमा काम गर्ने क्यासियर वा लेखापाललाई छुट्टै लगइन दिन माथिको '+ नयाँ स्टाफ थप्नुहोस्' बटन थिच्नुहोस्।"
+                  : "Add your shop staff so they can log in with their own credentials and assigned permissions."}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleOpenAdd}
+              className="text-xs font-bold gap-1.5"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              <span>{lang === "NEP" ? "पहिलो स्टाफ थप्नुहोस्" : "Add First Staff Member"}</span>
+            </Button>
           </div>
         ) : (
           staffList.map((staff) => {
@@ -412,6 +301,12 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
                               <Eye className="h-3 w-3" />
                             )}
                           </button>
+                        </span>
+                      )}
+                      {staff.joining_date && (
+                        <span className="flex items-center gap-1 font-mono text-[10.5px] bg-primary/5 text-primary px-2 py-0.5 rounded-md border border-primary/20">
+                          <Calendar className="h-3 w-3" />
+                          <span>{lang === "NEP" ? "सुरु:" : "Joined:"} {staff.joining_date.slice(0, 10)}</span>
                         </span>
                       )}
                     </div>
@@ -510,146 +405,17 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
         </div>
       </div>
 
-      {/* Add / Edit Staff Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md w-full p-6">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-primary" />
-              {editingStaff
-                ? (lang === "NEP" ? "स्टाफको विवरण सम्पादन गर्नुहोस्" : "Edit Staff Member")
-                : (lang === "NEP" ? "नयाँ स्टाफ कर्मचारी दर्ता गर्नुहोस्" : "Add New Staff Member")}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              {lang === "NEP"
-                ? "कर्मचारीको विवरण र काम गर्ने भूमिका (Role) तोकिदिनुहोस्।"
-                : "Configure login details and assigned shop responsibilities."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleSave} className="space-y-3.5 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold">
-                {lang === "NEP" ? "कर्मचारीको पूरा नाम (Full Name) *" : "Full Name *"}
-              </Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder={lang === "NEP" ? "जस्तै: रमेश श्रेष्ठ" : "e.g. Ramesh Shrestha"}
-                className="text-xs"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold">
-                {lang === "NEP" ? "लगइन इमेल / युजर ID (Email / Login ID) *" : "Login Email / User ID *"}
-              </Label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="e.g. ramesh.pos@khataplus.com"
-                className="text-xs font-mono"
-                required
-              />
-              <p className="text-[10px] text-muted-foreground">
-                {lang === "NEP"
-                  ? "यो इमेल मार्फत स्टाफले KhataPlus मा आफ्नो डिभाइसबाट लगइन गर्नेछन्।"
-                  : "Staff will use this email/ID to log into KhataPlus on their counter/device."}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">
-                  {lang === "NEP" ? "फोन नम्बर (वैकल्पिक)" : "Phone (Optional)"}
-                </Label>
-                <Input
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="98XXXXXXXX"
-                  className="text-xs"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">
-                  {lang === "NEP" ? "४-अङ्कको Counter PIN" : "4-digit PIN (Optional)"}
-                </Label>
-                <Input
-                  type="password"
-                  maxLength={4}
-                  value={formData.pin}
-                  onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
-                  placeholder="1234"
-                  className="text-xs font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-2 border-t">
-              <Label className="text-xs font-bold text-foreground">
-                {lang === "NEP" ? "जिम्मेवारी तथा पद (Assigned Role) *" : "Assigned Role *"}
-              </Label>
-              <div className="grid grid-cols-1 gap-2">
-                {(["cashier", "storekeeper", "accountant"] as StaffRole[]).map((r) => {
-                  const m = ROLE_DEFINITIONS[r];
-                  const isSelected = formData.role === r;
-
-                  return (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, role: r })}
-                      className={`p-2.5 rounded-xl text-left border transition-all flex items-start gap-2.5 ${
-                        isSelected
-                          ? "bg-primary/10 border-primary shadow-xs ring-1 ring-primary/20"
-                          : "bg-secondary/40 border-border hover:border-primary/40"
-                      }`}
-                    >
-                      <div className="mt-0.5 p-1 rounded-md bg-background border shrink-0 text-primary">
-                        {getRoleIcon(r)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-bold flex items-center justify-between">
-                          <span className={isSelected ? "text-primary" : "text-foreground"}>
-                            {lang === "NEP" ? m.titleNep : m.titleEng}
-                          </span>
-                          {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-                          {lang === "NEP" ? m.descNep : m.descEng}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <DialogFooter className="pt-3 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-                className="text-xs"
-              >
-                {lang === "NEP" ? "रद्द गर्नुहोस्" : "Cancel"}
-              </Button>
-              <Button
-                type="submit"
-                disabled={saving}
-                className="bg-primary text-primary-foreground text-xs font-bold gap-1.5"
-              >
-                {saving
-                  ? (lang === "NEP" ? "सुरक्षित गर्दै..." : "Saving...")
-                  : (lang === "NEP" ? "स्टाफ सुरक्षित गर्नुहोस्" : "Save Staff Member")}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Unified Add / Edit Staff Modal */}
+      <StaffModal
+        open={staffModalOpen}
+        onOpenChange={setStaffModalOpen}
+        ownerId={ownerId}
+        shopName={shopName}
+        staff={editingStaff}
+        onSaved={() => {
+          fetchStaff();
+        }}
+      />
 
       {/* Owner Master PIN Change Modal */}
       <Dialog open={ownerPinModalOpen} onOpenChange={setOwnerPinModalOpen}>

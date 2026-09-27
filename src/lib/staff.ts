@@ -119,6 +119,8 @@ export interface StaffMember {
   pin?: string;
   auth_uid?: string;
   status: "active" | "inactive";
+  joining_date?: string;
+  joining_date_bs?: string;
   monthly_salary?: number;
   advance_balance?: number;
   pan_no?: string;
@@ -168,6 +170,8 @@ export async function getShopStaffMembers(ownerId: string): Promise<StaffMember[
         pin: data.pin || "1234",
         auth_uid: data.auth_uid || undefined,
         status: data.status === "inactive" ? "inactive" : "active",
+        joining_date: data.joining_date || (data.created_at ? data.created_at.slice(0, 10) : undefined),
+        joining_date_bs: data.joining_date_bs || undefined,
         monthly_salary: Number(data.monthly_salary) || 0,
         advance_balance: Number(data.advance_balance) || 0,
         pan_no: data.pan_no || "",
@@ -189,6 +193,8 @@ export async function getShopStaffMembers(ownerId: string): Promise<StaffMember[
         if (!existing.pin && data.pin) existing.pin = data.pin;
         if (!existing.name && (data.full_name || data.name)) existing.name = data.full_name || data.name;
         if (!existing.auth_uid) existing.auth_uid = d.id;
+        if (!existing.joining_date && data.joining_date) existing.joining_date = data.joining_date;
+        if (!existing.joining_date_bs && data.joining_date_bs) existing.joining_date_bs = data.joining_date_bs;
       } else {
         listMap.set(key, {
           id: d.id,
@@ -201,6 +207,8 @@ export async function getShopStaffMembers(ownerId: string): Promise<StaffMember[
           pin: data.pin || "1234",
           auth_uid: d.id,
           status: data.status === "inactive" ? "inactive" : "active",
+          joining_date: data.joining_date || (data.created_at ? data.created_at.slice(0, 10) : undefined),
+          joining_date_bs: data.joining_date_bs || undefined,
           monthly_salary: Number(data.monthly_salary) || 0,
           advance_balance: Number(data.advance_balance) || 0,
           pan_no: data.pan_no || "",
@@ -307,6 +315,8 @@ export async function addStaffMember(data: Omit<StaffMember, "id" | "created_at"
     role: data.role || "cashier",
     pin: data.pin || "1234",
     status: data.status || "active",
+    joining_date: data.joining_date || new Date().toISOString().slice(0, 10),
+    joining_date_bs: data.joining_date_bs || "",
     monthly_salary: Number(data.monthly_salary) || 0,
     advance_balance: Number(data.advance_balance) || 0,
     pan_no: data.pan_no || "",
@@ -336,6 +346,8 @@ export async function addStaffMember(data: Omit<StaffMember, "id" | "created_at"
       role: data.role || "cashier",
       pin: data.pin || "1234",
       status: data.status || "active",
+      joining_date: data.joining_date || new Date().toISOString().slice(0, 10),
+      joining_date_bs: data.joining_date_bs || "",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }, { merge: true });
@@ -351,7 +363,7 @@ export async function addStaffMember(data: Omit<StaffMember, "id" | "created_at"
  */
 export async function updateStaffMember(
   staffId: string,
-  updates: Partial<Pick<StaffMember, "name" | "email" | "phone" | "role" | "pin" | "status">>
+  updates: Partial<Pick<StaffMember, "name" | "email" | "phone" | "role" | "pin" | "status" | "joining_date" | "joining_date_bs">>
 ): Promise<void> {
   const staffRef = doc(db, "staff_members", staffId);
   const cleanUpdates: any = {
@@ -363,6 +375,8 @@ export async function updateStaffMember(
   if (updates.role !== undefined) cleanUpdates.role = updates.role;
   if (updates.pin !== undefined) cleanUpdates.pin = updates.pin;
   if (updates.status !== undefined) cleanUpdates.status = updates.status;
+  if (updates.joining_date !== undefined) cleanUpdates.joining_date = updates.joining_date;
+  if (updates.joining_date_bs !== undefined) cleanUpdates.joining_date_bs = updates.joining_date_bs;
 
   // 1. Update staff_members doc by staffId
   await setDoc(staffRef, cleanUpdates, { merge: true });
@@ -376,6 +390,8 @@ export async function updateStaffMember(
       ...(updates.role !== undefined ? { role: updates.role } : {}),
       ...(updates.pin !== undefined ? { pin: updates.pin } : {}),
       ...(updates.status !== undefined ? { status: updates.status } : {}),
+      ...(updates.joining_date !== undefined ? { joining_date: updates.joining_date } : {}),
+      ...(updates.joining_date_bs !== undefined ? { joining_date_bs: updates.joining_date_bs } : {}),
       updated_at: new Date().toISOString()
     }, { merge: true });
   } catch (err) {

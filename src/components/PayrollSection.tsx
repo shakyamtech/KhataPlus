@@ -533,8 +533,14 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                               {staff.role}
                             </span>
                           </div>
-                          <div className="text-[11px] text-muted-foreground mt-0.5">
-                            {staff.phone || staff.email}
+                          <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                            <span>{staff.phone || staff.email}</span>
+                            {staff.joining_date && (
+                              <span className="inline-flex items-center gap-1 font-mono text-[10px] bg-primary/5 text-primary px-1.5 py-0.2 rounded border border-primary/20">
+                                <Calendar className="h-3 w-3" />
+                                <span>{lang === "NEP" ? "सुरु:" : "Joined:"} {staff.joining_date.slice(0, 10)}</span>
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
