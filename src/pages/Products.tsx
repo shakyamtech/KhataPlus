@@ -383,6 +383,10 @@ const Products = () => {
           const capitalAccId = capitalAcc ? capitalAcc.id : `${user.uid}_capital`;
           const capitalAccName = capitalAcc ? capitalAcc.name : "Capital Account (साहुको पुँजी)";
 
+          const stockAcc = accounts.find(a => a.group === "current_assets" && ((a.name || "").toLowerCase().includes("stock") || (a.name || "").toLowerCase().includes("inventory") || (a.name || "").includes("स्टक") || (a.name || "").includes("मौज्दात")));
+          const stockAccId = stockAcc ? stockAcc.id : `${user.uid}_stock`;
+          const stockAccName = stockAcc ? stockAcc.name : (lang === "NEP" ? "स्टक मौज्दात (Stock / Inventory)" : "Stock in Hand (Inventory)");
+
           const voucherRef = doc(collection(db, "vouchers"));
           const now = new Date();
           const dateIso = now.toISOString();
@@ -396,6 +400,8 @@ const Products = () => {
             date: dateIso,
             date_bs: dateBs,
             amount: totalAdditionValue,
+            debit_account_id: stockAccId,
+            debit_account_name: stockAccName,
             credit_account_id: capitalAccId,
             credit_account_name: capitalAccName,
             narration: `Opening/Direct Stock added for ${activeProduct.name} (${fmtQty(qty)} ${activeProduct.unit || "pcs"} @ ${fmt(cost)})`,

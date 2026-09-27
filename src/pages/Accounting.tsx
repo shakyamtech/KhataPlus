@@ -1995,9 +1995,12 @@ export default function Accounting() {
       ? vouchers
         .filter(v => filterType === "all" || filterType === v.voucher_type)
         .map(v => {
-          const drLabel = v.entries && v.entries.length > 0
+          let drLabel = v.entries && v.entries.length > 0
             ? v.entries.filter(e => e.type === "debit").map(e => e.account_name).join(", ")
             : (v.debit_account_name || "");
+          if (!drLabel && v.credit_account_name && (v.voucher_no?.startsWith("OPN-") || (v.narration || "").toLowerCase().includes("opening/direct stock"))) {
+            drLabel = lang === "NEP" ? "स्टक मौज्दात (Stock / Inventory)" : "Stock / Inventory";
+          }
           const crLabel = v.entries && v.entries.length > 0
             ? v.entries.filter(e => e.type === "credit").map(e => e.account_name).join(", ")
             : (v.credit_account_name || "");

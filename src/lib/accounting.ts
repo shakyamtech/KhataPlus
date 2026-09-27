@@ -130,6 +130,13 @@ export function getVoucherAccountImpacts(v: Voucher | any): { account_id: string
       debit: Number(v.amount || 0),
       credit: 0
     });
+  } else if (v && !v.debit_account_id && v.credit_account_id && (v.voucher_no?.startsWith("OPN-") || (v.narration || "").toLowerCase().includes("opening/direct stock"))) {
+    results.push({
+      account_id: `${v.user_id || "system"}_stock`,
+      account_name: "Stock / Inventory (स्टक मौज्दात)",
+      debit: Number(v.amount || 0),
+      credit: 0
+    });
   }
   if (v && v.credit_account_id) {
     results.push({
