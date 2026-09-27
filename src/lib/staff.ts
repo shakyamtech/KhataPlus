@@ -145,20 +145,27 @@ export function getStaffAuthPassword(pinOrPassword: string): string {
 export async function getShopStaffMembers(ownerId: string): Promise<StaffMember[]> {
   if (!ownerId) return [];
   try {
-    const q = query(collection(db, "staff_members"), where("owner_id", "==", ownerId));
-    const snap = await getDocs(q);
-    const list: StaffMember[] = [];
-    snap.forEach((d) => {
+    const [staffSnap, profilesSnap] = await Promise.all([
+      getDocs(query(collection(db, "staff_members"), where("owner_id", "==", ownerId))),
+      getDocs(query(collection(db, "profiles"), where("owner_id", "==", ownerId)))
+    ]);
+
+    const listMap = new Map<string, StaffMember>();
+
+    // 1. From staff_members collection
+    staffSnap.forEach((d) => {
       const data = d.data();
-      list.push({
+      const email = (data.email || "").toLowerCase().trim();
+      const key = email || d.id;
+      listMap.set(key, {
         id: d.id,
         owner_id: data.owner_id || ownerId,
         shop_name: data.shop_name || "",
-        name: data.name || "",
+        name: data.name || data.full_name || "",
         email: data.email || "",
         phone: data.phone || "",
         role: (data.role as StaffRole) || "cashier",
-        pin: data.pin || "",
+        pin: data.pin || "1234",
         auth_uid: data.auth_uid || undefined,
         status: data.status === "inactive" ? "inactive" : "active",
         monthly_salary: Number(data.monthly_salary) || 0,
@@ -170,6 +177,36 @@ export async function getShopStaffMembers(ownerId: string): Promise<StaffMember[
         updated_at: data.updated_at || undefined,
       });
     });
+
+    // 2. From profiles collection (legacy / registered staff)
+    profilesSnap.forEach((d) => {
+      const data = d.data();
+      const email = (data.email || "").toLowerCase().trim();
+      const key = email || d.id;
+      if (!listMap.has(key)) {
+        listMap.set(key, {
+          id: d.id,
+          owner_id: data.owner_id || ownerId,
+          shop_name: data.shop_name || "",
+          name: data.full_name || data.name || (email ? email.split("@")[0] : "Staff"),
+          email: data.email || "",
+          phone: data.phone || "",
+          role: (data.role as StaffRole) || "cashier",
+          pin: data.pin || "1234",
+          auth_uid: d.id,
+          status: data.status === "inactive" ? "inactive" : "active",
+          monthly_salary: Number(data.monthly_salary) || 0,
+          advance_balance: Number(data.advance_balance) || 0,
+          pan_no: data.pan_no || "",
+          bank_name: data.bank_name || "",
+          bank_account_no: data.bank_account_no || "",
+          created_at: data.created_at || new Date().toISOString(),
+          updated_at: data.updated_at || undefined,
+        });
+      }
+    });
+
+    const list = Array.from(listMap.values());
     return list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   } catch (err) {
     console.error("Error fetching staff members:", err);
@@ -345,23 +382,50 @@ export async function findStaffByEmail(email: string): Promise<StaffMember | nul
       where("email", "==", cleanEmail)
     );
     const snap = await getDocs(q);
-    if (snap.empty) return null;
+    if (!snap.empty) {
+      const d = snap.docs[0];
+      const data = d.data();
+      return {
+        id: d.id,
+        owner_id: data.owner_id || "",
+        shop_name: data.shop_name || "",
+        name: data.name || "",
+        email: data.email || cleanEmail,
+        phone: data.phone || "",
+        role: (data.role as StaffRole) || "cashier",
+        pin: data.pin || "",
+        status: data.status === "inactive" ? "inactive" : "active",
+        created_at: data.created_at || new Date().toISOString(),
+        updated_at: data.updated_at || undefined,
+      };
+    }
 
-    const d = snap.docs[0];
-    const data = d.data();
-    return {
-      id: d.id,
-      owner_id: data.owner_id || "",
-      shop_name: data.shop_name || "",
-      name: data.name || "",
-      email: data.email || cleanEmail,
-      phone: data.phone || "",
-      role: (data.role as StaffRole) || "cashier",
-      pin: data.pin || "",
-      status: data.status === "inactive" ? "inactive" : "active",
-      created_at: data.created_at || new Date().toISOString(),
-      updated_at: data.updated_at || undefined,
-    };
+    // Fallback: check profiles collection
+    const pq = query(
+      collection(db, "profiles"),
+      where("email", "==", cleanEmail),
+      where("is_staff", "==", true)
+    );
+    const pSnap = await getDocs(pq);
+    if (!pSnap.empty) {
+      const pd = pSnap.docs[0];
+      const pData = pd.data();
+      return {
+        id: pd.id,
+        owner_id: pData.owner_id || "",
+        shop_name: pData.shop_name || "",
+        name: pData.full_name || pData.name || cleanEmail.split("@")[0],
+        email: pData.email || cleanEmail,
+        phone: pData.phone || "",
+        role: (pData.role as StaffRole) || "cashier",
+        pin: pData.pin || "1234",
+        status: pData.status === "inactive" ? "inactive" : "active",
+        created_at: pData.created_at || new Date().toISOString(),
+        updated_at: pData.updated_at || undefined,
+      };
+    }
+
+    return null;
   } catch (err) {
     console.error("Error finding staff by email:", err);
     return null;
