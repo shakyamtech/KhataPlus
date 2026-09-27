@@ -264,38 +264,51 @@ export async function addStaffMember(data: Omit<StaffMember, "id" | "created_at"
     authUid = authRes.uid;
   }
 
-  const newStaff: StaffMember = {
-    ...data,
+  // Sanitize object to guarantee no undefined fields are passed to Firestore setDoc
+  const cleanStaffData: any = {
     id: staffRef.id,
-    auth_uid: authUid || undefined,
+    owner_id: data.owner_id || "",
+    shop_name: data.shop_name || "",
+    name: data.name || "",
+    email: data.email || "",
+    phone: data.phone || "",
+    role: data.role || "cashier",
+    pin: data.pin || "1234",
+    status: data.status || "active",
+    monthly_salary: Number(data.monthly_salary) || 0,
+    advance_balance: Number(data.advance_balance) || 0,
+    pan_no: data.pan_no || "",
+    bank_name: data.bank_name || "",
+    bank_account_no: data.bank_account_no || "",
     created_at: new Date().toISOString(),
+    _serverTimestamp: serverTimestamp(),
   };
 
-  await setDoc(staffRef, {
-    ...newStaff,
-    _serverTimestamp: serverTimestamp(),
-  });
-
-  // 2. Also register in profiles so login resolves instantly
   if (authUid) {
-    try {
-      await setDoc(doc(db, "profiles", authUid), {
-        id: authUid,
-        email: data.email,
-        full_name: data.name,
-        shop_name: data.shop_name,
-        owner_id: data.owner_id,
-        is_staff: true,
-        staff_id: staffRef.id,
-        role: data.role,
-        pin: data.pin || "",
-        status: data.status || "active",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, { merge: true });
-    } catch (profErr) {
-      console.warn("Staff profile creation warning:", profErr);
-    }
+    cleanStaffData.auth_uid = authUid;
+  }
+
+  await setDoc(staffRef, cleanStaffData);
+
+  // 2. Also register in profiles so login and multi-tenant resolution works instantly
+  const profileId = authUid || staffRef.id;
+  try {
+    await setDoc(doc(db, "profiles", profileId), {
+      id: profileId,
+      email: data.email,
+      full_name: data.name,
+      shop_name: data.shop_name,
+      owner_id: data.owner_id,
+      is_staff: true,
+      staff_id: staffRef.id,
+      role: data.role || "cashier",
+      pin: data.pin || "1234",
+      status: data.status || "active",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }, { merge: true });
+  } catch (profErr) {
+    console.warn("Staff profile creation warning:", profErr);
   }
 
   return staffRef.id;
@@ -309,10 +322,33 @@ export async function updateStaffMember(
   updates: Partial<Pick<StaffMember, "name" | "email" | "phone" | "role" | "pin" | "status">>
 ): Promise<void> {
   const staffRef = doc(db, "staff_members", staffId);
-  await updateDoc(staffRef, {
-    ...updates,
+  const cleanUpdates: any = {
     updated_at: new Date().toISOString(),
-  });
+  };
+  if (updates.name !== undefined) cleanUpdates.name = updates.name;
+  if (updates.email !== undefined) cleanUpdates.email = updates.email;
+  if (updates.phone !== undefined) cleanUpdates.phone = updates.phone || "";
+  if (updates.role !== undefined) cleanUpdates.role = updates.role;
+  if (updates.pin !== undefined) cleanUpdates.pin = updates.pin;
+  if (updates.status !== undefined) cleanUpdates.status = updates.status;
+
+  await updateDoc(staffRef, cleanUpdates);
+
+  // Also update corresponding profile if exists
+  try {
+    const pSnap = await getDoc(doc(db, "profiles", staffId));
+    if (pSnap.exists()) {
+      await updateDoc(doc(db, "profiles", staffId), {
+        ...(updates.name !== undefined ? { full_name: updates.name } : {}),
+        ...(updates.role !== undefined ? { role: updates.role } : {}),
+        ...(updates.pin !== undefined ? { pin: updates.pin } : {}),
+        ...(updates.status !== undefined ? { status: updates.status } : {}),
+        updated_at: new Date().toISOString()
+      });
+    }
+  } catch (err) {
+    console.warn("Profile update warning:", err);
+  }
 
   // If email and PIN are provided, ensure Auth account is ready
   if (updates.email) {
@@ -326,6 +362,11 @@ export async function updateStaffMember(
 export async function deleteStaffMember(staffId: string): Promise<void> {
   const staffRef = doc(db, "staff_members", staffId);
   await deleteDoc(staffRef);
+  try {
+    await deleteDoc(doc(db, "profiles", staffId));
+  } catch (err) {
+    // Ignore if not present in profiles
+  }
 }
 
 const STAFF_SESSION_KEY = "khataplus_staff_session";
