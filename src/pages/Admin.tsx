@@ -55,6 +55,7 @@ const Admin = () => {
   const [planFilter, setPlanFilter] = useState<"all" | "pro" | "trial" | "expired" | "staff">("all");
   const [editName, setEditName] = useState("");
   const [editShop, setEditShop] = useState("");
+  const [editRole, setEditRole] = useState("Staff");
   const [editPassword, setEditPassword] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -230,16 +231,33 @@ const Admin = () => {
     if (!editing) return;
     setSavingId(editing.id);
     try {
-      await updateDoc(doc(db, "profiles", editing.id), {
+      const updates: any = {
         full_name: editName.trim(),
         shop_name: editShop.trim(),
-      });
+      };
+      if (editing.is_staff) {
+        updates.role = editRole.trim() || "Staff";
+      }
+      await updateDoc(doc(db, "profiles", editing.id), updates);
       if (editPassword) {
         toast.info("Password change requires Firebase Console (Cloud Functions disabled).");
       }
-      toast.success("Profile updated!");
+      toast.success("Profile updated successfully!");
       setEditing(null);
-      load();
+      await load();
+      if (viewingStaffOwner) {
+        setViewingStaffOwner(prev => {
+          if (!prev || !prev.staffMembers) return prev;
+          return {
+            ...prev,
+            staffMembers: prev.staffMembers.map(s => s.id === editing.id ? { 
+              ...s, 
+              full_name: editName.trim(), 
+              staff_role: editRole.trim() || s.staff_role 
+            } : s)
+          };
+        });
+      }
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -750,42 +768,20 @@ const Admin = () => {
                   {/* Row 1: Account Management (Edit, Admin, Ban) */}
                   <div className="grid grid-cols-3 gap-1.5">
                     {/* Edit */}
-                    <Dialog open={editing?.id === u.id} onOpenChange={(o) => { if (!o) { setEditing(null); setEditPassword(""); } }}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="h-7 text-xs px-2.5 justify-center gap-1" onClick={() => { setEditing(u); setEditName(u.full_name); setEditShop(u.shop_name); setEditPassword(""); }}>
-                          <Pencil className="h-3 w-3" /> Edit
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Edit User Profile</DialogTitle>
-                          <DialogDescription>Update profile details or assign a new password for {u.email}.</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label>Full Name</Label>
-                            <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Enter full name..." />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Shop Name</Label>
-                            <Input value={editShop} onChange={(e) => setEditShop(e.target.value)} placeholder="Enter shop name..." />
-                          </div>
-                          <div className="space-y-2 border-t pt-4">
-                            <Label>Set New Password</Label>
-                            <Input 
-                              type="password" 
-                              value={editPassword} 
-                              onChange={(e) => setEditPassword(e.target.value)} 
-                              placeholder="Leave blank to keep unchanged..." 
-                            />
-                            <p className="text-[10px] text-muted-foreground">Min 6 characters. This will override their current password immediately.</p>
-                          </div>
-                          <Button onClick={saveProfile} disabled={savingId === editing?.id} className="w-full bg-primary text-primary-foreground h-11 font-semibold">
-                            {savingId === editing?.id ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : "Save Changes"}
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-7 text-xs px-2.5 justify-center gap-1" 
+                      onClick={() => { 
+                        setEditing(u); 
+                        setEditName(u.full_name || ""); 
+                        setEditShop(u.shop_name || ""); 
+                        setEditRole(u.staff_role || "Staff");
+                        setEditPassword(""); 
+                      }}
+                    >
+                      <Pencil className="h-3 w-3" /> Edit
+                    </Button>
 
                     {/* Make Admin / Revoke */}
                     <Button 
@@ -1220,8 +1216,9 @@ const Admin = () => {
                         className="h-6 text-[11px] px-2 gap-1"
                         onClick={() => {
                           setEditing(staff);
-                          setEditName(staff.full_name);
-                          setEditShop(staff.shop_name);
+                          setEditName(staff.full_name || "");
+                          setEditShop(staff.shop_name || "");
+                          setEditRole(staff.staff_role || "Staff");
                           setEditPassword("");
                         }}
                       >
@@ -1281,6 +1278,74 @@ const Admin = () => {
                 </div>
               ))
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Global Edit Profile Dialog (Works for Owners & Staff) */}
+      <Dialog open={!!editing} onOpenChange={(o) => { if (!o) { setEditing(null); setEditPassword(""); } }}>
+        <DialogContent className="max-w-md w-full">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Pencil className="h-4 w-4 text-primary" />
+              {editing?.is_staff ? "Edit Staff Member Profile" : "Edit Shop Owner Profile"}
+            </DialogTitle>
+            <DialogDescription className="text-xs truncate text-muted-foreground">
+              {editing?.email} • {editing?.is_staff ? `Staff under ${editing.owner_shop_name || "Owner"}` : (editing?.shop_name || "No Shop")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Full Name</Label>
+              <Input 
+                value={editName} 
+                onChange={(e) => setEditName(e.target.value)} 
+                placeholder="Enter full name..." 
+                className="h-9 text-sm"
+              />
+            </div>
+
+            {editing?.is_staff ? (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Staff Role / Designation</Label>
+                <Input 
+                  value={editRole} 
+                  onChange={(e) => setEditRole(e.target.value)} 
+                  placeholder="e.g. Cashier, Storekeeper, Accountant, Manager, Staff" 
+                  className="h-9 text-sm"
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Shop / Business Name</Label>
+                <Input 
+                  value={editShop} 
+                  onChange={(e) => setEditShop(e.target.value)} 
+                  placeholder="Enter shop name..." 
+                  className="h-9 text-sm"
+                />
+              </div>
+            )}
+
+            <div className="space-y-2 border-t pt-3">
+              <Label className="text-xs font-semibold">Set New Password</Label>
+              <Input 
+                type="password" 
+                value={editPassword} 
+                onChange={(e) => setEditPassword(e.target.value)} 
+                placeholder="Leave blank to keep unchanged..." 
+                className="h-9 text-sm"
+              />
+              <p className="text-[10px] text-muted-foreground">Min 6 characters. Overrides current login password.</p>
+            </div>
+
+            <Button 
+              onClick={saveProfile} 
+              disabled={savingId === editing?.id} 
+              className="w-full bg-primary text-primary-foreground h-10 font-semibold text-xs"
+            >
+              {savingId === editing?.id ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Saving...</> : "Save Changes"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
