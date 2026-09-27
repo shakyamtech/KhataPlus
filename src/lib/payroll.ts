@@ -90,7 +90,17 @@ export async function updateStaffSalaryDetails(
     if (salaryData.bank_name !== undefined) updates.bank_name = salaryData.bank_name || "";
     if (salaryData.bank_account_no !== undefined) updates.bank_account_no = salaryData.bank_account_no || "";
 
-    await updateDoc(ref, updates);
+    // 1. Update or create/merge into staff_members
+    await setDoc(ref, updates, { merge: true });
+
+    // 2. Also update or create/merge into profiles collection
+    try {
+      const pRef = doc(db, "profiles", staffId);
+      await setDoc(pRef, updates, { merge: true });
+    } catch (pErr) {
+      console.warn("Profiles salary update warning:", pErr);
+    }
+
     return true;
   } catch (err) {
     console.error("Error updating staff salary details:", err);

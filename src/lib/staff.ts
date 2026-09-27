@@ -332,20 +332,18 @@ export async function updateStaffMember(
   if (updates.pin !== undefined) cleanUpdates.pin = updates.pin;
   if (updates.status !== undefined) cleanUpdates.status = updates.status;
 
-  await updateDoc(staffRef, cleanUpdates);
+  await setDoc(staffRef, cleanUpdates, { merge: true });
 
   // Also update corresponding profile if exists
   try {
-    const pSnap = await getDoc(doc(db, "profiles", staffId));
-    if (pSnap.exists()) {
-      await updateDoc(doc(db, "profiles", staffId), {
-        ...(updates.name !== undefined ? { full_name: updates.name } : {}),
-        ...(updates.role !== undefined ? { role: updates.role } : {}),
-        ...(updates.pin !== undefined ? { pin: updates.pin } : {}),
-        ...(updates.status !== undefined ? { status: updates.status } : {}),
-        updated_at: new Date().toISOString()
-      });
-    }
+    const pRef = doc(db, "profiles", staffId);
+    await setDoc(pRef, {
+      ...(updates.name !== undefined ? { full_name: updates.name } : {}),
+      ...(updates.role !== undefined ? { role: updates.role } : {}),
+      ...(updates.pin !== undefined ? { pin: updates.pin } : {}),
+      ...(updates.status !== undefined ? { status: updates.status } : {}),
+      updated_at: new Date().toISOString()
+    }, { merge: true });
   } catch (err) {
     console.warn("Profile update warning:", err);
   }
