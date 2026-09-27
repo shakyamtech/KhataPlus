@@ -698,7 +698,31 @@ export const AppShell = () => {
                 await pBatch.commit();
             }
 
-            // 7. Reset bill numbering counters to 1
+            // 7. Clear payroll transactions and reset staff advance balances
+            const [payrollSnap, staffSnap] = await Promise.all([
+                getDocs(query(collection(db, "payroll_transactions"), where("owner_id", "==", user.uid))),
+                getDocs(query(collection(db, "staff_members"), where("owner_id", "==", user.uid)))
+            ]);
+
+            if (!payrollSnap.empty) {
+                for (let i = 0; i < payrollSnap.docs.length; i += 450) {
+                    const chunk = payrollSnap.docs.slice(i, i + 450);
+                    const payBatch = writeBatch(db);
+                    chunk.forEach(d => payBatch.delete(d.ref));
+                    await payBatch.commit();
+                }
+            }
+
+            if (!staffSnap.empty) {
+                for (let i = 0; i < staffSnap.docs.length; i += 450) {
+                    const chunk = staffSnap.docs.slice(i, i + 450);
+                    const staffBatch = writeBatch(db);
+                    chunk.forEach(d => staffBatch.update(d.ref, { advance_balance: 0 }));
+                    await staffBatch.commit();
+                }
+            }
+
+            // 8. Reset bill numbering counters to 1
             await setDoc(doc(db, "profiles", user.uid), {
                 tax_invoice_next_no: 1,
                 abbreviated_next_no: 1,
@@ -821,7 +845,36 @@ export const AppShell = () => {
                 }
             }
 
-            // 4. Reset bill and inward numbering counters in profile to 1
+            // 4. Delete staff members and payroll transactions
+            const [staffOwnerSnap, staffUserSnap, payOwnerSnap, payUserSnap] = await Promise.all([
+                getDocs(query(collection(db, "staff_members"), where("owner_id", "==", user.uid))),
+                getDocs(query(collection(db, "staff_members"), where("user_id", "==", user.uid))),
+                getDocs(query(collection(db, "payroll_transactions"), where("owner_id", "==", user.uid))),
+                getDocs(query(collection(db, "payroll_transactions"), where("user_id", "==", user.uid)))
+            ]);
+
+            const staffAndPayrollDocs = [
+                ...staffOwnerSnap.docs,
+                ...staffUserSnap.docs,
+                ...payOwnerSnap.docs,
+                ...payUserSnap.docs
+            ];
+
+            const seenStaffPayIds = new Set<string>();
+            const uniqueStaffPayDocs = staffAndPayrollDocs.filter(d => {
+                if (seenStaffPayIds.has(d.id)) return false;
+                seenStaffPayIds.add(d.id);
+                return true;
+            });
+
+            for (let i = 0; i < uniqueStaffPayDocs.length; i += 450) {
+                const chunk = uniqueStaffPayDocs.slice(i, i + 450);
+                const spBatch = writeBatch(db);
+                chunk.forEach(d => spBatch.delete(d.ref));
+                await spBatch.commit();
+            }
+
+            // 5. Reset bill and inward numbering counters in profile to 1
             await setDoc(doc(db, "profiles", user.uid), {
                 tax_invoice_next_no: 1,
                 abbreviated_next_no: 1,

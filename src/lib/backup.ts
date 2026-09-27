@@ -35,6 +35,8 @@ export interface BackupPayload {
     stock_adjustments?: any[];
     accounts?: any[];
     vouchers?: any[];
+    staff_members?: any[];
+    payroll_transactions?: any[];
     custom_units?: any[];
     profile?: any;
   };
@@ -84,7 +86,9 @@ export async function fetchFullUserDatabase(userId: string, customShopName?: str
     adjSnap,
     accountsSnap,
     vouchersSnap,
-    profileSnap
+    profileSnap,
+    staffSnap,
+    payrollSnap
   ] = await Promise.all([
     getDocs(query(collection(db, "products"), where("user_id", "==", userId))),
     getDocs(query(collection(db, "product_batches"), where("user_id", "==", userId))),
@@ -97,7 +101,9 @@ export async function fetchFullUserDatabase(userId: string, customShopName?: str
     getDocs(query(collection(db, "stock_adjustments"), where("user_id", "==", userId))),
     getDocs(query(collection(db, "accounts"), where("user_id", "==", userId))),
     getDocs(query(collection(db, "vouchers"), where("user_id", "==", userId))),
-    getDoc(doc(db, "profiles", userId))
+    getDoc(doc(db, "profiles", userId)),
+    getDocs(query(collection(db, "staff_members"), where("owner_id", "==", userId))),
+    getDocs(query(collection(db, "payroll_transactions"), where("owner_id", "==", userId)))
   ]);
 
   const profileData = profileSnap.exists() ? profileSnap.data() : null;
@@ -114,6 +120,8 @@ export async function fetchFullUserDatabase(userId: string, customShopName?: str
   const stockAdjustments = adjSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const accounts = accountsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const vouchers = vouchersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const staffMembers = staffSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const payrollTransactions = payrollSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   // 2. Fetch related sale_items and purchase_items in chunks
   const saleIds = sales.map(s => s.id);
@@ -150,7 +158,9 @@ export async function fetchFullUserDatabase(userId: string, customShopName?: str
     ledger_entries: ledgerEntries.length,
     stock_adjustments: stockAdjustments.length,
     accounts: accounts.length,
-    vouchers: vouchers.length
+    vouchers: vouchers.length,
+    staff_members: staffMembers.length,
+    payroll_transactions: payrollTransactions.length
   };
 
   return {
@@ -167,6 +177,8 @@ export async function fetchFullUserDatabase(userId: string, customShopName?: str
     stockAdjustments,
     accounts,
     vouchers,
+    staffMembers,
+    payrollTransactions,
     profileData,
     shopName,
     counts
@@ -221,6 +233,8 @@ export async function exportUserDataAsJson(
       stock_adjustments: stockAdjustments,
       accounts: accounts || [],
       vouchers: vouchers || [],
+      staff_members: full.staffMembers || [],
+      payroll_transactions: full.payrollTransactions || [],
       custom_units: profileData?.custom_units || [],
       profile: profileData
     }
@@ -248,7 +262,7 @@ export async function exportUserDataToExcel(
   const {
     products, batches, customers, suppliers, sales, saleItems,
     purchases, purchaseItems, cashTransactions, ledgerEntries,
-    accounts, vouchers, shopName, counts
+    accounts, vouchers, staffMembers, payrollTransactions, shopName, counts
   } = full;
 
   const wb = XLSX.utils.book_new();
@@ -554,6 +568,39 @@ export async function exportUserDataToExcel(
     XLSX.utils.book_append_sheet(wb, wsAccounts, "Accounts");
   }
 
+  // 12. Staff Members Sheet
+  const staffRows = (staffMembers || []).map(st => ({
+    "Staff Name": st.name || "",
+    "Role / Position": st.role || "",
+    "Phone": st.phone || "",
+    "Monthly Salary (Rs.)": Number(st.base_salary ?? 0),
+    "Current Advance (Rs.)": Number(st.advance_balance ?? 0),
+    "Status": st.status || "active"
+  }));
+  if (staffRows.length > 0) {
+    const wsStaff = XLSX.utils.json_to_sheet(staffRows);
+    autoWidth(wsStaff, staffRows);
+    XLSX.utils.book_append_sheet(wb, wsStaff, "Staff Members");
+  }
+
+  // 13. Payroll Transactions Sheet
+  const staffMap = new Map((staffMembers || []).map(st => [st.id, st.name]));
+  const payrollRows = (payrollTransactions || []).map(pt => ({
+    "Staff Name": staffMap.get(pt.staff_id) || pt.staff_name || "",
+    "Type": pt.type === "advance" ? "Advance Salary" : "Salary Payout",
+    "Date (AD)": pt.created_at ? pt.created_at.slice(0, 10) : "",
+    "Date (BS)": pt.nepali_date || formatNepaliDate(pt.created_at),
+    "Amount (Rs.)": Number(pt.amount ?? 0),
+    "Payment Mode": pt.payment_mode || "cash",
+    "Month / Period": pt.month_nepali || pt.month || "",
+    "Notes": pt.notes || ""
+  }));
+  if (payrollRows.length > 0) {
+    const wsPayroll = XLSX.utils.json_to_sheet(payrollRows);
+    autoWidth(wsPayroll, payrollRows);
+    XLSX.utils.book_append_sheet(wb, wsPayroll, "Payroll");
+  }
+
   // File naming
   const dateStr = new Date().toISOString().slice(0, 10);
   const cleanShop = shopName.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -594,7 +641,9 @@ export async function parseAndValidateBackupFile(file: File): Promise<Validation
       ledger_entries: Array.isArray(data.ledger_entries) ? data.ledger_entries.length : 0,
       stock_adjustments: Array.isArray(data.stock_adjustments) ? data.stock_adjustments.length : 0,
       accounts: Array.isArray(data.accounts) ? data.accounts.length : 0,
-      vouchers: Array.isArray(data.vouchers) ? data.vouchers.length : 0
+      vouchers: Array.isArray(data.vouchers) ? data.vouchers.length : 0,
+      staff_members: Array.isArray(data.staff_members) ? data.staff_members.length : 0,
+      payroll_transactions: Array.isArray(data.payroll_transactions) ? data.payroll_transactions.length : 0
     };
 
     const totalEntities = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -706,17 +755,28 @@ export async function restoreUserDataFromJson(
       "ledger_entries",
       "stock_adjustments",
       "accounts",
-      "vouchers"
+      "vouchers",
+      "staff_members",
+      "payroll_transactions"
     ];
 
     const deleteOps: { ref: any; data: any; action: "delete" }[] = [];
     for (const colName of collectionsToClean) {
+      const isOwnerCol = colName === "staff_members" || colName === "payroll_transactions";
       const snap = await getDocs(
         query(collection(db, colName), where("user_id", "==", currentUserId))
       );
       snap.docs.forEach(d => {
         deleteOps.push({ ref: d.ref, data: null, action: "delete" });
       });
+      if (isOwnerCol) {
+        const snapOwner = await getDocs(
+          query(collection(db, colName), where("owner_id", "==", currentUserId))
+        );
+        snapOwner.docs.forEach(d => {
+          deleteOps.push({ ref: d.ref, data: null, action: "delete" });
+        });
+      }
     }
 
     if (deleteOps.length > 0) {
@@ -745,6 +805,8 @@ export async function restoreUserDataFromJson(
     (data.purchases || []).forEach(p => p.id && getMappedDocId(p.id, "purchases"));
     (data.accounts || []).forEach(a => a.id && getMappedDocId(a.id, "accounts"));
     (data.vouchers || []).forEach(v => v.id && getMappedDocId(v.id, "vouchers"));
+    (data.staff_members || []).forEach(s => s.id && getMappedDocId(s.id, "staff_members"));
+    (data.payroll_transactions || []).forEach(p => p.id && getMappedDocId(p.id, "payroll_transactions"));
   }
 
   // 2. Prepare import operations mapping user_id to current user
@@ -906,6 +968,32 @@ export async function restoreUserDataFromJson(
           product_id: (it.product_id && idMap.get(it.product_id)) || it.product_id,
           batch_id: (it.batch_id && idMap.get(it.batch_id)) || it.batch_id
         }));
+      }
+    }
+    return updated;
+  });
+
+  // Staff Members
+  importCollection("staff_members", data.staff_members, (rec) => {
+    return {
+      ...rec,
+      owner_id: currentUserId,
+      user_id: isCrossUserCloning ? undefined : rec.user_id
+    };
+  });
+
+  // Payroll Transactions
+  importCollection("payroll_transactions", data.payroll_transactions, (rec) => {
+    const updated = { ...rec, owner_id: currentUserId };
+    if (isCrossUserCloning) {
+      if (updated.staff_id && idMap.has(updated.staff_id)) {
+        updated.staff_id = idMap.get(updated.staff_id);
+      }
+      if (updated.voucher_id && idMap.has(updated.voucher_id)) {
+        updated.voucher_id = idMap.get(updated.voucher_id);
+      }
+      if (updated.bank_account_id && idMap.has(updated.bank_account_id)) {
+        updated.bank_account_id = idMap.get(updated.bank_account_id);
       }
     }
     return updated;
