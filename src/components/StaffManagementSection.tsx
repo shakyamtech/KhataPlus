@@ -40,6 +40,7 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
   const [ownerPinModalOpen, setOwnerPinModalOpen] = useState(false);
   const [newOwnerPin, setNewOwnerPin] = useState("");
   const [showOwnerPin, setShowOwnerPin] = useState(false);
+  const [revealedMasterPin, setRevealedMasterPin] = useState(false);
   const [savingOwnerPin, setSavingOwnerPin] = useState(false);
 
   // Unified StaffModal Dialog State
@@ -169,20 +170,32 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setNewOwnerPin(ownerMasterPin);
-              setShowOwnerPin(false);
-              setOwnerPinModalOpen(true);
-            }}
-            className="text-xs font-semibold gap-1.5 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
-          >
-            <KeyRound className="h-3.5 w-3.5" />
-            <span>{lang === "NEP" ? `मास्टर PIN: ${ownerMasterPin}` : `Master PIN: ${ownerMasterPin}`}</span>
-          </Button>
+          <div className="inline-flex items-center rounded-md border border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400 text-xs font-semibold overflow-hidden shadow-2xs">
+            <button
+              type="button"
+              onClick={() => {
+                setNewOwnerPin(ownerMasterPin);
+                setShowOwnerPin(false);
+                setOwnerPinModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-amber-500/10 cursor-pointer transition-colors"
+              title={lang === "NEP" ? "मास्टर PIN परिवर्तन गर्नुहोस्" : "Change Master PIN"}
+            >
+              <KeyRound className="h-3.5 w-3.5" />
+              <span>
+                {lang === "NEP" ? "मास्टर PIN:" : "Master PIN:"}{" "}
+                <b className="font-mono tracking-wider">{revealedMasterPin ? ownerMasterPin : "••••"}</b>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRevealedMasterPin(!revealedMasterPin)}
+              className="px-2 py-1.5 border-l border-amber-500/20 hover:bg-amber-500/15 cursor-pointer text-amber-600/80 hover:text-amber-600 dark:text-amber-400/80 dark:hover:text-amber-400 transition-colors"
+              title={revealedMasterPin ? (lang === "NEP" ? "PIN लुकाउनुहोस्" : "Hide PIN") : (lang === "NEP" ? "PIN देखाउनुहोस्" : "Show PIN")}
+            >
+              {revealedMasterPin ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
 
           <Button
             type="button"
@@ -443,16 +456,26 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
               <Label className="text-xs font-semibold">
                 {lang === "NEP" ? "नयाँ ४-अङ्कको Master PIN:" : "New 4-Digit Master PIN:"}
               </Label>
-              <Input
-                type="password"
-                maxLength={6}
-                value={newOwnerPin}
-                onChange={(e) => setNewOwnerPin(e.target.value.replace(/\D/g, ""))}
-                placeholder="e.g. 1234"
-                className="font-mono text-center tracking-widest text-lg h-11 bg-background"
-                autoFocus
-                required
-              />
+              <div className="relative">
+                <Input
+                  type={showOwnerPin ? "text" : "password"}
+                  maxLength={6}
+                  value={newOwnerPin}
+                  onChange={(e) => setNewOwnerPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="e.g. 1234"
+                  className="font-mono text-center tracking-widest text-lg h-11 bg-background pr-10"
+                  autoFocus
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOwnerPin(!showOwnerPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded cursor-pointer transition-colors"
+                  title={showOwnerPin ? (lang === "NEP" ? "PIN लुकाउनुहोस्" : "Hide PIN") : (lang === "NEP" ? "PIN देखाउनुहोस्" : "Show PIN")}
+                >
+                  {showOwnerPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               <p className="text-[11px] text-muted-foreground">
                 {lang === "NEP"
                   ? "यो PIN साहुजीले मात्र जान्नुपर्छ। क्यासियरलाई यो PIN नदिनुहोस्।"
