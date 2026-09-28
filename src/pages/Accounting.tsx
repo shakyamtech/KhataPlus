@@ -36,6 +36,10 @@ import {
   AccountType
 } from "@/lib/accounting";
 import {
+  predictAccountGroup,
+  AccountGroupPrediction
+} from "@/lib/accountPredictor";
+import {
   Landmark,
   ArrowRightLeft,
   CreditCard,
@@ -160,6 +164,17 @@ export default function Accounting() {
   const [newAccGroup, setNewAccGroup] = useState<AccountGroup>("bank_accounts");
   const [newAccOpening, setNewAccOpening] = useState("0");
   const [savingAccount, setSavingAccount] = useState(false);
+  const [groupPrediction, setGroupPrediction] = useState<AccountGroupPrediction | null>(null);
+  const [isManualGroupOverride, setIsManualGroupOverride] = useState(false);
+
+  const handleNewAccNameChange = (val: string) => {
+    setNewAccName(val);
+    const pred = predictAccountGroup(val);
+    setGroupPrediction(pred);
+    if (pred && !isManualGroupOverride) {
+      setNewAccGroup(pred.group as AccountGroup);
+    }
+  };
 
   // Quick Account Creation Target Slot (Tally-Style Alt+C)
   type QuickAccountTarget =
@@ -174,6 +189,8 @@ export default function Accounting() {
 
   const openQuickCreateAccount = (target?: QuickAccountTarget, defaultGroup?: AccountGroup) => {
     setQuickTarget(target || null);
+    setGroupPrediction(null);
+    setIsManualGroupOverride(false);
     if (defaultGroup) {
       setNewAccGroup(defaultGroup);
     } else if (voucherType === "payment") {
@@ -183,7 +200,7 @@ export default function Accounting() {
     } else if (voucherType === "contra") {
       setNewAccGroup("bank_accounts");
     } else {
-      setNewAccGroup("indirect_expenses");
+      setNewAccGroup("bank_accounts");
     }
     setNewAccName("");
     setNewAccOpening("0");
@@ -4287,7 +4304,7 @@ export default function Accounting() {
               </p>
             </div>
             <Button
-              onClick={() => setNewAccModalOpen(true)}
+              onClick={() => openQuickCreateAccount()}
               size="sm"
               className="gap-1.5 text-xs font-bold bg-primary text-primary-foreground shadow-xs shrink-0 cursor-pointer"
             >
@@ -5724,37 +5741,142 @@ export default function Accounting() {
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "खाताको नाम (Account Name)" : "Account Name"}</Label>
               <Input
-                placeholder="e.g. NIC Asia Bank, Office Electricity, Ram Bahadur (Vendor)..."
+                placeholder="e.g. NIC Asia Bank, Office Electricity, Ram Bahadur (Vendor), Savings Cash..."
                 value={newAccName}
-                onChange={e => setNewAccName(e.target.value)}
+                onChange={e => handleNewAccNameChange(e.target.value)}
                 className="h-10 text-xs rounded-xl"
                 required
                 autoFocus
               />
+              {groupPrediction && (
+                <div className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg border bg-muted/40 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 animate-pulse" />
+                    <span className="text-muted-foreground text-[11px]">
+                      {lang === "NEP" ? "सुझाव:" : "Suggested:"}
+                    </span>
+                    <span className="font-semibold text-foreground text-[11px]">
+                      {lang === "NEP" ? groupPrediction.categoryLabelNep : groupPrediction.categoryLabelEng}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                      ({lang === "NEP" ? groupPrediction.reasonNep : groupPrediction.reasonEng})
+                    </span>
+                  </div>
+                  {isManualGroupOverride && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 px-1.5 text-[10px] font-medium text-primary hover:underline hover:bg-transparent shrink-0"
+                      onClick={() => {
+                        setNewAccGroup(groupPrediction.group as AccountGroup);
+                        setIsManualGroupOverride(false);
+                      }}
+                    >
+                      {lang === "NEP" ? "यो लागू गर्नुहोस्" : "Apply"}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "लेखा समूह (Account Group)" : "Account Group"}</Label>
-              <Select value={newAccGroup} onValueChange={(v: any) => setNewAccGroup(v)}>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "लेखा समूह (Account Group)" : "Account Group"}</Label>
+                {groupPrediction && !isManualGroupOverride && (
+                  <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                    ⚡ {lang === "NEP" ? "स्वतः छानिएको (Auto Detected)" : "Auto Selected"}
+                  </span>
+                )}
+              </div>
+              <Select
+                value={newAccGroup}
+                onValueChange={(v: any) => {
+                  setNewAccGroup(v);
+                  setIsManualGroupOverride(true);
+                }}
+              >
                 <SelectTrigger className="h-10 text-xs rounded-xl mt-1">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="max-h-56 z-[90]">
-                  <SelectItem value="sundry_debtors">👥 Sundry Debtors (ग्राहक / विद्यार्थी / असामी)</SelectItem>
-                  <SelectItem value="sundry_creditors">🏢 Sundry Creditors (साहु / आपूर्तिकर्ता / महाजन)</SelectItem>
-                  <SelectItem value="bank_accounts">Bank Account (बैंक खाता)</SelectItem>
-                  <SelectItem value="current_assets">Current Asset (चालू सम्पत्ति / पेश्की, धरौटी, TDS)</SelectItem>
-                  <SelectItem value="indirect_expenses">Indirect Expense / अप्रत्यक्ष खर्च (कार्यालय भाडा, खाजा, बिजुली, तलब)</SelectItem>
-                  <SelectItem value="direct_expenses">Direct Expense / प्रत्यक्ष खर्च (सामान ढुवानी, ज्यालादारी)</SelectItem>
-                  <SelectItem value="indirect_incomes">Indirect Income / अप्रत्यक्ष आम्दानी (ब्याज, कमिसन)</SelectItem>
-                  <SelectItem value="direct_incomes">Direct Income / प्रत्यक्ष आम्दानी</SelectItem>
-                  <SelectItem value="fixed_assets">Fixed Asset (सम्पत्ति - गाडी, कम्प्युटर, फर्निचर)</SelectItem>
-                  <SelectItem value="loans_advances_asset">Loans Given & Advances (दिएको ऋण तथा पेश्की)</SelectItem>
-                  <SelectItem value="loans_liabilities">Loan & Borrowing (बैंक ऋण / साहु ऋण)</SelectItem>
-                  <SelectItem value="current_liabilities">Current Liability (दिन बाँकी दायित्व)</SelectItem>
-                  <SelectItem value="duties_taxes">VAT & Taxes (भ्याट तथा कर)</SelectItem>
-                  <SelectItem value="capital">Capital (मालिकको पुँजी)</SelectItem>
-                  <SelectItem value="drawings">Drawings (घरखर्च/व्यक्तिगत झिक्)</SelectItem>
+                <SelectContent className="max-h-72 z-[90]">
+                  <SelectGroup>
+                    <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
+                      {lang === "NEP" ? "💵 सम्पत्तिहरू (Assets)" : "💵 Assets (सम्पत्ति)"}
+                    </SelectLabel>
+                    <SelectItem value="cash">
+                      💵 {lang === "NEP" ? "नगद मौज्दात (Cash in Hand / Petty Cash / गल्ला)" : "Cash in Hand (नगद मौज्दात)"}
+                    </SelectItem>
+                    <SelectItem value="bank_accounts">
+                      🏦 {lang === "NEP" ? "बैंक खाताहरू तथा वालेट (Bank A/C, eSewa, Khalti)" : "Bank Accounts & Wallets (बैंक तथा वालेट)"}
+                    </SelectItem>
+                    <SelectItem value="fixed_assets">
+                      🖥️ {lang === "NEP" ? "स्थिर सम्पत्ति (Fixed Assets - फर्निचर, गाडी, कम्प्युटर)" : "Fixed Assets (फर्निचर, कम्प्युटर, सवारी)"}
+                    </SelectItem>
+                    <SelectItem value="current_assets">
+                      📑 {lang === "NEP" ? "चालू सम्पत्ति (Current Assets - धरौटी, अग्रिम, TDS)" : "Current Assets (धरौटी, पेश्की)"}
+                    </SelectItem>
+                    <SelectItem value="loans_advances_asset">
+                      🤝 {lang === "NEP" ? "दिएको ऋण तथा पेश्की (Loans Given & Staff Advances)" : "Loans Given & Advances (दिएको पेश्की)"}
+                    </SelectItem>
+                  </SelectGroup>
+
+                  <SelectGroup className="mt-2">
+                    <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
+                      {lang === "NEP" ? "👥 पार्टीहरू (Parties)" : "👥 Parties (पार्टीहरू)"}
+                    </SelectLabel>
+                    <SelectItem value="sundry_debtors">
+                      👥 {lang === "NEP" ? "ग्राहक / असामी (Sundry Debtors - लिन बाँकी पार्टी)" : "Sundry Debtors (ग्राहक / असामी)"}
+                    </SelectItem>
+                    <SelectItem value="sundry_creditors">
+                      🏢 {lang === "NEP" ? "साहु / आपूर्तिकर्ता (Sundry Creditors - तिर्न बाँकी पार्टी)" : "Sundry Creditors (साहु / सप्लायर)"}
+                    </SelectItem>
+                  </SelectGroup>
+
+                  <SelectGroup className="mt-2">
+                    <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-1 rounded">
+                      {lang === "NEP" ? "📉 खर्चहरू (Expenses)" : "📉 Expenses (खर्चहरू)"}
+                    </SelectLabel>
+                    <SelectItem value="indirect_expenses">
+                      ☕ {lang === "NEP" ? "अप्रत्यक्ष खर्च (Indirect Expenses - भाडा, चिया, तलब, बिजुली, मर्मत)" : "Indirect Expenses (भाडा, खाजा, तलब, बिजुली)"}
+                    </SelectItem>
+                    <SelectItem value="direct_expenses">
+                      🚚 {lang === "NEP" ? "प्रत्यक्ष खर्च (Direct Expenses - ढुवानी, ज्यालादारी, भन्सार)" : "Direct Expenses (ढुवानी, ज्याला, भन्सार)"}
+                    </SelectItem>
+                  </SelectGroup>
+
+                  <SelectGroup className="mt-2">
+                    <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-1 rounded">
+                      {lang === "NEP" ? "⚖️ दायित्व तथा पुँजी (Liabilities & Equity)" : "⚖️ Liabilities & Equity (दायित्व र पुँजी)"}
+                    </SelectLabel>
+                    <SelectItem value="capital">
+                      💰 {lang === "NEP" ? "मालिकको पुँजी (Owner's Capital / सेयर / लगानी)" : "Owner's Capital (मालिकको पुँजी)"}
+                    </SelectItem>
+                    <SelectItem value="drawings">
+                      🏠 {lang === "NEP" ? "व्यक्तिगत / घरखर्च (Owner's Drawings / निकासी)" : "Owner's Drawings (घरखर्च निकासी)"}
+                    </SelectItem>
+                    <SelectItem value="loans_liabilities">
+                      🏦 {lang === "NEP" ? "ऋण तथा सापटी (Loans & Liabilities / बैंक ऋण)" : "Loans & Liabilities (बैंक/साहु ऋण)"}
+                    </SelectItem>
+                    <SelectItem value="current_liabilities">
+                      ⏳ {lang === "NEP" ? "चालू दायित्व (Current Liabilities / तिर्न बाँकी खर्च)" : "Current Liabilities (तिर्न बाँकी दायित्व)"}
+                    </SelectItem>
+                    <SelectItem value="duties_taxes">
+                      ⚖️ {lang === "NEP" ? "भ्याट तथा कर (VAT & Taxes)" : "VAT & Taxes (भ्याट तथा कर)"}
+                    </SelectItem>
+                  </SelectGroup>
+
+                  <SelectGroup className="mt-2">
+                    <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 bg-teal-500/10 px-2 py-1 rounded">
+                      {lang === "NEP" ? "📈 आम्दानीहरू (Incomes)" : "📈 Incomes (आम्दानीहरू)"}
+                    </SelectLabel>
+                    <SelectItem value="indirect_incomes">
+                      🏷️ {lang === "NEP" ? "अप्रत्यक्ष आम्दानी (Indirect Incomes - ब्याज, कमिसन, छुट, कवाडी)" : "Indirect Incomes (ब्याज, कमिसन, छुट)"}
+                    </SelectItem>
+                    <SelectItem value="direct_incomes">
+                      📊 {lang === "NEP" ? "प्रत्यक्ष आम्दानी (Direct Incomes - बिक्री/सेवा आम्दानी)" : "Direct Incomes (बिक्री तथा सेवा आम्दानी)"}
+                    </SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -5835,22 +5957,84 @@ export default function Accounting() {
                 <SelectTrigger className="h-10 text-xs rounded-xl mt-1">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="max-h-56 z-[90]">
-                  <SelectItem value="sundry_debtors">👥 Sundry Debtors (ग्राहक / विद्यार्थी / असामी)</SelectItem>
-                  <SelectItem value="sundry_creditors">🏢 Sundry Creditors (साहु / आपूर्तिकर्ता / महाजन)</SelectItem>
-                  <SelectItem value="bank_accounts">Bank Account (बैंक खाता)</SelectItem>
-                  <SelectItem value="current_assets">Current Asset (चालू सम्पत्ति / पेश्की, धरौटी, TDS)</SelectItem>
-                  <SelectItem value="indirect_expenses">Indirect Expense / अप्रत्यक्ष खर्च (कार्यालय भाडा, खाजा, बिजुली, तलब)</SelectItem>
-                  <SelectItem value="direct_expenses">Direct Expense / प्रत्यक्ष खर्च (सामान ढुवानी, ज्यालादारी)</SelectItem>
-                  <SelectItem value="indirect_incomes">Indirect Income / अप्रत्यक्ष आम्दानी (ब्याज, कमिसन)</SelectItem>
-                  <SelectItem value="direct_incomes">Direct Income / प्रत्यक्ष आम्दानी</SelectItem>
-                  <SelectItem value="fixed_assets">Fixed Asset (सम्पत्ति - गाडी, कम्प्युटर, फर्निचर)</SelectItem>
-                  <SelectItem value="loans_advances_asset">Loans Given & Advances (दिएको ऋण तथा पेश्की)</SelectItem>
-                  <SelectItem value="loans_liabilities">Loan & Borrowing (बैंक ऋण / साहु ऋण)</SelectItem>
-                  <SelectItem value="current_liabilities">Current Liability (दिन बाँकी दायित्व)</SelectItem>
-                  <SelectItem value="duties_taxes">VAT & Taxes (भ्याट तथा कर)</SelectItem>
-                  <SelectItem value="capital">Capital (मालिकको पुँजी)</SelectItem>
-                  <SelectItem value="drawings">Drawings (घरखर्च/व्यक्तिगत झिक्)</SelectItem>
+                <SelectContent className="max-h-72 z-[90]">
+                  <SelectGroup>
+                    <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
+                      {lang === "NEP" ? "💵 सम्पत्तिहरू (Assets)" : "💵 Assets (सम्पत्ति)"}
+                    </SelectLabel>
+                    <SelectItem value="cash">
+                      💵 {lang === "NEP" ? "नगद मौज्दात (Cash in Hand / Petty Cash / गल्ला)" : "Cash in Hand (नगद मौज्दात)"}
+                    </SelectItem>
+                    <SelectItem value="bank_accounts">
+                      🏦 {lang === "NEP" ? "बैंक खाताहरू तथा वालेट (Bank A/C, eSewa, Khalti)" : "Bank Accounts & Wallets (बैंक तथा वालेट)"}
+                    </SelectItem>
+                    <SelectItem value="fixed_assets">
+                      🖥️ {lang === "NEP" ? "स्थिर सम्पत्ति (Fixed Assets - फर्निचर, गाडी, कम्प्युटर)" : "Fixed Assets (फर्निचर, कम्प्युटर, सवारी)"}
+                    </SelectItem>
+                    <SelectItem value="current_assets">
+                      📑 {lang === "NEP" ? "चालू सम्पत्ति (Current Assets - धरौटी, अग्रिम, TDS)" : "Current Assets (धरौटी, पेश्की)"}
+                    </SelectItem>
+                    <SelectItem value="loans_advances_asset">
+                      🤝 {lang === "NEP" ? "दिएको ऋण तथा पेश्की (Loans Given & Staff Advances)" : "Loans Given & Advances (दिएको पेश्की)"}
+                    </SelectItem>
+                  </SelectGroup>
+
+                  <SelectGroup className="mt-2">
+                    <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
+                      {lang === "NEP" ? "👥 पार्टीहरू (Parties)" : "👥 Parties (पार्टीहरू)"}
+                    </SelectLabel>
+                    <SelectItem value="sundry_debtors">
+                      👥 {lang === "NEP" ? "ग्राहक / असामी (Sundry Debtors - लिन बाँकी पार्टी)" : "Sundry Debtors (ग्राहक / असामी)"}
+                    </SelectItem>
+                    <SelectItem value="sundry_creditors">
+                      🏢 {lang === "NEP" ? "साहु / आपूर्तिकर्ता (Sundry Creditors - तिर्न बाँकी पार्टी)" : "Sundry Creditors (साहु / सप्लायर)"}
+                    </SelectItem>
+                  </SelectGroup>
+
+                  <SelectGroup className="mt-2">
+                    <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-1 rounded">
+                      {lang === "NEP" ? "📉 खर्चहरू (Expenses)" : "📉 Expenses (खर्चहरू)"}
+                    </SelectLabel>
+                    <SelectItem value="indirect_expenses">
+                      ☕ {lang === "NEP" ? "अप्रत्यक्ष खर्च (Indirect Expenses - भाडा, चिया, तलब, बिजुली, मर्मत)" : "Indirect Expenses (भाडा, खाजा, तलब, बिजुली)"}
+                    </SelectItem>
+                    <SelectItem value="direct_expenses">
+                      🚚 {lang === "NEP" ? "प्रत्यक्ष खर्च (Direct Expenses - ढुवानी, ज्यालादारी, भन्सार)" : "Direct Expenses (ढुवानी, ज्याला, भन्सार)"}
+                    </SelectItem>
+                  </SelectGroup>
+
+                  <SelectGroup className="mt-2">
+                    <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-1 rounded">
+                      {lang === "NEP" ? "⚖️ दायित्व तथा पुँजी (Liabilities & Equity)" : "⚖️ Liabilities & Equity (दायित्व र पुँजी)"}
+                    </SelectLabel>
+                    <SelectItem value="capital">
+                      💰 {lang === "NEP" ? "मालिकको पुँजी (Owner's Capital / सेयर / लगानी)" : "Owner's Capital (मालिकको पुँजी)"}
+                    </SelectItem>
+                    <SelectItem value="drawings">
+                      🏠 {lang === "NEP" ? "व्यक्तिगत / घरखर्च (Owner's Drawings / निकासी)" : "Owner's Drawings (घरखर्च निकासी)"}
+                    </SelectItem>
+                    <SelectItem value="loans_liabilities">
+                      🏦 {lang === "NEP" ? "ऋण तथा सापटी (Loans & Liabilities / बैंक ऋण)" : "Loans & Liabilities (बैंक/साहु ऋण)"}
+                    </SelectItem>
+                    <SelectItem value="current_liabilities">
+                      ⏳ {lang === "NEP" ? "चालू दायित्व (Current Liabilities / तिर्न बाँकी खर्च)" : "Current Liabilities (तिर्न बाँकी दायित्व)"}
+                    </SelectItem>
+                    <SelectItem value="duties_taxes">
+                      ⚖️ {lang === "NEP" ? "भ्याट तथा कर (VAT & Taxes)" : "VAT & Taxes (भ्याट तथा कर)"}
+                    </SelectItem>
+                  </SelectGroup>
+
+                  <SelectGroup className="mt-2">
+                    <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 bg-teal-500/10 px-2 py-1 rounded">
+                      {lang === "NEP" ? "📈 आम्दानीहरू (Incomes)" : "📈 Incomes (आम्दानीहरू)"}
+                    </SelectLabel>
+                    <SelectItem value="indirect_incomes">
+                      🏷️ {lang === "NEP" ? "अप्रत्यक्ष आम्दानी (Indirect Incomes - ब्याज, कमिसन, छुट, कवाडी)" : "Indirect Incomes (ब्याज, कमिसन, छुट)"}
+                    </SelectItem>
+                    <SelectItem value="direct_incomes">
+                      📊 {lang === "NEP" ? "प्रत्यक्ष आम्दानी (Direct Incomes - बिक्री/सेवा आम्दानी)" : "Direct Incomes (बिक्री तथा सेवा आम्दानी)"}
+                    </SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
