@@ -3530,19 +3530,6 @@ export default function Accounting() {
             ? "Tally-शैलीको डबल-इन्ट्री लेखा, कन्ट्रा, जर्नल, बैंक तथा सम्पत्ति व्यवस्थापन"
             : "Tally-style double-entry accounting, Contra, Journal, Banking & Assets"
         }
-        actions={
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setNewAccModalOpen(true)}
-              className="gap-1.5 text-xs font-semibold"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {lang === "NEP" ? "नयाँ खाता (Add Ledger)" : "Add Ledger Account"}
-            </Button>
-          </div>
-        }
       />
 
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-4">
@@ -4287,6 +4274,28 @@ export default function Accounting() {
 
         {/* TAB 4: CHART OF ACCOUNTS */}
         <TabsContent value="chart" className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-secondary/30 p-3.5 rounded-xl border">
+            <div>
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <FolderTree className="h-4 w-4 text-primary" />
+                <span>{lang === "NEP" ? "लेखा समूह तथा खाता सूची (Chart of Accounts)" : "Chart of Accounts & Ledgers"}</span>
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {lang === "NEP"
+                  ? "पसलका सम्पूर्ण सम्पत्ति, दायित्व, पुँजी, आम्दानी तथा खर्च खाताहरूको सूची र मौज्दात।"
+                  : "Complete ledger classification of all Assets, Liabilities, Equity, Incomes & Expenses."}
+              </p>
+            </div>
+            <Button
+              onClick={() => setNewAccModalOpen(true)}
+              size="sm"
+              className="gap-1.5 text-xs font-bold bg-primary text-primary-foreground shadow-xs shrink-0 cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{lang === "NEP" ? "नयाँ खाता थप्नुहोस् (Add Ledger)" : "Add Ledger Account"}</span>
+            </Button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Assets Group */}
             <div className="space-y-3">
