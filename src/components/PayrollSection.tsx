@@ -1100,27 +1100,25 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                 )}
               </div>
 
-              {/* Working Days Inputs */}
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Label className="text-[10px] text-muted-foreground font-semibold">
-                    {lang === "NEP" ? "महिनाको कुल दिन" : "Total Month Days"}
-                  </Label>
+              {/* Working Days Inputs - Perfectly aligned */}
+              <div className="grid grid-cols-3 gap-2 items-start">
+                <div className="space-y-1">
+                  <div className="h-5 flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
+                    <span>{lang === "NEP" ? "महिनाको कुल दिन" : "Total Month Days"}</span>
+                  </div>
                   <Input
                     type="number"
                     min={1}
                     max={32}
                     value={salTotalDays}
                     onChange={(e) => handleTotalDaysChange(e.target.value)}
-                    className="h-8 text-xs font-mono font-bold mt-0.5"
+                    className="h-8 text-xs font-mono font-bold"
                   />
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                      {lang === "NEP" ? "उपस्थित दिन" : "Present Days"}
-                    </Label>
+                <div className="space-y-1">
+                  <div className="h-5 flex items-center justify-between text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <span>{lang === "NEP" ? "उपस्थित दिन" : "Present Days"}</span>
                     {salAttSummary.totalRecords > 0 && (
                       <span className="text-[9px] text-muted-foreground font-mono">Log: {salAttSummary.payableDays}</span>
                     )}
@@ -1132,15 +1130,13 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                     step={0.5}
                     value={salPresentDays}
                     onChange={(e) => handlePresentDaysChange(e.target.value)}
-                    className="h-8 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5"
+                    className="h-8 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400"
                   />
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-[10px] text-rose-500 font-semibold">
-                      {lang === "NEP" ? "अनुपस्थित दिन" : "Absent Days"}
-                    </Label>
+                <div className="space-y-1">
+                  <div className="h-5 flex items-center justify-between text-[10px] text-rose-500 font-semibold">
+                    <span>{lang === "NEP" ? "अनुपस्थित दिन" : "Absent Days"}</span>
                     {salAttSummary.totalRecords > 0 && (
                       <span className="text-[9px] text-rose-500 font-mono">Log: {salAttSummary.absentCount}</span>
                     )}
@@ -1152,33 +1148,35 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                     step={0.5}
                     value={salAbsentDays}
                     onChange={(e) => handleAbsentDaysChange(e.target.value)}
-                    className="h-8 text-xs font-mono font-bold text-rose-500 mt-0.5"
+                    className="h-8 text-xs font-mono font-bold text-rose-500"
                   />
                 </div>
               </div>
 
-              {/* Rate & Deduction Feedback */}
-              <div className="flex items-center justify-between text-[11px] bg-background/80 rounded-lg px-2.5 py-1.5 border flex-wrap gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">{lang === "NEP" ? "दैनिक दर:" : "Daily Rate:"}</span>
-                  <span className="font-mono font-bold text-foreground">Rs. {fmt(salDailyRate)}/day</span>
+              {/* Rate & Deduction Feedback Bar */}
+              <div className="flex items-center justify-between text-[11px] bg-background/90 rounded-lg px-3 py-2 border flex-wrap gap-2">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">{lang === "NEP" ? "दैनिक दर:" : "Daily Rate:"}</span>
+                    <span className="font-mono font-bold text-foreground">{fmt(salDailyRate)}/day</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">{lang === "NEP" ? "अनुपस्थित कट्टी:" : "Absent Loss:"}</span>
+                    <span className="font-mono font-bold text-rose-500">
+                      {salAbsentLoss > 0 ? `- ${fmt(salAbsentLoss)}` : fmt(0)}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">{lang === "NEP" ? "अनुपस्थित कट्टी:" : "Absent Loss:"}</span>
-                  <span className="font-mono font-bold text-rose-500">
-                    {salAbsentLoss > 0 ? `- Rs. ${fmt(salAbsentLoss)}` : "Rs. 0"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 ml-auto">
+                <div className="flex items-center gap-2 ml-auto">
                   {salAttSummary.totalRecords > 0 && (
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={handleReapplyAttendance}
-                      className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/10"
+                      className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/10 cursor-pointer"
                       title={lang === "NEP" ? "हाजिरी रेकर्ड अनुसार स्वतः कट्टी लागु गर्नुहोस्" : "Reset deduction to match attendance logs"}
                     >
                       <Sparkles className="h-3 w-3 mr-1" />
@@ -1190,7 +1188,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                     variant="ghost"
                     size="sm"
                     onClick={handleApplyFullSalary}
-                    className="h-6 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
+                    className="h-6 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground cursor-pointer"
                     title={lang === "NEP" ? "पूरा महिनाको तलब (० अनुपस्थित कट्टी) लागु गर्नुहोस्" : "Apply full month salary (0 absent deduction)"}
                   >
                     <RotateCcw className="h-3 w-3 mr-1" />
