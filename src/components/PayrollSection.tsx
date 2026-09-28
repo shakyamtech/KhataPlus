@@ -1220,40 +1220,46 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             {/* Earnings Breakdown */}
             <div className="p-3 bg-secondary/30 rounded-xl border space-y-2.5">
               <Label className="text-xs font-bold text-primary uppercase tracking-wider block">
-                १. आम्दानी तथा भत्ता (Earnings):
+                {lang === "NEP" ? "१. आम्दानी तथा भत्ता (Earnings):" : "1. Earnings:"}
               </Label>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">{lang === "NEP" ? "मूल तलब (Basic)" : "Basic Salary"}</Label>
+              <div className="grid grid-cols-3 gap-2 items-start">
+                <div className="space-y-1">
+                  <div className="h-5 flex items-center text-[10px] text-muted-foreground font-semibold">
+                    <span>{lang === "NEP" ? "मूल तलब (Basic)" : "Basic Salary"}</span>
+                  </div>
                   <Input
                     type="number"
                     min={0}
                     value={salBase}
                     onChange={(e) => setSalBase(e.target.value)}
                     placeholder="20000"
-                    className="h-8 text-xs font-mono font-bold mt-0.5"
+                    className="h-8 text-xs font-mono font-bold"
                   />
                 </div>
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">{lang === "NEP" ? "खाजा/भत्ता (Allowances)" : "Allowances"}</Label>
+                <div className="space-y-1">
+                  <div className="h-5 flex items-center text-[10px] text-muted-foreground font-semibold">
+                    <span>{lang === "NEP" ? "खाजा/भत्ता (Allowances)" : "Allowances"}</span>
+                  </div>
                   <Input
                     type="number"
                     min={0}
                     value={salAllowance}
                     onChange={(e) => setSalAllowance(e.target.value)}
                     placeholder="0"
-                    className="h-8 text-xs font-mono mt-0.5"
+                    className="h-8 text-xs font-mono"
                   />
                 </div>
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">{lang === "NEP" ? "बोनस/कमिसन (Bonus)" : "Bonus"}</Label>
+                <div className="space-y-1">
+                  <div className="h-5 flex items-center text-[10px] text-muted-foreground font-semibold">
+                    <span>{lang === "NEP" ? "बोनस/कमिसन (Bonus)" : "Bonus"}</span>
+                  </div>
                   <Input
                     type="number"
                     min={0}
                     value={salBonus}
                     onChange={(e) => setSalBonus(e.target.value)}
                     placeholder="0"
-                    className="h-8 text-xs font-mono mt-0.5"
+                    className="h-8 text-xs font-mono"
                   />
                 </div>
               </div>
@@ -1262,13 +1268,13 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             {/* Deductions Breakdown */}
             <div className="p-3 bg-rose-500/5 rounded-xl border border-rose-500/20 space-y-2.5">
               <Label className="text-xs font-bold text-rose-500 uppercase tracking-wider block">
-                २. कट्टी हुने रकम (Deductions):
+                {lang === "NEP" ? "२. कट्टी हुने रकम (Deductions):" : "2. Deductions:"}
               </Label>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+              <div className="grid grid-cols-2 gap-3 items-start">
+                <div className="space-y-1">
+                  <div className="h-5 flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
                     <span>{lang === "NEP" ? "पेस्की कट्टी (Advance):" : "Advance Deduct:"}</span>
-                    <span className="text-amber-500 font-mono">Max: {fmt(Number((selectedStaff as any)?.advance_balance) || 0)}</span>
+                    <span className="text-amber-500 font-mono text-[9.5px]">Max: {fmt(Number((selectedStaff as any)?.advance_balance) || 0)}</span>
                   </div>
                   <Input
                     type="number"
@@ -1276,20 +1282,20 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                     value={salAdvDeduct}
                     onChange={(e) => setSalAdvDeduct(e.target.value)}
                     placeholder="0"
-                    className="h-8 text-xs font-mono text-rose-500 font-bold mt-0.5"
+                    className="h-8 text-xs font-mono text-rose-500 font-bold"
                   />
                 </div>
-                <div>
-                  <Label className="text-[10px] text-muted-foreground font-semibold">
-                    {lang === "NEP" ? "अनुपस्थित कट्टी / अन्य कट्टी (Absent / TDS / Other):" : "Absent / Other Deductions / TDS:"}
-                  </Label>
+                <div className="space-y-1">
+                  <div className="h-5 flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
+                    <span>{lang === "NEP" ? "अनुपस्थित / अन्य कट्टी (Absent / Other):" : "Absent / Other Deductions / TDS:"}</span>
+                  </div>
                   <Input
                     type="number"
                     min={0}
                     value={salOtherDeduct}
                     onChange={(e) => setSalOtherDeduct(e.target.value)}
                     placeholder="0"
-                    className="h-8 text-xs font-mono text-rose-500 font-bold mt-0.5"
+                    className="h-8 text-xs font-mono text-rose-500 font-bold"
                   />
                 </div>
               </div>
