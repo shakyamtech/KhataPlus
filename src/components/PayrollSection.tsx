@@ -518,7 +518,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
           )}
         >
           <Users className="h-3.5 w-3.5" />
-          <span>{lang === "NEP" ? "तलब तथा पेस्की (Salary Roster)" : "Salary & Payout Roster"}</span>
+          <span>{lang === "NEP" ? "तलब तथा पेस्की" : "Salary & Payout Roster"}</span>
         </Button>
 
         <Button
@@ -531,7 +531,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
           )}
         >
           <Clock className="h-3.5 w-3.5" />
-          <span>{lang === "NEP" ? "📅 कर्मचारी हाजिरी (Staff Attendance)" : "Staff Attendance"}</span>
+          <span>{lang === "NEP" ? "कर्मचारी हाजिरी" : "Staff Attendance"}</span>
         </Button>
       </div>
 
@@ -563,7 +563,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
         <Card className="p-4 bg-gradient-to-br from-amber-500/10 via-card to-card border-amber-500/20 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              {lang === "NEP" ? "चालू पेस्की मौज्दात (Advances)" : "Active Advance Balance"}
+              {lang === "NEP" ? "चालू पेस्की मौज्दात" : "Active Advance Balance"}
             </span>
             <div className="h-8 w-8 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold">
               <Coins className="h-4 w-4" />
@@ -601,7 +601,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
         <div className="flex items-center gap-2.5 w-full sm:w-auto">
           <Calendar className="h-4 w-4 text-primary shrink-0" />
           <Label className="text-xs font-bold text-muted-foreground whitespace-nowrap">
-            {lang === "NEP" ? "भुक्तानी महिना (Pay Month):" : "Pay Month:"}
+            {lang === "NEP" ? "भुक्तानी महिना:" : "Pay Month:"}
           </Label>
           <Input
             value={selectedMonth}
@@ -626,8 +626,8 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             size="sm"
             onClick={loadData}
             disabled={loading}
-            className="h-8 px-2.5 text-xs font-semibold shrink-0"
-            title="रिफ्रेस गर्नुहोस्"
+            className="h-8 px-2.5 text-xs font-semibold shrink-0 cursor-pointer"
+            title={lang === "NEP" ? "रिफ्रेस गर्नुहोस्" : "Refresh"}
           >
             <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           </Button>
@@ -657,7 +657,6 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             {filteredStaff.map((staff) => {
               const baseSalary = Number((staff as any).monthly_salary) || 0;
               const advanceBal = Number((staff as any).advance_balance) || 0;
-              const roleMeta = ROLE_DEFINITIONS[staff.role];
 
               // Check if already paid for selected month
               const monthPaidTx = transactions.find(
@@ -712,11 +711,11 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
                       {monthPaidTx ? (
                         <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] font-bold">
-                          ✓ Paid ({selectedMonth})
+                          ✓ {lang === "NEP" ? "भुक्तान भयो" : "Paid"} ({selectedMonth})
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px] font-bold">
-                          Pending ({selectedMonth})
+                          {lang === "NEP" ? "बाँकी" : "Pending"} ({selectedMonth})
                         </Badge>
                       )}
                     </div>
@@ -725,11 +724,11 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                     <div className="grid grid-cols-2 gap-2 mt-4 p-2.5 rounded-xl bg-secondary/40 border text-xs">
                       <div>
                         <div className="text-[10px] text-muted-foreground font-semibold flex items-center justify-between">
-                          <span>{lang === "NEP" ? "मासिक तलब (Base):" : "Monthly Salary:"}</span>
+                          <span>{lang === "NEP" ? "मासिक तलब:" : "Monthly Salary:"}</span>
                           <button
                             onClick={() => handleOpenEditSalary(staff)}
                             className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                            title="तलब सम्पादन गर्नुहोस्"
+                            title={lang === "NEP" ? "तलब सम्पादन गर्नुहोस्" : "Edit Salary"}
                           >
                             <Pencil className="h-3 w-3" />
                           </button>
@@ -745,7 +744,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
                       <div className="border-l pl-2.5">
                         <div className="text-[10px] text-muted-foreground font-semibold">
-                          {lang === "NEP" ? "लिएको पेस्की (Advance):" : "Advance Taken:"}
+                          {lang === "NEP" ? "लिएको पेस्की:" : "Advance Taken:"}
                         </div>
                         <div className={cn("text-sm font-bold mt-0.5", advanceBal > 0 ? "text-amber-500" : "text-muted-foreground")}>
                           {fmt(advanceBal)}
@@ -780,21 +779,21 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenAdvance(staff)}
-                      className="flex-1 h-8 text-xs font-semibold gap-1.5 border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                      className="flex-1 h-8 text-xs font-semibold gap-1.5 border-amber-500/30 text-amber-600 hover:bg-amber-500/10 cursor-pointer"
                     >
                       <Coins className="h-3.5 w-3.5" />
-                      {lang === "NEP" ? "पेस्की दिनुहोस् (Advance)" : "Give Advance"}
+                      {lang === "NEP" ? "पेस्की दिनुहोस्" : "Give Advance"}
                     </Button>
 
                     <Button
                       size="sm"
                       onClick={() => handleOpenSalary(staff)}
-                      className="flex-1 h-8 text-xs font-bold gap-1.5 bg-primary text-primary-foreground shadow-xs"
+                      className="flex-1 h-8 text-xs font-bold gap-1.5 bg-primary text-primary-foreground shadow-xs cursor-pointer"
                     >
                       <Banknote className="h-3.5 w-3.5" />
                       {monthPaidTx
                         ? (lang === "NEP" ? "पुनः तलब भुक्तान" : "Re-Pay Salary")
-                        : (lang === "NEP" ? "तलब भुक्तानी (Pay)" : "Pay Salary")}
+                        : (lang === "NEP" ? "तलब भुक्तानी" : "Pay Salary")}
                     </Button>
                   </div>
                 </Card>
@@ -809,10 +808,10 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" />
-            <span>{lang === "NEP" ? "तलब तथा पेस्की भुक्तानी इतिहास (Payroll Ledger)" : "Payroll & Advance Transactions"}</span>
+            <span>{lang === "NEP" ? "तलब तथा पेस्की भुक्तानी विवरण" : "Payroll & Advance Transactions"}</span>
           </h3>
           <span className="text-xs text-muted-foreground font-mono">
-            {transactions.length} records
+            {transactions.length} {lang === "NEP" ? "रेकर्ड" : "records"}
           </span>
         </div>
 
@@ -821,15 +820,15 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-secondary/60 text-muted-foreground border-b font-bold sticky top-0 z-10 backdrop-blur-sm">
                 <tr>
-                  <th className="p-2.5">मिति (Date)</th>
-                  <th className="p-2.5">कर्मचारी (Staff)</th>
-                  <th className="p-2.5">प्रकार (Type)</th>
-                  <th className="p-2.5">महिना (Month)</th>
-                  <th className="p-2.5 text-right">कुल तलब (Gross)</th>
-                  <th className="p-2.5 text-right">पेस्की कट्टी (Advance)</th>
-                  <th className="p-2.5 text-right">भुक्तान रकम (Net Paid)</th>
-                  <th className="p-2.5">पेमेन्ट मोड</th>
-                  <th className="p-2.5 text-center">पे-स्लिप</th>
+                  <th className="p-2.5">{lang === "NEP" ? "मिति" : "Date"}</th>
+                  <th className="p-2.5">{lang === "NEP" ? "कर्मचारी" : "Staff"}</th>
+                  <th className="p-2.5">{lang === "NEP" ? "प्रकार" : "Type"}</th>
+                  <th className="p-2.5">{lang === "NEP" ? "महिना" : "Month"}</th>
+                  <th className="p-2.5 text-right">{lang === "NEP" ? "कुल तलब" : "Gross"}</th>
+                  <th className="p-2.5 text-right">{lang === "NEP" ? "पेस्की कट्टी" : "Advance"}</th>
+                  <th className="p-2.5 text-right">{lang === "NEP" ? "भुक्तान रकम" : "Net Paid"}</th>
+                  <th className="p-2.5">{lang === "NEP" ? "पेमेन्ट मोड" : "Payment Mode"}</th>
+                  <th className="p-2.5 text-center">{lang === "NEP" ? "पे-स्लिप" : "Payslip"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50 text-foreground">
@@ -852,11 +851,11 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                       <td className="p-2.5">
                         {t.type === "advance" ? (
                           <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px]">
-                            पेस्की (Advance)
+                            {lang === "NEP" ? "पेस्की" : "Advance"}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]">
-                            तलब (Salary)
+                            {lang === "NEP" ? "तलब" : "Salary"}
                           </Badge>
                         )}
                       </td>
@@ -887,7 +886,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                             ? "Khalti"
                             : t.payment_mode === "bank"
                             ? (t.bank_name ? `Bank (${t.bank_name})` : "Bank")
-                            : "Cash"}
+                            : (lang === "NEP" ? "नगद" : "Cash")}
                         </span>
                       </td>
                       <td className="p-2.5 text-center">
@@ -896,8 +895,8 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                             variant="ghost"
                             size="sm"
                             onClick={() => printStaffPayslip({ transaction: t, shopInfo })}
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                            title="पे-स्लिप प्रिन्ट गर्नुहोस्"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary cursor-pointer"
+                            title={lang === "NEP" ? "पे-स्लिप प्रिन्ट गर्नुहोस्" : "Print Payslip"}
                           >
                             <Printer className="h-3.5 w-3.5" />
                           </Button>
@@ -922,7 +921,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-foreground">
               <Coins className="h-4 w-4 text-amber-500" />
-              <span>{lang === "NEP" ? "स्टाफलाई पेस्की (Salary Advance) दिनुहोस्" : "Give Staff Advance"}</span>
+              <span>{lang === "NEP" ? "स्टाफलाई पेस्की दिनुहोस्" : "Give Staff Advance"}</span>
             </DialogTitle>
             <DialogDescription className="text-xs">
               {lang === "NEP"
@@ -934,17 +933,17 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
           <div className="space-y-3.5 py-2">
             <div className="bg-secondary/40 p-3 rounded-xl border flex items-center justify-between text-xs">
               <div>
-                <span className="text-muted-foreground font-medium">कर्मचारी:</span>{" "}
+                <span className="text-muted-foreground font-medium">{lang === "NEP" ? "कर्मचारी:" : "Staff:"}</span>{" "}
                 <strong className="text-foreground">{selectedStaff?.name}</strong>
               </div>
               <div>
-                <span className="text-muted-foreground font-medium">हालको पेस्की:</span>{" "}
+                <span className="text-muted-foreground font-medium">{lang === "NEP" ? "हालको पेस्की:" : "Current Advance:"}</span>{" "}
                 <strong className="text-amber-500 font-mono">{fmt(Number((selectedStaff as any)?.advance_balance) || 0)}</strong>
               </div>
             </div>
 
             <div>
-              <Label className="text-xs font-bold">{lang === "NEP" ? "पेस्की रकम (Advance Amount रु.):" : "Advance Amount (Rs.):"}</Label>
+              <Label className="text-xs font-bold">{lang === "NEP" ? "पेस्की रकम (रु.):" : "Advance Amount (Rs.):"}</Label>
               <Input
                 type="number"
                 min={1}
@@ -958,7 +957,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "भुक्तानी माध्यम (Mode):" : "Payment Mode:"}</Label>
+                <Label className="text-xs font-bold">{lang === "NEP" ? "भुक्तानी माध्यम:" : "Payment Mode:"}</Label>
                 <Select value={advPaymentMode} onValueChange={(v: "cash" | "bank" | "esewa" | "khalti") => setAdvPaymentMode(v)}>
                   <SelectTrigger className="h-9 text-xs mt-1">
                     <SelectValue />
@@ -994,10 +993,10 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
               {advPaymentMode === "bank" && (
                 <div>
-                  <Label className="text-xs font-bold">{lang === "NEP" ? "बैंक खाता (Bank):" : "Select Bank:"}</Label>
+                  <Label className="text-xs font-bold">{lang === "NEP" ? "बैंक खाता:" : "Select Bank:"}</Label>
                   <Select value={advBankAccId} onValueChange={setAdvBankAccId}>
                     <SelectTrigger className="h-9 text-xs mt-1">
-                      <SelectValue placeholder="Select bank" />
+                      <SelectValue placeholder={lang === "NEP" ? "बैंक छान्नुहोस्" : "Select bank"} />
                     </SelectTrigger>
                     <SelectContent>
                       {bankAccounts.map((b) => (
@@ -1012,7 +1011,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             </div>
 
             <div>
-              <Label className="text-xs font-bold">{lang === "NEP" ? "मिति (Date):" : "Date:"}</Label>
+              <Label className="text-xs font-bold">{lang === "NEP" ? "मिति:" : "Date:"}</Label>
               <div className="mt-1">
                 <CustomDatePicker
                   value={advDate}
@@ -1022,11 +1021,11 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             </div>
 
             <div>
-              <Label className="text-xs font-bold">{lang === "NEP" ? "कैफियत / नोट (Note - ऐच्छिक):" : "Note (Optional):"}</Label>
+              <Label className="text-xs font-bold">{lang === "NEP" ? "कैफियत / नोट (ऐच्छिक):" : "Note (Optional):"}</Label>
               <Input
                 value={advNote}
                 onChange={(e) => setAdvNote(e.target.value)}
-                placeholder="e.g. घर खर्चको लागि पेस्की"
+                placeholder={lang === "NEP" ? "e.g. घर खर्चको लागि पेस्की" : "e.g. For household expenses"}
                 className="h-9 text-xs mt-1"
               />
             </div>
@@ -1061,7 +1060,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
           <div className="space-y-3.5 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "तलब महिना (Month):" : "Pay Month:"}</Label>
+                <Label className="text-xs font-bold">{lang === "NEP" ? "तलब महिना:" : "Pay Month:"}</Label>
                 <Input
                   value={salMonth}
                   onChange={(e) => setSalMonth(e.target.value)}
@@ -1071,7 +1070,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
               </div>
 
               <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "भुक्तानी मिति (Date):" : "Date:"}</Label>
+                <Label className="text-xs font-bold">{lang === "NEP" ? "भुक्तानी मिति:" : "Payment Date:"}</Label>
                 <div className="mt-1">
                   <CustomDatePicker
                     value={salDate}
@@ -1086,7 +1085,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
               <div className="flex items-center justify-between flex-wrap gap-1.5">
                 <Label className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
                   <Calculator className="h-3.5 w-3.5" />
-                  <span>{lang === "NEP" ? "उपस्थिति तथा कार्यदिन हिसाब (Attendance Calculator)" : "Attendance & Workdays Calculator"}</span>
+                  <span>{lang === "NEP" ? "उपस्थिति तथा कार्यदिन हिसाब" : "Attendance & Workdays Calculator"}</span>
                 </Label>
 
                 {salAttSummary.totalRecords > 0 ? (
@@ -1105,7 +1104,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <Label className="text-[10px] text-muted-foreground font-semibold">
-                    {lang === "NEP" ? "महिनाको कुल दिन (Total Days)" : "Total Month Days"}
+                    {lang === "NEP" ? "महिनाको कुल दिन" : "Total Month Days"}
                   </Label>
                   <Input
                     type="number"
@@ -1120,7 +1119,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                 <div>
                   <div className="flex items-center justify-between">
                     <Label className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                      {lang === "NEP" ? "उपस्थित दिन (Present)" : "Present Days"}
+                      {lang === "NEP" ? "उपस्थित दिन" : "Present Days"}
                     </Label>
                     {salAttSummary.totalRecords > 0 && (
                       <span className="text-[9px] text-muted-foreground font-mono">Log: {salAttSummary.payableDays}</span>
@@ -1140,7 +1139,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                 <div>
                   <div className="flex items-center justify-between">
                     <Label className="text-[10px] text-rose-500 font-semibold">
-                      {lang === "NEP" ? "अनुपस्थित दिन (Absent)" : "Absent Days"}
+                      {lang === "NEP" ? "अनुपस्थित दिन" : "Absent Days"}
                     </Label>
                     {salAttSummary.totalRecords > 0 && (
                       <span className="text-[9px] text-rose-500 font-mono">Log: {salAttSummary.absentCount}</span>
@@ -1166,7 +1165,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">{lang === "NEP" ? "अनुपस्थित कट्टी रकम:" : "Absent Loss:"}</span>
+                  <span className="text-muted-foreground">{lang === "NEP" ? "अनुपस्थित कट्टी:" : "Absent Loss:"}</span>
                   <span className="font-mono font-bold text-rose-500">
                     {salAbsentLoss > 0 ? `- Rs. ${fmt(salAbsentLoss)}` : "Rs. 0"}
                   </span>
@@ -1180,7 +1179,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                       size="sm"
                       onClick={handleReapplyAttendance}
                       className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/10"
-                      title="हाजिरी रेकर्ड अनुसार स्वतः कट्टी लागु गर्नुहोस्"
+                      title={lang === "NEP" ? "हाजिरी रेकर्ड अनुसार स्वतः कट्टी लागु गर्नुहोस्" : "Reset deduction to match attendance logs"}
                     >
                       <Sparkles className="h-3 w-3 mr-1" />
                       {lang === "NEP" ? "हाजिरी अनुसार रिसेट" : "Sync Attendance"}
@@ -1192,7 +1191,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                     size="sm"
                     onClick={handleApplyFullSalary}
                     className="h-6 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
-                    title="पूरा महिनाको तलब (० अनुपस्थित कट्टी) लागु गर्नुहोस्"
+                    title={lang === "NEP" ? "पूरा महिनाको तलब (० अनुपस्थित कट्टी) लागु गर्नुहोस्" : "Apply full month salary (0 absent deduction)"}
                   >
                     <RotateCcw className="h-3 w-3 mr-1" />
                     {lang === "NEP" ? "पूरा तलब (० कट्टी)" : "Full Salary"}
@@ -1220,12 +1219,12 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             {/* Earnings Breakdown */}
             <div className="p-3 bg-secondary/30 rounded-xl border space-y-2.5">
               <Label className="text-xs font-bold text-primary uppercase tracking-wider block">
-                {lang === "NEP" ? "१. आम्दानी तथा भत्ता (Earnings):" : "1. Earnings:"}
+                {lang === "NEP" ? "१. आम्दानी तथा भत्ता (EARNINGS):" : "1. EARNINGS & ALLOWANCES:"}
               </Label>
               <div className="grid grid-cols-3 gap-2 items-start">
                 <div className="space-y-1">
                   <div className="h-5 flex items-center text-[10px] text-muted-foreground font-semibold">
-                    <span>{lang === "NEP" ? "मूल तलब (Basic)" : "Basic Salary"}</span>
+                    <span>{lang === "NEP" ? "मूल तलब" : "Basic Salary"}</span>
                   </div>
                   <Input
                     type="number"
@@ -1238,7 +1237,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                 </div>
                 <div className="space-y-1">
                   <div className="h-5 flex items-center text-[10px] text-muted-foreground font-semibold">
-                    <span>{lang === "NEP" ? "खाजा/भत्ता (Allowances)" : "Allowances"}</span>
+                    <span>{lang === "NEP" ? "खाजा/भत्ता" : "Allowances"}</span>
                   </div>
                   <Input
                     type="number"
@@ -1251,7 +1250,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                 </div>
                 <div className="space-y-1">
                   <div className="h-5 flex items-center text-[10px] text-muted-foreground font-semibold">
-                    <span>{lang === "NEP" ? "बोनस/कमिसन (Bonus)" : "Bonus"}</span>
+                    <span>{lang === "NEP" ? "बोनस/कमिसन" : "Bonus / Commission"}</span>
                   </div>
                   <Input
                     type="number"
@@ -1268,12 +1267,12 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             {/* Deductions Breakdown */}
             <div className="p-3 bg-rose-500/5 rounded-xl border border-rose-500/20 space-y-2.5">
               <Label className="text-xs font-bold text-rose-500 uppercase tracking-wider block">
-                {lang === "NEP" ? "२. कट्टी हुने रकम (Deductions):" : "2. Deductions:"}
+                {lang === "NEP" ? "२. कट्टी हुने रकम (DEDUCTIONS):" : "2. DEDUCTIONS:"}
               </Label>
               <div className="grid grid-cols-2 gap-3 items-start">
                 <div className="space-y-1">
                   <div className="h-5 flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-                    <span>{lang === "NEP" ? "पेस्की कट्टी (Advance):" : "Advance Deduct:"}</span>
+                    <span>{lang === "NEP" ? "पेस्की कट्टी:" : "Advance Deduct:"}</span>
                     <span className="text-amber-500 font-mono text-[9.5px]">Max: {fmt(Number((selectedStaff as any)?.advance_balance) || 0)}</span>
                   </div>
                   <Input
@@ -1287,7 +1286,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                 </div>
                 <div className="space-y-1">
                   <div className="h-5 flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-                    <span>{lang === "NEP" ? "अनुपस्थित / अन्य कट्टी (Absent / Other):" : "Absent / Other Deductions / TDS:"}</span>
+                    <span>{lang === "NEP" ? "अनुपस्थित / अन्य कट्टी:" : "Absent / Other Deductions:"}</span>
                   </div>
                   <Input
                     type="number"
@@ -1321,7 +1320,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             {/* Payment Mode */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "भुक्तानी माध्यम (Pay Via):" : "Pay Via:"}</Label>
+                <Label className="text-xs font-bold">{lang === "NEP" ? "भुक्तानी माध्यम:" : "Payment Mode:"}</Label>
                 <Select value={salPaymentMode} onValueChange={(v: "cash" | "bank" | "esewa" | "khalti") => setSalPaymentMode(v)}>
                   <SelectTrigger className="h-9 text-xs mt-1">
                     <SelectValue />
@@ -1357,10 +1356,10 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
               {salPaymentMode === "bank" && (
                 <div>
-                  <Label className="text-xs font-bold">{lang === "NEP" ? "बैंक खाता (Bank Account):" : "Bank Account:"}</Label>
+                  <Label className="text-xs font-bold">{lang === "NEP" ? "बैंक खाता:" : "Select Bank:"}</Label>
                   <Select value={salBankAccId} onValueChange={setSalBankAccId}>
                     <SelectTrigger className="h-9 text-xs mt-1">
-                      <SelectValue placeholder="Select bank" />
+                      <SelectValue placeholder={lang === "NEP" ? "बैंक छान्नुहोस्" : "Select bank"} />
                     </SelectTrigger>
                     <SelectContent>
                       {bankAccounts.map((b) => (
@@ -1404,7 +1403,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
           <div className="space-y-3 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "मासिक तलब (Monthly Base Salary रु.):" : "Monthly Base Salary (Rs.):"}</Label>
+                <Label className="text-xs font-bold">{lang === "NEP" ? "मासिक तलब (रु.):" : "Monthly Base Salary (Rs.):"}</Label>
                 <Input
                   type="number"
                   min={0}
@@ -1417,7 +1416,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
               </div>
 
               <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "चालू पेस्की मौज्दात (Advance Balance रु.):" : "Advance Balance (Rs.):"}</Label>
+                <Label className="text-xs font-bold">{lang === "NEP" ? "चालू पेस्की मौज्दात (रु.):" : "Advance Balance (Rs.):"}</Label>
                 <Input
                   type="number"
                   min={0}
@@ -1441,7 +1440,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "बैंकको नाम (Bank Name):" : "Bank Name:"}</Label>
+                <Label className="text-xs font-bold">{lang === "NEP" ? "बैंकको नाम:" : "Bank Name:"}</Label>
                 <Input
                   value={editBankName}
                   onChange={(e) => setEditBankName(e.target.value)}
@@ -1451,7 +1450,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
               </div>
 
               <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "खाता नम्बर (A/C No):" : "Account No:"}</Label>
+                <Label className="text-xs font-bold">{lang === "NEP" ? "खाता नम्बर:" : "Account No:"}</Label>
                 <Input
                   value={editBankAccNo}
                   onChange={(e) => setEditBankAccNo(e.target.value)}
