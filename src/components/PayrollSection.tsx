@@ -10,6 +10,10 @@ import {
   updateStaffSalaryDetails,
   printStaffPayslip
 } from "@/lib/payroll";
+import {
+  AttendanceRecord,
+  getShopAttendanceRecords
+} from "@/lib/attendance";
 import { StaffAttendanceDashboard } from "@/components/StaffAttendanceDashboard";
 import { getAccounts, Account } from "@/lib/accounting";
 import { Card } from "@/components/ui/card";
@@ -45,7 +49,10 @@ import {
   HelpCircle,
   Plus,
   RefreshCw,
-  Clock
+  Clock,
+  CalendarDays,
+  Calculator,
+  RotateCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +66,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [transactions, setTransactions] = useState<PayrollTransaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"roster" | "attendance">("roster");
@@ -101,6 +109,26 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
   const [salDate, setSalDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [salNote, setSalNote] = useState("");
 
+  // Attendance-based Salary Calculations State
+  const [salTotalDays, setSalTotalDays] = useState<string>("30");
+  const [salPresentDays, setSalPresentDays] = useState<string>("30");
+  const [salAbsentDays, setSalAbsentDays] = useState<string>("0");
+  const [salAttSummary, setSalAttSummary] = useState<{
+    totalRecords: number;
+    presentCount: number;
+    halfDayCount: number;
+    leaveCount: number;
+    absentCount: number;
+    payableDays: number;
+  }>({
+    totalRecords: 0,
+    presentCount: 0,
+    halfDayCount: 0,
+    leaveCount: 0,
+    absentCount: 0,
+    payableDays: 0
+  });
+
   // Edit Salary Form State
   const [editSalaryAmount, setEditSalaryAmount] = useState("");
   const [editAdvanceBal, setEditAdvanceBal] = useState("0");
@@ -112,14 +140,16 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
     if (!ownerId) return;
     setLoading(true);
     try {
-      const [sList, txList, accList] = await Promise.all([
+      const [sList, txList, accList, attList] = await Promise.all([
         getShopStaffMembers(ownerId),
         getShopPayrollTransactions(ownerId),
-        getAccounts(ownerId)
+        getAccounts(ownerId),
+        getShopAttendanceRecords(ownerId)
       ]);
       setStaffList(sList.filter((s) => s.status === "active"));
       setTransactions(txList);
       setAccounts(accList);
+      setAttendanceRecords(attList);
     } catch (err) {
       console.error("Error loading payroll data:", err);
     } finally {
@@ -216,23 +246,158 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
     }
   };
 
+  // Helper to extract attendance summary for a staff in given month
+  const getStaffMonthAttendanceSummary = (staff: StaffMember, monthStr: string) => {
+    const mLower = (monthStr || "").toLowerCase().trim();
+    const staffRecords = attendanceRecords.filter((r) => {
+      const isThisStaff =
+        (r.staff_id && r.staff_id === staff.id) ||
+        (staff.auth_uid && r.staff_id === staff.auth_uid) ||
+        (r.staff_name && r.staff_name.toLowerCase() === staff.name.toLowerCase());
+      if (!isThisStaff) return false;
+
+      if (r.month && r.month.toLowerCase() === mLower) return true;
+      if (r.date && r.date.startsWith(mLower)) return true;
+      if (r.date_bs && r.date_bs.startsWith(mLower)) return true;
+
+      // Extract month name and year e.g. "Sep 2026" or "Ashoj 2083"
+      const parts = mLower.split(" ");
+      if (parts.length >= 2) {
+        const mName = parts[0];
+        const yStr = parts[1];
+        const monthsEn = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const mIdx = monthsEn.findIndex((m) => mName.startsWith(m));
+        if (mIdx !== -1) {
+          const mmStr = String(mIdx + 1).padStart(2, "0");
+          if (r.date && r.date.startsWith(`${yStr}-${mmStr}`)) return true;
+        }
+        const monthsNp = ["baishakh", "jestha", "ashad", "shrawan", "bhadra", "ashoj", "kartik", "mangsir", "poush", "magh", "falgun", "chaitra"];
+        const npIdx = monthsNp.findIndex((m) => mName.startsWith(m) || m.startsWith(mName));
+        if (npIdx !== -1) {
+          const mmStr = String(npIdx + 1).padStart(2, "0");
+          if (r.date_bs && r.date_bs.startsWith(`${yStr}/${mmStr}`)) return true;
+        }
+      }
+      return false;
+    });
+
+    const presentCount = staffRecords.filter((r) => r.status === "present").length;
+    const halfDayCount = staffRecords.filter((r) => r.status === "half_day").length;
+    const leaveCount = staffRecords.filter((r) => r.status === "leave").length;
+    const absentCount = staffRecords.filter((r) => r.status === "absent").length;
+    const payableDays = presentCount + leaveCount + halfDayCount * 0.5;
+
+    return {
+      totalRecords: staffRecords.length,
+      presentCount,
+      halfDayCount,
+      leaveCount,
+      absentCount,
+      payableDays
+    };
+  };
+
   // Open Salary Payout Modal
   const handleOpenSalary = (staff: StaffMember) => {
     setSelectedStaff(staff);
     const base = Number((staff as any).monthly_salary) || 0;
     const curAdv = Number((staff as any).advance_balance) || 0;
 
+    const summary = getStaffMonthAttendanceSummary(staff, selectedMonth);
+    setSalAttSummary(summary);
+    setSalTotalDays("30");
+
+    let initialAbsentDeduct = 0;
+    if (summary.totalRecords > 0) {
+      const payable = summary.payableDays;
+      const absentDays = Math.max(0, 30 - payable);
+      setSalPresentDays(String(payable));
+      setSalAbsentDays(String(absentDays));
+      const dailyRate = base > 0 ? base / 30 : 0;
+      initialAbsentDeduct = Math.round(absentDays * dailyRate);
+    } else {
+      setSalPresentDays("30");
+      setSalAbsentDays("0");
+    }
+
     setSalMonth(selectedMonth);
     setSalBase(base > 0 ? String(base) : "");
     setSalAllowance("0");
     setSalBonus("0");
     setSalAdvDeduct(curAdv > 0 ? String(curAdv) : "0");
-    setSalOtherDeduct("0");
+    setSalOtherDeduct(initialAbsentDeduct > 0 ? String(initialAbsentDeduct) : "0");
     setSalPaymentMode("cash");
     setSalBankAccId(bankAccounts[0]?.id || "");
     setSalDate(new Date().toISOString().slice(0, 10));
     setSalNote("");
     setSalaryModalOpen(true);
+  };
+
+  // Live daily rate calculation
+  const salDailyRate = useMemo(() => {
+    const base = parseFloat(salBase) || 0;
+    const tot = parseFloat(salTotalDays) || 30;
+    return tot > 0 ? base / tot : 0;
+  }, [salBase, salTotalDays]);
+
+  // Live absent loss calculation
+  const salAbsentLoss = useMemo(() => {
+    const abs = parseFloat(salAbsentDays) || 0;
+    return Math.round(abs * salDailyRate);
+  }, [salAbsentDays, salDailyRate]);
+
+  // Handlers for interactive workday inputs
+  const handlePresentDaysChange = (val: string) => {
+    setSalPresentDays(val);
+    const p = parseFloat(val) || 0;
+    const tot = parseFloat(salTotalDays) || 30;
+    const abs = Math.max(0, tot - p);
+    setSalAbsentDays(String(abs));
+    const deduct = Math.round(abs * salDailyRate);
+    setSalOtherDeduct(String(deduct));
+  };
+
+  const handleAbsentDaysChange = (val: string) => {
+    setSalAbsentDays(val);
+    const abs = parseFloat(val) || 0;
+    const tot = parseFloat(salTotalDays) || 30;
+    const pres = Math.max(0, tot - abs);
+    setSalPresentDays(String(pres));
+    const deduct = Math.round(abs * salDailyRate);
+    setSalOtherDeduct(String(deduct));
+  };
+
+  const handleTotalDaysChange = (val: string) => {
+    setSalTotalDays(val);
+    const tot = parseFloat(val) || 30;
+    const pres = parseFloat(salPresentDays) || 0;
+    const abs = Math.max(0, tot - pres);
+    setSalAbsentDays(String(abs));
+    const rate = (parseFloat(salBase) || 0) / (tot > 0 ? tot : 30);
+    const deduct = Math.round(abs * rate);
+    setSalOtherDeduct(String(deduct));
+  };
+
+  const handleApplyFullSalary = () => {
+    const tot = salTotalDays || "30";
+    setSalPresentDays(tot);
+    setSalAbsentDays("0");
+    setSalOtherDeduct("0");
+    toast.info(lang === "NEP" ? "पूरा महिनाको तलब (० अनुपस्थित कट्टी) लागु गरियो।" : "Full month salary applied (0 absent deduction).");
+  };
+
+  const handleReapplyAttendance = () => {
+    if (!selectedStaff) return;
+    const summary = getStaffMonthAttendanceSummary(selectedStaff, salMonth);
+    setSalAttSummary(summary);
+    const tot = parseFloat(salTotalDays) || 30;
+    const payable = summary.payableDays;
+    const abs = Math.max(0, tot - payable);
+    setSalPresentDays(String(payable));
+    setSalAbsentDays(String(abs));
+    const deduct = Math.round(abs * salDailyRate);
+    setSalOtherDeduct(String(deduct));
+    toast.success(lang === "NEP" ? "हाजिरी रेकर्डबाट स्वतः कट्टी रकम अद्यावधिक गरियो!" : "Attendance deduction updated from system logs!");
   };
 
   // Live calculation for salary payout
@@ -916,6 +1081,142 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
               </div>
             </div>
 
+            {/* Attendance & Workdays Auto-Calculator Card */}
+            <div className="p-3 bg-gradient-to-br from-primary/10 via-secondary/40 to-background rounded-xl border border-primary/20 space-y-2.5">
+              <div className="flex items-center justify-between flex-wrap gap-1.5">
+                <Label className="text-xs font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                  <Calculator className="h-3.5 w-3.5" />
+                  <span>{lang === "NEP" ? "उपस्थिति तथा कार्यदिन हिसाब (Attendance Calculator)" : "Attendance & Workdays Calculator"}</span>
+                </Label>
+
+                {salAttSummary.totalRecords > 0 ? (
+                  <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30 gap-1 font-medium">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>{salAttSummary.totalRecords} {lang === "NEP" ? "दिनको हाजिरी रेकर्ड फेला पर्यो" : "attendance logs found"}</span>
+                  </Badge>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">
+                    {lang === "NEP" ? "यो महिनाको हाजिरी रेकर्ड फेला परेन (म्यानुअल भर्न सक्नुहुन्छ)" : "No logs found for this month (editable manually)"}
+                  </span>
+                )}
+              </div>
+
+              {/* Working Days Inputs */}
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label className="text-[10px] text-muted-foreground font-semibold">
+                    {lang === "NEP" ? "महिनाको कुल दिन (Total Days)" : "Total Month Days"}
+                  </Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={32}
+                    value={salTotalDays}
+                    onChange={(e) => handleTotalDaysChange(e.target.value)}
+                    className="h-8 text-xs font-mono font-bold mt-0.5"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      {lang === "NEP" ? "उपस्थित दिन (Present)" : "Present Days"}
+                    </Label>
+                    {salAttSummary.totalRecords > 0 && (
+                      <span className="text-[9px] text-muted-foreground font-mono">Log: {salAttSummary.payableDays}</span>
+                    )}
+                  </div>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={32}
+                    step={0.5}
+                    value={salPresentDays}
+                    onChange={(e) => handlePresentDaysChange(e.target.value)}
+                    className="h-8 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] text-rose-500 font-semibold">
+                      {lang === "NEP" ? "अनुपस्थित दिन (Absent)" : "Absent Days"}
+                    </Label>
+                    {salAttSummary.totalRecords > 0 && (
+                      <span className="text-[9px] text-rose-500 font-mono">Log: {salAttSummary.absentCount}</span>
+                    )}
+                  </div>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={32}
+                    step={0.5}
+                    value={salAbsentDays}
+                    onChange={(e) => handleAbsentDaysChange(e.target.value)}
+                    className="h-8 text-xs font-mono font-bold text-rose-500 mt-0.5"
+                  />
+                </div>
+              </div>
+
+              {/* Rate & Deduction Feedback */}
+              <div className="flex items-center justify-between text-[11px] bg-background/80 rounded-lg px-2.5 py-1.5 border flex-wrap gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">{lang === "NEP" ? "दैनिक दर:" : "Daily Rate:"}</span>
+                  <span className="font-mono font-bold text-foreground">Rs. {fmt(salDailyRate)}/day</span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">{lang === "NEP" ? "अनुपस्थित कट्टी रकम:" : "Absent Loss:"}</span>
+                  <span className="font-mono font-bold text-rose-500">
+                    {salAbsentLoss > 0 ? `- Rs. ${fmt(salAbsentLoss)}` : "Rs. 0"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 ml-auto">
+                  {salAttSummary.totalRecords > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleReapplyAttendance}
+                      className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/10"
+                      title="हाजिरी रेकर्ड अनुसार स्वतः कट्टी लागु गर्नुहोस्"
+                    >
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      {lang === "NEP" ? "हाजिरी अनुसार रिसेट" : "Sync Attendance"}
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleApplyFullSalary}
+                    className="h-6 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
+                    title="पूरा महिनाको तलब (० अनुपस्थित कट्टी) लागु गर्नुहोस्"
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    {lang === "NEP" ? "पूरा तलब (० कट्टी)" : "Full Salary"}
+                  </Button>
+                </div>
+              </div>
+
+              {salAttSummary.totalRecords > 0 && (
+                <div className="text-[10px] text-muted-foreground flex items-center gap-2 flex-wrap pt-0.5">
+                  <span>📊 {lang === "NEP" ? "प्रणालीमा रेकर्ड:" : "System logs:"}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{salAttSummary.presentCount} {lang === "NEP" ? "दिन हाजिर" : "Present"}</span>
+                  {salAttSummary.halfDayCount > 0 && (
+                    <span className="text-amber-600 dark:text-amber-400 font-semibold">{salAttSummary.halfDayCount} {lang === "NEP" ? "आधा दिन" : "Half-day"}</span>
+                  )}
+                  {salAttSummary.leaveCount > 0 && (
+                    <span className="text-blue-600 dark:text-blue-400 font-semibold">{salAttSummary.leaveCount} {lang === "NEP" ? "दिन बिदा" : "Leave"}</span>
+                  )}
+                  {salAttSummary.absentCount > 0 && (
+                    <span className="text-rose-500 font-semibold">{salAttSummary.absentCount} {lang === "NEP" ? "दिन अनुपस्थित" : "Absent"}</span>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Earnings Breakdown */}
             <div className="p-3 bg-secondary/30 rounded-xl border space-y-2.5">
               <Label className="text-xs font-bold text-primary uppercase tracking-wider block">
@@ -979,7 +1280,9 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                   />
                 </div>
                 <div>
-                  <Label className="text-[10px] text-muted-foreground">{lang === "NEP" ? "अन्य कट्टी / TDS / बिदा:" : "Other / Absent / TDS:"}</Label>
+                  <Label className="text-[10px] text-muted-foreground font-semibold">
+                    {lang === "NEP" ? "अनुपस्थित कट्टी / अन्य कट्टी (Absent / TDS / Other):" : "Absent / Other Deductions / TDS:"}
+                  </Label>
                   <Input
                     type="number"
                     min={0}
