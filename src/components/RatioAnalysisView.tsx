@@ -310,14 +310,14 @@ export default function RatioAnalysisView() {
           return sum + Math.max(0, b);
         }, 0) + (capitalAccs.length === 0 ? cashCapital : 0);
 
-        const cashDrawings = cashDocs
+        const cashDrawings = fCashDocs
           .filter((c: any) => c.direction === "out" && ((c.category || "").toLowerCase() === "personal" || c.account_group === "drawings"))
           .reduce((s, r: any) => s + Number(r.amount || 0), 0);
 
-        const drawingsAccs = accountsList.filter((a: any) => a.group === "drawings");
+        const drawingsAccs = fAccountsList.filter((a: any) => a.group === "drawings");
         const drawingsBal = drawingsAccs.reduce((sum: number, a: any) => {
           let b = Number(a.opening_balance || 0);
-          vouchersList.forEach((v: any) => {
+          fVouchersList.forEach((v: any) => {
             const impacts = getVoucherAccountImpacts(v);
             impacts.forEach(imp => {
               const isDraw = imp.account_id === a.id
