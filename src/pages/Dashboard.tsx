@@ -261,7 +261,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mt-6">
-        <Link to="/products" className="block outline-none">
+        <Link to="/products?filter=low_stock" className="block outline-none">
           <Card className="p-5 shadow-card border-0 hover:-translate-y-1.5 hover:shadow-elegant transition-all duration-300 ease-out h-full group">
             <div className="flex items-center gap-3">
               <div className="p-1.5 bg-warning/10 rounded-lg group-hover:scale-110 transition-transform duration-300">

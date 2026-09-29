@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { db } from "@/lib/firebase";
 import { collection, doc, query, where, getDocs, setDoc, updateDoc, deleteDoc, documentId, writeBatch, increment, limit } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History, PackageMinus, Barcode, Layers, PackagePlus, Sparkles, PlusCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, ChefHat, Loader2, History, PackageMinus, Barcode, Layers, PackagePlus, Sparkles, PlusCircle, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
@@ -494,10 +495,39 @@ const Products = () => {
     }
   };
 
-  const filtered = items.filter((i) => 
-    i.name.toLowerCase().includes(search.toLowerCase()) ||
-    (i.barcode && i.barcode.toLowerCase().includes(search.toLowerCase()))
-  );
+  const [searchParams, setSearchParams] = useSearchParams();
+  const stockFilter = searchParams.get("filter") || "all";
+
+  const lowStockCount = useMemo(() => {
+    return items.filter(p => Number(p.stock_qty) <= Number(p.low_stock_threshold)).length;
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((i) => {
+      const isLow = Number(i.stock_qty) <= Number(i.low_stock_threshold);
+      if (stockFilter === "low_stock" && !isLow) {
+        return false;
+      }
+      if (!q) return true;
+      return (
+        i.name.toLowerCase().includes(q) ||
+        (i.barcode && i.barcode.toLowerCase().includes(q))
+      );
+    });
+  }, [items, search, stockFilter]);
+
+  const handleFilterChange = (filterType: "all" | "low_stock") => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      if (filterType === "all") {
+        newParams.delete("filter");
+      } else {
+        newParams.set("filter", "low_stock");
+      }
+      return newParams;
+    });
+  };
 
   return (
     <div className="p-4 md:p-8 md:pt-16 max-w-7xl mx-auto">
@@ -531,7 +561,65 @@ const Products = () => {
         onProductsUpdated={() => load()}
       />
 
-      <Input className="mb-4 max-w-sm" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
+      {/* Search Bar & Compact Filter Tabs Side-by-Side */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input 
+            className="pl-9 pr-8 h-9 text-sm bg-background/90 shadow-xs rounded-xl border-border/80 focus-visible:ring-1 focus-visible:ring-primary/30" 
+            placeholder={lang === "NEP" ? "सामान खोज्नुहोस् (नाम वा बारकोड)..." : "Search products (name or barcode)..."} 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground h-5 w-5 flex items-center justify-center rounded-full hover:bg-muted text-xs transition-colors"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Compact, clean toggle buttons */}
+        <div className="flex items-center gap-1 bg-secondary/80 p-1 rounded-xl border border-border/40 shadow-xs shrink-0 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => handleFilterChange("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+              stockFilter !== "low_stock"
+                ? "bg-background text-foreground shadow-xs font-bold border border-border/60"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+            }`}
+          >
+            <span>{lang === "NEP" ? "सबै सामान" : "All Items"}</span>
+            <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+              stockFilter !== "low_stock" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+            }`}>
+              {items.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleFilterChange("low_stock")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+              stockFilter === "low_stock"
+                ? "bg-amber-500 text-white shadow-xs font-bold"
+                : "text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+            }`}
+          >
+            <AlertTriangle className={`h-3.5 w-3.5 ${stockFilter === "low_stock" ? "text-white" : "text-amber-500"}`} />
+            <span>{lang === "NEP" ? "कम स्टक मात्र" : "Low Stock Only"}</span>
+            <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+              stockFilter === "low_stock" ? "bg-white/25 text-white" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+            }`}>
+              {lowStockCount}
+            </span>
+          </button>
+        </div>
+      </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map((p) => {
@@ -627,7 +715,7 @@ const Products = () => {
                     : isLow
                       ? "bg-orange-500/10 border-orange-500/20 text-orange-700 dark:text-orange-400"
                       : "bg-secondary border-border/50 text-foreground"
-                  }`}>
+                }`}>
                   <span className="text-[11px] font-bold uppercase tracking-wider opacity-80">Live Stock</span>
                   <span className="font-display text-lg flex items-center gap-1.5">
                     {isEmpty ? <AlertTriangle className="h-4 w-4 text-red-600 animate-pulse" /> : isLow ? <AlertTriangle className="h-4 w-4 text-orange-600 animate-pulse" /> : null}
@@ -638,10 +726,48 @@ const Products = () => {
             </Card>
           );
         })}
-        {filtered.length === 0 && <div className="col-span-full text-center text-muted-foreground py-12">No products yet. Add your first item!</div>}
+        {filtered.length === 0 && (
+          <div className="col-span-full text-center text-muted-foreground py-12 bg-secondary/20 rounded-2xl border border-dashed border-border/60">
+            {stockFilter === "low_stock" ? (
+              <div className="space-y-1.5">
+                <p className="font-semibold text-foreground text-sm">
+                  {lang === "NEP" ? "कम स्टक भएको सामान छैन!" : "No Low Stock Items!"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {lang === "NEP" ? "सबै सामानहरू पर्याप्त मौज्दातमा छन्।" : "All your products are sufficiently stocked above minimum thresholds."}
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleFilterChange("all")}
+                  className="mt-2 text-xs"
+                >
+                  {lang === "NEP" ? "सबै सामान हेर्नुहोस्" : "View All Items"}
+                </Button>
+              </div>
+            ) : search ? (
+              <div className="space-y-1.5">
+                <p className="font-semibold text-foreground text-sm">
+                  {lang === "NEP" ? "कुनै सामान भेटिएन" : "No matching products found"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {lang === "NEP" ? "कृपया अर्को नाम वा बारकोड खोज्नुहोस्।" : "Try searching with a different product name or barcode."}
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setSearch("")}
+                  className="mt-2 text-xs"
+                >
+                  {lang === "NEP" ? "खोजी हटाउनुहोस्" : "Clear Search"}
+                </Button>
+              </div>
+            ) : (
+              <div>{lang === "NEP" ? "अहिलेसम्म सामान थपिएको छैन।" : "No products yet. Add your first item!"}</div>
+            )}
+          </div>
+        )}
       </div>
-
-
 
       <Dialog open={sourcingOpen} onOpenChange={setSourcingOpen}>
         <DialogContent className="max-w-md">
