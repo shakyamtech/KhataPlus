@@ -16,6 +16,7 @@ import { LogoCropModal } from "@/components/LogoCropModal";
 import { StaffManagementSection } from "@/components/StaffManagementSection";
 import { OperatorSwitchModal } from "@/components/OperatorSwitchModal";
 import { StaffAttendanceHeaderButton } from "@/components/StaffAttendanceHeaderButton";
+import { BusinessDetectionModal } from "@/components/BusinessDetectionModal";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -175,6 +176,7 @@ export const AppShell = () => {
     const [dbLastPur, setDbLastPur] = useState<string | null>(null);
     const [localLevelType, setLocalLevelType] = useState<"municipality" | "metropolitan" | "rural_municipality">("municipality");
     const [businessNature, setBusinessNature] = useState<string>("general_trading");
+    const [isAutoDetectOpen, setIsAutoDetectOpen] = useState(false);
     const [entityType, setEntityType] = useState<"proprietorship" | "pvt_ltd">("proprietorship");
     const [maritalStatus, setMaritalStatus] = useState<"single" | "married">("single");
     const [barcodeScanSound, setBarcodeScanSound] = useState<BarcodeSoundType>("sweet_ding");
@@ -1952,9 +1954,20 @@ export const AppShell = () => {
 
                                 {/* Business Nature */}
                                 <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-semibold text-foreground">
-                                        {lang === "NEP" ? "व्यवसायको प्रकृति (Business Nature & Trade Type)" : "Business Nature & Trade Type"}
-                                    </Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[11px] font-semibold text-foreground">
+                                            {lang === "NEP" ? "व्यवसायको प्रकृति" : "Business Nature & Trade Type"}
+                                        </Label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAutoDetectOpen(true)}
+                                            className="text-[10px] font-semibold text-primary hover:text-primary/80 flex items-center gap-1 bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded-full border border-primary/20 transition-colors"
+                                            title={lang === "NEP" ? "स्टकका सामानबाट स्वतः पत्ता लगाउनुहोस्" : "Auto-detect from products & stock"}
+                                        >
+                                            <Sparkles className="h-3 w-3" />
+                                            <span>{lang === "NEP" ? "✨ स्वतः पहिचान" : "✨ Auto-Detect"}</span>
+                                        </button>
+                                    </div>
                                     <select
                                         value={businessNature}
                                         onChange={(e: any) => setBusinessNature(e.target.value)}
@@ -2749,6 +2762,16 @@ export const AppShell = () => {
             <OperatorSwitchModal
                 open={operatorSwitchOpen}
                 onOpenChange={setOperatorSwitchOpen}
+            />
+
+            {/* Smart Business Nature Auto-Detection Modal */}
+            <BusinessDetectionModal
+                open={isAutoDetectOpen}
+                onOpenChange={setIsAutoDetectOpen}
+                onApply={(cat) => setBusinessNature(cat)}
+                currentCategory={businessNature}
+                lang={lang}
+                userId={user?.uid || ""}
             />
         </div>
     );
