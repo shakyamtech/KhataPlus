@@ -562,11 +562,11 @@ const Products = () => {
       />
 
       {/* Search Bar & Compact Filter Tabs Side-by-Side */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-5">
+        <div className="relative w-full sm:w-72 md:w-80 shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input 
-            className="pl-9 pr-8 h-9 text-sm bg-background/90 shadow-xs rounded-xl border-border/80 focus-visible:ring-1 focus-visible:ring-primary/30" 
+            className="pl-9 pr-8 h-9.5 text-sm bg-background/80 shadow-xs rounded-xl border-border/80 focus-visible:ring-1 focus-visible:ring-primary/30" 
             placeholder={lang === "NEP" ? "सामान खोज्नुहोस् (नाम वा बारकोड)..." : "Search products (name or barcode)..."} 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
@@ -582,12 +582,12 @@ const Products = () => {
           )}
         </div>
 
-        {/* Compact, clean toggle buttons */}
-        <div className="flex items-center gap-1 bg-secondary/80 p-1 rounded-xl border border-border/40 shadow-xs shrink-0 self-start sm:self-auto">
+        {/* Compact, clean toggle buttons directly beside Search */}
+        <div className="inline-flex items-center gap-1 bg-secondary/80 p-1 rounded-xl border border-border/40 shadow-xs h-9.5">
           <button
             type="button"
             onClick={() => handleFilterChange("all")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+            className={`h-7.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
               stockFilter !== "low_stock"
                 ? "bg-background text-foreground shadow-xs font-bold border border-border/60"
                 : "text-muted-foreground hover:text-foreground hover:bg-background/40"
@@ -604,7 +604,7 @@ const Products = () => {
           <button
             type="button"
             onClick={() => handleFilterChange("low_stock")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+            className={`h-7.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
               stockFilter === "low_stock"
                 ? "bg-amber-500 text-white shadow-xs font-bold"
                 : "text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
