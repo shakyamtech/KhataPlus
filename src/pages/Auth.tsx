@@ -386,7 +386,7 @@ const Auth = () => {
         {/* Left Column: Branding Showcase, IRD Banner & Features */}
         <div className="lg:col-span-6 flex flex-col justify-center space-y-4 lg:space-y-6">
           <div className="space-y-2 lg:space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center justify-between gap-2">
               <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-md">
                 <div className="p-1 rounded-full bg-primary/20">
                   <BookText className="h-4 w-4 text-primary" />
@@ -396,14 +396,9 @@ const Auth = () => {
                   Shop POS
                 </span>
               </div>
-
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 backdrop-blur-md text-xs font-bold shadow-soft">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>{t.irdBadge}</span>
-              </div>
             </div>
 
-            <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight leading-[1.15]">
+            <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight leading-[1.15] pt-1">
               {t.brandTitle}
             </h1>
 
