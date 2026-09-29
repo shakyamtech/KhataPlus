@@ -7,9 +7,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-hero">
-        <BookText className="h-10 w-10 animate-pulse text-primary" />
-      </div>
+      <div className="fixed inset-0 bg-[#071324]" />
     );
   }
   if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;

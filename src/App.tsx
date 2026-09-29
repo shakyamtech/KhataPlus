@@ -32,23 +32,15 @@ import { useState, useEffect } from "react";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(t);
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <SplashScreen />
       <TooltipProvider>
-        {!loading && (
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <ColorThemeProvider>
-              <LanguageProvider>
-                <Toaster />
-                <Sonner />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <ColorThemeProvider>
+            <LanguageProvider>
+              <Toaster />
+              <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <ErrorBoundary>
                   <AuthProvider>
@@ -78,7 +70,6 @@ const App = () => {
               </LanguageProvider>
             </ColorThemeProvider>
           </ThemeProvider>
-        )}
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -9,7 +9,7 @@ interface SplashScreenProps {
   duration?: number;
 }
 
-export const SplashScreen = ({ customShopName, onFinished, duration = 2200 }: SplashScreenProps) => {
+export const SplashScreen = ({ customShopName, onFinished, duration = 1800 }: SplashScreenProps) => {
   const [stage, setStage] = useState<"loading" | "fading" | "hidden">("loading");
   const [shopName, setShopName] = useState(() => {
     return customShopName || localStorage.getItem("khataplus_shop_name") || "KhataPlus";
