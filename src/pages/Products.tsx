@@ -562,11 +562,11 @@ const Products = () => {
       />
 
       {/* Search Bar & Compact Filter Tabs Side-by-Side */}
-      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-5">
-        <div className="relative w-full sm:w-72 md:w-80 shrink-0">
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <div className="relative w-full sm:w-80 shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input 
-            className="pl-9 pr-8 h-9.5 text-sm bg-background/80 shadow-xs rounded-xl border-border/80 focus-visible:ring-1 focus-visible:ring-primary/30" 
+            className="pl-9 pr-8 h-10 text-sm bg-background border-input rounded-lg focus-visible:ring-1 focus-visible:ring-primary/40" 
             placeholder={lang === "NEP" ? "सामान खोज्नुहोस् (नाम वा बारकोड)..." : "Search products (name or barcode)..."} 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
@@ -582,19 +582,19 @@ const Products = () => {
           )}
         </div>
 
-        {/* Compact, clean toggle buttons directly beside Search */}
-        <div className="inline-flex items-center gap-1 bg-secondary/80 p-1 rounded-xl border border-border/40 shadow-xs h-9.5">
+        {/* Filter Buttons matching exact height and styling */}
+        <div className="inline-flex items-center gap-1.5 h-10 p-1 bg-muted/40 border border-input rounded-lg">
           <button
             type="button"
             onClick={() => handleFilterChange("all")}
-            className={`h-7.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+            className={`h-8 px-3 rounded-md text-xs font-medium transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
               stockFilter !== "low_stock"
-                ? "bg-background text-foreground shadow-xs font-bold border border-border/60"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                ? "bg-background text-foreground shadow-xs font-semibold border border-border/80"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
             }`}
           >
             <span>{lang === "NEP" ? "सबै सामान" : "All Items"}</span>
-            <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
               stockFilter !== "low_stock" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
             }`}>
               {items.length}
@@ -604,16 +604,16 @@ const Products = () => {
           <button
             type="button"
             onClick={() => handleFilterChange("low_stock")}
-            className={`h-7.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+            className={`h-8 px-3 rounded-md text-xs font-medium transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
               stockFilter === "low_stock"
-                ? "bg-amber-500 text-white shadow-xs font-bold"
+                ? "bg-amber-500 text-white shadow-xs font-semibold"
                 : "text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
             }`}
           >
             <AlertTriangle className={`h-3.5 w-3.5 ${stockFilter === "low_stock" ? "text-white" : "text-amber-500"}`} />
             <span>{lang === "NEP" ? "कम स्टक मात्र" : "Low Stock Only"}</span>
-            <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
-              stockFilter === "low_stock" ? "bg-white/25 text-white" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              stockFilter === "low_stock" ? "bg-white/25 text-white" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
             }`}>
               {lowStockCount}
             </span>
