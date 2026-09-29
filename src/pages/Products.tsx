@@ -582,43 +582,45 @@ const Products = () => {
           )}
         </div>
 
-        {/* Filter Buttons matching exact height and styling */}
-        <div className="inline-flex items-center gap-1.5 h-10 p-1 bg-muted/40 border border-input rounded-lg">
-          <button
-            type="button"
-            onClick={() => handleFilterChange("all")}
-            className={`h-8 px-3 rounded-md text-xs font-medium transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
-              stockFilter !== "low_stock"
-                ? "bg-background text-foreground shadow-xs font-semibold border border-border/80"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-            }`}
-          >
-            <span>{lang === "NEP" ? "सबै सामान" : "All Items"}</span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-              stockFilter !== "low_stock" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-            }`}>
-              {items.length}
-            </span>
-          </button>
+        {/* Filter Buttons shown only when there are more than 10 products or when low stock filter is active */}
+        {(items.length > 10 || stockFilter === "low_stock") && (
+          <div className="inline-flex items-center gap-1.5 h-10 p-1 bg-muted/40 border border-input rounded-lg">
+            <button
+              type="button"
+              onClick={() => handleFilterChange("all")}
+              className={`h-8 px-3 rounded-md text-xs font-medium transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
+                stockFilter !== "low_stock"
+                  ? "bg-background text-foreground shadow-xs font-semibold border border-border/80"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+              }`}
+            >
+              <span>{lang === "NEP" ? "सबै सामान" : "All Items"}</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                stockFilter !== "low_stock" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+              }`}>
+                {items.length}
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleFilterChange("low_stock")}
-            className={`h-8 px-3 rounded-md text-xs font-medium transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
-              stockFilter === "low_stock"
-                ? "bg-amber-500 text-white shadow-xs font-semibold"
-                : "text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
-            }`}
-          >
-            <AlertTriangle className={`h-3.5 w-3.5 ${stockFilter === "low_stock" ? "text-white" : "text-amber-500"}`} />
-            <span>{lang === "NEP" ? "कम स्टक मात्र" : "Low Stock Only"}</span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-              stockFilter === "low_stock" ? "bg-white/25 text-white" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-            }`}>
-              {lowStockCount}
-            </span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => handleFilterChange("low_stock")}
+              className={`h-8 px-3 rounded-md text-xs font-medium transition-all duration-150 flex items-center gap-1.5 cursor-pointer ${
+                stockFilter === "low_stock"
+                  ? "bg-amber-500 text-white shadow-xs font-semibold"
+                  : "text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+              }`}
+            >
+              <AlertTriangle className={`h-3.5 w-3.5 ${stockFilter === "low_stock" ? "text-white" : "text-amber-500"}`} />
+              <span>{lang === "NEP" ? "कम स्टक मात्र" : "Low Stock Only"}</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                stockFilter === "low_stock" ? "bg-white/25 text-white" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+              }`}>
+                {lowStockCount}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
