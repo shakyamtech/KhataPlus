@@ -128,9 +128,8 @@ export const NepalTaxGuideView: React.FC<NepalTaxGuideViewProps> = ({
                     <li><strong>SSF दर्ता छुट:</strong> सामाजिक सुरक्षा कोष (SSF) मा दर्ता भएकाको पहिलो ५/६ लाखमा १% सामाजिक सुरक्षा कर मिनाहा (०%)।</li>
                     <li><strong>बीमा खर्च कट्टी:</strong> वार्षिक रु ४०,००० सम्म जीवन बीमा र रु २०,००० सम्म स्वास्थ्य बीमा प्रिमियम कट्टी सुविधा।</li>
                 </ul>
-            </div>
         `;
-        printHTML(html);
+        printHTML(lang === "NEP" ? "नेपाल कर तथा ऐन दिग्दर्शन (Tax Handbook)" : "Nepal Tax & Statutory Handbook", html, { paperSize: "a4" });
     };
 
     return (
