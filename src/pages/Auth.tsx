@@ -71,6 +71,50 @@ const Auth = () => {
     </div>
   );
 
+  const featureCardsJSX = (
+    <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+      <div className="p-2.5 rounded-xl bg-white/40 dark:bg-secondary/30 backdrop-blur-sm border border-border/40 flex items-start gap-2.5 shadow-soft">
+        <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0">
+          <ShoppingBag className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="font-bold text-xs text-foreground">{t.posTitle}</h2>
+          <p className="text-[11px] text-muted-foreground leading-tight">{t.posDesc}</p>
+        </div>
+      </div>
+
+      <div className="p-2.5 rounded-xl bg-white/40 dark:bg-secondary/30 backdrop-blur-sm border border-border/40 flex items-start gap-2.5 shadow-soft">
+        <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0">
+          <BarChart3 className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="font-bold text-xs text-foreground">{t.profitTitle}</h2>
+          <p className="text-[11px] text-muted-foreground leading-tight">{t.profitDesc}</p>
+        </div>
+      </div>
+
+      <div className="p-2.5 rounded-xl bg-white/40 dark:bg-secondary/30 backdrop-blur-sm border border-border/40 flex items-start gap-2.5 shadow-soft">
+        <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0">
+          <Users className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="font-bold text-xs text-foreground">{t.ledgerTitle}</h2>
+          <p className="text-[11px] text-muted-foreground leading-tight">{t.ledgerDesc}</p>
+        </div>
+      </div>
+
+      <div className="p-2.5 rounded-xl bg-white/40 dark:bg-secondary/30 backdrop-blur-sm border border-border/40 flex items-start gap-2.5 shadow-soft">
+        <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 mt-0.5 shrink-0">
+          <Boxes className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="font-bold text-xs text-foreground">{t.inventoryTitle || t.recipeTitle}</h2>
+          <p className="text-[11px] text-muted-foreground leading-tight">{t.inventoryDesc || t.recipeDesc}</p>
+        </div>
+      </div>
+    </div>
+  );
+
   useEffect(() => { 
     if (user && !showLoginSplash) {
       navigate("/", { replace: true }); 
@@ -388,47 +432,9 @@ const Auth = () => {
             </div>
           </div>
 
-          {/* Quick Feature Pills */}
-          <div className="grid grid-cols-2 gap-2.5 pt-0.5">
-            <div className="p-2.5 rounded-xl bg-white/40 dark:bg-secondary/30 backdrop-blur-sm border border-border/40 flex items-start gap-2.5 shadow-soft">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mt-0.5">
-                <ShoppingBag className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="font-bold text-xs text-foreground">{t.posTitle}</h2>
-                <p className="text-[11px] text-muted-foreground leading-tight">{t.posDesc}</p>
-              </div>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-white/40 dark:bg-secondary/30 backdrop-blur-sm border border-border/40 flex items-start gap-2.5 shadow-soft">
-              <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 mt-0.5">
-                <BarChart3 className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="font-bold text-xs text-foreground">{t.profitTitle}</h2>
-                <p className="text-[11px] text-muted-foreground leading-tight">{t.profitDesc}</p>
-              </div>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-white/40 dark:bg-secondary/30 backdrop-blur-sm border border-border/40 flex items-start gap-2.5 shadow-soft">
-              <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 mt-0.5">
-                <Users className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="font-bold text-xs text-foreground">{t.ledgerTitle}</h2>
-                <p className="text-[11px] text-muted-foreground leading-tight">{t.ledgerDesc}</p>
-              </div>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-white/40 dark:bg-secondary/30 backdrop-blur-sm border border-border/40 flex items-start gap-2.5 shadow-soft">
-              <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 mt-0.5">
-                <Boxes className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="font-bold text-xs text-foreground">{t.inventoryTitle || t.recipeTitle}</h2>
-                <p className="text-[11px] text-muted-foreground leading-tight">{t.inventoryDesc || t.recipeDesc}</p>
-              </div>
-            </div>
+          {/* Desktop Feature Cards */}
+          <div className="hidden lg:block">
+            {featureCardsJSX}
           </div>
 
           {/* Scannable Mobile Install App Card */}
@@ -438,7 +444,7 @@ const Auth = () => {
         </div>
 
         {/* Right Column: Modern Glassmorphic Login/Register Card with Corner Sash Ribbon */}
-        <div className="lg:col-span-6 w-full max-w-md mx-auto relative">
+        <div className="lg:col-span-6 w-full max-w-md mx-auto relative space-y-4">
           <Card className="p-5 sm:p-6 shadow-2xl backdrop-blur-xl bg-white/80 dark:bg-card/75 border border-white/60 dark:border-white/10 rounded-2xl relative overflow-hidden transition-all duration-300">
             {/* Model 1: Authentic Bold Corner Sash Ribbon */}
             <div className="absolute top-0 right-0 w-36 h-36 overflow-hidden pointer-events-none z-30">
@@ -660,6 +666,16 @@ const Auth = () => {
               </TabsContent>
             </Tabs>
           </Card>
+
+          {/* Mobile Only: 4 Feature Cards Placed Below Login Card */}
+          <div className="block lg:hidden pt-2">
+            <div className="text-center mb-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                {lang === "NEP" ? "🌟 मुख्य विशेषताहरू (Features)" : "🌟 Key Capabilities"}
+              </span>
+            </div>
+            {featureCardsJSX}
+          </div>
         </div>
       </div>
 
