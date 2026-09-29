@@ -23,6 +23,7 @@ import BalanceSheet from "@/pages/BalanceSheet";
 import { TrialBalanceView } from "@/components/TrialBalanceView";
 import { RatioAnalysisView } from "@/components/RatioAnalysisView";
 import { StockSummaryView } from "@/components/StockSummaryView";
+import { NepalTaxGuideModal } from "@/components/NepalTaxGuideModal";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -71,6 +72,7 @@ const Reports = () => {
   const [regPagePurchases, setRegPagePurchases] = useState(1);
   const [regPageSales, setRegPageSales] = useState(1);
   const [showTaxDetails, setShowTaxDetails] = useState(false);
+  const [taxGuideOpen, setTaxGuideOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "overview");
 
@@ -2780,19 +2782,36 @@ const Reports = () => {
                 </div>
               </div>
 
-              {/* Legal Reference & Slabs Note */}
-              <div className="p-3 rounded-lg bg-muted/40 border border-border/40 text-xs space-y-1.5 text-muted-foreground">
-                <div className="font-semibold text-foreground flex items-center gap-1.5">
-                  <Info className="h-3.5 w-3.5 text-primary" />
-                  <span>आयकर ऐन, २०५८ तथा आर्थिक ऐनका मुख्य मापदण्डहरू:</span>
+              {/* Official Tax Guide Handbook Banner */}
+              <div className="p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border border-primary/25 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <div className="p-2 rounded-xl bg-primary/20 text-primary border border-primary/30 shrink-0">
+                    <BookOpen className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-0.5 text-left">
+                    <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <span>{lang === "NEP" ? "नेपाल सरकारी कर तथा ऐन निर्देशिका (Tax Guide)" : "Official Nepal Tax Handbook"}</span>
+                      <span className="text-[10px] bg-primary/20 text-primary font-bold px-1.5 py-0.2 rounded border border-primary/30">
+                        IRD
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {lang === "NEP"
+                        ? "D-01, D-02, D-03, भ्याट सीमा, स्ल्याब र छुट सम्बन्धी सम्पूर्ण सरकारी नियमहरू"
+                        : "Complete official rules on D-01, D-02, D-03, VAT thresholds, slabs & exemptions"}
+                    </div>
+                  </div>
                 </div>
-                <ul className="list-disc list-inside space-y-1 text-[11px] leading-relaxed pl-1">
-                  <li><strong>D-01 (३० लाखसम्म कारोबार):</strong> अडिट तथा नाफा/नोक्सान नचाहिने; महानगर/उपमहानगरपालिकामा रु ७,५००, नगरपालिकामा रु ४,००० र गाउँपालिकामा रु २,५०० बुझाए पुग्ने।</li>
-                  <li><strong>D-02 (३० लाख देखि १ करोडसम्म):</strong> अडिट नचाहिने; सामान्य खुद्रा व्यापारमा कारोबारको ०.७५%, ग्यास/चुरोट जस्ता न्यून नाफामा ०.२५%, सेवा, होटल तथा क्याफेमा २% कर लाग्ने।</li>
-                  <li><strong>सुन चाँदी, गहना तथा हार्डवेयर व्यवसाय:</strong> मूल्य अभिवृद्धि कर नियमावली अनुसार महानगर/नगरपालिका क्षेत्रमा सुनचाँदी, बहुमूल्य गहना, हार्डवेयर, मार्बल, सेनिटरी तथा मदिराको कारोबार गर्ने पसलहरू सुरुदेखि नै अनिवार्य भ्याटमा दर्ता हुनुपर्ने र १० लाख माथिका गहनामा २% विलासिता शुल्क लाग्ने व्यवस्था छ।</li>
-                  <li><strong>D-03 (१ करोडभन्दा माथि वा अडिट बेसिस):</strong> दर्तावाला अडिटरबाट लेखापरीक्षण गरी खुद नाफामा एकललाई रु ५ लाख / विवाहितलाई रु ६ लाख छुटपछि क्रमशः १०%, २०%, ३०% र ३६% स्ल्याब लाग्ने।</li>
-                  <li><strong>भ्याट सीमा:</strong> पछिल्लो १२ महिनामा सामान कारोबार रु ५० लाख (वा सेवा/होटल रु २० लाख) नाघेमा ३० दिनभित्र अनिवार्य भ्याट दर्ता गर्नुपर्ने कानुनी व्यवस्था छ।</li>
-                </ul>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  onClick={() => setTaxGuideOpen(true)}
+                  className="h-8 px-3.5 text-xs font-bold gap-1.5 shrink-0 w-full sm:w-auto shadow-sm"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  <span>{lang === "NEP" ? "कर निर्देशिका पढ्नुहोस्" : "Read Tax Guide"}</span>
+                </Button>
               </div>
             </Card>
           )}
@@ -3730,6 +3749,13 @@ const Reports = () => {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Nepal Tax & Compliance Guide Handbook Modal */}
+      <NepalTaxGuideModal
+        open={taxGuideOpen}
+        onOpenChange={setTaxGuideOpen}
+        lang={lang}
+      />
     </div>
   );
 };
