@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmt, fmtQty } from "@/lib/format";
-import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon, Search, Receipt, FileText, Printer, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Sparkles } from "lucide-react";
+import { Pencil, Plus, Trash2, X, Loader2, Calendar as CalendarIcon, Search, Receipt, FileText, Printer, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Sparkles, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { generateNextBatchNumber } from "@/lib/batch";
@@ -438,6 +438,7 @@ const Purchases = () => {
   const [busySupplier, setBusySupplier] = useState(false);
   const [cashBalance, setCashBalance] = useState(0);
   const [bankAccounts, setBankAccounts] = useState<Account[]>([]);
+  const [bankBalances, setBankBalances] = useState<Record<string, number>>({});
   const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>("");
   const [editingOriginalPaid, setEditingOriginalPaid] = useState<number>(0);
   const [editingVoucherNo, setEditingVoucherNo] = useState<string | null>(null);
@@ -473,6 +474,23 @@ const Purchases = () => {
           return banks[0].id;
         });
       }
+
+      const perBank: Record<string, number> = {};
+      banks.forEach(b => {
+        const op = Number(b.opening_balance) || 0;
+        if (op !== 0) {
+          perBank[b.id] = (perBank[b.id] || 0) + op;
+        }
+      });
+      txSnap.docs.forEach(docSnap => {
+        const r = docSnap.data();
+        const amt = Number(r.amount) || 0;
+        const delta = r.direction === "in" ? amt : -amt;
+        if (r.bank_account_id) {
+          perBank[r.bank_account_id] = (perBank[r.bank_account_id] || 0) + delta;
+        }
+      });
+      setBankBalances(perBank);
       
       const p = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const s = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1523,29 +1541,49 @@ const Purchases = () => {
 
           {paymentMode === "bank" && (
             <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/90 dark:border-blue-800/50 rounded-lg p-3 mt-3 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
-              <Label className="text-xs font-bold text-blue-900 dark:text-blue-300 flex items-center justify-between">
-                <span>Bank Account (कुन बैंक खाताबाट भुक्तानी गरिएको हो?)</span>
-                {bankAccounts.length === 0 && (
-                  <span className="text-[11px] text-muted-foreground font-normal">No custom bank accounts (Default Bank)</span>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                  <Landmark className="h-3.5 w-3.5 text-blue-600" />
+                  Select Bank Account / बैंक खाता छान्नुहोस् *
+                </Label>
+                {bankAccounts.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {bankAccounts.length} bank account{bankAccounts.length > 1 ? "s" : ""}
+                  </span>
                 )}
-              </Label>
-              {bankAccounts.length > 0 ? (
+              </div>
+              {bankAccounts.length === 0 ? (
+                <div className="text-xs text-amber-700 dark:text-amber-400 py-1">
+                  ⚠️ Accounting मा कुनै पनि बैंक खाता भेटिएन। पहिले <strong>Accounting &gt; Add Account</strong> मा गएर बैंक खाता बनाउनुहोला।
+                </div>
+              ) : (
                 <Select value={selectedBankAccountId} onValueChange={(v) => setSelectedBankAccountId(v)}>
                   <SelectTrigger className="h-9 text-xs font-medium bg-background border-blue-300 dark:border-blue-700">
                     <SelectValue placeholder="Select Bank Account" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-56">
                     {bankAccounts.map((acc) => (
                       <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name} {acc.code ? `(${acc.code})` : ""}
+                        <div className="flex items-center justify-between gap-4 w-full">
+                          <span className="font-semibold text-foreground">{acc.name}</span>
+                          <div className="flex items-center gap-2">
+                            {acc.code && (
+                              <span className="text-[11px] text-muted-foreground font-mono">({acc.code})</span>
+                            )}
+                            {bankBalances[acc.id] !== undefined && (
+                              <span className={cn(
+                                "text-[11px] font-mono font-semibold",
+                                bankBalances[acc.id] < 0 ? "text-rose-600 dark:text-rose-400" : "text-blue-600 dark:text-blue-400"
+                              )}>
+                                {fmt(bankBalances[acc.id])}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              ) : (
-                <p className="text-[11px] text-muted-foreground">
-                  Accounting &gt; Chart of Accounts मा गएर बैंक खाताहरू थप्न सक्नुहुन्छ।
-                </p>
               )}
             </div>
           )}
@@ -1572,17 +1610,38 @@ const Purchases = () => {
 
               {partialMode === "bank" && bankAccounts.length > 0 && (
                 <div className="space-y-1.5 pt-1 border-t border-blue-200/60 dark:border-blue-800/40">
-                  <Label className="text-xs font-semibold text-blue-900 dark:text-blue-300">
-                    Bank Account (कुन बैंक खाताबाट भुक्तानी गरिएको हो?)
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                      <Landmark className="h-3.5 w-3.5 text-blue-600" />
+                      Select Bank Account / बैंक खाता छान्नुहोस् *
+                    </Label>
+                    <span className="text-[10px] text-muted-foreground">
+                      {bankAccounts.length} bank account{bankAccounts.length > 1 ? "s" : ""}
+                    </span>
+                  </div>
                   <Select value={selectedBankAccountId} onValueChange={(v) => setSelectedBankAccountId(v)}>
                     <SelectTrigger className="h-9 text-xs font-medium bg-background border-blue-300 dark:border-blue-700">
                       <SelectValue placeholder="Select Bank Account" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-56">
                       {bankAccounts.map((acc) => (
                         <SelectItem key={acc.id} value={acc.id}>
-                          {acc.name} {acc.code ? `(${acc.code})` : ""}
+                          <div className="flex items-center justify-between gap-4 w-full">
+                            <span className="font-semibold text-foreground">{acc.name}</span>
+                            <div className="flex items-center gap-2">
+                              {acc.code && (
+                                <span className="text-[11px] text-muted-foreground font-mono">({acc.code})</span>
+                              )}
+                              {bankBalances[acc.id] !== undefined && (
+                                <span className={cn(
+                                  "text-[11px] font-mono font-semibold",
+                                  bankBalances[acc.id] < 0 ? "text-rose-600 dark:text-rose-400" : "text-blue-600 dark:text-blue-400"
+                                )}>
+                                  {fmt(bankBalances[acc.id])}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
