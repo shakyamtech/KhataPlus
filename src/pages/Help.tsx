@@ -773,7 +773,7 @@ export default function Help() {
                 {lang === "NEP" ? "KhataPlus ज्ञान केन्द्र र प्रयोग निर्देशिका" : "KhataPlus Knowledge Base & User Guide"}
               </Badge>
               <Badge variant="secondary" className="text-xs font-semibold">
-                v2.2.0 Complete Manual
+                v2.3.0 Complete Manual
               </Badge>
             </div>
 

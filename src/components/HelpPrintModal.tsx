@@ -360,7 +360,7 @@ export function HelpPrintModal({
         <div class="brand-title">KhataPlus</div>
         <div style="font-size: 10.5px; color: #64748b; font-weight: 600;">नेपालको आधुनिक बिलिङ तथा लेखा व्यवस्थापन सफ्टवेयर</div>
       </div>
-      <div class="brand-tag">v2.2.0 Official Manual</div>
+      <div class="brand-tag">v2.3.0 Official Manual</div>
     </div>
 
     <div class="manual-title">
@@ -536,7 +536,7 @@ export function HelpPrintModal({
                   : "bg-card hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/70"
               )}
             >
-              {lang === "NEP" ? "सम्पूर्ण ९ खण्डहरू (Complete Manual)" : "All 9 Modules"}
+              {lang === "NEP" ? `सम्पूर्ण ${modules.length} खण्डहरू (Complete Manual)` : `All ${modules.length} Modules`}
             </button>
 
             {modules.map((m) => {
@@ -586,7 +586,7 @@ export function HelpPrintModal({
                   "font-bold text-xs px-3 py-1 rounded-full",
                   colorMode === "color" ? "bg-sky-600 text-white shadow-xs" : "bg-slate-800 text-white"
                 )}>
-                  v2.2.0 Complete SOP Manual
+                  v2.3.0 Complete SOP Manual
                 </div>
               </div>
 
