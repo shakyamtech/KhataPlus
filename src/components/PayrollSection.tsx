@@ -131,7 +131,6 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
   // Edit Salary Form State
   const [editSalaryAmount, setEditSalaryAmount] = useState("");
-  const [editAdvanceBal, setEditAdvanceBal] = useState("0");
   const [editPanNo, setEditPanNo] = useState("");
   const [editBankName, setEditBankName] = useState("");
   const [editBankAccNo, setEditBankAccNo] = useState("");
@@ -468,7 +467,6 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
   const handleOpenEditSalary = (staff: StaffMember) => {
     setSelectedStaff(staff);
     setEditSalaryAmount(staff.monthly_salary && staff.monthly_salary > 0 ? String(staff.monthly_salary) : "");
-    setEditAdvanceBal(String(Number(staff.advance_balance) || 0));
     setEditPanNo(staff.pan_no || "");
     setEditBankName(staff.bank_name || "");
     setEditBankAccNo(staff.bank_account_no || "");
@@ -481,10 +479,8 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
     setBusy(true);
     try {
       const salaryNum = parseFloat(editSalaryAmount) || 0;
-      const advNum = parseFloat(editAdvanceBal) || 0;
       const ok = await updateStaffSalaryDetails(selectedStaff.id, {
         monthly_salary: salaryNum,
-        advance_balance: advNum,
         pan_no: editPanNo.trim(),
         bank_name: editBankName.trim(),
         bank_account_no: editBankAccNo.trim()
@@ -1427,32 +1423,18 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "मासिक तलब (रु.):" : "Monthly Base Salary (Rs.):"}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={editSalaryAmount}
-                  onChange={(e) => setEditSalaryAmount(e.target.value)}
-                  placeholder="e.g. 25000"
-                  className="text-base font-mono font-bold mt-1"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "चालू पेस्की मौज्दात (रु.):" : "Advance Balance (Rs.):"}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={editAdvanceBal}
-                  onChange={(e) => setEditAdvanceBal(e.target.value)}
-                  placeholder="0"
-                  className="text-base font-mono font-bold mt-1 text-amber-500"
-                />
-              </div>
+          <div className="space-y-3.5 py-2">
+            <div>
+              <Label className="text-xs font-bold">{lang === "NEP" ? "मासिक निश्चित तलब (रु.):" : "Monthly Base Salary (Rs.):"}</Label>
+              <Input
+                type="number"
+                min={0}
+                value={editSalaryAmount}
+                onChange={(e) => setEditSalaryAmount(e.target.value)}
+                placeholder="e.g. 25000"
+                className="text-base font-mono font-bold mt-1 h-10"
+                autoFocus
+              />
             </div>
 
             <div>
@@ -1465,7 +1447,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <div>
                 <Label className="text-xs font-bold">{lang === "NEP" ? "बैंकको नाम:" : "Bank Name:"}</Label>
                 <Input
