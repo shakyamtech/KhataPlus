@@ -7,7 +7,8 @@ import {
   AlertTriangle, ChevronRight, ChevronDown, ExternalLink, Printer,
   TrendingUp, QrCode, ShieldCheck, Layers, Receipt, Percent,
   Calendar, RotateCcw, FileSpreadsheet, BookMarked, Lightbulb,
-  ArrowRight, Check, Info, ArrowUpRight, BookOpen, Smartphone, Star
+  ArrowRight, Check, Info, ArrowUpRight, BookOpen, Smartphone, Star,
+  UserCheck
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -514,10 +515,100 @@ const GUIDE_MODULES: GuideModule[] = [
     ]
   },
   {
+    id: "staff",
+    icon: UserCheck,
+    titleNep: "९. कर्मचारी, काउन्टर तथा रोल व्यवस्थापन",
+    titleEng: "9. Staff, Counter & Role Permissions",
+    descNep: "कर्मचारी थप्ने, ३ वटा भूमिका (Cashier, Storekeeper, Manager), द्रुत काउन्टर स्विच र Master PIN सुरक्षा।",
+    descEng: "Manage staff accounts, assign 3 roles (Cashier, Storekeeper, Accountant), instant counter PIN switcher, and Master PIN protection.",
+    badge: "Multi-User / कर्मचारी",
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+    borderColor: "border-amber-500/20",
+    topics: [
+      {
+        id: "staff-add-roles",
+        titleNep: "नयाँ कर्मचारी थप्ने र ३ वटा भूमिका (Roles & Permissions) निर्धारण",
+        titleEng: "Adding Staff Members & Assigning 3 Operational Roles",
+        summaryNep: "काउन्टर क्यासियर, स्टोरकिपर र म्यानेजर खाता बनाउने, इमेल/फोन र लगइन पिन तोक्ने तरिका।",
+        summaryEng: "How to invite staff, assign granular permissions, set 4-digit PINs, and control access to cost prices & reports.",
+        actionLink: "/",
+        actionLabelNep: "Shop Settings खोल्नुहोस्",
+        actionLabelEng: "Open Shop Settings",
+        stepsNep: [
+          "१. माथि प्रोफाइल आइकनमा क्लिक गरी 'पसल सेटिङ (Shop Settings)' खोल्नुहोस् र 'Staff & Roles' ट्याबमा जानुहोस्।",
+          "२. '+ Add New Staff (नयाँ कर्मचारी थप्नुहोस्)' बटनमा क्लिक गर्नुहोस्।",
+          "३. कर्मचारीको पूरा नाम (Full Name), इमेल, मोबाइल नम्बर, र ४-अङ्कको द्रुत काउन्टर पिन (Counter PIN) भर्नुहोस्।",
+          "४. ३ वटा भूमिकाहरू (Roles) मध्ये उपयुक्त भूमिका छान्नुहोस्:",
+          "   • POS Cashier / Counter: बिल काट्ने, प्रिन्ट गर्ने र ग्राहक खोज्ने अधिकार (खरिद मूल्य र नाफा-नोक्सान पूर्ण रूपमा लुक्छ)।",
+          "   • Inventory / Storekeeper: नयाँ सामान थप्ने, स्टक मिलाउने, बारकोड प्रिन्ट गर्ने र सप्लायर खरिद इन्ट्री गर्ने अधिकार।",
+          "   • Accountant / Manager: बिक्री, खरिद, ग्राहक/साहु खाता, क्यासबुक र सम्पूर्ण वित्तीय रिपोर्टहरू चलाउने पूर्ण अधिकार।",
+          "५. 'Save Staff' मा क्लिक गर्नुहोस्।"
+        ],
+        stepsEng: [
+          "1. Open Profile Avatar > 'Shop Settings' and navigate to the 'Staff & Roles' tab.",
+          "2. Click '+ Add New Staff'.",
+          "3. Enter Staff Full Name, Email, Phone Number, and assign a 4-digit Counter PIN.",
+          "4. Choose from 3 distinct role permissions:",
+          "   • POS Cashier / Counter: Can make sales, issue bills, and search customers (cost prices and Profit & Loss are strictly hidden).",
+          "   • Inventory / Storekeeper: Can add products, adjust stock, generate barcodes, and record supplier purchase bills.",
+          "   • Accountant / Manager: Full access to sales, purchases, customer/supplier ledgers, cashbook, and financial reports.",
+          "5. Click 'Save Staff'."
+        ],
+        tipsNep: "💡 काउन्टर क्यासियरले कहिल्यै पनि सामानको खरिद मूल्य (Cost Price) वा पसलको नाफा देख्न पाउँदैनन्। यसले गर्दा पसलको वित्तीय गोपनीयता १००% सुरक्षित रहन्छ!",
+        tipsEng: "💡 POS Cashiers cannot view confidential cost prices or net profit margins, ensuring 100% financial privacy."
+      },
+      {
+        id: "staff-counter-switch",
+        titleNep: "द्रुत काउन्टर स्विच र बिलमा कर्मचारीको नाम (Fast Counter Switch)",
+        titleEng: "Fast Counter Switcher & Cashier Name on Invoices",
+        summaryNep: "सिफ्ट परिवर्तन हुँदा १ सेकेन्डमै आफ्नो PIN हानेर काउन्टर बदल्ने र बिल तथा रसिदमा कर्मचारीको नाम छाप्ने तरिका।",
+        summaryEng: "Seamlessly switch counter operators using 4-digit PINs, auto-recording staff names on printed receipts & audit trails.",
+        stepsNep: [
+          "१. डेस्कटपको Top Header वा मोबाइल मेनुमा रहेको 'Switch Counter (काउन्टर बदल्नुहोस्)' बटन थिच्नुहोस्।",
+          "२. सूचीबाट आफ्नो नाम छान्नुहोस् र आफ्नो ४-अङ्कको PIN कोड टाइप गर्नुहोस्।",
+          "३. १ सेकेन्डमै काउन्टर स्विच हुन्छ र स्क्रीनको माथि सक्रिय कर्मचारीको नाम देखिन्छ।",
+          "४. अब काटिने हरेक बिक्री बिल, रसिद, र प्रिन्टमा 'Prepared By: <कर्मचारीको नाम>' स्वतः छापिन्छ।",
+          "५. सिफ्ट सकिएपछि पुनः सोही बटन थिचेर अर्को कर्मचारी वा साहु (Owner) मा स्विच गर्न सकिन्छ।"
+        ],
+        stepsEng: [
+          "1. Click 'Switch Counter' on the top bar or mobile navigation drawer.",
+          "2. Select your staff profile and enter your 4-digit PIN.",
+          "3. The counter instantly switches, displaying the active operator's badge on screen.",
+          "4. Every subsequent sales bill, thermal receipt, and A4 invoice records 'Prepared By: <Staff Name>'.",
+          "5. When the shift ends, switch back to another staff member or Owner mode."
+        ],
+        examples: {
+          titleNep: "बिल तथा अडिटमा कसरी देखिन्छ?",
+          titleEng: "Audit Trail & Bill Example",
+          contentNep: "यदि रीमा (Reema) ले काउन्टर सम्हालेर बिल काटिन् भने ग्राहकलाई जाने रसिद तथा Reports > Sales Book मा सो बिल 'Prepared By: Reema (Cashier)' ले काटेको भनेर स्पष्ट देखिन्छ।",
+          contentEng: "If Reema operates the counter, thermal receipts and Sales Book registers print 'Prepared By: Reema (Cashier)' for full accountability."
+        }
+      },
+      {
+        id: "staff-master-pin",
+        titleNep: "मास्टर पिन र मालिक सुरक्षा (Master PIN & Owner Protection)",
+        titleEng: "Master PIN & Shop Owner Security Controls",
+        summaryNep: "स्टाफलाई संवेदनशील सेटिङ, ब्यालेन्स शीट वा पसल मेटाउनबाट रोक्न मास्टर पिन प्रयोग गर्ने तरिका।",
+        summaryEng: "Protect administrative settings, Profit & Loss, fiscal rollover, and database reset behind Owner Master PIN.",
+        stepsNep: [
+          "१. Shop Settings > Staff & Roles मा गएर 'Master PIN' सेट गर्नुहोस्।",
+          "२. कर्मचारीले सफ्टवेयर चलाइरहेको बेला यदि उसले संवेदनशील सेटिङ वा रिपोर्टहरू खोल्न खोजेमा सिस्टमले स्वतः 'Master PIN Required' माग्छ।",
+          "३. यदि कुनै कर्मचारीले काम छोडेमा वा केही समयका लागि रोक्नुपरेमा Staff List बाट १-क्लिकमा 'Suspend (निलम्बन)' वा Delete गर्न सकिन्छ।"
+        ],
+        stepsEng: [
+          "1. Configure your secret Master PIN in Shop Settings > Staff & Roles.",
+          "2. When staff members attempt to access restricted settings or reports, KhataPlus prompts for the Owner Master PIN.",
+          "3. If a staff member leaves or is on leave, you can instantly 'Suspend' or 'Delete' their account with 1-click."
+        ]
+      }
+    ]
+  },
+  {
     id: "faq",
     icon: HelpCircle,
-    titleNep: "९. प्राय सोधिने प्रश्न र समस्या समाधान (FAQ)",
-    titleEng: "9. Frequently Asked Questions (FAQ)",
+    titleNep: "१०. प्राय सोधिने प्रश्न र समस्या समाधान (FAQ)",
+    titleEng: "10. Frequently Asked Questions (FAQ)",
     descNep: "दैनिक काम गर्दा आउन सक्ने सामान्य प्रश्नहरू, अफलाइन चलाउने र गल्ती सच्याउने तरिकाहरू।",
     descEng: "Common troubleshooting answers, offline PWA usage, correcting wrong bills, and tips.",
     badge: "FAQ / समस्या समाधान",
@@ -725,7 +816,7 @@ export default function Help() {
                   <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
                   {lang === "NEP" ? "लोकप्रिय खोज:" : "Quick Search:"}
                 </span>
-                {["Opening Balance", "Discount (छुट)", "VAT Tax Invoice", "Barcode", "Profit Margin", "Fiscal Rollover"].map((tag) => (
+                {["Opening Balance", "Staff / Roles (कर्मचारी)", "Discount (छुट)", "VAT Tax Invoice", "Barcode", "Profit Margin", "Fiscal Rollover"].map((tag) => (
                   <button
                     key={tag}
                     type="button"

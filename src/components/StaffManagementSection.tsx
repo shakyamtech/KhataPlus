@@ -14,7 +14,7 @@ import {
 import { 
   Users, UserPlus, Shield, ShieldCheck, ShieldAlert, KeyRound, 
   Trash2, Edit3, CheckCircle2, XCircle, ShoppingCart, Package, 
-  FileSpreadsheet, Sparkles, AlertCircle, Lock, Phone, Mail, UserCheck, Eye, EyeOff, Calendar
+  FileSpreadsheet, Sparkles, AlertCircle, Lock, Phone, Mail, UserCheck, Eye, EyeOff, Calendar, ArrowUpRight, HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -396,9 +396,19 @@ export function StaffManagementSection({ ownerId, shopName }: StaffManagementSec
 
       {/* Role Permission Matrix Card */}
       <div className="p-3.5 rounded-2xl bg-secondary/30 border border-border/80 space-y-2.5">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-          <ShieldCheck className="h-4 w-4 text-primary" />
-          <span>{lang === "NEP" ? "पद र अधिकारको विवरण (Role Permissions Guide)" : "Role Permissions Guide"}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <span>{lang === "NEP" ? "पद र अधिकारको विवरण (Role Permissions Guide)" : "Role Permissions Guide"}</span>
+          </div>
+          <a
+            href="/help"
+            className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+          >
+            <HelpCircle className="h-3.5 w-3.5" />
+            <span>{lang === "NEP" ? "पूर्ण गाइड पढ्नुहोस्" : "View Full Guide"}</span>
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </a>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
           {(["cashier", "storekeeper", "accountant"] as StaffRole[]).map((r) => {

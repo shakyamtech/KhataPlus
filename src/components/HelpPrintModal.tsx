@@ -68,7 +68,8 @@ const MODULE_SHORT_LABELS: Record<string, { nep: string; eng: string }> = {
   "cashbook": { nep: "६. क्यासबुक र खर्च", eng: "6. Cashbook" },
   "accounting": { nep: "७. वित्तीय रिपोर्टहरू", eng: "7. Reports" },
   "settings": { nep: "८. सेटिङ र ब्याकअप", eng: "8. Settings & Backup" },
-  "faq": { nep: "९. सोधिने प्रश्न (FAQ)", eng: "9. FAQs" },
+  "staff": { nep: "९. कर्मचारी र काउन्टर", eng: "9. Staff & Roles" },
+  "faq": { nep: "१०. सोधिने प्रश्न (FAQ)", eng: "10. FAQs" },
 };
 
 export function HelpPrintModal({
