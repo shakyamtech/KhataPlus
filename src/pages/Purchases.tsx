@@ -375,7 +375,7 @@ const ExpiryDatePicker = ({ value, onChange }: { value: string; onChange: (val: 
 };
 
 const Purchases = () => {
-  const { user } = useAuth();
+  const { user, currentStaff } = useAuth();
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [purchaseType, setPurchaseType] = useState<"vat_bill" | "non_vat">("vat_bill");
   const [supplierBillNo, setSupplierBillNo] = useState<string>("");
@@ -809,7 +809,10 @@ const Purchases = () => {
         note: discountNum > 0
           ? (discountType === "percent" ? `Discount received: ${typedDiscount}% (Rs. ${discountNum})` : `Discount received: Rs. ${discountNum}`)
           : (editingId ? "Updated purchase" : null),
-        prepared_by: shop.owner_name || user?.displayName || null,
+        prepared_by: currentStaff ? currentStaff.name : (shop.owner_name || user?.displayName || null),
+        entered_by_name: currentStaff?.name || user?.displayName || "Admin",
+        entered_by_id: currentStaff?.id || user?.uid,
+        entered_by_role: currentStaff?.role || "owner",
         created_at: effectiveDate
       });
 
