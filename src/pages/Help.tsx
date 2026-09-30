@@ -605,10 +605,78 @@ const GUIDE_MODULES: GuideModule[] = [
     ]
   },
   {
+    id: "payroll",
+    icon: Wallet,
+    titleNep: "१०. हाजिरी, पेस्की तथा तलब व्यवस्थापन",
+    titleEng: "10. Attendance, Advances & Staff Payroll",
+    descNep: "दैनिक हाजिरी, बिदा रेकर्ड, महिनाको बीचमा पेस्की (Advance), मसान्तमा तलब कट्टा र Payslip रसिद प्रिन्ट।",
+    descEng: "Daily attendance logs, leave tracking, mid-month salary advances, month-end salary payout with advance deduction, and payslip printing.",
+    badge: "Payroll / तलब-हाजिरी",
+    color: "text-teal-500",
+    bgColor: "bg-teal-500/10",
+    borderColor: "border-teal-500/20",
+    topics: [
+      {
+        id: "staff-attendance",
+        titleNep: "कर्मचारी दैनिक हाजिरी व्यवस्थापन (Daily Attendance & Calendar Grid)",
+        titleEng: "Daily Staff Attendance & Monthly Leave Tracking",
+        summaryNep: "कर्मचारीको दैनिक उपस्थिति (Present, Absent, Half-Day, Holiday), महिनाभरिको क्यालेन्डर र हाजिरी रिपोर्ट।",
+        summaryEng: "Record daily check-ins (Present, Absent, Half-Day, Leave), monthly calendar views, and attendance summaries.",
+        actionLink: "/admin",
+        actionLabelNep: "Payroll & Attendance खोल्नुहोस्",
+        actionLabelEng: "Open Payroll & Attendance",
+        stepsNep: [
+          "१. Top Bar मा रहेको 'Staff Attendance' बटन वा Admin Settings > 'Payroll & Attendance' ट्याबमा जानुहोस्।",
+          "२. 'दैनिक हाजिरी (Attendance)' सेक्सनमा गएर सम्बन्धित मिति छान्नुहोस्।",
+          "३. प्रत्येक कर्मचारीको नाम अगाडि रहेको स्थिति छान्नुहोस्: 'Present (उपस्थित)', 'Absent (अनुपस्थित)', 'Half Day (आधा दिन)', 'Leave (बिदा)', वा 'Holiday (चाडपर्व/साप्ताहिक बिदा)'।",
+          "४. 'Save Attendance' थिच्नुहोस्। महिनाभरिको हाजिरी नेपाली क्यालेन्डर ग्रिडमा स्वतः अद्यावधिक हुन्छ र तलब हिसाब गर्दा काम लाग्छ।"
+        ],
+        stepsEng: [
+          "1. Click 'Staff Attendance' in the top bar or navigate to Admin Settings > 'Payroll & Attendance' tab.",
+          "2. Under the Attendance tab, pick the target date.",
+          "3. Mark each employee's status: 'Present', 'Absent', 'Half Day', 'Leave', or 'Holiday/Off'.",
+          "4. Click 'Save Attendance'. Monthly attendance calendar syncs instantly for accurate payroll calculation."
+        ],
+        tipsNep: "💡 १-क्लिकमा 'Mark All Present (सबै उपस्थित)' थिचेर सबैको हाजिरी एकै पटक छिटो लगाउन सकिन्छ!",
+        tipsEng: "💡 Use 'Mark All Present' to record full-team attendance in 1 click!"
+      },
+      {
+        id: "staff-payroll-advance",
+        titleNep: "मासिक तलब, पेस्की (Salary Advance) र तलब रसिद (Payslip) प्रिन्ट",
+        titleEng: "Monthly Payroll Calculation, Salary Advances & Payslip Generation",
+        summaryNep: "मासिक तलब तोक्ने, पेस्की रकम दर्ता गर्ने, महिनाको अन्त्यमा तलब भुक्तानी र लेखा (Expense) हिसाब मिलान।",
+        summaryEng: "Set base salary, record advance payouts, auto-deduct advances on salary settlement, and print payslips.",
+        actionLink: "/admin",
+        actionLabelNep: "Payroll सेक्सन खोल्नुहोस्",
+        actionLabelEng: "Open Payroll Section",
+        stepsNep: [
+          "१. Admin Settings > Payroll & Attendance मा गएर 'कर्मचारी तलब रोस्टर (Staff Roster)' मा प्रत्येक कर्मचारीको मासिक तलब (Base Salary) सेट गर्नुहोस्।",
+          "२. यदि कर्मचारीले महिनाको बीचमा पेस्की (Advance) मागेमा 'Pay Advance (पेस्की दिनुहोस्)' बटन थिची रकम, भुक्तानी माध्यम (Cash वा Bank), र मिति हाल्नुहोस्। यो रकम क्यासबुकबाट स्वतः खर्च भई कर्मचारीको लेजरमा चढाउँछ।",
+          "३. महिनाको अन्त्यमा 'Pay Salary (तलब भुक्तानी)' बटन थिच्नुहोस्। सिस्टमले Base Salary, उपस्थिति, र पहिले लिएको पेस्की (Advance) स्वतः कट्टा गरी बाँकी Net Salary निकाल्छ।",
+          "४. भुक्तानी माध्यम (Cash/Bank) छानी 'Confirm Payout' गर्नासाथ क्यासबुक र Profit & Loss मा तलब खर्च (Salary Expense) दर्ता हुन्छ।",
+          "५. भुक्तानी भएपछि 'Print Payslip' बाट आधिकारिक तलब रसिद प्रिन्ट गर्न वा WhatsApp मा कर्मचारीलाई पठाउन सकिन्छ।"
+        ],
+        stepsEng: [
+          "1. In Admin Settings > Payroll & Attendance, configure each employee's Base Monthly Salary under the Staff Roster.",
+          "2. When staff request mid-month advances, click 'Pay Advance', enter Amount, Mode (Cash/Bank), and Date (auto-recorded in Cashbook).",
+          "3. At month-end, click 'Pay Salary'. KhataPlus auto-deducts taken advances, accounts for attendance, and calculates Net Payable Salary.",
+          "4. Select payout source (Cash/Bank) and click 'Confirm Payout'. Double-entry journals debit Salary Expense and credit Cash/Bank.",
+          "5. Click 'Print Payslip' to generate an official salary voucher or share it directly on WhatsApp."
+        ],
+        examples: {
+          titleNep: "पेस्की कट्टा र तलब उदाहरण (Example Calculation)",
+          titleEng: "Salary & Advance Calculation Example",
+          contentNep: "यदि रमेशको मासिक तलब रु. २५,००० छ र उसले महिनाको १५ गते रु. १०,००० पेस्की लग्यो भने, मसान्तमा 'Pay Salary' गर्दा सिस्टमले रु. १०,००० स्वतः कटाएर बाँकी रु. १५,००० मात्र भुक्तानी गर्नुपर्ने भनेर हिसाब देखाउँछ।",
+          contentEng: "If Ramesh has a base salary of Rs. 25,000 and took a Rs. 10,000 advance on the 15th, KhataPlus auto-deducts Rs. 10,000 at month-end, computing Net Payable as Rs. 15,000."
+        }
+      }
+    ]
+  },
+  {
     id: "faq",
     icon: HelpCircle,
-    titleNep: "१०. प्राय सोधिने प्रश्न र समस्या समाधान (FAQ)",
-    titleEng: "10. Frequently Asked Questions (FAQ)",
+    titleNep: "११. प्राय सोधिने प्रश्न र समस्या समाधान (FAQ)",
+    titleEng: "11. Frequently Asked Questions (FAQ)",
     descNep: "दैनिक काम गर्दा आउन सक्ने सामान्य प्रश्नहरू, अफलाइन चलाउने र गल्ती सच्याउने तरिकाहरू।",
     descEng: "Common troubleshooting answers, offline PWA usage, correcting wrong bills, and tips.",
     badge: "FAQ / समस्या समाधान",

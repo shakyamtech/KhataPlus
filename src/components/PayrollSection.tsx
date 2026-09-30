@@ -671,37 +671,41 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
               return (
                 <Card
                   key={staff.id}
-                  className="p-4 bg-card border hover:border-primary/30 transition-all flex flex-col justify-between shadow-2xs group"
+                  className="p-4 sm:p-5 bg-card/95 backdrop-blur-xs border border-border/80 hover:border-primary/40 hover:shadow-md transition-all duration-200 flex flex-col justify-between rounded-2xl group shadow-2xs"
                 >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10 border border-primary/20">
-                          <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs uppercase">
+                  <div className="space-y-3.5">
+                    {/* Top Header: Avatar + Staff Info + Status Badge */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-11 w-11 shrink-0 ring-2 ring-primary/15 border border-background shadow-2xs">
+                          <AvatarFallback className="bg-gradient-to-br from-primary/15 to-primary/5 text-primary font-bold text-xs uppercase">
                             {staff.name.slice(0, 2)}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <div className="text-sm font-bold text-foreground flex items-center gap-2">
-                            <span>{staff.name}</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sm sm:text-base font-bold text-foreground truncate tracking-tight">
+                              {staff.name}
+                            </span>
                             <span
                               className={cn(
-                                "text-[9px] px-1.5 py-0.2 rounded font-bold uppercase border",
+                                "text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border tracking-wider",
                                 staff.role === "cashier"
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
                                   : staff.role === "storekeeper"
-                                  ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20"
-                                  : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                                  ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/25"
+                                  : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25"
                               )}
                             >
                               {staff.role}
                             </span>
                           </div>
+
                           <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-                            <span>{staff.phone || staff.email}</span>
+                            <span className="truncate">{staff.phone || staff.email}</span>
                             {staff.joining_date && (
-                              <span className="inline-flex items-center gap-1 font-mono text-[10px] bg-primary/5 text-primary px-1.5 py-0.2 rounded border border-primary/20">
-                                <Calendar className="h-3 w-3" />
+                              <span className="inline-flex items-center gap-1 font-mono text-[10px] bg-secondary/80 text-foreground/80 px-1.5 py-0.5 rounded-md border border-border/60">
+                                <Calendar className="h-3 w-3 text-primary" />
                                 <span>{lang === "NEP" ? "सुरु:" : "Joined:"} {staff.joining_date.slice(0, 10)}</span>
                               </span>
                             )}
@@ -709,32 +713,43 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                         </div>
                       </div>
 
-                      {monthPaidTx ? (
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] font-bold">
-                          ✓ {lang === "NEP" ? "भुक्तान भयो" : "Paid"} ({selectedMonth})
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px] font-bold">
-                          {lang === "NEP" ? "बाँकी" : "Pending"} ({selectedMonth})
-                        </Badge>
-                      )}
+                      {/* Month Status Badge */}
+                      <div className="shrink-0">
+                        {monthPaidTx ? (
+                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-2xs gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>{lang === "NEP" ? "भुक्तान भयो" : "Paid"}</span>
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-2xs">
+                            {lang === "NEP" ? "बाँकी" : "Pending"}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Financial Figures */}
-                    <div className="grid grid-cols-2 gap-2 mt-4 p-2.5 rounded-xl bg-secondary/40 border text-xs">
-                      <div>
-                        <div className="text-[10px] text-muted-foreground font-semibold flex items-center justify-between">
-                          <span>{lang === "NEP" ? "मासिक तलब:" : "Monthly Salary:"}</span>
+                    {/* Financial Summary Tiles: Monthly Salary & Advance Balance */}
+                    <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-muted/40 border border-border/70">
+                      {/* Monthly Salary Tile */}
+                      <div className="flex flex-col justify-between">
+                        <div className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <Wallet className="h-3 w-3 text-primary/70" />
+                            {lang === "NEP" ? "मासिक तलब" : "Monthly Salary"}
+                          </span>
                           <button
+                            type="button"
                             onClick={() => handleOpenEditSalary(staff)}
-                            className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                            className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
                             title={lang === "NEP" ? "तलब सम्पादन गर्नुहोस्" : "Edit Salary"}
                           >
                             <Pencil className="h-3 w-3" />
                           </button>
                         </div>
-                        <div className="text-sm font-bold text-foreground mt-0.5">
-                          {baseSalary > 0 ? `${fmt(baseSalary)}` : (
+                        <div className="text-sm sm:text-base font-extrabold text-foreground tracking-tight mt-1">
+                          {baseSalary > 0 ? (
+                            fmt(baseSalary)
+                          ) : (
                             <span className="text-[11px] text-muted-foreground/60 italic font-normal">
                               {lang === "NEP" ? "तोकिएको छैन" : "Not set"}
                             </span>
@@ -742,11 +757,25 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                         </div>
                       </div>
 
-                      <div className="border-l pl-2.5">
-                        <div className="text-[10px] text-muted-foreground font-semibold">
-                          {lang === "NEP" ? "लिएको पेस्की:" : "Advance Taken:"}
+                      {/* Advance Balance Tile */}
+                      <div className="border-l border-border/70 pl-2.5 sm:pl-3 flex flex-col justify-between">
+                        <div className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <Coins className="h-3 w-3 text-amber-500/70" />
+                            {lang === "NEP" ? "लिएको पेस्की" : "Advance Taken"}
+                          </span>
+                          {advanceBal === 0 && (
+                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded border border-emerald-500/20">
+                              0
+                            </span>
+                          )}
                         </div>
-                        <div className={cn("text-sm font-bold mt-0.5", advanceBal > 0 ? "text-amber-500" : "text-muted-foreground")}>
+                        <div
+                          className={cn(
+                            "text-sm sm:text-base font-extrabold tracking-tight mt-1",
+                            advanceBal > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                          )}
+                        >
                           {fmt(advanceBal)}
                         </div>
                       </div>
@@ -754,9 +783,9 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
                     {/* Bank Account & PAN Information Badge Row */}
                     {(staff.bank_name || staff.bank_account_no || staff.pan_no) && (
-                      <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-border/40 text-[11px] text-muted-foreground flex-wrap">
+                      <div className="flex items-center gap-1.5 pt-1 text-[11px] text-muted-foreground flex-wrap">
                         {(staff.bank_name || staff.bank_account_no) && (
-                          <div className="inline-flex items-center gap-1 font-mono bg-muted/50 px-2 py-0.5 rounded-md border text-foreground/90 text-[11px] shadow-2xs">
+                          <div className="inline-flex items-center gap-1 font-mono bg-secondary/70 px-2 py-0.5 rounded-md border border-border/70 text-foreground/90 text-[11px]">
                             <Landmark className="h-3 w-3 text-primary shrink-0" />
                             <span className="truncate max-w-[170px]" title={`${staff.bank_name ? staff.bank_name + ': ' : ''}${staff.bank_account_no || ''}`}>
                               {staff.bank_name ? `${staff.bank_name}: ` : ""}{staff.bank_account_no || "N/A"}
@@ -764,7 +793,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                           </div>
                         )}
                         {staff.pan_no && (
-                          <div className="inline-flex items-center gap-1 font-mono bg-muted/50 px-2 py-0.5 rounded-md border text-foreground/90 text-[11px] shadow-2xs">
+                          <div className="inline-flex items-center gap-1 font-mono bg-secondary/70 px-2 py-0.5 rounded-md border border-border/70 text-foreground/90 text-[11px]">
                             <CreditCard className="h-3 w-3 text-amber-500 shrink-0" />
                             <span>PAN: {staff.pan_no}</span>
                           </div>
@@ -774,12 +803,12 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                   </div>
 
                   {/* Actions Bar */}
-                  <div className="flex gap-2 mt-4 pt-3 border-t">
+                  <div className="flex gap-2 mt-4 pt-3 border-t border-border/70">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenAdvance(staff)}
-                      className="flex-1 h-8 text-xs font-semibold gap-1.5 border-amber-500/30 text-amber-600 hover:bg-amber-500/10 cursor-pointer"
+                      className="flex-1 h-9 text-xs font-bold gap-1.5 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500 rounded-xl transition-all cursor-pointer"
                     >
                       <Coins className="h-3.5 w-3.5" />
                       {lang === "NEP" ? "पेस्की दिनुहोस्" : "Give Advance"}
@@ -788,7 +817,7 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
                     <Button
                       size="sm"
                       onClick={() => handleOpenSalary(staff)}
-                      className="flex-1 h-8 text-xs font-bold gap-1.5 bg-primary text-primary-foreground shadow-xs cursor-pointer"
+                      className="flex-1 h-9 text-xs font-bold gap-1.5 bg-primary text-primary-foreground hover:opacity-95 shadow-xs hover:shadow rounded-xl transition-all cursor-pointer"
                     >
                       <Banknote className="h-3.5 w-3.5" />
                       {monthPaidTx
