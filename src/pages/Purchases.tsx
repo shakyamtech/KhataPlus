@@ -23,6 +23,7 @@ import { ProductFormModal } from "@/components/ProductFormModal";
 import { getShopInfo, ShopInfo } from "@/lib/shop";
 import { printPurchaseVoucher } from "@/lib/invoicePrinter";
 import { formatNepaliDate, NEPALI_MONTHS, getDaysInBSMonth, bsToAdDateString, adToBsDateParts } from "@/lib/fiscalYear";
+import { getAccounts, Account } from "@/lib/accounting";
 
 type Product = { id: string; name: string; unit: string; cost_price: number; stock_qty: number; barcode: string | null; has_expiry?: boolean; hs_code?: string | null };
 type Supplier = { id: string; name: string; phone?: string; pan?: string; address?: string };
@@ -436,6 +437,8 @@ const Purchases = () => {
   const [busy, setBusy] = useState(false);
   const [busySupplier, setBusySupplier] = useState(false);
   const [cashBalance, setCashBalance] = useState(0);
+  const [bankAccounts, setBankAccounts] = useState<Account[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>("");
   const [editingOriginalPaid, setEditingOriginalPaid] = useState<number>(0);
   const [editingVoucherNo, setEditingVoucherNo] = useState<string | null>(null);
   const [editingVoucherSeq, setEditingVoucherSeq] = useState<number | null>(null);
@@ -449,17 +452,27 @@ const Purchases = () => {
       const purQ = query(collection(db, "purchases"), where("user_id", "==", user.uid), orderBy("created_at", "desc"), limit(40));
       const txQ = query(collection(db, "cash_transactions"), where("user_id", "==", user.uid));
 
-      const [pSnap, sSnap, purSnap, txSnap, sInfo] = await Promise.all([
+      const [pSnap, sSnap, purSnap, txSnap, sInfo, accs] = await Promise.all([
         getDocs(pQ), 
         getDocs(sQ), 
         getDocs(purQ), 
         getDocs(txQ),
-        getShopInfo()
+        getShopInfo(),
+        getAccounts(user.uid)
       ]);
       
       setShopInfo(sInfo);
       const cBal = txSnap.docs.reduce((s, r) => s + (r.data().direction === "in" ? Number(r.data().amount) : -Number(r.data().amount)), 0);
       setCashBalance(cBal);
+
+      const banks = (accs || []).filter(a => a.group === "bank_accounts");
+      setBankAccounts(banks);
+      if (banks.length > 0) {
+        setSelectedBankAccountId(prev => {
+          if (prev && banks.some(b => b.id === prev)) return prev;
+          return banks[0].id;
+        });
+      }
       
       const p = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const s = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -640,6 +653,7 @@ const Purchases = () => {
       setSupplierId(p.supplier_id || "none");
       setPaymentMode(p.payment_mode || "cash");
       setPartialMode(p.paid_via || "cash");
+      setSelectedBankAccountId(p.bank_account_id || (bankAccounts[0]?.id || ""));
       setDiscount((p.discount || "").toString());
       setDiscountType(p.discount_type || "flat");
       setPurchaseType(p.is_vat_bill === false ? "non_vat" : "vat_bill");
@@ -753,6 +767,10 @@ const Purchases = () => {
     }
 
     const effectivePaidMode = paymentMode === "credit" ? (paid > 0 ? partialMode : "credit") : paymentMode;
+    const isBankPayment = (paymentMode === "bank" || (paymentMode === "credit" && partialMode === "bank")) && paid > 0;
+    const selectedBank = isBankPayment ? bankAccounts.find(b => b.id === selectedBankAccountId) : null;
+    const bankAccId = isBankPayment ? (selectedBankAccountId || null) : null;
+    const bankAccName = isBankPayment ? (selectedBank?.name || null) : null;
 
     // Check cash in hand balance if paying immediately in cash
     if (paid > 0 && effectivePaidMode === "cash") {
@@ -796,6 +814,8 @@ const Purchases = () => {
         supplier_id: supplierId === "none" ? null : supplierId,
         payment_mode: paymentMode,
         paid_via: paymentMode === "credit" && paid > 0 ? partialMode : null,
+        bank_account_id: bankAccId,
+        bank_account_name: bankAccName,
         amount_paid: paid,
         subtotal: subtotal,
         discount: discountNum,
@@ -866,6 +886,8 @@ const Purchases = () => {
           amount: paid,
           category: "purchase",
           payment_mode: effectivePaidMode,
+          bank_account_id: bankAccId,
+          bank_account_name: bankAccName,
           note: paymentMode === "credit"
             ? `Partial payment (${partialMode.toUpperCase()}) for Purchase ${voucherNoToSave || purchaseRef.id}`
             : `Purchase ${voucherNoToSave || purchaseRef.id}`,
@@ -897,6 +919,8 @@ const Purchases = () => {
             party_type: "supplier",
             entry_type: "payment_out",
             payment_mode: effectivePaidMode,
+            bank_account_id: bankAccId,
+            bank_account_name: bankAccName,
             amount: paid,
             note: paymentMode === "credit"
               ? `Partial payment via ${partialMode.toUpperCase()} for purchase ${voucherNoToSave || purchaseRef.id}`
@@ -914,6 +938,9 @@ const Purchases = () => {
       setSupplierId("none"); 
       setPaymentMode("cash"); 
       setPartialMode("cash");
+      if (bankAccounts.length > 0) {
+        setSelectedBankAccountId(bankAccounts[0].id);
+      }
       setDiscount("");
       setDiscountType("flat");
       setPurchaseType("vat_bill");
@@ -1494,23 +1521,75 @@ const Purchases = () => {
             </div>
           </div>
 
-          {paymentMode === "credit" && Number(amountPaid || 0) > 0 && (
+          {paymentMode === "bank" && (
             <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/90 dark:border-blue-800/50 rounded-lg p-3 mt-3 space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
               <Label className="text-xs font-bold text-blue-900 dark:text-blue-300 flex items-center justify-between">
-                <span>Paid Via (सप्लायरलाई भुक्तानी गरिएको माध्यम)</span>
-                <span className="text-[10px] uppercase font-semibold text-blue-600 dark:text-blue-400">{partialMode}</span>
+                <span>Bank Account (कुन बैंक खाताबाट भुक्तानी गरिएको हो?)</span>
+                {bankAccounts.length === 0 && (
+                  <span className="text-[11px] text-muted-foreground font-normal">No custom bank accounts (Default Bank)</span>
+                )}
               </Label>
-              <Select value={partialMode} onValueChange={(v) => setPartialMode(v)}>
-                <SelectTrigger className="h-9 text-xs font-medium bg-background border-blue-300 dark:border-blue-700">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash (नगद)</SelectItem>
-                  <SelectItem value="esewa">eSewa</SelectItem>
-                  <SelectItem value="khalti">Khalti</SelectItem>
-                  <SelectItem value="bank">Bank / QR</SelectItem>
-                </SelectContent>
-              </Select>
+              {bankAccounts.length > 0 ? (
+                <Select value={selectedBankAccountId} onValueChange={(v) => setSelectedBankAccountId(v)}>
+                  <SelectTrigger className="h-9 text-xs font-medium bg-background border-blue-300 dark:border-blue-700">
+                    <SelectValue placeholder="Select Bank Account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bankAccounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.name} {acc.code ? `(${acc.code})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Accounting &gt; Chart of Accounts मा गएर बैंक खाताहरू थप्न सक्नुहुन्छ।
+                </p>
+              )}
+            </div>
+          )}
+
+          {paymentMode === "credit" && Number(amountPaid || 0) > 0 && (
+            <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/90 dark:border-blue-800/50 rounded-lg p-3 mt-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-blue-900 dark:text-blue-300 flex items-center justify-between">
+                  <span>Paid Via (सप्लायरलाई भुक्तानी गरिएको माध्यम)</span>
+                  <span className="text-[10px] uppercase font-semibold text-blue-600 dark:text-blue-400">{partialMode}</span>
+                </Label>
+                <Select value={partialMode} onValueChange={(v) => setPartialMode(v)}>
+                  <SelectTrigger className="h-9 text-xs font-medium bg-background border-blue-300 dark:border-blue-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash (नगद)</SelectItem>
+                    <SelectItem value="esewa">eSewa</SelectItem>
+                    <SelectItem value="khalti">Khalti</SelectItem>
+                    <SelectItem value="bank">Bank / QR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {partialMode === "bank" && bankAccounts.length > 0 && (
+                <div className="space-y-1.5 pt-1 border-t border-blue-200/60 dark:border-blue-800/40">
+                  <Label className="text-xs font-semibold text-blue-900 dark:text-blue-300">
+                    Bank Account (कुन बैंक खाताबाट भुक्तानी गरिएको हो?)
+                  </Label>
+                  <Select value={selectedBankAccountId} onValueChange={(v) => setSelectedBankAccountId(v)}>
+                    <SelectTrigger className="h-9 text-xs font-medium bg-background border-blue-300 dark:border-blue-700">
+                      <SelectValue placeholder="Select Bank Account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankAccounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.name} {acc.code ? `(${acc.code})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <p className="text-[11px] text-blue-700/90 dark:text-blue-400/90 font-medium">
                 सप्लायरलाई बाँकी रकम (रु. {Math.max(0, grandTotal - Number(amountPaid || 0)).toFixed(2)}) उधारो (Payable Due) मा रहनेछ।
               </p>
@@ -1549,11 +1628,12 @@ const Purchases = () => {
               if (!q) return true;
               const supp = (h.suppliers?.name || "").toLowerCase();
               const mode = (paymentModeLabels[h.payment_mode] || h.payment_mode || "").toLowerCase();
+              const bank = (h.bank_account_name || "").toLowerCase();
               const amt = String(h.total);
               const dateStr = h.created_at ? format(new Date(h.created_at), "dd MMM yyyy").toLowerCase() : "";
               const billNo = (h.supplier_bill_no || "").toLowerCase();
               const voucherNo = (h.voucher_no || "").toLowerCase();
-              return supp.includes(q) || mode.includes(q) || amt.includes(q) || dateStr.includes(q) || billNo.includes(q) || voucherNo.includes(q);
+              return supp.includes(q) || mode.includes(q) || bank.includes(q) || amt.includes(q) || dateStr.includes(q) || billNo.includes(q) || voucherNo.includes(q);
             });
 
             return (
@@ -1579,6 +1659,16 @@ const Purchases = () => {
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
                         <span>{format(new Date(h.created_at), "dd MMM yyyy, hh:mm a")} · {paymentModeLabels[h.payment_mode] || h.payment_mode}</span>
+                        {h.payment_mode === "bank" && h.bank_account_name && (
+                          <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                            ({h.bank_account_name})
+                          </span>
+                        )}
+                        {h.paid_via === "bank" && h.bank_account_name && (
+                          <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                            ({h.bank_account_name})
+                          </span>
+                        )}
                         {h.is_vat_bill && (
                           <span className="text-[11px] text-primary/80 font-medium">
                             (Taxable: {fmt(h.taxable_amount ?? (h.total / 1.13))} + VAT: {fmt(h.vat_amount ?? (h.total - h.total / 1.13))})
