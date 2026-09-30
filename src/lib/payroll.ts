@@ -79,6 +79,8 @@ export async function updateStaffSalaryDetails(
     pan_no?: string;
     bank_name?: string;
     bank_account_no?: string;
+    joining_date?: string;
+    joining_date_bs?: string;
   }
 ): Promise<boolean> {
   if (!staffId) return false;
@@ -92,6 +94,8 @@ export async function updateStaffSalaryDetails(
     if (salaryData.pan_no !== undefined) updates.pan_no = salaryData.pan_no || "";
     if (salaryData.bank_name !== undefined) updates.bank_name = salaryData.bank_name || "";
     if (salaryData.bank_account_no !== undefined) updates.bank_account_no = salaryData.bank_account_no || "";
+    if (salaryData.joining_date !== undefined) updates.joining_date = salaryData.joining_date;
+    if (salaryData.joining_date_bs !== undefined) updates.joining_date_bs = salaryData.joining_date_bs;
 
     // 1. Update or create/merge into staff_members
     await setDoc(ref, updates, { merge: true });
