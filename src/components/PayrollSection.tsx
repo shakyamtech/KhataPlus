@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { StaffMember, getShopStaffMembers, ROLE_DEFINITIONS, StaffRole } from "@/lib/staff";
+import { StaffMember, getShopStaffMembers, ROLE_DEFINITIONS, StaffRole, verifyOwnerMasterPin } from "@/lib/staff";
 import {
   PayrollTransaction,
   getShopPayrollTransactions,
@@ -52,7 +52,9 @@ import {
   Clock,
   CalendarDays,
   Calculator,
-  RotateCcw
+  RotateCcw,
+  Lock,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +65,7 @@ interface PayrollSectionProps {
 
 export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
   const { lang } = useLanguage();
+  const { currentStaff, isStaffAccount } = useAuth();
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [transactions, setTransactions] = useState<PayrollTransaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -87,6 +90,10 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
   const [salaryModalOpen, setSalaryModalOpen] = useState(false);
   const [editSalaryModalOpen, setEditSalaryModalOpen] = useState(false);
+  const [masterPinModalOpen, setMasterPinModalOpen] = useState(false);
+  const [masterPinInput, setMasterPinInput] = useState("");
+  const [verifyingMasterPin, setVerifyingMasterPin] = useState(false);
+  const [pendingStaffForSalaryEdit, setPendingStaffForSalaryEdit] = useState<StaffMember | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -463,14 +470,52 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
     }
   };
 
-  // Open Edit Salary Modal
+  // Open Edit Salary Modal with Master PIN Guard for staff accounts
   const handleOpenEditSalary = (staff: StaffMember) => {
+    if (currentStaff || isStaffAccount) {
+      setPendingStaffForSalaryEdit(staff);
+      setMasterPinInput("");
+      setMasterPinModalOpen(true);
+      return;
+    }
+    openEditSalaryFormDirectly(staff);
+  };
+
+  const openEditSalaryFormDirectly = (staff: StaffMember) => {
     setSelectedStaff(staff);
     setEditSalaryAmount(staff.monthly_salary && staff.monthly_salary > 0 ? String(staff.monthly_salary) : "");
     setEditPanNo(staff.pan_no || "");
     setEditBankName(staff.bank_name || "");
     setEditBankAccNo(staff.bank_account_no || "");
     setEditSalaryModalOpen(true);
+  };
+
+  const handleVerifyMasterPinAndProceed = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!masterPinInput.trim()) {
+      toast.error(lang === "NEP" ? "कृपया साहुजीको मास्टर PIN प्रविष्ट गर्नुहोस्।" : "Please enter owner master PIN.");
+      return;
+    }
+    setVerifyingMasterPin(true);
+    try {
+      const ok = await verifyOwnerMasterPin(ownerId, masterPinInput.trim());
+      if (ok) {
+        setMasterPinModalOpen(false);
+        if (pendingStaffForSalaryEdit) {
+          openEditSalaryFormDirectly(pendingStaffForSalaryEdit);
+        }
+      } else {
+        toast.error(
+          lang === "NEP"
+            ? "मास्टर PIN मिलेन! केवल पसल मालिकले मात्र कर्मचारीको तलब तथा बैंक विवरण फेर्न सक्नुहुन्छ।"
+            : "Invalid Master PIN! Only the shop owner can edit salary and bank details."
+        );
+      }
+    } catch (err) {
+      toast.error("Error verifying master PIN");
+    } finally {
+      setVerifyingMasterPin(false);
+    }
   };
 
   // Save Edit Salary
@@ -1405,6 +1450,53 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
               {busy ? "Processing..." : (lang === "NEP" ? "तलब भुक्तान र पे-स्लिप जारी" : "Pay Salary & Issue Payslip")}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MASTER PIN VERIFICATION MODAL FOR SALARY SETUP */}
+      <Dialog open={masterPinModalOpen} onOpenChange={setMasterPinModalOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold shrink-0">
+                <Lock className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  {lang === "NEP" ? "मालिकको मास्टर PIN आवश्यक" : "Owner Master PIN Required"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {lang === "NEP"
+                    ? "तलब तथा बैंक खाता विवरण परिवर्तन गर्न साहुजीको मास्टर PIN चाहिन्छ।"
+                    : "Enter the Shop Owner's secret Master PIN to edit salary and bank details."}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleVerifyMasterPinAndProceed} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">{lang === "NEP" ? "४-अङ्कको Master PIN:" : "4-Digit Master PIN:"}</Label>
+              <Input
+                type="password"
+                maxLength={8}
+                value={masterPinInput}
+                onChange={(e) => setMasterPinInput(e.target.value)}
+                placeholder="••••"
+                className="text-center font-mono font-bold text-lg tracking-widest h-11"
+                autoFocus
+              />
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setMasterPinModalOpen(false)}>
+                {lang === "NEP" ? "रद्द" : "Cancel"}
+              </Button>
+              <Button type="submit" disabled={verifyingMasterPin} className="bg-amber-500 hover:bg-amber-600 text-black font-bold">
+                {verifyingMasterPin ? "Verifying..." : (lang === "NEP" ? "PIN प्रमाणित गर्नुहोस्" : "Verify PIN")}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

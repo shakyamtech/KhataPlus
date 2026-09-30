@@ -363,7 +363,7 @@ export async function addStaffMember(data: Omit<StaffMember, "id" | "created_at"
  */
 export async function updateStaffMember(
   staffId: string,
-  updates: Partial<Pick<StaffMember, "name" | "email" | "phone" | "role" | "pin" | "status" | "joining_date" | "joining_date_bs">>
+  updates: Partial<Pick<StaffMember, "name" | "email" | "phone" | "role" | "pin" | "status" | "joining_date" | "joining_date_bs" | "monthly_salary" | "advance_balance" | "pan_no" | "bank_name" | "bank_account_no">>
 ): Promise<void> {
   const staffRef = doc(db, "staff_members", staffId);
   const cleanUpdates: any = {
@@ -377,6 +377,11 @@ export async function updateStaffMember(
   if (updates.status !== undefined) cleanUpdates.status = updates.status;
   if (updates.joining_date !== undefined) cleanUpdates.joining_date = updates.joining_date;
   if (updates.joining_date_bs !== undefined) cleanUpdates.joining_date_bs = updates.joining_date_bs;
+  if (updates.monthly_salary !== undefined) cleanUpdates.monthly_salary = Number(updates.monthly_salary) || 0;
+  if (updates.advance_balance !== undefined) cleanUpdates.advance_balance = Number(updates.advance_balance) || 0;
+  if (updates.pan_no !== undefined) cleanUpdates.pan_no = updates.pan_no || "";
+  if (updates.bank_name !== undefined) cleanUpdates.bank_name = updates.bank_name || "";
+  if (updates.bank_account_no !== undefined) cleanUpdates.bank_account_no = updates.bank_account_no || "";
 
   // 1. Update staff_members doc by staffId
   await setDoc(staffRef, cleanUpdates, { merge: true });
@@ -392,6 +397,11 @@ export async function updateStaffMember(
       ...(updates.status !== undefined ? { status: updates.status } : {}),
       ...(updates.joining_date !== undefined ? { joining_date: updates.joining_date } : {}),
       ...(updates.joining_date_bs !== undefined ? { joining_date_bs: updates.joining_date_bs } : {}),
+      ...(updates.monthly_salary !== undefined ? { monthly_salary: Number(updates.monthly_salary) || 0 } : {}),
+      ...(updates.advance_balance !== undefined ? { advance_balance: Number(updates.advance_balance) || 0 } : {}),
+      ...(updates.pan_no !== undefined ? { pan_no: updates.pan_no || "" } : {}),
+      ...(updates.bank_name !== undefined ? { bank_name: updates.bank_name || "" } : {}),
+      ...(updates.bank_account_no !== undefined ? { bank_account_no: updates.bank_account_no || "" } : {}),
       updated_at: new Date().toISOString()
     }, { merge: true });
   } catch (err) {

@@ -16,6 +16,7 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +34,12 @@ import {
   ShoppingCart,
   Package,
   FileSpreadsheet,
-  CheckCircle2
+  CheckCircle2,
+  Wallet,
+  Landmark,
+  CreditCard,
+  Building2,
+  Info
 } from "lucide-react";
 
 interface StaffModalProps {
@@ -56,6 +62,7 @@ export function StaffModal({
   const { lang } = useLanguage();
   const { user, refreshShopStaff } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("account");
 
   // Form State
   const [formData, setFormData] = useState<{
@@ -65,6 +72,10 @@ export function StaffModal({
     role: StaffRole;
     pin: string;
     joining_date: string;
+    monthly_salary: string;
+    pan_no: string;
+    bank_name: string;
+    bank_account_no: string;
   }>({
     name: "",
     email: "",
@@ -72,10 +83,15 @@ export function StaffModal({
     role: "cashier",
     pin: "",
     joining_date: new Date().toISOString().slice(0, 10),
+    monthly_salary: "",
+    pan_no: "",
+    bank_name: "",
+    bank_account_no: ""
   });
 
   useEffect(() => {
     if (open) {
+      setActiveTab("account");
       if (staff) {
         setFormData({
           name: staff.name || "",
@@ -84,6 +100,10 @@ export function StaffModal({
           role: staff.role || "cashier",
           pin: staff.pin || "",
           joining_date: staff.joining_date ? staff.joining_date.slice(0, 10) : (staff.created_at ? staff.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+          monthly_salary: staff.monthly_salary && Number(staff.monthly_salary) > 0 ? String(staff.monthly_salary) : "",
+          pan_no: staff.pan_no || "",
+          bank_name: staff.bank_name || "",
+          bank_account_no: staff.bank_account_no || ""
         });
       } else {
         setFormData({
@@ -93,6 +113,10 @@ export function StaffModal({
           role: "cashier",
           pin: "",
           joining_date: new Date().toISOString().slice(0, 10),
+          monthly_salary: "",
+          pan_no: "",
+          bank_name: "",
+          bank_account_no: ""
         });
       }
     }
@@ -106,10 +130,12 @@ export function StaffModal({
 
     if (!cleanName) {
       toast.error(lang === "NEP" ? "कृपया स्टाफको नाम लेख्नुहोस्।" : "Please enter staff name.");
+      setActiveTab("account");
       return;
     }
     if (!cleanEmail) {
       toast.error(lang === "NEP" ? "कृपया लगइन इमेल/युजरनेम लेख्नुहोस्।" : "Please enter login email/ID.");
+      setActiveTab("account");
       return;
     }
 
@@ -120,6 +146,7 @@ export function StaffModal({
           ? "साहुजीको आफ्नै लगइन इमेल स्टाफको लागि प्रयोग गर्न मिल्दैन।"
           : "Owner's own login email cannot be used for staff."
       );
+      setActiveTab("account");
       return;
     }
 
@@ -135,6 +162,10 @@ export function StaffModal({
           role: formData.role,
           pin: cleanPin,
           joining_date: formData.joining_date,
+          monthly_salary: Number(formData.monthly_salary) || 0,
+          pan_no: formData.pan_no.trim(),
+          bank_name: formData.bank_name.trim(),
+          bank_account_no: formData.bank_account_no.trim()
         });
         toast.success(lang === "NEP" ? "स्टाफको विवरण सफलतापूर्वक अद्यावधिक गरियो!" : "Staff updated successfully!");
       } else {
@@ -147,6 +178,10 @@ export function StaffModal({
           role: formData.role,
           pin: cleanPin,
           joining_date: formData.joining_date,
+          monthly_salary: Number(formData.monthly_salary) || 0,
+          pan_no: formData.pan_no.trim(),
+          bank_name: formData.bank_name.trim(),
+          bank_account_no: formData.bank_account_no.trim(),
           status: "active",
         });
         toast.success(lang === "NEP" ? "नयाँ स्टाफ सफलतापूर्वक दर्ता गरियो!" : "New staff member added successfully!");
@@ -192,134 +227,222 @@ export function StaffModal({
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 {lang === "NEP"
-                  ? "कर्मचारीको लगइन, पद र सुरु मिति व्यवस्थापन गर्नुहोस्।"
-                  : "Configure login details, role, and starting date."}
+                  ? "कर्मचारीको लगइन, भूमिका, सुरु मिति र ऐच्छिक तलब विवरण व्यवस्थापन गर्नुहोस्।"
+                  : "Configure login credentials, role, starting date, and optional salary setup."}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSave} className="space-y-3.5 pt-2">
-          {/* Full Name */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold flex items-center gap-1">
-              <User className="h-3.5 w-3.5 text-primary" />
-              <span>{lang === "NEP" ? "कर्मचारीको पूरा नाम *" : "Staff Full Name *"}</span>
-            </Label>
-            <Input
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder={lang === "NEP" ? "जस्तै: रमेश श्रेष्ठ" : "e.g. Ramesh Shrestha"}
-              className="text-xs"
-              required
-            />
-          </div>
+        <form onSubmit={handleSave} className="space-y-4 pt-1">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-2 w-full h-9 bg-muted/60 p-0.5 rounded-xl border">
+              <TabsTrigger value="account" className="text-xs font-bold gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs">
+                <User className="h-3.5 w-3.5" />
+                <span>{lang === "NEP" ? "खाता र भूमिका" : "Account & Role"}</span>
+              </TabsTrigger>
+              <TabsTrigger value="salary" className="text-xs font-bold gap-1.5 rounded-lg data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs">
+                <Wallet className="h-3.5 w-3.5" />
+                <span>{lang === "NEP" ? "तलब र बैंक (ऐच्छिक)" : "Salary & Bank (Opt.)"}</span>
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Login Email / Username */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold flex items-center gap-1">
-              <Mail className="h-3.5 w-3.5 text-primary" />
-              <span>{lang === "NEP" ? "लगइन इमेल / युजरनेम *" : "Login Email / Username *"}</span>
-            </Label>
-            <Input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="e.g. ramesh@khataplus.com"
-              className="text-xs font-mono"
-              required
-              disabled={!!staff}
-            />
-            <p className="text-[10px] text-muted-foreground">
-              {lang === "NEP"
-                ? "यो इमेल मार्फत स्टाफले KhataPlus मा आफ्नो डिभाइसबाट लगइन गर्नेछन्।"
-                : "Staff will use this email/ID to log into KhataPlus."}
-            </p>
-          </div>
+            {/* TAB 1: ACCOUNT & ROLE */}
+            <TabsContent value="account" className="space-y-3.5 pt-2">
+              {/* Full Name */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold flex items-center gap-1">
+                  <User className="h-3.5 w-3.5 text-primary" />
+                  <span>{lang === "NEP" ? "कर्मचारीको पूरा नाम *" : "Staff Full Name *"}</span>
+                </Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder={lang === "NEP" ? "जस्तै: रमेश श्रेष्ठ" : "e.g. Ramesh Shrestha"}
+                  className="text-xs"
+                  required
+                />
+              </div>
 
-          {/* Phone & Counter PIN */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold flex items-center gap-1">
-                <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>{lang === "NEP" ? "फोन नम्बर" : "Phone (Optional)"}</span>
-              </Label>
-              <Input
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="98XXXXXXXX"
-                className="text-xs font-mono"
-              />
-            </div>
+              {/* Login Email / Username */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold flex items-center gap-1">
+                  <Mail className="h-3.5 w-3.5 text-primary" />
+                  <span>{lang === "NEP" ? "लगइन इमेल / युजरनेम *" : "Login Email / Username *"}</span>
+                </Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="e.g. ramesh@khataplus.com"
+                  className="text-xs font-mono"
+                  required
+                  disabled={!!staff}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  {lang === "NEP"
+                    ? "यो इमेल मार्फत स्टाफले KhataPlus मा आफ्नो डिभाइसबाट लगइन गर्नेछन्।"
+                    : "Staff will use this email/ID to log into KhataPlus."}
+                </p>
+              </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold flex items-center gap-1">
-                <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>{lang === "NEP" ? "४-अङ्कको PIN" : "4-Digit PIN"}</span>
-              </Label>
-              <Input
-                type="password"
-                maxLength={4}
-                value={formData.pin}
-                onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, "") })}
-                placeholder="1234"
-                className="text-xs font-mono font-bold tracking-widest"
-              />
-            </div>
-          </div>
+              {/* Phone & Counter PIN */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold flex items-center gap-1">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{lang === "NEP" ? "फोन नम्बर" : "Phone (Optional)"}</span>
+                  </Label>
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="98XXXXXXXX"
+                    className="text-xs font-mono"
+                  />
+                </div>
 
-          {/* Joining / Starting Date */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5 text-primary" />
-              <span>{lang === "NEP" ? "काम सुरु गरेको मिति (Joining Date)" : "Joining / Starting Date"}</span>
-            </Label>
-            <CustomDatePicker
-              value={formData.joining_date}
-              onChange={(val) => setFormData({ ...formData, joining_date: val })}
-            />
-          </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold flex items-center gap-1">
+                    <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{lang === "NEP" ? "४-अङ्कको PIN *" : "4-Digit PIN *"}</span>
+                  </Label>
+                  <Input
+                    type="password"
+                    maxLength={4}
+                    value={formData.pin}
+                    onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, "") })}
+                    placeholder="1234"
+                    className="text-xs font-mono font-bold tracking-widest"
+                  />
+                </div>
+              </div>
 
-          {/* Assigned Role */}
-          <div className="space-y-2 pt-1 border-t">
-            <Label className="text-xs font-bold text-foreground">
-              {lang === "NEP" ? "जिम्मेवारी तथा पद (Assigned Role) *" : "Assigned Role *"}
-            </Label>
-            <div className="grid grid-cols-1 gap-2">
-              {(["cashier", "storekeeper", "accountant"] as StaffRole[]).map((r) => {
-                const m = ROLE_DEFINITIONS[r];
-                const isSelected = formData.role === r;
+              {/* Joining / Starting Date */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-primary" />
+                  <span>{lang === "NEP" ? "काम सुरु गरेको मिति (Joining Date)" : "Joining / Starting Date"}</span>
+                </Label>
+                <CustomDatePicker
+                  value={formData.joining_date}
+                  onChange={(val) => setFormData({ ...formData, joining_date: val })}
+                />
+              </div>
 
-                return (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, role: r })}
-                    className={`p-2.5 rounded-xl text-left border transition-all flex items-start gap-2.5 cursor-pointer ${
-                      isSelected
-                        ? "bg-primary/10 border-primary shadow-xs ring-1 ring-primary/20"
-                        : "bg-secondary/40 border-border hover:border-primary/40"
-                    }`}
-                  >
-                    <div className="mt-0.5 p-1 rounded-md bg-background border shrink-0 text-primary">
-                      {getRoleIcon(r)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold flex items-center justify-between">
-                        <span className={isSelected ? "text-primary" : "text-foreground"}>
-                          {lang === "NEP" ? m.titleNep : m.titleEng}
-                        </span>
-                        {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
-                      </div>
-                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-                        {lang === "NEP" ? m.descNep : m.descEng}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+              {/* Assigned Role */}
+              <div className="space-y-2 pt-1 border-t">
+                <Label className="text-xs font-bold text-foreground">
+                  {lang === "NEP" ? "जिम्मेवारी तथा पद (Assigned Role) *" : "Assigned Role *"}
+                </Label>
+                <div className="grid grid-cols-1 gap-2">
+                  {(["cashier", "storekeeper", "accountant"] as StaffRole[]).map((r) => {
+                    const m = ROLE_DEFINITIONS[r];
+                    const isSelected = formData.role === r;
+
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, role: r })}
+                        className={`p-2.5 rounded-xl text-left border transition-all flex items-start gap-2.5 cursor-pointer ${
+                          isSelected
+                            ? "bg-primary/10 border-primary shadow-xs ring-1 ring-primary/20"
+                            : "bg-secondary/40 border-border hover:border-primary/40"
+                        }`}
+                      >
+                        <div className="mt-0.5 p-1 rounded-md bg-background border shrink-0 text-primary">
+                          {getRoleIcon(r)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold flex items-center justify-between">
+                            <span className={isSelected ? "text-primary" : "text-foreground"}>
+                              {lang === "NEP" ? m.titleNep : m.titleEng}
+                            </span>
+                            {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                            {lang === "NEP" ? m.descNep : m.descEng}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* TAB 2: SALARY & BANK DETAILS */}
+            <TabsContent value="salary" className="space-y-3.5 pt-2">
+              <div className="p-3 bg-secondary/40 rounded-xl border text-xs text-muted-foreground flex items-start gap-2">
+                <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <span>
+                  {lang === "NEP"
+                    ? "यो विवरण ऐच्छिक (Optional) हो। यदि अहिले थाहा छैन भने पछि पेरोल सेक्सनबाट पनि सेट गर्न सकिन्छ।"
+                    : "Salary and banking details are optional. You can also configure them later from the Payroll section."}
+                </span>
+              </div>
+
+              {/* Monthly Base Salary & PAN */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold flex items-center gap-1">
+                    <Wallet className="h-3.5 w-3.5 text-primary" />
+                    <span>{lang === "NEP" ? "मासिक निश्चित तलब (रु.)" : "Monthly Salary (Rs.)"}</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formData.monthly_salary}
+                    onChange={(e) => setFormData({ ...formData, monthly_salary: e.target.value })}
+                    placeholder="e.g. 25000"
+                    className="text-xs font-mono font-bold"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold flex items-center gap-1">
+                    <CreditCard className="h-3.5 w-3.5 text-amber-500" />
+                    <span>{lang === "NEP" ? "कर्मचारी PAN नम्बर" : "Employee PAN No"}</span>
+                  </Label>
+                  <Input
+                    value={formData.pan_no}
+                    onChange={(e) => setFormData({ ...formData, pan_no: e.target.value })}
+                    placeholder="e.g. 601234567"
+                    className="text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Bank Name & Account No */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold flex items-center gap-1">
+                    <Landmark className="h-3.5 w-3.5 text-primary" />
+                    <span>{lang === "NEP" ? "बैंकको नाम" : "Bank Name"}</span>
+                  </Label>
+                  <Input
+                    value={formData.bank_name}
+                    onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                    placeholder="e.g. Nabil Bank"
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold flex items-center gap-1">
+                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{lang === "NEP" ? "खाता नम्बर" : "Account No"}</span>
+                  </Label>
+                  <Input
+                    value={formData.bank_account_no}
+                    onChange={(e) => setFormData({ ...formData, bank_account_no: e.target.value })}
+                    placeholder="e.g. 012010175001"
+                    className="text-xs font-mono"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           <DialogFooter className="pt-3 border-t gap-2">
             <Button
