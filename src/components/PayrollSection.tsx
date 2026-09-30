@@ -131,7 +131,6 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
 
   // Edit Salary Form State
   const [editSalaryAmount, setEditSalaryAmount] = useState("");
-  const [editJoiningDate, setEditJoiningDate] = useState<string>("");
   const [editPanNo, setEditPanNo] = useState("");
   const [editBankName, setEditBankName] = useState("");
   const [editBankAccNo, setEditBankAccNo] = useState("");
@@ -468,7 +467,6 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
   const handleOpenEditSalary = (staff: StaffMember) => {
     setSelectedStaff(staff);
     setEditSalaryAmount(staff.monthly_salary && staff.monthly_salary > 0 ? String(staff.monthly_salary) : "");
-    setEditJoiningDate(staff.joining_date ? staff.joining_date.slice(0, 10) : "");
     setEditPanNo(staff.pan_no || "");
     setEditBankName(staff.bank_name || "");
     setEditBankAccNo(staff.bank_account_no || "");
@@ -481,26 +479,15 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
     setBusy(true);
     try {
       const salaryNum = parseFloat(editSalaryAmount) || 0;
-      let nepDate = "";
-      if (editJoiningDate) {
-        try {
-          nepDate = formatNepaliDate(new Date(editJoiningDate));
-        } catch (err) {
-          console.warn("Nepali date conversion warning:", err);
-        }
-      }
-
       const ok = await updateStaffSalaryDetails(selectedStaff.id, {
         monthly_salary: salaryNum,
-        joining_date: editJoiningDate || "",
-        joining_date_bs: nepDate || "",
         pan_no: editPanNo.trim(),
         bank_name: editBankName.trim(),
         bank_account_no: editBankAccNo.trim()
       });
 
       if (ok) {
-        toast.success(lang === "NEP" ? "स्टाफको विवरण अद्यावधिक भयो!" : "Staff details updated!");
+        toast.success(lang === "NEP" ? "स्टाफको तलब विवरण अद्यावधिक भयो!" : "Staff salary details updated!");
         setEditSalaryModalOpen(false);
         await loadData();
       } else {
@@ -1436,30 +1423,48 @@ export function PayrollSection({ ownerId, shopInfo }: PayrollSectionProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3.5 py-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "मासिक निश्चित तलब (रु.):" : "Monthly Base Salary (Rs.):"}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={editSalaryAmount}
-                  onChange={(e) => setEditSalaryAmount(e.target.value)}
-                  placeholder="e.g. 25000"
-                  className="text-base font-mono font-bold mt-1 h-9"
-                  autoFocus
-                />
+          {/* Read-Only Profile Context Strip */}
+          {selectedStaff && (
+            <div className="p-3 rounded-xl bg-secondary/50 border border-border/70 flex items-center justify-between gap-2.5 text-xs flex-wrap my-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className={cn(
+                    "text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border tracking-wider",
+                    selectedStaff.role === "cashier"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
+                      : selectedStaff.role === "storekeeper"
+                      ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/25"
+                      : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25"
+                  )}
+                >
+                  {selectedStaff.role}
+                </span>
+                <span className="text-muted-foreground truncate font-mono text-[11px]" title={selectedStaff.email || selectedStaff.phone}>
+                  {selectedStaff.email || selectedStaff.phone}
+                </span>
               </div>
 
-              <div>
-                <Label className="text-xs font-bold">{lang === "NEP" ? "काम सुरु मिति (Joining Date):" : "Joining Date:"}</Label>
-                <div className="mt-1">
-                  <CustomDatePicker
-                    value={editJoiningDate}
-                    onChange={(d) => setEditJoiningDate(d)}
-                  />
+              {selectedStaff.joining_date && (
+                <div className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground bg-background/80 px-2 py-0.5 rounded border border-border/60">
+                  <Calendar className="h-3 w-3 text-primary" />
+                  <span>{lang === "NEP" ? "सुरु:" : "Joined:"} {selectedStaff.joining_date.slice(0, 10)}</span>
                 </div>
-              </div>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-3.5 py-1">
+            <div>
+              <Label className="text-xs font-bold">{lang === "NEP" ? "मासिक निश्चित तलब (रु.):" : "Monthly Base Salary (Rs.):"}</Label>
+              <Input
+                type="number"
+                min={0}
+                value={editSalaryAmount}
+                onChange={(e) => setEditSalaryAmount(e.target.value)}
+                placeholder="e.g. 25000"
+                className="text-base font-mono font-bold mt-1 h-10"
+                autoFocus
+              />
             </div>
 
             <div>
