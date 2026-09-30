@@ -407,6 +407,30 @@ const GUIDE_MODULES: GuideModule[] = [
           "4. Enter Amount and Payment Source (Cash Drawer or Bank Account).",
           "5. Save to decrease cash in hand and reflect in the Profit & Loss statement."
         ]
+      },
+      {
+        id: "cashbook-bank-accounts-setup",
+        titleNep: "पसलको आफ्नै बैंक खाता (Global IME, Nabil आदि) कसरी जोड्ने र Cash & Bank कार्ड बुझ्ने?",
+        titleEng: "How to Link Your Shop Bank Account and Understand Cash & Bank Tiles?",
+        summaryNep: "डिफल्ट बैंक खाताको नाम आफ्नो वास्तविक बैंक अनुसार फेर्ने र बहु-च्यानल ब्यालेन्स बुझ्ने तरिका।",
+        summaryEng: "Renaming the default starter bank account and understanding multi-channel liquid cards.",
+        actionLink: "/accounting",
+        actionLabelNep: "Chart of Accounts मा जानुहोस्",
+        actionLabelEng: "Go to Chart of Accounts",
+        stepsNep: [
+          "१. 'Cash & Bank' को 'Bank Account' कार्ड के हो?: यो पसलमा भएका सबै बैंक खाताहरूको जम्मा मौज्दात देखाउने साझा च्यानल कार्ड हो। पसलमा २ वा बढी बैंक भए पनि कुल रकम यहीँ जोडिन्छ।",
+          "२. आफ्नै बैंकको नाम राख्ने तरिका: Accounting > Chart of Accounts मा जानुहोस्। 'Bank Account - Primary' को दायाँपट्टि रहेको नीलो पेन्सिल (✏️ Edit) थिचेर आफ्नो बैंकको वास्तविक नाम (उदा: Global IME Bank, Nabil Bank) र सुरुवाती ब्यालेन्स राख्नुहोस्।",
+          "३. नयाँ बैंक खाता थप्ने: यदि पसलको अर्को बैंक पनि छ भने Accounting > Chart of Accounts मा गएर '+ नयाँ खाता' थिचेर 'Bank Accounts' समूहभित्र थप्न सक्नुहुन्छ।",
+          "४. कारोबार छनोट: बिल काट्दा, क्युआर भुक्तानी लिँदा वा सप्लायरलाई पैसा पठाउँदा तपाईंले थप्नुभएका सबै बैंक खाताहरू सिधै ड्रपडाउनमा देखा पर्छन्।"
+        ],
+        stepsEng: [
+          "1. What is the 'Bank Account' tile in Cash & Bank?: It is a combined channel card displaying the total balance across all your business bank accounts.",
+          "2. Setting Your Actual Bank Name: Go to Accounting > Chart of Accounts, click the Blue Pencil (✏️ Edit) icon on 'Bank Account - Primary', and rename it to your actual bank (e.g. Global IME Bank) along with its opening balance.",
+          "3. Adding Multiple Banks: For additional bank accounts, click '+ Add Account' in Chart of Accounts under 'Bank Accounts & Wallets'.",
+          "4. Using in Transactions: When making POS sales or paying suppliers, all your created bank accounts are instantly available in the bank selection dropdown."
+        ],
+        tipsNep: "💡 नयाँ बैंक खाता थप्नुभन्दा पहिले सिस्टमको डिफल्ट 'Bank Account - Primary' लाई नै आफ्नो मुख्य बैंकको नाममा Edit गरिदिनु सबैभन्दा सजिलो र सफा तरिका हो।",
+        tipsEng: "💡 Best Practice: Simply Edit and rename the default 'Bank Account - Primary' to your actual shop's bank name to keep your ledgers clean."
       }
     ]
   },
@@ -773,6 +797,30 @@ const GUIDE_MODULES: GuideModule[] = [
           "2. During POS sales, the system automatically depletes the oldest or earliest-expiring batch first (FIFO/FEFO).",
           "3. This ensures that profit calculations (COGS) are 100% accurate down to the rupee."
         ]
+      },
+      {
+        id: "faq-bank-accounts-management",
+        titleNep: "प्राथमिक बैंक खाता (Bank Account - Primary) भनेको के हो र बैंक रकम दोहोरिएमा कसरी मिलाउने?",
+        titleEng: "What is 'Bank Account - Primary' and How to Resolve Duplicate Bank Balances?",
+        summaryNep: "डिफल्ट बैंक खाताको काम, नयाँ बैंक थप्दा के हुन्छ, र दोहोरो रकम भएर Trial Balance नमिलेमा समाधान गर्ने तरिका।",
+        summaryEng: "Understanding starter bank ledgers, adding custom banks, and fixing double-entry bank duplicates in Trial Balance.",
+        actionLink: "/accounting?tab=chart",
+        actionLabelNep: "Chart of Accounts मा जानुहोस्",
+        actionLabelEng: "Go to Chart of Accounts",
+        stepsNep: [
+          "१. 'Bank Account - Primary' के हो?: नयाँ पसल सुरु गर्दा लेजर नबनाईकनै तुरुन्तै काउन्टरमा बैंक/QR भुक्तानी लिन सकियोस् भनेर सिस्टमले तयार गरिदिएको प्राथमिक बैंक खाता हो।",
+          "२. पसलको वास्तविक बैंक (Global IME, Nabil आदि) कसरी जोड्ने?: नयाँ बैंक खाता थप्नुको साटो Accounting > Chart of Accounts मा गएर 'Bank Account - Primary' को दायाँपट्टि रहेको नीलो पेन्सिल (✏️ Edit) थिच्नुहोस्, र नाममा आफ्नो वास्तविक बैंक (उदा: Global IME Bank) र सुरुवाती ब्यालेन्स राख्नुहोस्।",
+          "३. नयाँ बैंक खाता थप्दा के हुन्छ?: यदि पसलमा थप अरु बैंक खाताहरू पनि छन् भने '+ नयाँ खाता' थिचेर जति पनि बैंक थप्न सक्नुहुन्छ। क्यासबुकको 'Bank Account' कार्डमा ती सबै बैंक खाताहरूको कुल रकम (Total Bank Balance) स्वतः जोडिएर देखिन्छ।",
+          "४. बैंक रकम २ पटक दोहोरिएर (Double) Trial Balance नमिलेमा के गर्ने?: यदि पुरानो खाता र नयाँ खाता दुवैमा एउटै रकम हालिएको छ वा दोहोरो भौचर परेको छ भने: Accounting > Day Book मा गएर दोहोरो परेको जर्नल भौचरलाई डिलिट (🗑️) गर्नुहोस्, वा अप्रयुक्त बैंक खाताको सुरुवाती मौज्दातलाई सम्पादन गरेर '० (Zero)' बनाइदिनुहोस्।"
+        ],
+        stepsEng: [
+          "1. What is 'Bank Account - Primary'?: It is a ready-to-use default bank ledger created by KhataPlus so you can start billing immediately without manual ledger setup.",
+          "2. How to Link Your Actual Bank (Global IME, Nabil, etc.)?: Instead of creating a duplicate ledger, go to Accounting > Chart of Accounts, click the Blue Pencil (✏️ Edit) on 'Bank Account - Primary', and rename it to your actual bank name with its opening balance.",
+          "3. Adding Multiple Bank Accounts: If your business has multiple banks, click '+ Add Account' under 'Bank Accounts & Wallets'. The Cashbook 'Bank Account' tile automatically displays the aggregate balance across all bank accounts.",
+          "4. Fixing Duplicate Bank Balances in Trial Balance: If an opening amount was entered in both default and new accounts or a duplicate voucher was created, navigate to Accounting > Day Book to delete the duplicate voucher (🗑️), or edit the unused bank ledger's opening balance to '0'."
+        ],
+        tipsNep: "💡 याद राख्नुहोस्: डिफल्ट बैंक खातालाई नै आफ्नो वास्तविक बैंकको नाममा Edit गरिदिनु सबैभन्दा सजिलो, सफा र त्रुटिरहित तरिका हो।",
+        tipsEng: "💡 Best Practice: Renaming the default primary bank ledger to your actual bank name prevents duplicate ledgers and keeps Trial Balance 100% accurate."
       }
     ]
   }
