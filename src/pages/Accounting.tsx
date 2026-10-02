@@ -68,8 +68,12 @@ import {
   RotateCcw,
   Check,
   ChevronDown,
-  Users
+  Users,
+  Info,
+  BookOpen,
+  XCircle
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { StockSummaryView } from "@/components/StockSummaryView";
 import { TrialBalanceDifferenceHelperModal } from "@/components/TrialBalanceDifferenceHelperModal";
 import { TrialBalanceView } from "@/components/TrialBalanceView";
@@ -101,6 +105,7 @@ export default function Accounting() {
   const [customersDocs, setCustomersDocs] = useState<any[]>([]);
   const [suppliersDocs, setSuppliersDocs] = useState<any[]>([]);
   const [helperModalOpen, setHelperModalOpen] = useState(false);
+  const [openingGuideOpen, setOpeningGuideOpen] = useState(false);
 
   // Sync tab with URL search params
   useEffect(() => {
@@ -4048,14 +4053,26 @@ export default function Accounting() {
                   : "Complete ledger classification of all Assets, Liabilities, Equity, Incomes & Expenses."}
               </p>
             </div>
-            <Button
-              onClick={() => openQuickCreateAccount()}
-              size="sm"
-              className="gap-1.5 text-xs font-bold bg-primary text-primary-foreground shadow-xs shrink-0 cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>{lang === "NEP" ? "नयाँ खाता थप्नुहोस् (Add Ledger)" : "Add Ledger Account"}</span>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setOpeningGuideOpen(true)}
+                className="gap-1.5 text-xs font-semibold border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 cursor-pointer rounded-xl h-9"
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                <span>{lang === "NEP" ? "ओपनिङ ब्यालेन्स नियम (Guide)" : "Opening Balance Guide"}</span>
+              </Button>
+              <Button
+                onClick={() => openQuickCreateAccount()}
+                size="sm"
+                className="gap-1.5 text-xs font-bold bg-primary text-primary-foreground shadow-xs shrink-0 cursor-pointer rounded-xl h-9"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>{lang === "NEP" ? "नयाँ खाता थप्नुहोस् (Add Ledger)" : "Add Ledger Account"}</span>
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -5627,7 +5644,42 @@ export default function Accounting() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground">{lang === "NEP" ? "सुरुवाती मौज्दात (Opening Balance)" : "Opening Balance (Rs.)"}</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-semibold text-foreground">
+                  {lang === "NEP" ? "सुरुवाती मौज्दात (Opening Balance)" : "Opening Balance (Rs.)"}
+                </Label>
+                {["direct_incomes", "indirect_incomes", "direct_expenses", "indirect_expenses"].includes(newAccGroup) && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="text-amber-500 hover:text-amber-600 focus:outline-hidden inline-flex items-center">
+                        <Info className="h-3.5 w-3.5 cursor-pointer" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs bg-popover text-popover-foreground border p-3 shadow-xl rounded-xl text-xs space-y-2 z-[100]">
+                      <div className="font-bold flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                        <span>💡</span> {lang === "NEP" ? "साहुजीलाई जानकारी:" : "Important Note:"}
+                      </div>
+                      <p className="text-[11px] leading-relaxed">
+                        {lang === "NEP"
+                          ? "आम्दानी तथा खर्च खाताको सुरुवाती मौज्दात (Opening Balance) हुँदैन।"
+                          : "Income and Expense accounts do not have opening balances."}
+                      </p>
+                      <ul className="text-[11px] space-y-1 list-disc pl-3 text-muted-foreground">
+                        <li>
+                          {lang === "NEP"
+                            ? "यदि पहिलेकै नगद बचत हो भने ➔ 'Cash in Hand' वा 'साहुको पुँजी' मा जोड्नुहोस्।"
+                            : "If it's past cash savings, add to 'Cash in Hand' or 'Capital'."}
+                        </li>
+                        <li>
+                          {lang === "NEP"
+                            ? "पसल सञ्चालन भएपछि भएको आम्दानी हो भने ➔ सिधै 'रसिद भाउचर (F6)' काट्नुहोस्।"
+                            : "If it's ongoing shop income, create a Receipt Voucher (F6)."}
+                        </li>
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
               <Input
                 type="number"
                 step="0.01"
@@ -5635,6 +5687,16 @@ export default function Accounting() {
                 onChange={e => setNewAccOpening(e.target.value)}
                 className="h-10 text-xs font-mono rounded-xl"
               />
+              {["direct_incomes", "indirect_incomes", "direct_expenses", "indirect_expenses"].includes(newAccGroup) && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-start gap-1 mt-1 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                  <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    {lang === "NEP"
+                      ? "नोट: आम्दानी/खर्चको ओपनिङ हुँदैन। विगतको बचत भए 'Cash in Hand' वा 'साहुको पुँजी' मा जोड्नुहोस्।"
+                      : "Note: Income/Expense accounts do not have opening balances. Add past savings to Cash/Capital."}
+                  </span>
+                </p>
+              )}
             </div>
 
             <DialogFooter className="pt-3 border-t mt-3 flex items-center justify-end gap-2">
@@ -5785,9 +5847,42 @@ export default function Accounting() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground">
-                {lang === "NEP" ? "सुरुवाती मौज्दात (Opening Balance Rs.)" : "Opening Balance (Rs.)"}
-              </Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-semibold text-foreground">
+                  {lang === "NEP" ? "सुरुवाती मौज्दात (Opening Balance Rs.)" : "Opening Balance (Rs.)"}
+                </Label>
+                {["direct_incomes", "indirect_incomes", "direct_expenses", "indirect_expenses"].includes(editAccGroup) && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="text-amber-500 hover:text-amber-600 focus:outline-hidden inline-flex items-center">
+                        <Info className="h-3.5 w-3.5 cursor-pointer" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs bg-popover text-popover-foreground border p-3 shadow-xl rounded-xl text-xs space-y-2 z-[100]">
+                      <div className="font-bold flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                        <span>💡</span> {lang === "NEP" ? "साहुजीलाई जानकारी:" : "Important Note:"}
+                      </div>
+                      <p className="text-[11px] leading-relaxed">
+                        {lang === "NEP"
+                          ? "आम्दानी तथा खर्च खाताको सुरुवाती मौज्दात (Opening Balance) हुँदैन।"
+                          : "Income and Expense accounts do not have opening balances."}
+                      </p>
+                      <ul className="text-[11px] space-y-1 list-disc pl-3 text-muted-foreground">
+                        <li>
+                          {lang === "NEP"
+                            ? "यदि पहिलेकै नगद बचत हो भने ➔ 'Cash in Hand' वा 'साहुको पुँजी' मा जोड्नुहोस्।"
+                            : "If it's past cash savings, add to 'Cash in Hand' or 'Capital'."}
+                        </li>
+                        <li>
+                          {lang === "NEP"
+                            ? "पसल सञ्चालन भएपछि भएको आम्दानी हो भने ➔ सिधै 'रसिद भाउचर (F6)' काट्नुहोस्।"
+                            : "If it's ongoing shop income, create a Receipt Voucher (F6)."}
+                        </li>
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
               <Input
                 type="number"
                 step="0.01"
@@ -5796,6 +5891,16 @@ export default function Accounting() {
                 className="h-10 text-sm font-mono font-bold rounded-xl"
                 required
               />
+              {["direct_incomes", "indirect_incomes", "direct_expenses", "indirect_expenses"].includes(editAccGroup) && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-start gap-1 mt-1 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                  <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    {lang === "NEP"
+                      ? "नोट: आम्दानी/खर्चको ओपनिङ हुँदैन। विगतको बचत भए 'Cash in Hand' वा 'साहुको पुँजी' मा जोड्नुहोस्।"
+                      : "Note: Income/Expense accounts do not have opening balances. Add past savings to Cash/Capital."}
+                  </span>
+                </p>
+              )}
             </div>
 
             <DialogFooter className="pt-3 border-t mt-3 flex items-center justify-end gap-2">
@@ -6289,6 +6394,144 @@ export default function Accounting() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Opening Balance Guide Modal */}
+      <Dialog open={openingGuideOpen} onOpenChange={setOpeningGuideOpen}>
+        <DialogContent className="max-w-2xl p-6 rounded-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                <BookOpen className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base sm:text-lg font-bold">
+                  {lang === "NEP" ? "सुरुवाती मौज्दात (Opening Balance) सम्बन्धी लेखा नियम" : "Opening Balance Accounting Rules"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {lang === "NEP"
+                    ? "कुन-कुन खातामा सुरुवाती मौज्दात राख्ने र कुनमा नराख्ने भन्ने सजिलो नियम"
+                    : "Clear guidelines on which accounts should and shouldn't have opening balances"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Allowed Accounts (Green) */}
+              <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-3">
+                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs pb-1 border-b border-emerald-500/20">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>{lang === "NEP" ? "कुन-कुनमा ओपनिङ हाल्ने? (Allowed)" : "Allowed for Opening Balance"}</span>
+                </div>
+                <ul className="space-y-2 text-xs text-foreground/90">
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-500 font-bold mt-0.5">•</span>
+                    <div>
+                      <strong className="text-foreground">🏦 {lang === "NEP" ? "बैंक खाताहरू (Bank Accounts)" : "Bank Accounts"}</strong>
+                      <p className="text-[11px] text-muted-foreground">{lang === "NEP" ? "सफ्टवेयर सुरु गर्दा बैंकमा भएको रकम।" : "Bank balance at the time of onboarding."}</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-500 font-bold mt-0.5">•</span>
+                    <div>
+                      <strong className="text-foreground">💵 {lang === "NEP" ? "नगद मौज्दात (Cash in Hand)" : "Cash in Hand"}</strong>
+                      <p className="text-[11px] text-muted-foreground">{lang === "NEP" ? "पसलको गल्ला वा खल्तीमा भएको कुल नगद तथा बचत।" : "Cash on hand or cash drawer savings."}</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-500 font-bold mt-0.5">•</span>
+                    <div>
+                      <strong className="text-foreground">📦 {lang === "NEP" ? "सुरुवाती सामान मौज्दात (Opening Stock)" : "Opening Stock"}</strong>
+                      <p className="text-[11px] text-muted-foreground">{lang === "NEP" ? "पसल/गोदाममा मौजुद सामानको कुल लागत।" : "Total cost value of inventory on hand."}</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-500 font-bold mt-0.5">•</span>
+                    <div>
+                      <strong className="text-foreground">💰 {lang === "NEP" ? "साहुको पुँजी (Owner's Capital)" : "Owner's Capital"}</strong>
+                      <p className="text-[11px] text-muted-foreground">{lang === "NEP" ? "माथिका सबै सम्पत्ति बराबर साहुको कुल लगानी।" : "Total owner investment balancing assets."}</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-500 font-bold mt-0.5">•</span>
+                    <div>
+                      <strong className="text-foreground">👥 {lang === "NEP" ? "ग्राहक / सप्लायर (Debtors / Creditors)" : "Debtors & Creditors"}</strong>
+                      <p className="text-[11px] text-muted-foreground">{lang === "NEP" ? "पहिलेकै लिन बाँकी र तिर्न बाँकी बक्यौता रकम।" : "Outstanding receivables and payables."}</p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Not Allowed Accounts (Rose) */}
+              <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/5 space-y-3">
+                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-xs pb-1 border-b border-rose-500/20">
+                  <XCircle className="h-4 w-4 shrink-0" />
+                  <span>{lang === "NEP" ? "कुन-कुनमा ओपनिङ नहाल्ने? (Zero)" : "NOT for Opening Balance (Zero)"}</span>
+                </div>
+                <ul className="space-y-2 text-xs text-foreground/90">
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold mt-0.5">•</span>
+                    <div>
+                      <strong className="text-foreground">📊 {lang === "NEP" ? "बिक्री आम्दानी (Sales Revenue)" : "Sales Revenue"}</strong>
+                      <p className="text-[11px] text-muted-foreground">{lang === "NEP" ? "बिक्री सधैं बिक्री बिल (Sales Bill) बाट मात्र आउँछ।" : "Sales must be recorded via Sales Invoices."}</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold mt-0.5">•</span>
+                    <div>
+                      <strong className="text-foreground">🏷️ {lang === "NEP" ? "अन्य आम्दानी (Other Incomes)" : "Other Incomes"}</strong>
+                      <p className="text-[11px] text-muted-foreground">{lang === "NEP" ? "क्लियरेन्स सेल, कमिसन, ब्याज (रसिद भाउचर F6 काट्ने)।" : "Commissions, discounts, scrap (use Receipt F6)."}</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold mt-0.5">•</span>
+                    <div>
+                      <strong className="text-foreground">☕ {lang === "NEP" ? "पसलका खर्चहरू (Expenses)" : "Expenses"}</strong>
+                      <p className="text-[11px] text-muted-foreground">{lang === "NEP" ? "भाडा, तलब, बिजुली, खाजा खर्च (भुक्तानी भाउचर F5 काट्ने)।" : "Rent, salaries, tea, bills (use Payment F5)."}</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold mt-0.5">•</span>
+                    <div>
+                      <strong className="text-foreground">💡 {lang === "NEP" ? "लेखा सिद्धान्त (Accounting Rule)" : "Golden Rule"}</strong>
+                      <p className="text-[11px] text-muted-foreground">{lang === "NEP" ? "यी सबै कारोबार भएपछि मात्र बिल वा भाउचरबाट प्रविष्टि गरिन्छ।" : "Nominal accounts are always entered via vouchers/bills."}</p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Golden Equation Banner */}
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1.5">
+              <div className="flex items-center gap-2 font-bold text-xs text-amber-700 dark:text-amber-400">
+                <Scale className="h-4 w-4 shrink-0" />
+                <span>{lang === "NEP" ? "📐 एकाउन्टिङको आधारभूत सूत्र (Golden Formula):" : "📐 Core Accounting Equation:"}</span>
+              </div>
+              <p className="text-xs font-mono font-bold text-foreground pl-6">
+                {lang === "NEP"
+                  ? "कुल सम्पत्ति (Cash + Bank + Stock + लिन बाँकी) = साहुको पुँजी (Capital) + तिर्न बाँकी (Liabilities)"
+                  : "Total Assets (Cash + Bank + Stock + Debtors) = Capital (Equity) + Liabilities"}
+              </p>
+              <p className="text-[11px] text-muted-foreground pl-6">
+                {lang === "NEP"
+                  ? "👉 दुवैतर्फ बराबर सुरुवाती मौज्दात हाल्दा Trial Balance र Balance Sheet मा कहिल्यै कुनै फरक (Diff: Rs. 0) आउँदैन।"
+                  : "👉 Balancing assets and capital on Day 1 guarantees Diff: Rs. 0 in Trial Balance and Balance Sheet."}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              onClick={() => setOpeningGuideOpen(false)}
+              className="w-full sm:w-auto bg-primary text-primary-foreground font-bold text-xs h-9 rounded-xl"
+            >
+              {lang === "NEP" ? "मैले बुझेँ (Got it)" : "Got it, Thanks!"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

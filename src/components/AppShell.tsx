@@ -701,28 +701,65 @@ export const AppShell = () => {
                 await pBatch.commit();
             }
 
-            // 7. Clear payroll transactions and reset staff advance balances
-            const [payrollSnap, staffSnap] = await Promise.all([
+            // 7. Clear payroll transactions and attendance logs, and reset staff advance balances
+            const [
+                payOwnerSnap, payUserSnap,
+                attOwnerSnap, attUserSnap,
+                staffOwnerSnap, staffUserSnap,
+                profilesStaffSnap
+            ] = await Promise.all([
                 getDocs(query(collection(db, "payroll_transactions"), where("owner_id", "==", user.uid))),
-                getDocs(query(collection(db, "staff_members"), where("owner_id", "==", user.uid)))
+                getDocs(query(collection(db, "payroll_transactions"), where("user_id", "==", user.uid))),
+                getDocs(query(collection(db, "staff_attendance"), where("owner_id", "==", user.uid))),
+                getDocs(query(collection(db, "staff_attendance"), where("user_id", "==", user.uid))),
+                getDocs(query(collection(db, "staff_members"), where("owner_id", "==", user.uid))),
+                getDocs(query(collection(db, "staff_members"), where("user_id", "==", user.uid))),
+                getDocs(query(collection(db, "profiles"), where("owner_id", "==", user.uid)))
             ]);
 
-            if (!payrollSnap.empty) {
-                for (let i = 0; i < payrollSnap.docs.length; i += 450) {
-                    const chunk = payrollSnap.docs.slice(i, i + 450);
-                    const payBatch = writeBatch(db);
-                    chunk.forEach(d => payBatch.delete(d.ref));
-                    await payBatch.commit();
-                }
+            // Delete payroll transactions
+            const allPayrollDocs = [...payOwnerSnap.docs, ...payUserSnap.docs];
+            const seenPayIds = new Set<string>();
+            const uniquePayrollDocs = allPayrollDocs.filter(d => {
+                if (seenPayIds.has(d.id)) return false;
+                seenPayIds.add(d.id);
+                return true;
+            });
+            for (let i = 0; i < uniquePayrollDocs.length; i += 450) {
+                const chunk = uniquePayrollDocs.slice(i, i + 450);
+                const payBatch = writeBatch(db);
+                chunk.forEach(d => payBatch.delete(d.ref));
+                await payBatch.commit();
             }
 
-            if (!staffSnap.empty) {
-                for (let i = 0; i < staffSnap.docs.length; i += 450) {
-                    const chunk = staffSnap.docs.slice(i, i + 450);
-                    const staffBatch = writeBatch(db);
-                    chunk.forEach(d => staffBatch.update(d.ref, { advance_balance: 0 }));
-                    await staffBatch.commit();
-                }
+            // Delete staff attendance logs
+            const allAttDocs = [...attOwnerSnap.docs, ...attUserSnap.docs];
+            const seenAttIds = new Set<string>();
+            const uniqueAttDocs = allAttDocs.filter(d => {
+                if (seenAttIds.has(d.id)) return false;
+                seenAttIds.add(d.id);
+                return true;
+            });
+            for (let i = 0; i < uniqueAttDocs.length; i += 450) {
+                const chunk = uniqueAttDocs.slice(i, i + 450);
+                const attBatch = writeBatch(db);
+                chunk.forEach(d => attBatch.delete(d.ref));
+                await attBatch.commit();
+            }
+
+            // Reset staff advance balances to 0 in both staff_members and profiles
+            const allStaffDocs = [...staffOwnerSnap.docs, ...staffUserSnap.docs, ...profilesStaffSnap.docs];
+            const seenStaffIds = new Set<string>();
+            const uniqueStaffDocs = allStaffDocs.filter(d => {
+                if (seenStaffIds.has(d.id)) return false;
+                seenStaffIds.add(d.id);
+                return true;
+            });
+            for (let i = 0; i < uniqueStaffDocs.length; i += 450) {
+                const chunk = uniqueStaffDocs.slice(i, i + 450);
+                const staffBatch = writeBatch(db);
+                chunk.forEach(d => staffBatch.update(d.ref, { advance_balance: 0 }));
+                await staffBatch.commit();
             }
 
             // 8. Reset bill numbering counters to 1
@@ -848,42 +885,61 @@ export const AppShell = () => {
                 }
             }
 
-            // 4. Delete staff members and payroll transactions
-            const [staffOwnerSnap, staffUserSnap, payOwnerSnap, payUserSnap] = await Promise.all([
+            // 4. Delete staff members, sub-profiles, payroll transactions, and attendance logs
+            const [
+                staffOwnerSnap, staffUserSnap,
+                profilesStaffSnap,
+                payOwnerSnap, payUserSnap,
+                attOwnerSnap, attUserSnap
+            ] = await Promise.all([
                 getDocs(query(collection(db, "staff_members"), where("owner_id", "==", user.uid))),
                 getDocs(query(collection(db, "staff_members"), where("user_id", "==", user.uid))),
+                getDocs(query(collection(db, "profiles"), where("owner_id", "==", user.uid))),
                 getDocs(query(collection(db, "payroll_transactions"), where("owner_id", "==", user.uid))),
-                getDocs(query(collection(db, "payroll_transactions"), where("user_id", "==", user.uid)))
+                getDocs(query(collection(db, "payroll_transactions"), where("user_id", "==", user.uid))),
+                getDocs(query(collection(db, "staff_attendance"), where("owner_id", "==", user.uid))),
+                getDocs(query(collection(db, "staff_attendance"), where("user_id", "==", user.uid)))
             ]);
 
-            const staffAndPayrollDocs = [
+            const allStaffDocsToDelete = [
                 ...staffOwnerSnap.docs,
                 ...staffUserSnap.docs,
+                ...profilesStaffSnap.docs,
                 ...payOwnerSnap.docs,
-                ...payUserSnap.docs
+                ...payUserSnap.docs,
+                ...attOwnerSnap.docs,
+                ...attUserSnap.docs
             ];
 
-            const seenStaffPayIds = new Set<string>();
-            const uniqueStaffPayDocs = staffAndPayrollDocs.filter(d => {
-                if (seenStaffPayIds.has(d.id)) return false;
-                seenStaffPayIds.add(d.id);
+            const seenStaffDelIds = new Set<string>();
+            const uniqueStaffDocsToDelete = allStaffDocsToDelete.filter(d => {
+                if (d.id === user.uid) return false;
+                if (seenStaffDelIds.has(d.id)) return false;
+                seenStaffDelIds.add(d.id);
                 return true;
             });
 
-            for (let i = 0; i < uniqueStaffPayDocs.length; i += 450) {
-                const chunk = uniqueStaffPayDocs.slice(i, i + 450);
+            for (let i = 0; i < uniqueStaffDocsToDelete.length; i += 450) {
+                const chunk = uniqueStaffDocsToDelete.slice(i, i + 450);
                 const spBatch = writeBatch(db);
                 chunk.forEach(d => spBatch.delete(d.ref));
                 await spBatch.commit();
             }
 
-            // 5. Reset bill and inward numbering counters in profile to 1
+            // 5. Clear stored staff session from localStorage
+            try {
+                localStorage.removeItem("khataplus_staff_session");
+            } catch (e) {}
+
+            // 6. Reset bill and inward numbering counters in profile to 1, and clear embedded staff/pins
             await setDoc(doc(db, "profiles", user.uid), {
                 tax_invoice_next_no: 1,
                 abbreviated_next_no: 1,
                 bill_next_no: 1,
                 purchase_next_no: 1,
-                barcode_starting_no: 1001
+                barcode_starting_no: 1001,
+                staff_counter_pins: {},
+                staff_members: []
             }, { merge: true });
 
             setTaxInvoiceNextNo("1");

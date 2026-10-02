@@ -55,16 +55,22 @@ export interface ValidationSummary {
  * Triggers a client-side file download of any string content
  */
 export function downloadJsonFile(content: string, filename: string) {
+  const cleanFilename = filename.endsWith(".json") ? filename : `${filename}.json`;
   const blob = new Blob([content], { type: "application/json;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", filename);
-  link.style.visibility = "hidden";
+  link.href = url;
+  link.download = cleanFilename;
+  link.setAttribute("download", cleanFilename);
+  link.style.display = "none";
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    if (document.body.contains(link)) {
+      document.body.removeChild(link);
+    }
+    URL.revokeObjectURL(url);
+  }, 1000);
 }
 
 /**

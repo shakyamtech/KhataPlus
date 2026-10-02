@@ -479,42 +479,56 @@ const Admin = () => {
         }
       }
 
-      // 4. Delete staff members and payroll transactions
-      const [staffOwnerSnap, staffUserSnap, payOwnerSnap, payUserSnap] = await Promise.all([
+      // 4. Delete staff members, sub-profiles, payroll transactions, and attendance logs
+      const [
+        staffOwnerSnap, staffUserSnap,
+        profilesStaffSnap,
+        payOwnerSnap, payUserSnap,
+        attOwnerSnap, attUserSnap
+      ] = await Promise.all([
         getDocs(query(collection(db, "staff_members"), where("owner_id", "==", u.id))),
         getDocs(query(collection(db, "staff_members"), where("user_id", "==", u.id))),
+        getDocs(query(collection(db, "profiles"), where("owner_id", "==", u.id))),
         getDocs(query(collection(db, "payroll_transactions"), where("owner_id", "==", u.id))),
-        getDocs(query(collection(db, "payroll_transactions"), where("user_id", "==", u.id)))
+        getDocs(query(collection(db, "payroll_transactions"), where("user_id", "==", u.id))),
+        getDocs(query(collection(db, "staff_attendance"), where("owner_id", "==", u.id))),
+        getDocs(query(collection(db, "staff_attendance"), where("user_id", "==", u.id)))
       ]);
 
-      const staffAndPayrollDocs = [
+      const allStaffDocsToDelete = [
         ...staffOwnerSnap.docs,
         ...staffUserSnap.docs,
+        ...profilesStaffSnap.docs,
         ...payOwnerSnap.docs,
-        ...payUserSnap.docs
+        ...payUserSnap.docs,
+        ...attOwnerSnap.docs,
+        ...attUserSnap.docs
       ];
 
-      const seenStaffPayIds = new Set<string>();
-      const uniqueStaffPayDocs = staffAndPayrollDocs.filter(d => {
-        if (seenStaffPayIds.has(d.id)) return false;
-        seenStaffPayIds.add(d.id);
+      const seenStaffDelIds = new Set<string>();
+      const uniqueStaffDocsToDelete = allStaffDocsToDelete.filter(d => {
+        if (d.id === u.id) return false;
+        if (seenStaffDelIds.has(d.id)) return false;
+        seenStaffDelIds.add(d.id);
         return true;
       });
 
-      for (let i = 0; i < uniqueStaffPayDocs.length; i += 450) {
-        const chunk = uniqueStaffPayDocs.slice(i, i + 450);
+      for (let i = 0; i < uniqueStaffDocsToDelete.length; i += 450) {
+        const chunk = uniqueStaffDocsToDelete.slice(i, i + 450);
         const spBatch = writeBatch(db);
         chunk.forEach(d => spBatch.delete(d.ref));
         await spBatch.commit();
       }
 
-      // 5. Reset bill numbering counters in profile to 1
+      // 5. Reset bill numbering counters in profile to 1, and clear embedded staff/pins
       await setDoc(doc(db, "profiles", u.id), {
         tax_invoice_next_no: 1,
         abbreviated_next_no: 1,
         bill_next_no: 1,
         purchase_next_no: 1,
-        barcode_starting_no: 1001
+        barcode_starting_no: 1001,
+        staff_counter_pins: {},
+        staff_members: []
       }, { merge: true });
 
       toast.success(`Master Factory Wipe complete for ${u.email}! All products, parties & bills cleared.`, { id: toastId });
