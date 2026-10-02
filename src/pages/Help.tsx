@@ -709,38 +709,58 @@ const GUIDE_MODULES: GuideModule[] = [
     borderColor: "border-orange-500/20",
     topics: [
       {
-        id: "faq-offline",
-        titleNep: "के इन्टरनेट नहुँदा पनि KhataPlus चल्छ (Offline Mode)?",
-        titleEng: "Does KhataPlus work without Internet (Offline PWA)?",
-        summaryNep: "इन्टरनेट बत्ती गएको बेला बिल काट्न मिल्छ कि मिल्दैन?",
-        summaryEng: "How offline Progressive Web App caching ensures continuous billing during power/internet outage.",
+        id: "faq-opening-balance-rules",
+        titleNep: "सुरुवाती मौज्दात (Opening Balance) कसरी र कुन-कुन खातामा हाल्ने?",
+        titleEng: "How and Where to Enter Opening Balances (Accounting Rules & Examples)?",
+        summaryNep: "नयाँ तथा चलिरहेको पसल दर्ता गर्दा बैंक, क्यास, स्टक र पुँजी कसरी मिलाउने र आम्दानी/खर्चमा किन ओपनिङ नहाल्ने?",
+        summaryEng: "Step-by-step accounting rules for setting opening balances for Bank, Cash, Stock, and Capital without Trial Balance errors.",
+        actionLink: "/accounting?tab=chart",
+        actionLabelNep: "Chart of Accounts मा जानुहोस्",
+        actionLabelEng: "Go to Chart of Accounts",
         stepsNep: [
-          "१. हजुर, KhataPlus अत्याधुनिक Progressive Web App (PWA) प्रविधिमा बनेको हुनाले इन्टरनेट नभएको बेला पनि सजिलै खुल्छ र काउन्टर बिलिङ गर्न सकिन्छ।",
-          "२. इन्टरनेट आएपछि अफलाइनमा काटिएका बिलहरू क्लाउड सर्भरमा आफैँ सिंक (Sync) हुन्छन्।",
-          "३. अझ राम्रो अनुभवको लागि ब्राउजरको 'Install App' बटनबाट यसलाई डेस्कटप वा मोबाइलमा इन्स्टल गर्नुहोस्।"
+          "१. कुन-कुन खातामा ओपनिङ ब्यालेन्स हाल्ने?: बैंक खाताहरू (Bank Accounts), नगद मौज्दात (Cash in Hand), सुरुवाती सामान (Opening Stock), साहुको पुँजी (Owner's Capital), ग्राहकको लिन बाँकी (Debtors) र सप्लायरको तिर्न बाँकी (Creditors) मा ओपनिङ हाल्नुपर्छ।",
+          "२. कुन-कुनमा ओपनिङ नहाल्ने (Zero राख्ने)?: बिक्री आम्दानी (Sales), अतिरिक्त आम्दानी (Other Incomes), र पसलका खर्चहरू (Expenses - भाडा, तलब, चिया आदि) मा कहिल्यै सुरुवाती मौज्दात हाल्नुहुँदैन। यी सबै कारोबार भइसकेपछि मात्र बिल वा रसिद/भुक्तानी भाउचरबाट दर्ता गर्नुपर्छ।",
+          "३. यदि पसल सुरु गर्नुअघिको बचत वा पुराना सामान बेचेको नगद छ भने के गर्ने?: त्यसलाई नयाँ आम्दानीको ओपनिङ नहाली सिधै 'Cash in Hand' (नगद मौज्दात) र 'Owner's Capital' (साहुको पुँजी) मा जोडिदिनुहोस्। यसो गर्दा नगद पनि सुरक्षित रहन्छ र हिसाब पनि १००% मिल्छ।",
+          "४. गोल्डेन फर्मुला: कुल सम्पत्ति (Cash + Bank + Stock + लिन बाँकी) = साहुको कुल पुँजी (Capital) + तिर्न बाँकी दायित्व (Liabilities)।"
         ],
         stepsEng: [
-          "1. Yes! KhataPlus uses modern PWA technology, allowing you to open the app and make sales offline.",
-          "2. When internet connectivity restores, offline transactions automatically sync to the cloud database.",
-          "3. Click 'Install App' from the profile menu to install KhataPlus natively on PC or Mobile."
-        ]
+          "1. Which Accounts Allowed for Opening Balance?: Bank Accounts, Cash in Hand, Opening Stock, Owner's Capital, Customer Debtors, and Supplier Creditors.",
+          "2. Which Accounts Must NOT Have Opening Balance?: Sales Revenue, Other Incomes, and Expenses (Rent, Salary, Tea, Bills). These must always be recorded via Invoices or Receipt/Payment vouchers after transactions occur.",
+          "3. What to do with past savings or old clearance cash?: Do not enter them as opening balances in income accounts. Instead, add them to 'Cash in Hand' and 'Owner's Capital' so your cash remains fully intact and Trial Balance stays balanced.",
+          "4. Golden Equation: Total Assets (Cash + Bank + Stock + Debtors) = Owner's Capital + Outstanding Liabilities."
+        ],
+        tipsNep: "💡 याद राख्नुहोस्: डेबिट (सम्पत्ति) र क्रेडिट (पुँजी) दुवैतर्फ बराबर सुरुवाती मौज्दात हाल्दा Trial Balance र Balance Sheet मा कहिल्यै कुनै फरक (Diff: Rs. 0) आउँदैन।",
+        tipsEng: "💡 Balancing Assets and Capital on Day 1 guarantees a perfect Diff: Rs. 0 Trial Balance and Balance Sheet.",
+        examples: {
+          titleNep: "व्यावहारिक उदाहरण (Practical Example)",
+          titleEng: "Practical Example Scenario",
+          contentNep: "यदि रामजीले पसल दर्ता गर्दा बैंकमा रु. २ लाख, खल्तीमा रु. ५० हजार नगद, र गोदाममा रु. ३ लाखको सामान छ भने:\n• Bank Opening = २,००,०००\n• Cash in Hand Opening = ५०,०००\n• Stock Opening = ३,००,०००\n• Capital Account (साहुको पुँजी) = ५,५०,००० (सबै जोडेर बराबर हाल्ने)\n👉 यसो गर्दा सुरुवाती डेबिट र क्रेडिट ठ्याक्कै बराबर हुन्छ।",
+          contentEng: "If Ram starts with Rs. 2 Lakhs in bank, Rs. 50,000 cash in hand, and Rs. 3 Lakhs stock in store:\n• Bank Opening = 2,00,000\n• Cash Opening = 50,000\n• Stock Opening = 3,00,000\n• Owner's Capital Opening = 5,50,000 (Sum of all assets)\n👉 Debits equal Credits perfectly (Diff: Rs. 0)."
+        }
       },
       {
-        id: "faq-wrong-bill",
-        titleNep: "यदि गलत बिल काटियो भने कसरी सच्याउने वा रद्द गर्ने?",
-        titleEng: "How to Correct or Void a Mistaken Sale / Purchase?",
-        summaryNep: "ग्राहकले सामान फिर्ता गर्दा वा झुक्किएर अर्को सामान बिल गर्दा सच्याउने तरिका।",
-        summaryEng: "Step-by-step to handle return goods or void mistaken billing entries.",
+        id: "faq-bank-accounts-management",
+        titleNep: "प्राथमिक बैंक खाता (Bank Account - Primary) भनेको के हो र बैंक रकम दोहोरिएमा कसरी मिलाउने?",
+        titleEng: "What is 'Bank Account - Primary' and How to Resolve Duplicate Bank Balances?",
+        summaryNep: "डिफल्ट बैंक खाताको काम, नयाँ बैंक थप्दा के हुन्छ, र दोहोरो रकम भएर Trial Balance नमिलेमा समाधान गर्ने तरिका।",
+        summaryEng: "Understanding starter bank ledgers, adding custom banks, and fixing double-entry bank duplicates in Trial Balance.",
+        actionLink: "/accounting?tab=chart",
+        actionLabelNep: "Chart of Accounts मा जानुहोस्",
+        actionLabelEng: "Go to Chart of Accounts",
         stepsNep: [
-          "१. Reports > Sales Book मा जानुहोस् र सम्बन्धित बिल खोज्नुहोस्।",
-          "२. यदि ग्राहकले सामान फिर्ता गरेको हो भने 'Sales Return' वा 'Credit Note' जारी गर्नुहोस्, जसले स्टक र खाता दुवै तुरुन्तै सच्याउँछ।",
-          "३. झुक्किएर गलत इन्ट्री भएको बिललाई उपयुक्त कारणसहित रद्द (Cancel/Void) गर्न सकिन्छ।"
+          "१. 'Bank Account - Primary' के हो?: नयाँ पसल सुरु गर्दा लेजर नबनाईकनै तुरुन्तै काउन्टरमा बैंक/QR भुक्तानी लिन सकियोस् भनेर सिस्टमले तयार गरिदिएको प्राथमिक बैंक खाता हो।",
+          "२. पसलको वास्तविक बैंक (Global IME, Nabil आदि) कसरी जोड्ने?: नयाँ बैंक खाता थप्नुको साटो Accounting > Chart of Accounts मा गएर 'Bank Account - Primary' को दायाँपट्टि रहेको नीलो पेन्सिल (✏️ Edit) थिच्नुहोस्, र नाममा आफ्नो वास्तविक बैंक (उदा: Global IME Bank) र सुरुवाती ब्यालेन्स राख्नुहोस्।",
+          "३. नयाँ बैंक खाता थप्दा के हुन्छ?: यदि पसलमा थप अरु बैंक खाताहरू पनि छन् भने '+ नयाँ खाता' थिचेर जति पनि बैंक थप्न सक्नुहुन्छ। क्यासबुकको 'Bank Account' कार्डमा ती सबै बैंक खाताहरूको कुल रकम (Total Bank Balance) स्वतः जोडिएर देखिन्छ।",
+          "४. बैंक रकम २ पटक दोहोरिएर (Double) Trial Balance नमिलेमा के गर्ने?: यदि पुरानो खाता र नयाँ खाता दुवैमा एउटै रकम हालिएको छ वा दोहोरो भौचर परेको छ भने: Accounting > Day Book मा गएर दोहोरो परेको जर्नल भौचरलाई डिलिट (🗑️) गर्नुहोस्, वा अप्रयुक्त बैंक खाताको सुरुवाती मौज्दातलाई सम्पादन गरेर '० (Zero)' बनाइदिनुहोस्।"
         ],
         stepsEng: [
-          "1. Go to Reports > Sales Book and find the invoice.",
-          "2. For returned goods, issue a 'Sales Return / Credit Note' to automatically restore stock and adjust ledger.",
-          "3. Incorrect invoices can be cancelled or voided with audit notes."
-        ]
+          "1. What is 'Bank Account - Primary'?: It is a ready-to-use default bank ledger created by KhataPlus so you can start billing immediately without manual ledger setup.",
+          "2. How to Link Your Actual Bank (Global IME, Nabil, etc.)?: Instead of creating a duplicate ledger, go to Accounting > Chart of Accounts, click the Blue Pencil (✏️ Edit) on 'Bank Account - Primary', and rename it to your actual bank name with its opening balance.",
+          "3. Adding Multiple Bank Accounts: If your business has multiple banks, click '+ Add Account' under 'Bank Accounts & Wallets'. The Cashbook 'Bank Account' tile automatically displays the aggregate balance across all bank accounts.",
+          "4. Fixing Duplicate Bank Balances in Trial Balance: If an opening amount was entered in both default and new accounts or a duplicate voucher was created, navigate to Accounting > Day Book to delete the duplicate voucher (🗑️), or edit the unused bank ledger's opening balance to '0'."
+        ],
+        tipsNep: "💡 याद राख्नुहोस्: डिफल्ट बैंक खातालाई नै आफ्नो वास्तविक बैंकको नाममा Edit गरिदिनु सबैभन्दा सजिलो, सफा र त्रुटिरहित तरिका हो।",
+        tipsEng: "💡 Best Practice: Renaming the default primary bank ledger to your actual bank name prevents duplicate ledgers and keeps Trial Balance 100% accurate."
       },
       {
         id: "faq-opening-stock-add",
@@ -799,58 +819,38 @@ const GUIDE_MODULES: GuideModule[] = [
         ]
       },
       {
-        id: "faq-bank-accounts-management",
-        titleNep: "प्राथमिक बैंक खाता (Bank Account - Primary) भनेको के हो र बैंक रकम दोहोरिएमा कसरी मिलाउने?",
-        titleEng: "What is 'Bank Account - Primary' and How to Resolve Duplicate Bank Balances?",
-        summaryNep: "डिफल्ट बैंक खाताको काम, नयाँ बैंक थप्दा के हुन्छ, र दोहोरो रकम भएर Trial Balance नमिलेमा समाधान गर्ने तरिका।",
-        summaryEng: "Understanding starter bank ledgers, adding custom banks, and fixing double-entry bank duplicates in Trial Balance.",
-        actionLink: "/accounting?tab=chart",
-        actionLabelNep: "Chart of Accounts मा जानुहोस्",
-        actionLabelEng: "Go to Chart of Accounts",
+        id: "faq-wrong-bill",
+        titleNep: "यदि गलत बिल काटियो भने कसरी सच्याउने वा रद्द गर्ने?",
+        titleEng: "How to Correct or Void a Mistaken Sale / Purchase?",
+        summaryNep: "ग्राहकले सामान फिर्ता गर्दा वा झुक्किएर अर्को सामान बिल गर्दा सच्याउने तरिका।",
+        summaryEng: "Step-by-step to handle return goods or void mistaken billing entries.",
         stepsNep: [
-          "१. 'Bank Account - Primary' के हो?: नयाँ पसल सुरु गर्दा लेजर नबनाईकनै तुरुन्तै काउन्टरमा बैंक/QR भुक्तानी लिन सकियोस् भनेर सिस्टमले तयार गरिदिएको प्राथमिक बैंक खाता हो।",
-          "२. पसलको वास्तविक बैंक (Global IME, Nabil आदि) कसरी जोड्ने?: नयाँ बैंक खाता थप्नुको साटो Accounting > Chart of Accounts मा गएर 'Bank Account - Primary' को दायाँपट्टि रहेको नीलो पेन्सिल (✏️ Edit) थिच्नुहोस्, र नाममा आफ्नो वास्तविक बैंक (उदा: Global IME Bank) र सुरुवाती ब्यालेन्स राख्नुहोस्।",
-          "३. नयाँ बैंक खाता थप्दा के हुन्छ?: यदि पसलमा थप अरु बैंक खाताहरू पनि छन् भने '+ नयाँ खाता' थिचेर जति पनि बैंक थप्न सक्नुहुन्छ। क्यासबुकको 'Bank Account' कार्डमा ती सबै बैंक खाताहरूको कुल रकम (Total Bank Balance) स्वतः जोडिएर देखिन्छ।",
-          "४. बैंक रकम २ पटक दोहोरिएर (Double) Trial Balance नमिलेमा के गर्ने?: यदि पुरानो खाता र नयाँ खाता दुवैमा एउटै रकम हालिएको छ वा दोहोरो भौचर परेको छ भने: Accounting > Day Book मा गएर दोहोरो परेको जर्नल भौचरलाई डिलिट (🗑️) गर्नुहोस्, वा अप्रयुक्त बैंक खाताको सुरुवाती मौज्दातलाई सम्पादन गरेर '० (Zero)' बनाइदिनुहोस्।"
+          "१. Reports > Sales Book मा जानुहोस् र सम्बन्धित बिल खोज्नुहोस्।",
+          "२. यदि ग्राहकले सामान फिर्ता गरेको हो भने 'Sales Return' वा 'Credit Note' जारी गर्नुहोस्, जसले स्टक र खाता दुवै तुरुन्तै सच्याउँछ।",
+          "३. झुक्किएर गलत इन्ट्री भएको बिललाई उपयुक्त कारणसहित रद्द (Cancel/Void) गर्न सकिन्छ।"
         ],
         stepsEng: [
-          "1. What is 'Bank Account - Primary'?: It is a ready-to-use default bank ledger created by KhataPlus so you can start billing immediately without manual ledger setup.",
-          "2. How to Link Your Actual Bank (Global IME, Nabil, etc.)?: Instead of creating a duplicate ledger, go to Accounting > Chart of Accounts, click the Blue Pencil (✏️ Edit) on 'Bank Account - Primary', and rename it to your actual bank name with its opening balance.",
-          "3. Adding Multiple Bank Accounts: If your business has multiple banks, click '+ Add Account' under 'Bank Accounts & Wallets'. The Cashbook 'Bank Account' tile automatically displays the aggregate balance across all bank accounts.",
-          "4. Fixing Duplicate Bank Balances in Trial Balance: If an opening amount was entered in both default and new accounts or a duplicate voucher was created, navigate to Accounting > Day Book to delete the duplicate voucher (🗑️), or edit the unused bank ledger's opening balance to '0'."
-        ],
-        tipsNep: "💡 याद राख्नुहोस्: डिफल्ट बैंक खातालाई नै आफ्नो वास्तविक बैंकको नाममा Edit गरिदिनु सबैभन्दा सजिलो, सफा र त्रुटिरहित तरिका हो।",
-        tipsEng: "💡 Best Practice: Renaming the default primary bank ledger to your actual bank name prevents duplicate ledgers and keeps Trial Balance 100% accurate."
+          "1. Go to Reports > Sales Book and find the invoice.",
+          "2. For returned goods, issue a 'Sales Return / Credit Note' to automatically restore stock and adjust ledger.",
+          "3. Incorrect invoices can be cancelled or voided with audit notes."
+        ]
       },
       {
-        id: "faq-opening-balance-rules",
-        titleNep: "सुरुवाती मौज्दात (Opening Balance) कसरी र कुन-कुन खातामा हाल्ने?",
-        titleEng: "How and Where to Enter Opening Balances (Accounting Rules & Examples)?",
-        summaryNep: "नयाँ तथा चलिरहेको पसल दर्ता गर्दा बैंक, क्यास, स्टक र पुँजी कसरी मिलाउने र आम्दानी/खर्चमा किन ओपनिङ नहाल्ने?",
-        summaryEng: "Step-by-step accounting rules for setting opening balances for Bank, Cash, Stock, and Capital without Trial Balance errors.",
-        actionLink: "/accounting?tab=chart",
-        actionLabelNep: "Chart of Accounts मा जानुहोस्",
-        actionLabelEng: "Go to Chart of Accounts",
+        id: "faq-offline",
+        titleNep: "के इन्टरनेट नहुँदा पनि KhataPlus चल्छ (Offline Mode)?",
+        titleEng: "Does KhataPlus work without Internet (Offline PWA)?",
+        summaryNep: "इन्टरनेट बत्ती गएको बेला बिल काट्न मिल्छ कि मिल्दैन?",
+        summaryEng: "How offline Progressive Web App caching ensures continuous billing during power/internet outage.",
         stepsNep: [
-          "१. कुन-कुन खातामा ओपनिङ ब्यालेन्स हाल्ने?: बैंक खाताहरू (Bank Accounts), नगद मौज्दात (Cash in Hand), सुरुवाती सामान (Opening Stock), साहुको पुँजी (Owner's Capital), ग्राहकको लिन बाँकी (Debtors) र सप्लायरको तिर्न बाँकी (Creditors) मा ओपनिङ हाल्नुपर्छ।",
-          "२. कुन-कुनमा ओपनिङ नहाल्ने (Zero राख्ने)?: बिक्री आम्दानी (Sales), अतिरिक्त आम्दानी (Other Incomes), र पसलका खर्चहरू (Expenses - भाडा, तलब, चिया आदि) मा कहिल्यै सुरुवाती मौज्दात हाल्नुहुँदैन। यी सबै कारोबार भइसकेपछि मात्र बिल वा रसिद/भुक्तानी भाउचरबाट दर्ता गर्नुपर्छ।",
-          "३. यदि पसल सुरु गर्नुअघिको बचत वा पुराना सामान बेचेको नगद छ भने के गर्ने?: त्यसलाई नयाँ आम्दानीको ओपनिङ नहाली सिधै 'Cash in Hand' (नगद मौज्दात) र 'Owner's Capital' (साहुको पुँजी) मा जोडिदिनुहोस्। यसो गर्दा नगद पनि सुरक्षित रहन्छ र हिसाब पनि १००% मिल्छ।",
-          "४. गोल्डेन फर्मुला: कुल सम्पत्ति (Cash + Bank + Stock + लिन बाँकी) = साहुको कुल पुँजी (Capital) + तिर्न बाँकी दायित्व (Liabilities)।"
+          "१. हजुर, KhataPlus अत्याधुनिक Progressive Web App (PWA) प्रविधिमा बनेको हुनाले इन्टरनेट नभएको बेला पनि सजिलै खुल्छ र काउन्टर बिलिङ गर्न सकिन्छ।",
+          "२. इन्टरनेट आएपछि अफलाइनमा काटिएका बिलहरू क्लाउड सर्भरमा आफैँ सिंक (Sync) हुन्छन्।",
+          "३. अझ राम्रो अनुभवको लागि ब्राउजरको 'Install App' बटनबाट यसलाई डेस्कटप वा मोबाइलमा इन्स्टल गर्नुहोस्।"
         ],
         stepsEng: [
-          "1. Which Accounts Allowed for Opening Balance?: Bank Accounts, Cash in Hand, Opening Stock, Owner's Capital, Customer Debtors, and Supplier Creditors.",
-          "2. Which Accounts Must NOT Have Opening Balance?: Sales Revenue, Other Incomes, and Expenses (Rent, Salary, Tea, Bills). These must always be recorded via Invoices or Receipt/Payment vouchers after transactions occur.",
-          "3. What to do with past savings or old clearance cash?: Do not enter them as opening balances in income accounts. Instead, add them to 'Cash in Hand' and 'Owner's Capital' so your cash remains fully intact and Trial Balance stays balanced.",
-          "4. Golden Equation: Total Assets (Cash + Bank + Stock + Debtors) = Owner's Capital + Outstanding Liabilities."
-        ],
-        tipsNep: "💡 याद राख्नुहोस्: डेबिट (सम्पत्ति) र क्रेडिट (पुँजी) दुवैतर्फ बराबर सुरुवाती मौज्दात हाल्दा Trial Balance र Balance Sheet मा कहिल्यै कुनै फरक (Diff: Rs. 0) आउँदैन।",
-        tipsEng: "💡 Balancing Assets and Capital on Day 1 guarantees a perfect Diff: Rs. 0 Trial Balance and Balance Sheet.",
-        examples: {
-          titleNep: "व्यावहारिक उदाहरण (Practical Example)",
-          titleEng: "Practical Example Scenario",
-          contentNep: "यदि रामजीले पसल दर्ता गर्दा बैंकमा रु. २ लाख, खल्तीमा रु. ५० हजार नगद, र गोदाममा रु. ३ लाखको सामान छ भने:\n• Bank Opening = २,००,०००\n• Cash in Hand Opening = ५०,०००\n• Stock Opening = ३,००,०००\n• Capital Account (साहुको पुँजी) = ५,५०,००० (सबै जोडेर बराबर हाल्ने)\n👉 यसो गर्दा सुरुवाती डेबिट र क्रेडिट ठ्याक्कै बराबर हुन्छ।",
-          contentEng: "If Ram starts with Rs. 2 Lakhs in bank, Rs. 50,000 cash in hand, and Rs. 3 Lakhs stock in store:\n• Bank Opening = 2,00,000\n• Cash Opening = 50,000\n• Stock Opening = 3,00,000\n• Owner's Capital Opening = 5,50,000 (Sum of all assets)\n👉 Debits equal Credits perfectly (Diff: Rs. 0)."
-        }
+          "1. Yes! KhataPlus uses modern PWA technology, allowing you to open the app and make sales offline.",
+          "2. When internet connectivity restores, offline transactions automatically sync to the cloud database.",
+          "3. Click 'Install App' from the profile menu to install KhataPlus natively on PC or Mobile."
+        ]
       }
     ]
   }
