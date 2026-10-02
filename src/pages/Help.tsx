@@ -821,6 +821,36 @@ const GUIDE_MODULES: GuideModule[] = [
         ],
         tipsNep: "💡 याद राख्नुहोस्: डिफल्ट बैंक खातालाई नै आफ्नो वास्तविक बैंकको नाममा Edit गरिदिनु सबैभन्दा सजिलो, सफा र त्रुटिरहित तरिका हो।",
         tipsEng: "💡 Best Practice: Renaming the default primary bank ledger to your actual bank name prevents duplicate ledgers and keeps Trial Balance 100% accurate."
+      },
+      {
+        id: "faq-opening-balance-rules",
+        titleNep: "सुरुवाती मौज्दात (Opening Balance) कसरी र कुन-कुन खातामा हाल्ने?",
+        titleEng: "How and Where to Enter Opening Balances (Accounting Rules & Examples)?",
+        summaryNep: "नयाँ तथा चलिरहेको पसल दर्ता गर्दा बैंक, क्यास, स्टक र पुँजी कसरी मिलाउने र आम्दानी/खर्चमा किन ओपनिङ नहाल्ने?",
+        summaryEng: "Step-by-step accounting rules for setting opening balances for Bank, Cash, Stock, and Capital without Trial Balance errors.",
+        actionLink: "/accounting?tab=chart",
+        actionLabelNep: "Chart of Accounts मा जानुहोस्",
+        actionLabelEng: "Go to Chart of Accounts",
+        stepsNep: [
+          "१. कुन-कुन खातामा ओपनिङ ब्यालेन्स हाल्ने?: बैंक खाताहरू (Bank Accounts), नगद मौज्दात (Cash in Hand), सुरुवाती सामान (Opening Stock), साहुको पुँजी (Owner's Capital), ग्राहकको लिन बाँकी (Debtors) र सप्लायरको तिर्न बाँकी (Creditors) मा ओपनिङ हाल्नुपर्छ।",
+          "२. कुन-कुनमा ओपनिङ नहाल्ने (Zero राख्ने)?: बिक्री आम्दानी (Sales), अतिरिक्त आम्दानी (Other Incomes), र पसलका खर्चहरू (Expenses - भाडा, तलब, चिया आदि) मा कहिल्यै सुरुवाती मौज्दात हाल्नुहुँदैन। यी सबै कारोबार भइसकेपछि मात्र बिल वा रसिद/भुक्तानी भाउचरबाट दर्ता गर्नुपर्छ।",
+          "३. यदि पसल सुरु गर्नुअघिको बचत वा पुराना सामान बेचेको नगद छ भने के गर्ने?: त्यसलाई नयाँ आम्दानीको ओपनिङ नहाली सिधै 'Cash in Hand' (नगद मौज्दात) र 'Owner's Capital' (साहुको पुँजी) मा जोडिदिनुहोस्। यसो गर्दा नगद पनि सुरक्षित रहन्छ र हिसाब पनि १००% मिल्छ।",
+          "४. गोल्डेन फर्मुला: कुल सम्पत्ति (Cash + Bank + Stock + लिन बाँकी) = साहुको कुल पुँजी (Capital) + तिर्न बाँकी दायित्व (Liabilities)।"
+        ],
+        stepsEng: [
+          "1. Which Accounts Allowed for Opening Balance?: Bank Accounts, Cash in Hand, Opening Stock, Owner's Capital, Customer Debtors, and Supplier Creditors.",
+          "2. Which Accounts Must NOT Have Opening Balance?: Sales Revenue, Other Incomes, and Expenses (Rent, Salary, Tea, Bills). These must always be recorded via Invoices or Receipt/Payment vouchers after transactions occur.",
+          "3. What to do with past savings or old clearance cash?: Do not enter them as opening balances in income accounts. Instead, add them to 'Cash in Hand' and 'Owner's Capital' so your cash remains fully intact and Trial Balance stays balanced.",
+          "4. Golden Equation: Total Assets (Cash + Bank + Stock + Debtors) = Owner's Capital + Outstanding Liabilities."
+        ],
+        tipsNep: "💡 याद राख्नुहोस्: डेबिट (सम्पत्ति) र क्रेडिट (पुँजी) दुवैतर्फ बराबर सुरुवाती मौज्दात हाल्दा Trial Balance र Balance Sheet मा कहिल्यै कुनै फरक (Diff: Rs. 0) आउँदैन।",
+        tipsEng: "💡 Balancing Assets and Capital on Day 1 guarantees a perfect Diff: Rs. 0 Trial Balance and Balance Sheet.",
+        examples: {
+          titleNep: "व्यावहारिक उदाहरण (Practical Example)",
+          titleEng: "Practical Example Scenario",
+          contentNep: "यदि रामजीले पसल दर्ता गर्दा बैंकमा रु. २ लाख, खल्तीमा रु. ५० हजार नगद, र गोदाममा रु. ३ लाखको सामान छ भने:\n• Bank Opening = २,००,०००\n• Cash in Hand Opening = ५०,०००\n• Stock Opening = ३,००,०००\n• Capital Account (साहुको पुँजी) = ५,५०,००० (सबै जोडेर बराबर हाल्ने)\n👉 यसो गर्दा सुरुवाती डेबिट र क्रेडिट ठ्याक्कै बराबर हुन्छ।",
+          contentEng: "If Ram starts with Rs. 2 Lakhs in bank, Rs. 50,000 cash in hand, and Rs. 3 Lakhs stock in store:\n• Bank Opening = 2,00,000\n• Cash Opening = 50,000\n• Stock Opening = 3,00,000\n• Owner's Capital Opening = 5,50,000 (Sum of all assets)\n👉 Debits equal Credits perfectly (Diff: Rs. 0)."
+        }
       }
     ]
   }

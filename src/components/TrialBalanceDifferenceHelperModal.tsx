@@ -39,7 +39,7 @@ interface TrialBalanceDifferenceHelperModalProps {
 
 interface DiagnosisItem {
   id: string;
-  type: "purchase_discount" | "opening_stock" | "unbalanced_voucher" | "vat_adjustment" | "general_difference";
+  type: "purchase_discount" | "opening_stock" | "unbalanced_voucher" | "vat_adjustment" | "income_expense_opening" | "general_difference";
   titleNp: string;
   titleEn: string;
   confidence: "high" | "medium" | "low";
@@ -246,7 +246,113 @@ export function TrialBalanceDifferenceHelperModal({
     }
 
     // ----------------------------------------------------
-    // CHECK 3: Unbalanced Custom Vouchers (असन्तुलित भौचर)
+    // CHECK 3: Income/Expense Opening Balance Detection (आम्दानी/खर्च खातामा सुरुवाती मौज्दात)
+    // ----------------------------------------------------
+    const badIncomeExpenseAccounts = accounts.filter(a => {
+      const isIncExp = a.type === "income" || a.type === "expense" ||
+        ["direct_incomes", "indirect_incomes", "direct_expenses", "indirect_expenses"].includes(a.group);
+      return isIncExp && Number(a.opening_balance || 0) > 0;
+    });
+
+    const totalBadIncomeOpening = badIncomeExpenseAccounts
+      .filter(a => a.type === "income" || ["direct_incomes", "indirect_incomes"].includes(a.group))
+      .reduce((s, a) => s + Number(a.opening_balance || 0), 0);
+
+    const totalBadExpenseOpening = badIncomeExpenseAccounts
+      .filter(a => a.type === "expense" || ["direct_expenses", "indirect_expenses"].includes(a.group))
+      .reduce((s, a) => s + Number(a.opening_balance || 0), 0);
+
+    const totalBadOpening = totalBadIncomeOpening + totalBadExpenseOpening;
+
+    if (totalBadOpening > 0.5) {
+      explainedDifference += Math.abs(totalBadIncomeOpening - totalBadExpenseOpening);
+      const accNames = badIncomeExpenseAccounts.map(a => `${a.name} (${fmt(a.opening_balance || 0)})`).join(", ");
+
+      list.push({
+        id: "income_expense_opening",
+        type: "income_expense_opening",
+        titleNp: "आम्दानी/खर्च खातामा सुरुवाती मौज्दात (Opening Balance on Incomes/Expenses)",
+        titleEn: "Opening Balance on Income/Expense Accounts",
+        confidence: "high",
+        amount: totalBadOpening,
+        reasonNp: `आम्दानी वा खर्च खाताहरू [ ${accNames} ] मा कुल ${fmt(totalBadOpening)} सुरुवाती मौज्दात हालिएको छ। लेखा नियम अनुसार आम्दानी/खर्चको ओपनिङ मौज्दात हुँदैन। यो रकम विगतको बचत वा नगद भएमा यसलाई 'Cash in Hand' र 'साहुको पुँजी' मा सुरक्षित स्थानान्तरण गर्नुपर्छ।`,
+        reasonEn: `Opening balance totaling ${fmt(totalBadOpening)} was set on income/expense accounts [ ${accNames} ]. These accounts must have zero opening balance; past cash/savings belong in Cash in Hand and Owner's Capital.`,
+        mathExplanationNp: `अमान्य आम्दानी/खर्च ओपनिङ: ${fmt(totalBadOpening)} | सुरक्षित स्थानान्तरण: +${fmt(totalBadOpening)} नगद (Dr) र +${fmt(totalBadOpening)} पुँजी (Cr)`,
+        mathExplanationEn: `Invalid Nominal Opening = ${fmt(totalBadOpening)} | Safe Transfer = +${fmt(totalBadOpening)} to Cash in Hand & Owner's Capital.`,
+        solutionStepsNp: [
+          "📌 विधि १: १-क्लिक सुरक्षित स्थानान्तरण (Safe Move - Recommended):",
+          "• तलको 'सुरक्षित सार्नुहोस् (Safe Move)' बटन थिच्नुहोस्।",
+          `• यो रकम (${fmt(totalBadOpening)}) तपाईंको नगद (Cash in Hand) र साहुको पुँजी (Capital) मा सुरक्षित रूपमा सर्नेछ र आम्दानी खाताको ओपनिङ ० हुनेछ।`,
+          "📌 विधि २: Chart of Accounts बाट म्यानुअल समायोजन:",
+          "• Accounting ➔ Chart of Accounts मा जानुहोस्।",
+          `• आम्दानी खाताहरूको ओपनिङ ब्यालेन्सलाई '० (Zero)' बनाउनुहोस् र यो रकमलाई 'Cash in Hand' र 'Capital Account' मा थपिदिनुहोस्।`
+        ],
+        solutionStepsEn: [
+          "📌 Method 1: 1-Click Safe Move (Recommended):",
+          "• Click the 'Safe Move & Fix' button below.",
+          `• Transfers ${fmt(totalBadOpening)} to Cash in Hand and Owner's Capital, resetting income opening to 0.`,
+          "📌 Method 2: Manual Adjustment via Chart of Accounts:",
+          "• Go to Accounting ➔ Chart of Accounts.",
+          `• Reset income opening balances to 0 and add ${fmt(totalBadOpening)} to Cash in Hand and Owner's Capital.`
+        ],
+        fixActionLabelNp: `✨ यो रकमलाई Cash in Hand र साहुको पुँजीमा सार्नुहोस् (Safe Move)`,
+        fixActionLabelEn: `✨ Safe Move ${fmt(totalBadOpening)} to Cash & Capital`,
+        fixAction: async () => {
+          if (!user) return;
+          const batch = writeBatch(db);
+
+          // 1. Reset bad income/expense accounts opening balance to 0
+          badIncomeExpenseAccounts.forEach(acc => {
+            batch.update(doc(db, "accounts", acc.id), { opening_balance: 0 });
+          });
+
+          // 2. Add to Cash in Hand account
+          const cashAcc = accounts.find(a => a.group === "cash") || accounts.find(a => a.name.toLowerCase().includes("cash") || a.name.includes("नगद"));
+          if (cashAcc) {
+            const curCashOp = Number(cashAcc.opening_balance || 0);
+            batch.update(doc(db, "accounts", cashAcc.id), { opening_balance: curCashOp + totalBadIncomeOpening });
+          } else {
+            const newCashRef = doc(collection(db, "accounts"));
+            batch.set(newCashRef, {
+              id: newCashRef.id,
+              user_id: user.uid,
+              name: "Cash in Hand (नगद मौज्दात)",
+              type: "asset",
+              group: "cash",
+              opening_balance: totalBadIncomeOpening,
+              created_at: new Date().toISOString()
+            });
+          }
+
+          // 3. Add to Capital account
+          const capAcc = capitalAccounts[0] || accounts.find(a => a.group === "capital") || accounts.find(a => a.name.toLowerCase().includes("capital") || a.name.includes("पुँजी"));
+          if (capAcc) {
+            const curCapOp = Number(capAcc.opening_balance || 0);
+            batch.update(doc(db, "accounts", capAcc.id), { opening_balance: curCapOp + totalBadIncomeOpening });
+          } else {
+            const newCapRef = doc(collection(db, "accounts"));
+            batch.set(newCapRef, {
+              id: newCapRef.id,
+              user_id: user.uid,
+              name: "Capital Account (साहुको पुँजी)",
+              type: "equity",
+              group: "capital",
+              opening_balance: totalBadIncomeOpening,
+              created_at: new Date().toISOString()
+            });
+          }
+
+          await batch.commit();
+          toast.success(lang === "NEP" 
+            ? `🎉 सफलतापूर्वक रु. ${fmt(totalBadIncomeOpening)} नगद मौज्दात र साहुको पुँजीमा सारियो!` 
+            : `Successfully moved ${fmt(totalBadIncomeOpening)} to Cash and Capital!`);
+          onFixed?.();
+        }
+      });
+    }
+
+    // ----------------------------------------------------
+    // CHECK 4: Unbalanced Custom Vouchers (असन्तुलित भौचर)
     // ----------------------------------------------------
     let unbalancedVoucherSum = 0;
     vouchers.forEach((v: any) => {
