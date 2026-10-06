@@ -322,13 +322,13 @@ const GUIDE_MODULES: GuideModule[] = [
         actionLabelNep: "Accounting & Vouchers मा जानुहोस्",
         actionLabelEng: "Go to Accounting & Vouchers",
         stepsNep: [
-          "१. व्यापारिक सामान खरिद (Trade Goods / Inventory): ग्राहकलाई नाफा खाएर बेच्न ल्याइएका सामानहरू (जुत्ता, कपडा, किराना आदि) सिधै 'Purchases ➔ + New Purchase' बाट चढाउनुपर्छ। यसले सामानको स्टक (Stock In), परिमाण (Qty), ब्याच र औसत लागत बढाउँछ।",
+          "१. व्यापारिक सामान खरिद (Trade Goods / Inventory): ग्राहकलाई नाफा खाएर बेच्न ल्याइएका सामानहरू (जुत्ता-चप्पल, लत्ताकपडा, किराना, मोबाइल/इलेक्ट्रोनिक्स, कस्मेटिक्स वा हार्डवेयर सामान आदि) सिधै 'Purchases ➔ + New Purchase' बाट चढाउनुपर्छ। यसले सामानको स्टक (Stock In), परिमाण (Qty), ब्याच र औसत लागत बढाउँछ।",
           "२. स्थिर सम्पत्ति खरिद (Office Fixed Assets): पसल वा अफिसमा चलाउन किनेको कम्प्युटर, बिलिङ प्रिन्टर, बारकोड स्क्यानर, काउन्टर, फर्निचर, सीसीटीभी आदि (जुन बेच्नका लागि होइन) लाई Purchases मा नहाल्नुहोस्। यसलाई 'Accounting ➔ Payment Voucher' मा गएर 'Fixed Assets' खाता छानी भुक्तानी गर्नुपर्छ।",
           "३. सेवा तथा दैनिक खर्च खरिद (Services & Expense / VAT Bills): इन्टरनेट तथा बिजुली महसुल, पसलको घरभाडा, सफ्टवेयर शुल्क, ढुवानी/भाडा, पसल मर्मत आदि (जसमा भ्याट बिल पनि आउन सक्छ) लाई 'Accounting ➔ Payment Voucher' मा सम्बन्धित खर्च खाता (Expense A/c) छानी भुक्तानी गर्नुपर्छ।",
           "४. सप्लायरको बाँकी उधारो चुक्ता गर्दा: पुराना सप्लायरलाई पछि चेक वा नगदबाट पैसा दिँदा पनि 'Accounting ➔ Payment Voucher' बाट सप्लायरको नाम छानी भुक्तानी गरिन्छ।"
         ],
         stepsEng: [
-          "1. Trade Goods Purchase (Resale Inventory): Items intended for resale to customers must be entered in 'Purchases ➔ + New Purchase'. This increases physical Stock-In, quantity, batch, and inventory cost.",
+          "1. Trade Goods Purchase (Resale Inventory): Items intended for resale to customers (footwear, clothing, grocery, electronics/mobiles, cosmetics, hardware) must be entered in 'Purchases ➔ + New Purchase'. This increases physical Stock-In, quantity, batch, and inventory cost.",
           "2. Office Fixed Assets Purchase: Items bought for operational use (computers, POS thermal printers, barcode scanners, counters, furniture, CCTV) are not for resale. Do NOT enter them in Purchases. Record them via 'Accounting ➔ Payment Voucher' under 'Fixed Assets'.",
           "3. Services & Expense Purchases (VAT Invoices): Office internet, electricity, shop rent, software fees, transport freight, and repairs must be recorded via 'Accounting ➔ Payment Voucher' under respective Expense accounts.",
           "4. Settling Supplier Credit: When paying past due balances to suppliers, use 'Accounting ➔ Payment Voucher' to deduct Cash/Bank and clear supplier payables."
@@ -756,8 +756,8 @@ const GUIDE_MODULES: GuideModule[] = [
         examples: {
           titleNep: "स्पष्ट उदाहरण (Quick Example)",
           titleEng: "Quick Practical Example",
-          contentNep: "• रु. ५०,००० को जुत्ता/कपडा किन्दा ➔ 'Purchases' मा इन्ट्री गर्ने (स्टक बढ्छ)।\n• रु. २५,००० को बिलिङ कम्प्युटर किन्दा ➔ 'Payment Voucher' मा 'Computer A/c' छानी तिर्ने।\n• रु. २,००० को इन्टरनेट महसुल तिर्दा ➔ 'Payment Voucher' मा 'Internet Expense A/c' छानी तिर्ने।",
-          contentEng: "• Bought Rs. 50,000 shoes for resale ➔ Enter in 'Purchases' (Increases stock).\n• Bought Rs. 25,000 billing computer for shop ➔ Enter in 'Payment Voucher' under 'Computer & Equipment A/c'.\n• Paid Rs. 2,000 internet bill ➔ Enter in 'Payment Voucher' under 'Internet Expense A/c'."
+          contentNep: "• रु. ५०,००० को व्यापारिक सामान (जुत्ता-चप्पल, कपडा, किराना, मोबाइल, कस्मेटिक्स आदि) किन्दा ➔ 'Purchases' मा इन्ट्री गर्ने (स्टक बढ्छ)।\n• रु. २५,००० को बिलिङ कम्प्युटर वा फर्निचर किन्दा ➔ 'Payment Voucher' मा 'Computer / Furniture A/c' छानी तिर्ने।\n• रु. २,००० को पसलको इन्टरनेट महसुल तिर्दा ➔ 'Payment Voucher' मा 'Internet Expense A/c' छानी तिर्ने।",
+          contentEng: "• Bought Rs. 50,000 resale stock (footwear, clothing, grocery, mobile, cosmetics, etc.) ➔ Enter in 'Purchases' (Increases stock).\n• Bought Rs. 25,000 billing computer or counter furniture ➔ Enter in 'Payment Voucher' under 'Fixed Assets'.\n• Paid Rs. 2,000 internet bill ➔ Enter in 'Payment Voucher' under 'Internet Expense A/c'."
         }
       },
       {
