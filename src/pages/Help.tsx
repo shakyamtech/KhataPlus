@@ -311,6 +311,30 @@ const GUIDE_MODULES: GuideModule[] = [
         ],
         tipsNep: "यदि नयाँ खरिद गर्दा सामानको रेट बढेर आएको छ भने सिस्टमले पुरानो र नयाँ सामानको औसत मूल्य (Weighted Average Cost) आफैँ मिलाउँछ!",
         tipsEng: "If new stock arrives at a higher cost, KhataPlus automatically computes the Weighted Average Cost!"
+      },
+      {
+        id: "purchases-three-types-guide",
+        titleNep: "खरिदका ३ प्रकार: सामान (Trade Goods), अफिस सम्पत्ति (Fixed Assets) र सेवा/खर्च (Expenses)",
+        titleEng: "3 Types of Purchases: Trade Goods vs Fixed Assets vs Services & Expenses",
+        summaryNep: "बेच्ने सामान Purchases मा हाल्ने, तर अफिसको कम्प्युटर/प्रिन्टर र इन्टरनेट/बिजुली खर्च किन Payment Voucher मा हाल्ने?",
+        summaryEng: "Crucial rule: Only resale items belong in Purchases (Stock In). Computers/assets and services belong in Payment Vouchers.",
+        actionLink: "/accounting",
+        actionLabelNep: "Accounting & Vouchers मा जानुहोस्",
+        actionLabelEng: "Go to Accounting & Vouchers",
+        stepsNep: [
+          "१. व्यापारिक सामान खरिद (Trade Goods / Inventory): ग्राहकलाई नाफा खाएर बेच्न ल्याइएका सामानहरू (जुत्ता, कपडा, किराना आदि) सिधै 'Purchases ➔ + New Purchase' बाट चढाउनुपर्छ। यसले सामानको स्टक (Stock In), परिमाण (Qty), ब्याच र औसत लागत बढाउँछ।",
+          "२. स्थिर सम्पत्ति खरिद (Office Fixed Assets): पसल वा अफिसमा चलाउन किनेको कम्प्युटर, बिलिङ प्रिन्टर, बारकोड स्क्यानर, काउन्टर, फर्निचर, सीसीटीभी आदि (जुन बेच्नका लागि होइन) लाई Purchases मा नहाल्नुहोस्। यसलाई 'Accounting ➔ Payment Voucher' मा गएर 'Fixed Assets' खाता छानी भुक्तानी गर्नुपर्छ।",
+          "३. सेवा तथा दैनिक खर्च खरिद (Services & Expense / VAT Bills): इन्टरनेट तथा बिजुली महसुल, पसलको घरभाडा, सफ्टवेयर शुल्क, ढुवानी/भाडा, पसल मर्मत आदि (जसमा भ्याट बिल पनि आउन सक्छ) लाई 'Accounting ➔ Payment Voucher' मा सम्बन्धित खर्च खाता (Expense A/c) छानी भुक्तानी गर्नुपर्छ।",
+          "४. सप्लायरको बाँकी उधारो चुक्ता गर्दा: पुराना सप्लायरलाई पछि चेक वा नगदबाट पैसा दिँदा पनि 'Accounting ➔ Payment Voucher' बाट सप्लायरको नाम छानी भुक्तानी गरिन्छ।"
+        ],
+        stepsEng: [
+          "1. Trade Goods Purchase (Resale Inventory): Items intended for resale to customers must be entered in 'Purchases ➔ + New Purchase'. This increases physical Stock-In, quantity, batch, and inventory cost.",
+          "2. Office Fixed Assets Purchase: Items bought for operational use (computers, POS thermal printers, barcode scanners, counters, furniture, CCTV) are not for resale. Do NOT enter them in Purchases. Record them via 'Accounting ➔ Payment Voucher' under 'Fixed Assets'.",
+          "3. Services & Expense Purchases (VAT Invoices): Office internet, electricity, shop rent, software fees, transport freight, and repairs must be recorded via 'Accounting ➔ Payment Voucher' under respective Expense accounts.",
+          "4. Settling Supplier Credit: When paying past due balances to suppliers, use 'Accounting ➔ Payment Voucher' to deduct Cash/Bank and clear supplier payables."
+        ],
+        tipsNep: "💡 सुनौलो नियम: यदि सामान बेचेर नाफा कमाउन ल्याएको हो भने मात्र 'Purchases' प्रयोग गर्नुहोस्। यदि पसल चलाउन, उपभोग गर्न वा सेवा लिन खर्च गरिएको हो भने 'Payment Voucher' प्रयोग गर्नुहोस्।",
+        tipsEng: "💡 Golden Rule: Use 'Purchases' strictly for goods bought to resell for profit. Use 'Payment Voucher' for equipment, services, operating expenses, and supplier settlements."
       }
     ]
   },
@@ -708,6 +732,34 @@ const GUIDE_MODULES: GuideModule[] = [
     bgColor: "bg-orange-500/10",
     borderColor: "border-orange-500/20",
     topics: [
+      {
+        id: "faq-three-types-purchases-sales",
+        titleNep: "कम्प्युटर, प्रिन्टर वा अफिसको सम्पत्ति किन्दा Purchases मा नहाली Payment मा किन हाल्ने? (खरिद र बिक्रीका ३ प्रकार)",
+        titleEng: "Why Office Computers & Printers Belong in Payment Vouchers (Not Purchases)? (3 Types of Purchases & Sales)",
+        summaryNep: "व्यापारिक सामान, अफिसको सम्पत्ति र सेवा खर्चको अन्तर, र ती कुन-कुन ठाउँमा इन्ट्री गर्ने भन्ने स्पष्ट नियम।",
+        summaryEng: "Accounting rules distinguishing Resale Inventory (Purchases) from Fixed Assets/Services (Payment Vouchers).",
+        actionLink: "/purchases",
+        actionLabelNep: "Purchases मा जानुहोस्",
+        actionLabelEng: "Go to Purchases",
+        stepsNep: [
+          "१. खरिदका ३ प्रकार र इन्ट्री गर्ने ठाउँ:\n  • (क) व्यापारिक सामान (Trade Goods): नाफा खाएर ग्राहकलाई बेच्न ल्याएको सामान ➔ 'Purchases (+ New Purchase)' मा हाल्ने (यसले स्टक बढाउँछ)।\n  • (ख) अफिसको सम्पत्ति (Fixed Assets): पसलमा प्रयोग गर्न किनेको कम्प्युटर, प्रिन्टर, फर्निचर, सीसीटीभी आदि ➔ 'Accounting ➔ Payment Voucher' मा 'Fixed Assets' खाता छानी हाल्ने (यसले स्टक बिगार्दैन, सम्पत्ति बढाउँछ)।\n  • (ग) सेवा तथा दैनिक खर्च (Services & Expenses): इन्टरनेट, बिजुली, घरभाडा, सफ्टवेयर शुल्क, ढुवानी आदि ➔ 'Accounting ➔ Payment Voucher' मा सम्बन्धित खर्च खाता (Expense A/c) छानी भुक्तानी गर्ने।",
+          "२. बिक्रीका ३ प्रकार र इन्ट्री गर्ने ठाउँ:\n  • (क) सामानको बिक्री (Trade Goods Sales): पसलको स्टक बेचेको ➔ 'POS Billing (Sales)' मा बिल काट्ने (यसले स्टक घटाउँछ)।\n  • (ख) सेवा तथा अन्य आम्दानी (Services & Incomes): मर्मत सेवा शुल्क, कमिसन, कर्नर भाडा ➔ 'Accounting ➔ Receipt Voucher' मा 'Income' खाता छानी चढाउने।\n  • (ग) पुरानो सम्पत्ति बिक्री (Old Asset Sale): पुरानो कम्प्युटर वा फर्निचर बेचेको ➔ 'Accounting ➔ Receipt Voucher' मा 'Fixed Asset' क्रेडिट गरी चढाउने।",
+          "३. सप्लायरको उधारो चुक्ता गर्दा: सप्लायरको पुरानो बाँकी पैसा पछि बैंक वा नगदबाट तिर्दा 'Accounting ➔ Payment Voucher' (वा Suppliers पेजको Pay Supplier) प्रयोग गर्ने।"
+        ],
+        stepsEng: [
+          "1. Three Types of Purchases & Where to Enter:\n  • (a) Trade Goods (Resale Inventory): Goods bought to resell for profit ➔ Enter in 'Purchases (+ New Purchase)' (Increases physical stock).\n  • (b) Office Fixed Assets: Equipment for shop use (computers, printers, furniture, CCTV) ➔ Enter in 'Accounting ➔ Payment Voucher' under 'Fixed Assets' (Protects inventory from fake stock).\n  • (c) Services & Expenses: Office internet, electricity, shop rent, software fees, transport ➔ Enter in 'Accounting ➔ Payment Voucher' under Expense accounts.",
+          "2. Three Types of Sales & Where to Enter:\n  • (a) Trade Goods Sales: Selling physical products to customers ➔ Bill via 'POS Billing (Sales)' (Decreases stock).\n  • (b) Services & Other Incomes: Repair fees, commission, space rental ➔ Enter via 'Accounting ➔ Receipt Voucher' under Income accounts.\n  • (c) Old Fixed Asset Sales: Selling scrap/old computers or furniture ➔ Enter via 'Accounting ➔ Receipt Voucher' crediting Fixed Asset ledger.",
+          "3. Supplier Credit Settlements: When paying past due balances to suppliers, use 'Accounting ➔ Payment Voucher' (or 'Pay Supplier' on Suppliers page)."
+        ],
+        tipsNep: "💡 सुनौलो नियम: यदि सामान नाफा खाएर ग्राहकलाई बेच्न ल्याएको हो भने मात्र 'Purchases' प्रयोग गर्नुहोस्। यदि पसल आफैँ चलाउन, उपभोग गर्न वा सेवा लिन पैसा तिरेको हो भने 'Payment Voucher' प्रयोग गर्नुहोस्।",
+        tipsEng: "💡 Golden Rule: Use 'Purchases' strictly for goods bought to resell for profit. Use 'Payment Voucher' for equipment, services, operating expenses, and supplier settlements.",
+        examples: {
+          titleNep: "स्पष्ट उदाहरण (Quick Example)",
+          titleEng: "Quick Practical Example",
+          contentNep: "• रु. ५०,००० को जुत्ता/कपडा किन्दा ➔ 'Purchases' मा इन्ट्री गर्ने (स्टक बढ्छ)।\n• रु. २५,००० को बिलिङ कम्प्युटर किन्दा ➔ 'Payment Voucher' मा 'Computer A/c' छानी तिर्ने।\n• रु. २,००० को इन्टरनेट महसुल तिर्दा ➔ 'Payment Voucher' मा 'Internet Expense A/c' छानी तिर्ने।",
+          contentEng: "• Bought Rs. 50,000 shoes for resale ➔ Enter in 'Purchases' (Increases stock).\n• Bought Rs. 25,000 billing computer for shop ➔ Enter in 'Payment Voucher' under 'Computer & Equipment A/c'.\n• Paid Rs. 2,000 internet bill ➔ Enter in 'Payment Voucher' under 'Internet Expense A/c'."
+        }
+      },
       {
         id: "faq-opening-balance-rules",
         titleNep: "सुरुवाती मौज्दात (Opening Balance) कसरी र कुन-कुन खातामा हाल्ने?",
