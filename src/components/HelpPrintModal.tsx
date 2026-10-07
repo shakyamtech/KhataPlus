@@ -17,6 +17,7 @@ import {
   Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/version";
 
 interface Topic {
   id: string;
@@ -361,7 +362,7 @@ export function HelpPrintModal({
         <div class="brand-title">KhataPlus</div>
         <div style="font-size: 10.5px; color: #64748b; font-weight: 600;">नेपालको आधुनिक बिलिङ तथा लेखा व्यवस्थापन सफ्टवेयर</div>
       </div>
-      <div class="brand-tag">v2.3.0 Official Manual</div>
+      <div class="brand-tag">v${APP_VERSION} Official Manual</div>
     </div>
 
     <div class="manual-title">
@@ -587,7 +588,7 @@ export function HelpPrintModal({
                   "font-bold text-xs px-3 py-1 rounded-full",
                   colorMode === "color" ? "bg-sky-600 text-white shadow-xs" : "bg-slate-800 text-white"
                 )}>
-                  v2.3.0 Complete SOP Manual
+                  v{APP_VERSION} Complete SOP Manual
                 </div>
               </div>
 

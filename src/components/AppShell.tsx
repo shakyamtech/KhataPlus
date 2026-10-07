@@ -2593,11 +2593,11 @@ export const AppShell = () => {
                             </div>
 
                             <div className="max-h-60 overflow-y-auto pr-2 space-y-3.5 text-xs divide-y divide-border/40">
-                                {/* Version 2.3.0 */}
+                                {/* Version 2.4.0 */}
                                 <div className="space-y-2 pt-1">
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-foreground text-sm">v2.3.0</span>
+                                            <span className="font-bold text-foreground text-sm">v2.4.0</span>
                                             <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                                 <span>{lang === "NEP" ? "हालको" : "Latest"}</span>
                                                 <span className="relative flex h-2 w-2 shrink-0">
@@ -2606,6 +2606,21 @@ export const AppShell = () => {
                                                 </span>
                                             </span>
                                         </div>
+                                        <span className="text-[10px] text-muted-foreground font-medium shrink-0">07 Oct 2026</span>
+                                    </div>
+                                    <ul className="text-[11.5px] text-muted-foreground space-y-1.5 pl-3 list-disc list-outside">
+                                        <li>{lang === "NEP" ? "स्टाफ तथा तलब व्यवस्थापन: २-ट्याब मोडल, Master PIN सुरक्षा, हाजिरी/तलब र पेस्की लेजर शुद्धता" : "Staff & Payroll System: 2-Tab Staff Setup with Master PIN Guard, Attendance & Ledger Safety"}</li>
+                                        <li>{lang === "NEP" ? "स्मार्ट Auto-Assist & AI: व्यवसाय प्रकृति पहिचान, लेजर ग्रुप अटो-प्रेडिक्सन र Trial Balance Safe-Move" : "Smart Auto-Assist & AI: Business Nature Auto-Detect, Group Prediction & Safe-Move Assistant"}</li>
+                                        <li>{lang === "NEP" ? "खरिदमा बैंक ब्यालेन्स: खरिद तथा आंशिक भुक्तानीमा बैंक खाताको प्रत्यक्ष मौज्दात (Live Balance) प्रदर्शन" : "Smart Bank in Purchases: Live Bank Account Balances & Landmark Selector in Purchases"}</li>
+                                        <li>{lang === "NEP" ? "बृहत् Help & FAQ Studio: १०+ पूर्ण मोड्युलहरू, द्विभाषी दिग्दर्शन, बैंक/लेजर सेटअप र FAQ" : "Interactive Help & FAQ: 10+ Comprehensive Modules, Bilingual Search & Accounting Tutorials"}</li>
+                                        <li>{lang === "NEP" ? "एकाउन्टिङ तथा कर सुरक्षा: चार्ट अफ एकाउन्ट्स नियम, ओपनिङ ब्यालेन्स अलर्ट र नेपाल कर दिग्दर्शन" : "Accounting & Tax Guard: Chart of Accounts Guard, Opening Balance Alerts & Nepal Tax Guide"}</li>
+                                    </ul>
+                                </div>
+
+                                {/* Version 2.3.0 */}
+                                <div className="space-y-2 pt-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="font-bold text-foreground text-sm">v2.3.0</span>
                                         <span className="text-[10px] text-muted-foreground font-medium shrink-0">25 Sep 2026</span>
                                     </div>
                                     <ul className="text-[11.5px] text-muted-foreground space-y-1.5 pl-3 list-disc list-outside">

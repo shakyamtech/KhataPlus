@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/version";
 import { HelpPrintModal } from "@/components/HelpPrintModal";
 
 interface GuideModule {
@@ -971,7 +972,7 @@ export default function Help() {
                 {lang === "NEP" ? "KhataPlus ज्ञान केन्द्र र प्रयोग निर्देशिका" : "KhataPlus Knowledge Base & User Guide"}
               </Badge>
               <Badge variant="secondary" className="text-xs font-semibold">
-                v2.3.0 Complete Manual
+                v{APP_VERSION} Complete Manual
               </Badge>
             </div>
 
