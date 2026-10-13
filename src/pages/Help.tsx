@@ -1178,7 +1178,7 @@ export default function Help() {
                 <Clock className="h-3 w-3 text-primary" />
                 {lang === "NEP" ? "दैनिक: बिहान ७:०० – साँझ ८:००" : "Daily: 7:00 AM – 8:00 PM"}
               </span>
-              <span className="font-semibold text-foreground/80">{lang === "NEP" ? "काठमाडौं, नेपाल" : "Kathmandu, Nepal"}</span>
+              <span className="font-semibold text-foreground/80">{lang === "NEP" ? "लगनखेल, ललितपुर, नेपाल" : "Lagankhel, Lalitpur, Nepal"}</span>
             </div>
           </div>
 
