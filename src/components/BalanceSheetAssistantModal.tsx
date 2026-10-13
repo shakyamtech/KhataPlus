@@ -207,8 +207,8 @@ export function BalanceSheetAssistantModal({
           "• Click '+ Create Account' and create 'Discount Received' under 'Indirect Incomes'.",
           `• Set Opening Balance to ${fmt(unrecordedDiscount)} and Save.`
         ],
-        fixActionLabelNp: `✨ 'Discount Received' खाता बनाई ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
-        fixActionLabelEn: `✨ Create 'Discount Received' Account (${fmt(unrecordedDiscount)})`,
+        fixActionLabelNp: `'Discount Received' खाता बनाई ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
+        fixActionLabelEn: `Create 'Discount Received' Account (${fmt(unrecordedDiscount)})`,
         fixAction: async () => {
           if (!user) return;
           const ref = doc(collection(db, "accounts"));
@@ -364,8 +364,8 @@ export function BalanceSheetAssistantModal({
           `• ${isAssetsHigher ? `Debit (Dr): Suspense / Asset A/c (${fmt(difference)})` : `Debit (Dr): Capital Account (${fmt(difference)})`}`,
           `• ${isAssetsHigher ? `Credit (Cr): Capital Account (${fmt(difference)})` : `Credit (Cr): Suspense / Asset A/c (${fmt(difference)})`}`
         ],
-        fixActionLabelNp: `✨ साहुको पुँजी खातामा ${fmt(difference)} समायोजन गरी वासलात तुरुन्तै मिलाउनुहोस्`,
-        fixActionLabelEn: `✨ Adjust ${fmt(difference)} in Capital Account`,
+        fixActionLabelNp: `साहुको पुँजी खातामा ${fmt(difference)} समायोजन गरी वासलात तुरुन्तै मिलाउनुहोस्`,
+        fixActionLabelEn: `Adjust ${fmt(difference)} in Capital Account`,
         fixAction: async () => {
           if (!user) return;
           const capAcc = capitalAccounts[0];

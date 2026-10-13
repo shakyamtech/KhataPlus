@@ -2021,7 +2021,7 @@ export const AppShell = () => {
                                             title={lang === "NEP" ? "स्टकका सामानबाट स्वतः पत्ता लगाउनुहोस्" : "Auto-detect from products & stock"}
                                         >
                                             <Sparkles className="h-3 w-3" />
-                                            <span>{lang === "NEP" ? "✨ स्वतः पहिचान" : "✨ Auto-Detect"}</span>
+                                            <span>{lang === "NEP" ? "स्वतः पहिचान" : "Auto-Detect"}</span>
                                         </button>
                                     </div>
                                     <select

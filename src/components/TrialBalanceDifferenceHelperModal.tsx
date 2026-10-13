@@ -155,8 +155,8 @@ export function TrialBalanceDifferenceHelperModal({
           "• Click '+ Create Account' and create 'Discount Received' (Group: Indirect Incomes).",
           `• Set Opening Balance to ${fmt(unrecordedDiscount)} and Save.`
         ],
-        fixActionLabelNp: `✨ 'Discount Received' खाता बनाई ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
-        fixActionLabelEn: `✨ Create 'Discount Received' Account (${fmt(unrecordedDiscount)})`,
+        fixActionLabelNp: `'Discount Received' खाता बनाई ${fmt(unrecordedDiscount)} क्रेडिट गर्नुहोस्`,
+        fixActionLabelEn: `Create 'Discount Received' Account (${fmt(unrecordedDiscount)})`,
         fixAction: async () => {
           if (!user) return;
           const ref = doc(collection(db, "accounts"));
@@ -219,8 +219,8 @@ export function TrialBalanceDifferenceHelperModal({
           "• Go to Accounting ➔ Chart of Accounts.",
           `• Edit Capital Account and add ${fmt(openingStockVal)} to Opening Balance.`
         ],
-        fixActionLabelNp: `✨ साहुको पुँजी खातामा ${fmt(openingStockVal)} थप्नुहोस्`,
-        fixActionLabelEn: `✨ Add ${fmt(openingStockVal)} to Capital Account`,
+        fixActionLabelNp: `साहुको पुँजी खातामा ${fmt(openingStockVal)} थप्नुहोस्`,
+        fixActionLabelEn: `Add ${fmt(openingStockVal)} to Capital Account`,
         fixAction: async () => {
           if (!user) return;
           const capAcc = capitalAccounts[0];
@@ -295,8 +295,8 @@ export function TrialBalanceDifferenceHelperModal({
           "• Go to Accounting ➔ Chart of Accounts.",
           `• Reset income opening balances to 0 and add ${fmt(totalBadOpening)} to Cash in Hand and Owner's Capital.`
         ],
-        fixActionLabelNp: `✨ यो रकमलाई Cash in Hand र साहुको पुँजीमा सार्नुहोस् (Safe Move)`,
-        fixActionLabelEn: `✨ Safe Move ${fmt(totalBadOpening)} to Cash & Capital`,
+        fixActionLabelNp: `यो रकमलाई Cash in Hand र साहुको पुँजीमा सार्नुहोस् (Safe Move)`,
+        fixActionLabelEn: `Safe Move ${fmt(totalBadOpening)} to Cash & Capital`,
         fixAction: async () => {
           if (!user) return;
           const batch = writeBatch(db);
@@ -438,8 +438,8 @@ export function TrialBalanceDifferenceHelperModal({
           `• ${isDebitHigher ? `Debit (Dr): Suspense / Cash / Bank (${fmt(amt)})` : `Debit (Dr): Owner's Capital (${fmt(amt)})`}`,
           `• ${isDebitHigher ? `Credit (Cr): Owner's Capital (${fmt(amt)})` : `Credit (Cr): Suspense / Cash / Bank (${fmt(amt)})`}`
         ],
-        fixActionLabelNp: `✨ साहुको पुँजी खातामा रु. ${fmt(amt)} समायोजन गर्नुहोस्`,
-        fixActionLabelEn: `✨ Adjust Rs. ${fmt(amt)} in Capital Account`,
+        fixActionLabelNp: `साहुको पुँजी खातामा ${fmt(amt)} समायोजन गर्नुहोस्`,
+        fixActionLabelEn: `Adjust ${fmt(amt)} in Capital Account`,
         fixAction: async () => {
           if (!user) return;
           const capAcc = capitalAccounts[0];
