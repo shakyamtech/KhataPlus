@@ -8,7 +8,7 @@ import {
   TrendingUp, QrCode, ShieldCheck, Layers, Receipt, Percent,
   Calendar, RotateCcw, FileSpreadsheet, BookMarked, Lightbulb,
   ArrowRight, Check, Info, ArrowUpRight, BookOpen, Smartphone, Star,
-  UserCheck
+  UserCheck, Phone, PhoneCall, MessageCircle, Clock
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -974,6 +974,20 @@ export default function Help() {
               <Badge variant="secondary" className="text-xs font-semibold">
                 v{APP_VERSION} Complete Manual
               </Badge>
+              <a
+                href="https://wa.me/9779851180556?text=नमस्ते,%20मलाई%20KhataPlus%20सम्बन्धी%20सहयोग%20चाहिएको%20थियो।"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-all shadow-2xs group cursor-pointer"
+                title="WhatsApp / Call: 9851180556"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <PhoneCall className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>{lang === "NEP" ? "सपोर्ट: ९८५११८०५५६" : "Support: 9851180556"}</span>
+              </a>
             </div>
 
             <div className="space-y-1.5">
@@ -1091,6 +1105,81 @@ export default function Help() {
                 </button>
               );
             })}
+          </div>
+
+          {/* Official Nepal Customer Support & Training Desk */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-card via-card/95 to-primary/5 border border-primary/25 shadow-sm space-y-3 mt-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-2xs">
+                  <PhoneCall className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-foreground">
+                    🇳🇵 {lang === "NEP" ? "ग्राहक सहायता तथा तालिम केन्द्र" : "Nepal Customer Support Desk"}
+                  </h4>
+                  <p className="text-[10px] text-muted-foreground font-medium">
+                    {lang === "NEP" ? "आधिकारिक प्राविधिक सहायता (Nepal Desk)" : "Official Technical & Training Desk"}
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {lang === "NEP" ? "उपलब्ध" : "Active"}
+              </span>
+            </div>
+
+            <p className="text-[11.5px] text-muted-foreground leading-relaxed">
+              {lang === "NEP"
+                ? "सफ्टवेयर सञ्चालन, ओपनिङ ब्यालेन्स, हिसाब मिलान वा अन्य कुनै समस्या परेमा हामीलाई सम्पर्क गर्नुहोस्:"
+                : "Need help with setup, accounting entries, or training? Contact our support team:"}
+            </p>
+
+            <div className="grid grid-cols-1 gap-2 pt-0.5">
+              {/* Direct Phone Call */}
+              <a
+                href="tel:+9779851180556"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/25 text-primary font-bold text-xs transition-all active:scale-[0.98] cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-primary/20 text-primary">
+                    <Phone className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-[9.5px] uppercase font-semibold text-muted-foreground">{lang === "NEP" ? "सिधै फोन गर्नुहोस्" : "Direct Phone Call"}</div>
+                    <div className="text-xs font-black tracking-wide text-foreground">9851180556</div>
+                  </div>
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </a>
+
+              {/* WhatsApp Direct Chat */}
+              <a
+                href="https://wa.me/9779851180556?text=नमस्ते,%20मलाई%20KhataPlus%20सम्बन्धी%20सहयोग%20चाहिएको%20थियो।"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-bold text-xs transition-all active:scale-[0.98] cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-[9.5px] uppercase font-semibold text-muted-foreground">{lang === "NEP" ? "WhatsApp च्याट" : "WhatsApp Chat"}</div>
+                    <div className="text-xs font-black tracking-wide text-foreground">9851180556</div>
+                  </div>
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-emerald-600 dark:text-emerald-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </a>
+            </div>
+
+            <div className="pt-2 border-t border-border/50 text-[10.5px] text-muted-foreground flex items-center justify-between">
+              <span className="flex items-center gap-1 font-medium">
+                <Clock className="h-3 w-3 text-primary" />
+                {lang === "NEP" ? "दैनिक: बिहान ७:०० – साँझ ८:००" : "Daily: 7:00 AM – 8:00 PM"}
+              </span>
+              <span className="font-semibold text-foreground/80">{lang === "NEP" ? "काठमाडौं, नेपाल" : "Kathmandu, Nepal"}</span>
+            </div>
           </div>
 
           {/* Direct Shortcut Action Card */}
