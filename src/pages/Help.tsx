@@ -909,24 +909,13 @@ const GUIDE_MODULES: GuideModule[] = [
   }
 ];
 
-const NepalFlagIcon = ({ className = "h-5 w-auto" }: { className?: string }) => (
-  <svg 
-    viewBox="0 0 100 125" 
+const NepalFlag = ({ className = "h-7 w-auto" }: { className?: string }) => (
+  <img 
+    src="/nepal-flag.svg" 
+    alt="नेपालको झण्डा" 
     className={className} 
-    fill="none" 
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    {/* Outer Blue Border */}
-    <polygon points="10,120 10,5 78,5 30,55 95,55 10,120" fill="#003893" stroke="#003893" strokeWidth="2" strokeLinejoin="round" />
-    {/* Inner Crimson Red */}
-    <polygon points="15,112 15,11 70,11 26,53 84,53 15,112" fill="#DC143C" />
-    {/* Upper Pennon: Moon */}
-    <path d="M 23,32 A 11,11 0 0,0 45,32 A 10,10 0 0,1 23,32 Z" fill="#FFFFFF" />
-    <circle cx="34" cy="30" r="3.5" fill="#FFFFFF" />
-    {/* Lower Pennon: 12-Ray Sun */}
-    <circle cx="32" cy="80" r="8" fill="#FFFFFF" />
-    <circle cx="32" cy="80" r="11" stroke="#FFFFFF" strokeWidth="1.5" strokeDasharray="3 3" fill="none" />
-  </svg>
+    loading="eager"
+  />
 );
 
 export default function Help() {
@@ -1144,10 +1133,10 @@ export default function Help() {
                 </div>
               </div>
               <div 
-                className="flex items-center justify-center p-1 px-1.5 rounded-lg bg-card border border-border/80 shadow-2xs hover:scale-105 transition-transform" 
+                className="flex items-center justify-center p-1.5 px-2 rounded-xl bg-card border border-border/80 shadow-2xs hover:scale-105 transition-transform shrink-0" 
                 title="नेपाल (Nepal)"
               >
-                <NepalFlagIcon className="h-6 w-auto" />
+                <NepalFlag className="h-7 w-auto drop-shadow-xs" />
               </div>
             </div>
 
