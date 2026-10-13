@@ -986,7 +986,7 @@ export default function Help() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                 </span>
                 <PhoneCall className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>{lang === "NEP" ? "सपोर्ट: ९८५११८०५५६" : "Support: 9851180556"}</span>
+                <span>{lang === "NEP" ? "सपोर्ट: ०१-५४३०९६७ / ९८५११८०५५६" : "Support: 01-5430967 / 9851180556"}</span>
               </a>
             </div>
 
@@ -1115,11 +1115,14 @@ export default function Help() {
                   <PhoneCall className="h-4 w-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-foreground">
-                    🇳🇵 {lang === "NEP" ? "ग्राहक सहायता तथा तालिम केन्द्र" : "Nepal Customer Support Desk"}
+                  <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-extrabold uppercase tracking-wider">
+                      Nepal
+                    </span>
+                    <span>{lang === "NEP" ? "ग्राहक सहायता तथा तालिम केन्द्र" : "Customer Support Desk"}</span>
                   </h4>
                   <p className="text-[10px] text-muted-foreground font-medium">
-                    {lang === "NEP" ? "आधिकारिक प्राविधिक सहायता (Nepal Desk)" : "Official Technical & Training Desk"}
+                    {lang === "NEP" ? "आधिकारिक प्राविधिक सहायता (Official Support)" : "Official Technical & Training Desk"}
                   </p>
                 </div>
               </div>
@@ -1136,6 +1139,23 @@ export default function Help() {
             </p>
 
             <div className="grid grid-cols-1 gap-2 pt-0.5">
+              {/* Office Landline */}
+              <a
+                href="tel:015430967"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-800 dark:text-amber-400 font-bold text-xs transition-all active:scale-[0.98] cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    <PhoneCall className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-[9.5px] uppercase font-semibold text-muted-foreground">{lang === "NEP" ? "कार्यालय ल्यान्डलाइन (Office Phone)" : "Office Landline"}</div>
+                    <div className="text-xs font-black tracking-wide text-foreground">01-5430967</div>
+                  </div>
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-amber-600 dark:text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </a>
+
               {/* Direct Phone Call */}
               <a
                 href="tel:+9779851180556"
@@ -1146,7 +1166,7 @@ export default function Help() {
                     <Phone className="h-3.5 w-3.5" />
                   </div>
                   <div className="text-left">
-                    <div className="text-[9.5px] uppercase font-semibold text-muted-foreground">{lang === "NEP" ? "सिधै फोन गर्नुहोस्" : "Direct Phone Call"}</div>
+                    <div className="text-[9.5px] uppercase font-semibold text-muted-foreground">{lang === "NEP" ? "सिधै मोबाइल कल (Mobile Call)" : "Direct Mobile Call"}</div>
                     <div className="text-xs font-black tracking-wide text-foreground">9851180556</div>
                   </div>
                 </div>
