@@ -93,7 +93,7 @@ export const BusinessDetectionModal: React.FC<BusinessDetectionModalProps> = ({
                                 <DialogDescription className="text-xs text-muted-foreground">
                                     {lang === "NEP"
                                         ? "तपाईंको इन्भेन्टरी र खाताको आधारमा सही कर समूह सिफारिस"
-                                        : "AI recommendation based on your products and accounts"}
+                                        : "Smart recommendation based on your products and accounts"}
                                 </DialogDescription>
                             </div>
                         </div>

@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
-      includeAssets: ["favicon.ico", "favicon.svg", "apple-touch-icon.png", "favicon-32x32.png", "favicon-16x16.png"],
+      includeAssets: ["favicon.ico", "favicon.svg", "apple-touch-icon.png", "favicon-32x32.png", "favicon-16x16.png", "og-image.png"],
       manifest: {
         name: "KhataPlus - Shop POS & Inventory",
         short_name: "KhataPlus",
