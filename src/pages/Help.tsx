@@ -909,6 +909,26 @@ const GUIDE_MODULES: GuideModule[] = [
   }
 ];
 
+const NepalFlagIcon = ({ className = "h-5 w-auto" }: { className?: string }) => (
+  <svg 
+    viewBox="0 0 100 125" 
+    className={className} 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Outer Blue Border */}
+    <polygon points="10,120 10,5 78,5 30,55 95,55 10,120" fill="#003893" stroke="#003893" strokeWidth="2" strokeLinejoin="round" />
+    {/* Inner Crimson Red */}
+    <polygon points="15,112 15,11 70,11 26,53 84,53 15,112" fill="#DC143C" />
+    {/* Upper Pennon: Moon */}
+    <path d="M 23,32 A 11,11 0 0,0 45,32 A 10,10 0 0,1 23,32 Z" fill="#FFFFFF" />
+    <circle cx="34" cy="30" r="3.5" fill="#FFFFFF" />
+    {/* Lower Pennon: 12-Ray Sun */}
+    <circle cx="32" cy="80" r="8" fill="#FFFFFF" />
+    <circle cx="32" cy="80" r="11" stroke="#FFFFFF" strokeWidth="1.5" strokeDasharray="3 3" fill="none" />
+  </svg>
+);
+
 export default function Help() {
   const { lang, setLang } = useLanguage();
   const navigate = useNavigate();
@@ -1115,21 +1135,20 @@ export default function Help() {
                   <PhoneCall className="h-4 w-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-extrabold uppercase tracking-wider">
-                      Nepal
-                    </span>
-                    <span>{lang === "NEP" ? "ग्राहक सहायता तथा तालिम केन्द्र" : "Customer Support Desk"}</span>
+                  <h4 className="text-xs sm:text-sm font-bold text-foreground">
+                    {lang === "NEP" ? "ग्राहक सहायता तथा तालिम केन्द्र" : "Customer Support Desk"}
                   </h4>
                   <p className="text-[10px] text-muted-foreground font-medium">
-                    {lang === "NEP" ? "आधिकारिक प्राविधिक सहायता (Official Support)" : "Official Technical & Training Desk"}
+                    {lang === "NEP" ? "आधिकारिक प्राविधिक सहायता (Nepal Desk)" : "Official Technical & Training Desk"}
                   </p>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {lang === "NEP" ? "उपलब्ध" : "Active"}
-              </span>
+              <div 
+                className="flex items-center justify-center p-1 px-1.5 rounded-lg bg-card border border-border/80 shadow-2xs hover:scale-105 transition-transform" 
+                title="नेपाल (Nepal)"
+              >
+                <NepalFlagIcon className="h-6 w-auto" />
+              </div>
             </div>
 
             <p className="text-[11.5px] text-muted-foreground leading-relaxed">
